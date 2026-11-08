@@ -61,7 +61,17 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   controls.enableDamping = true;
   controls.minDistance = 140;
   controls.maxDistance = 520;
-  globe.pointOfView({ lat: 28, lng: -40, altitude: 2.1 }, 0);
+  // Phones: the globe sits in its own square, so pull back a little to show the whole sphere.
+  const narrow = () => el.clientWidth < 600;
+  globe.pointOfView({ lat: 28, lng: -40, altitude: narrow() ? 2.5 : 2.1 }, 0);
+
+  // OrbitControls sets touch-action:none on the canvas, which traps the page scroll on phones.
+  // Let the browser keep vertical swipes (page scroll) and pinch; sideways drags still turn the globe.
+  const touch = matchMedia('(pointer: coarse)').matches;
+  if (touch) {
+    controls.enableZoom = false;
+    globe.renderer().domElement.style.touchAction = 'pan-y';
+  }
 
   const resize = () => globe.width(el.clientWidth).height(el.clientHeight);
   resize();

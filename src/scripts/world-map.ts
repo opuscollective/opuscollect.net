@@ -84,6 +84,7 @@ export async function mountWorldMap(
   el: HTMLElement,
   initial: Listing[],
   cb: { onSelect: (id: string) => void; onMove: () => void },
+  opts: { padBottom?: number } = {},
 ): Promise<WorldMapApi> {
   const topo = (await fetch('/data/countries-50m.json').then((r) => r.json())) as Topology;
   const countries = feature(topo, topo.objects.countries as GeometryCollection) as unknown as GeoJSON.FeatureCollection;
@@ -93,7 +94,7 @@ export async function mountWorldMap(
     container: el,
     style: buildStyle(countries),
     center: [-40, 28],
-    zoom: el.clientWidth < 700 ? 0.6 : 1.5,
+    zoom: el.clientWidth < 700 ? 0.85 : 1.5,
     minZoom: 0.4,
     maxZoom: 17,
     attributionControl: { compact: true },
@@ -102,6 +103,8 @@ export async function mountWorldMap(
     renderWorldCopies: false,
   });
   map.touchZoomRotate.disableRotation();
+  // On phones the bottom sheet covers the lower edge; centre the globe in the visible area.
+  if (opts.padBottom) map.setPadding({ top: 0, left: 0, right: 0, bottom: opts.padBottom });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
 
   // Missing third-party tiles should not break the map. Log once and continue.

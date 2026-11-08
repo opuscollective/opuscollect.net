@@ -225,7 +225,7 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
     const card = results.querySelector<HTMLElement>(`[data-id="${id}"]`);
     card?.classList.add('is-active');
     map?.setActive(id);
-    if (fromMap) { setSheet(true); card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); card?.focus({ preventScroll: true }); }
+    if (fromMap) { setSheet(true); card?.scrollIntoView({ behavior: 'smooth', block: mobile.matches ? 'start' : 'nearest' }); card?.focus({ preventScroll: true }); }
     else { const l = byId.get(id); if (l && map) map.flyToListing(l); }
   }
   results.addEventListener('click', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wc'); if (c) select(c.dataset.id!, false); });
@@ -233,10 +233,77 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
   results.addEventListener('pointerover', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wc'); map?.setHover(c?.dataset.id ?? null); });
   results.addEventListener('pointerleave', () => map?.setHover(null));
 
-  // ---------- Mobile bottom sheet ----------
+  // ---------- Mobile bottom sheet: drag between peek, half and full ----------
+  type Sheet = 'peek' | 'half' | 'full';
   const toggle = $<HTMLButtonElement>('[data-sheet-toggle]');
-  function setSheet(open: boolean) { panel.classList.toggle('is-open', open); toggle.setAttribute('aria-expanded', String(open)); }
-  toggle.addEventListener('click', () => setSheet(!panel.classList.contains('is-open')));
+  const mobile = matchMedia('(max-width: 860px)');
+  let sheet: Sheet = 'peek';
+  const peekPx = () => parseFloat(getComputedStyle(root).getPropertyValue('--peek')) || 136;
+  const sheetY = (st: Sheet) => {
+    const h = panel.offsetHeight;
+    return st === 'full' ? 0 : st === 'half' ? Math.round(h * 0.45) : h - peekPx();
+  };
+  function setSheet(st: Sheet | boolean) {
+    if (typeof st === 'boolean') st = st ? 'half' : 'peek';
+    sheet = st;
+    panel.dataset.sheet = st;
+    panel.classList.toggle('is-open', st !== 'peek');
+    toggle.setAttribute('aria-expanded', String(st !== 'peek'));
+    if (mobile.matches) panel.style.setProperty('--sheet-y', `${sheetY(st)}px`);
+    else panel.style.removeProperty('--sheet-y');
+    if (st !== 'full') panel.scrollTop = 0;
+  }
+  toggle.addEventListener('click', (e) => {
+    if (dragMoved) { e.preventDefault(); return; }
+    setSheet(sheet === 'peek' ? 'half' : sheet === 'half' ? 'full' : 'peek');
+  });
+  // Drag the sheet by its grip, or from anywhere on it while it isn't fully open (like a maps app).
+  // Taps on inputs and buttons still work normally.
+  let dragStart = -1, dragBase = 0, dragMoved = false, lastY = 0, lastT = 0, vel = 0;
+  panel.addEventListener('pointerdown', (e) => {
+    if (!mobile.matches || e.button > 0) return;
+    if (sheet === 'full' && !toggle.contains(e.target as Node)) return;
+    dragStart = e.clientY; dragBase = sheetY(sheet); dragMoved = false; lastY = e.clientY; lastT = e.timeStamp; vel = 0;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (dragStart < 0) return;
+    const dy = e.clientY - dragStart;
+    if (!dragMoved && Math.abs(dy) < 6) return;
+    if (!dragMoved) { dragMoved = true; panel.classList.add('is-dragging'); (document.activeElement as HTMLElement | null)?.blur?.(); }
+    const y = Math.max(0, Math.min(panel.offsetHeight - peekPx(), dragBase + dy));
+    panel.style.setProperty('--sheet-y', `${y}px`);
+    vel = (e.clientY - lastY) / Math.max(1, e.timeStamp - lastT); lastY = e.clientY; lastT = e.timeStamp;
+  });
+  const endDrag = () => {
+    if (dragStart < 0) return;
+    dragStart = -1;
+    if (!dragMoved) return;
+    panel.classList.remove('is-dragging');
+    const y = parseFloat(panel.style.getPropertyValue('--sheet-y')) || 0;
+    const order: Sheet[] = ['full', 'half', 'peek'];
+    let next = order.reduce((a, b) => (Math.abs(sheetY(b) - y) < Math.abs(sheetY(a) - y) ? b : a));
+    if (Math.abs(vel) > 0.5) { // a flick moves one step in its direction
+      const i = order.indexOf(sheet);
+      next = order[Math.max(0, Math.min(2, i + (vel > 0 ? 1 : -1)))]!;
+    }
+    setSheet(next);
+    setTimeout(() => (dragMoved = false), 0);
+  };
+  // A drag that ends over a card must not also select it.
+  panel.addEventListener('click', (e) => { if (dragMoved) { e.stopPropagation(); e.preventDefault(); } }, true);
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+  // Scrolling the results from half height opens the sheet fully, so the list is never cut off.
+  panel.addEventListener('wheel', (e) => { if (mobile.matches && sheet !== 'full' && e.deltaY > 0) setSheet('full'); }, { passive: true });
+  let touchY = 0;
+  // In full view, pulling down at the top of the list returns to half height.
+  panel.addEventListener('touchmove', (e) => {
+    if (mobile.matches && sheet === 'full' && panel.scrollTop <= 0 && (e.touches[0]?.clientY ?? 0) - touchY > 60) setSheet('half');
+  }, { passive: true });
+  panel.addEventListener('touchstart', (e) => { touchY = e.touches[0]?.clientY ?? 0; }, { passive: true });
+  mobile.addEventListener('change', () => setSheet(sheet));
+  addEventListener('resize', () => { if (mobile.matches) setSheet(sheet); });
+  setSheet('peek');
 
   // ---------- Map boot (lazy, with fallback) ----------
   const host = $('[data-map]');
@@ -248,7 +315,7 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
       map = await mountWorldMap(host, SAMPLE_LISTINGS.filter((l) => matches(l, f)), {
         onSelect: (id) => select(id, true),
         onMove: () => { if (inView) render(false); },
-      });
+      }, { padBottom: mobile.matches ? peekPx() : 0 });
       root.classList.add('is-ready');
       $('[data-map-loading]').remove();
       const qc = params.get('city');

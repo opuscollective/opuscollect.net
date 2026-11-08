@@ -180,8 +180,9 @@ const topCities = [...points].sort((a, b) => b.count - a.count).slice(0, 8);
 
   @media (max-width: 900px) {
     .hero { flex-direction: column; align-items: stretch; padding-top: 64px; min-height: auto; }
-    .hero__globe { position: relative; top: auto; right: auto; transform: none; width: 140vw; margin: 0 -20vw -18vw; align-self: center; touch-action: pan-y; }
-    .hero__fade { background: linear-gradient(0deg, var(--c-bg) 0%, transparent 30%); }
-    .hero__inner { margin-top: -8vw; }
+    /* Whole globe visible on phones; vertical swipes scroll the page, sideways swipes turn the globe. */
+    .hero__globe { position: relative; top: auto; right: auto; transform: none; width: min(100%, 560px); min-height: 0; overflow: hidden; margin: 0 auto; align-self: center; touch-action: pan-y; }
+    .hero__fade { background: linear-gradient(0deg, var(--c-bg) 0%, transparent 22%); }
+    .hero__inner { margin-top: -4vw; }
   }
 </style>
