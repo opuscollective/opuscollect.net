@@ -1,0 +1,264 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { SAMPLE_LISTINGS } from '@/data/sample-world';
+import { DISCIPLINES } from '@/data/disciplines';
+import { CITIES } from '@/data/cities';
+import { cardHtml, stats } from '@/lib/world';
+import '@/styles/world.css';
+
+const s = stats(SAMPLE_LISTINGS);
+const initial = SAMPLE_LISTINGS.slice(0, 24);
+---
+<BaseLayout
+  title="Opus World"
+  description="Explore independent musicians, recording studios and music organizations on an interactive map of the world."
+  hideFooter
+>
+  <div class="world" data-world>
+    <h1 class="sr-only">Opus World</h1>
+
+    <div class="world__map" data-map aria-label="Interactive map of Opus members. Use the list for keyboard navigation." role="region">
+      <div class="world__loading" data-map-loading><span class="t-meta">Loading the world…</span></div>
+      <p class="world__nogl" data-map-fallback hidden>
+        Your browser can’t show the interactive map, so results are listed only. Everything else works the same.
+      </p>
+    </div>
+
+    <aside class="world__panel" data-panel aria-label="Directory results">
+      <button class="world__grip" type="button" data-sheet-toggle aria-expanded="false" aria-controls="world-results">
+        <span class="sr-only">Show or hide results</span><i aria-hidden="true"></i>
+      </button>
+
+      <div class="wp__head">
+        <form class="wp__search" data-city-form role="search" autocomplete="off">
+          <label for="w-city" class="sr-only">Search a city, region or country</label>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/></svg>
+          <input id="w-city" name="city" type="search" placeholder="Search a city or country" list="w-cities" />
+          <datalist id="w-cities">{CITIES.map((c) => <option value={c.name}>{c.region ? `${c.region}, ` : ''}{c.countryName}</option>)}</datalist>
+          <button type="submit">Go</button>
+        </form>
+
+        <div class="wp__kinds" role="radiogroup" aria-label="Listing type" data-kinds>
+          <button type="button" role="radio" aria-checked="true" data-kind="">All</button>
+          <button type="button" role="radio" aria-checked="false" data-kind="musician">Musicians</button>
+          <button type="button" role="radio" aria-checked="false" data-kind="studio">Studios</button>
+          <button type="button" role="radio" aria-checked="false" data-kind="organization">Organizations</button>
+        </div>
+
+        <div class="wp__filters">
+          <label class="wp__field" data-only="musician">
+            <span class="sr-only">Discipline</span>
+            <select data-discipline>
+              <option value="">Any discipline</option>
+              {Object.entries(DISCIPLINES).map(([k, d]) => <option value={k}>{d.plural}</option>)}
+            </select>
+          </label>
+          <label class="wp__field" data-only="studio" hidden>
+            <span class="sr-only">Studio type</span>
+            <select data-studio-type>
+              <option value="">Any studio</option>
+              <option value="commercial">Commercial studios</option>
+              <option value="home">Home studios</option>
+            </select>
+          </label>
+          <label class="wp__field wp__field--grow">
+            <span class="sr-only">Filter by name or genre</span>
+            <input type="search" data-text placeholder="Name, genre or service" />
+          </label>
+          <label class="wp__toggle"><input type="checkbox" data-verified /> <span>Verified</span></label>
+        </div>
+      </div>
+
+      <dl class="wp__stats" aria-label="Sample data statistics">
+        <div><dt>Musicians</dt><dd>{s.musicians}</dd></div>
+        <div><dt>Studios</dt><dd>{s.studios}</dd></div>
+        <div><dt>Countries</dt><dd>{s.countries}</dd></div>
+        <div><dt>Verified</dt><dd>{s.verified}</dd></div>
+        <div><dt>Orgs</dt><dd>{s.organizations}</dd></div>
+        <p class="wp__sample t-meta">Sample data · not real members</p>
+      </dl>
+
+      <div class="wp__bar">
+        <p class="wp__count" data-count aria-live="polite">{SAMPLE_LISTINGS.length} results worldwide</p>
+        <label class="wp__sort"><span class="sr-only">Sort</span>
+          <select data-sort>
+            <option value="recommended">Recommended</option>
+            <option value="name">Name A–Z</option>
+            <option value="recent">Recently added</option>
+            <option value="rate">Lowest hourly rate</option>
+          </select>
+        </label>
+      </div>
+      <label class="wp__inview"><input type="checkbox" data-inview checked /> Update results as I move the map</label>
+
+      <div class="wp__results" id="world-results" data-results tabindex="-1">
+        <Fragment set:html={initial.map(cardHtml).join('')} />
+      </div>
+      <div class="wp__empty" data-empty hidden>
+        <p><b>No listings here yet.</b></p>
+        <p>Try zooming out, clearing filters, or searching a nearby city. Opus is just opening, so new members appear here first.</p>
+        <button type="button" data-clear>Clear filters</button>
+      </div>
+    </aside>
+  </div>
+</BaseLayout>
+
+<script>
+  import { SAMPLE_LISTINGS } from '@/data/sample-world';
+  import { cardHtml, matches, isVerified, type WorldFilters } from '@/lib/world';
+  import { findCity } from '@/data/cities';
+  import type { Listing } from '@/types/directory';
+  import type { WorldMapApi } from '@/scripts/world-map';
+
+  const root = document.querySelector<HTMLElement>('[data-world]')!;
+  const $ = <T extends Element = HTMLElement>(s: string) => root.querySelector<T>(s)!;
+  const results = $('[data-results]');
+  const empty = $('[data-empty]');
+  const count = $('[data-count]');
+  const panel = $('[data-panel]');
+  const byId = new Map(SAMPLE_LISTINGS.map((l) => [l.id, l]));
+
+  const f: WorldFilters = { kinds: [], discipline: '', studioType: '', verifiedOnly: false, text: '' };
+  let sort = 'recommended';
+  let inView = true;
+  let active: string | null = null;
+  let map: WorldMapApi | null = null;
+  let cityLabel = '';
+
+  // ---------- URL state ----------
+  const params = new URLSearchParams(location.search);
+  const t = params.get('type');
+  if (t === 'musician' || t === 'studio' || t === 'organization') f.kinds = [t];
+  f.text = params.get('q') ?? '';
+  const d = params.get('discipline');
+  if (d) f.discipline = d as WorldFilters['discipline'];
+  ($<HTMLInputElement>('[data-text]')).value = f.text;
+  ($<HTMLSelectElement>('[data-discipline]')).value = f.discipline ?? '';
+
+  function writeUrl() {
+    const u = new URL(location.href);
+    const set = (k: string, v?: string) => (v ? u.searchParams.set(k, v) : u.searchParams.delete(k));
+    set('type', f.kinds[0]); set('q', f.text); set('discipline', f.discipline || ''); set('city', cityLabel);
+    history.replaceState(null, '', u);
+  }
+
+  // ---------- Filtering + rendering ----------
+  function visible(): Listing[] {
+    let ls = SAMPLE_LISTINGS.filter((l) => matches(l, f));
+    if (map && inView && map.getZoom() >= 4) {
+      const b = map.getBounds();
+      ls = ls.filter((l) => b.contains([l.location.lng, l.location.lat]));
+    }
+    const score = (l: Listing) => (isVerified(l) ? 0 : 1);
+    ls.sort((a, b) => {
+      if (sort === 'name') return a.name.localeCompare(b.name);
+      if (sort === 'recent') return b.id.localeCompare(a.id);
+      if (sort === 'rate') {
+        const ra = a.kind === 'studio' ? a.hourlyRate?.amount ?? 1e9 : 1e9;
+        const rb = b.kind === 'studio' ? b.hourlyRate?.amount ?? 1e9 : 1e9;
+        return ra - rb;
+      }
+      // Recommended: verified first, then a fair mix of kinds (not paid placement).
+      return score(a) - score(b) || a.id.localeCompare(b.id);
+    });
+    return ls;
+  }
+
+  function render(updateMap = true) {
+    const ls = visible();
+    results.innerHTML = ls.map(cardHtml).join('');
+    empty.hidden = ls.length > 0;
+    const where = map && inView && map.getZoom() >= 4 ? (cityLabel ? `in ${cityLabel} area` : 'in this map area') : 'worldwide';
+    count.textContent = `${ls.length} result${ls.length === 1 ? '' : 's'} ${where}`;
+    if (active) results.querySelector(`[data-id="${active}"]`)?.classList.add('is-active');
+    if (updateMap) map?.setData(SAMPLE_LISTINGS.filter((l) => matches(l, f)));
+    writeUrl();
+  }
+
+  // ---------- Controls ----------
+  root.querySelectorAll<HTMLButtonElement>('[data-kind]').forEach((b) =>
+    b.addEventListener('click', () => {
+      root.querySelectorAll('[data-kind]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+      const k = b.dataset.kind as WorldFilters['kinds'][number] | '';
+      f.kinds = k ? [k] : [];
+      root.querySelectorAll<HTMLElement>('[data-only]').forEach((el) => (el.hidden = !!k && el.dataset.only !== k));
+      if (k !== 'musician') { f.discipline = ''; ($<HTMLSelectElement>('[data-discipline]')).value = ''; }
+      if (k !== 'studio') { f.studioType = ''; ($<HTMLSelectElement>('[data-studio-type]')).value = ''; }
+      render();
+    }),
+  );
+  if (f.kinds[0]) root.querySelector<HTMLButtonElement>(`[data-kind="${f.kinds[0]}"]`)?.click();
+
+  $<HTMLSelectElement>('[data-discipline]').addEventListener('change', (e) => { f.discipline = (e.target as HTMLSelectElement).value as WorldFilters['discipline']; render(); });
+  $<HTMLSelectElement>('[data-studio-type]').addEventListener('change', (e) => { f.studioType = (e.target as HTMLSelectElement).value as WorldFilters['studioType']; render(); });
+  $<HTMLInputElement>('[data-verified]').addEventListener('change', (e) => { f.verifiedOnly = (e.target as HTMLInputElement).checked; render(); });
+  $<HTMLSelectElement>('[data-sort]').addEventListener('change', (e) => { sort = (e.target as HTMLSelectElement).value; render(); });
+  $<HTMLInputElement>('[data-inview]').addEventListener('change', (e) => { inView = (e.target as HTMLInputElement).checked; render(); });
+  let tt = 0;
+  $<HTMLInputElement>('[data-text]').addEventListener('input', (e) => { clearTimeout(tt); tt = window.setTimeout(() => { f.text = (e.target as HTMLInputElement).value; render(); }, 160); });
+  $('[data-clear]').addEventListener('click', () => {
+    f.kinds = []; f.discipline = ''; f.studioType = ''; f.verifiedOnly = false; f.text = '';
+    root.querySelector<HTMLButtonElement>('[data-kind=""]')?.click();
+    ($<HTMLInputElement>('[data-verified]')).checked = false; ($<HTMLInputElement>('[data-text]')).value = '';
+    render();
+  });
+
+  // City search → globe turns and zooms to the city; results follow the map.
+  function goCity(q: string) {
+    const c = findCity(q);
+    if (!c) { count.textContent = `We couldn’t find “${q}”. Try a major city or country.`; return; }
+    cityLabel = c.name;
+    ($<HTMLInputElement>('#w-city')).value = c.name;
+    if (map) map.flyToCity(c.lat, c.lng);
+    else { f.text = c.name; render(); }
+    setSheet(true);
+  }
+  $<HTMLFormElement>('[data-city-form]').addEventListener('submit', (e) => {
+    e.preventDefault();
+    goCity(($<HTMLInputElement>('#w-city')).value);
+  });
+
+  // ---------- Card ↔ marker linking ----------
+  function select(id: string, fromMap: boolean) {
+    active = id;
+    results.querySelectorAll('.wc.is-active').forEach((x) => x.classList.remove('is-active'));
+    const card = results.querySelector<HTMLElement>(`[data-id="${id}"]`);
+    card?.classList.add('is-active');
+    map?.setActive(id);
+    if (fromMap) { setSheet(true); card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); card?.focus({ preventScroll: true }); }
+    else { const l = byId.get(id); if (l && map) map.flyToListing(l); }
+  }
+  results.addEventListener('click', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wc'); if (c) select(c.dataset.id!, false); });
+  results.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const c = (e.target as Element).closest<HTMLElement>('.wc'); if (c) select(c.dataset.id!, false); } });
+  results.addEventListener('pointerover', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wc'); map?.setHover(c?.dataset.id ?? null); });
+  results.addEventListener('pointerleave', () => map?.setHover(null));
+
+  // ---------- Mobile bottom sheet ----------
+  const toggle = $<HTMLButtonElement>('[data-sheet-toggle]');
+  function setSheet(open: boolean) { panel.classList.toggle('is-open', open); toggle.setAttribute('aria-expanded', String(open)); }
+  toggle.addEventListener('click', () => setSheet(!panel.classList.contains('is-open')));
+
+  // ---------- Map boot (lazy, with fallback) ----------
+  const host = $('[data-map]');
+  const hasWebGL = () => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } };
+  async function boot() {
+    if (!hasWebGL()) { $('[data-map-loading]').remove(); $('[data-map-fallback]').hidden = false; root.classList.add('is-nomap'); render(); return; }
+    try {
+      const { mountWorldMap } = await import('@/scripts/world-map');
+      map = await mountWorldMap(host, SAMPLE_LISTINGS.filter((l) => matches(l, f)), {
+        onSelect: (id) => select(id, true),
+        onMove: () => { if (inView) render(false); },
+      });
+      root.classList.add('is-ready');
+      $('[data-map-loading]').remove();
+      const qc = params.get('city');
+      render(false);
+      if (qc) goCity(qc);
+    } catch (err) {
+      console.error('Map failed to load', err);
+      $('[data-map-loading]').remove(); $('[data-map-fallback]').hidden = false; root.classList.add('is-nomap'); render();
+    }
+  }
+  render();
+  boot();
+</script>

@@ -9,7 +9,7 @@ export const SITE = {
 
 /** Routes that are not built yet point at an "in development" page, never a 404. */
 export const NAV = [
-  { label: 'Explore', href: '/directory' },
+  { label: 'Opus World', href: '/world' },
   { label: 'Verified', href: '/verified' },
   { label: 'Services', href: '/services' },
   { label: 'Events', href: '/events.html' },
@@ -33,7 +33,8 @@ export const FOOTER_NAV = [
   {
     title: 'Directory',
     links: [
-      { label: 'Explore musicians', href: '/directory' },
+      { label: 'Opus World', href: '/world' },
+      { label: 'Studios', href: '/world?type=studio' },
       { label: 'Opus Verified', href: '/verified' },
       { label: 'Trusted services', href: '/services' },
     ],

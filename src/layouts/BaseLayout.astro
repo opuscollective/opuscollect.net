@@ -10,8 +10,10 @@ interface Props {
   image?: string;
   overlayHeader?: boolean;
   noindex?: boolean;
+  /** App-style pages (Opus World) skip the footer so the map can fill the screen. */
+  hideFooter?: boolean;
 }
-const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false } = Astro.props;
+const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false } = Astro.props;
 const fullTitle = title ? `${title} · ${SITE.name}` : `${SITE.name} · The professional network for independent music`;
 const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogImage = new URL(image, SITE.url).href;
@@ -47,7 +49,7 @@ const ogImage = new URL(image, SITE.url).href;
     <a class="skip-link" href="#main">Skip to content</a>
     <SiteHeader overlay={overlayHeader} />
     <main id="main"><slot /></main>
-    <SiteFooter />
+    {!hideFooter && <SiteFooter />}
     <script>
       // Reveal-on-scroll. Content is visible without JS and with reduced motion.
       const els = document.querySelectorAll('[data-reveal]');
