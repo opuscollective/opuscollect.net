@@ -8,7 +8,7 @@
  * - Home studio coordinates are stored at "approximate" precision for public display.
  *   The exact address lives in a private table and is only disclosed in a confirmed booking.
  */
-import type { Discipline } from './musician';
+import type { Specialty } from '@/data/specialties';
 
 export type ListingKind = 'musician' | 'studio' | 'organization';
 
@@ -38,7 +38,9 @@ interface ListingBase {
 
 export interface MusicianListing extends ListingBase {
   kind: 'musician';
-  disciplines: Discipline[];
+  primarySpecialty: Specialty;
+  /** Additional specialties, not including the primary one. */
+  specialties: Specialty[];
   genres: string[];
   verification: MusicianVerification;
   openToCollab: boolean;

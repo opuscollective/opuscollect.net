@@ -1,7 +1,8 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SAMPLE_LISTINGS } from '@/data/sample-world';
-import { DISCIPLINES } from '@/data/disciplines';
+import { SPECIALTIES } from '@/data/specialties';
+import { GENRES } from '@/data/genres';
 import { CITIES } from '@/data/cities';
 import { cardHtml, stats } from '@/lib/world';
 import '@/styles/world.css';
@@ -47,10 +48,17 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
 
         <div class="wp__filters">
           <label class="wp__field" data-only="musician">
-            <span class="sr-only">Discipline</span>
-            <select data-discipline>
-              <option value="">Any discipline</option>
-              {Object.entries(DISCIPLINES).map(([k, d]) => <option value={k}>{d.plural}</option>)}
+            <span class="sr-only">Specialty</span>
+            <select data-specialty>
+              <option value="">All Specialties</option>
+              {Object.entries(SPECIALTIES).map(([k, d]) => <option value={k}>{d.plural}</option>)}
+            </select>
+          </label>
+          <label class="wp__field" data-only="musician">
+            <span class="sr-only">Genre</span>
+            <select data-genre>
+              <option value="">All Genres</option>
+              {GENRES.map((g) => <option value={g}>{g}</option>)}
             </select>
           </label>
           <label class="wp__field" data-only="studio" hidden>
@@ -62,10 +70,11 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
             </select>
           </label>
           <label class="wp__field wp__field--grow">
-            <span class="sr-only">Filter by name or genre</span>
-            <input type="search" data-text placeholder="Name, genre or service" />
+            <span class="sr-only">Search by name, specialty or genre</span>
+            <input type="search" data-text placeholder="Search by specialty, name or genre" />
           </label>
           <label class="wp__toggle"><input type="checkbox" data-verified /> <span>Verified</span></label>
+          <label class="wp__toggle" data-only="musician"><input type="checkbox" data-collab /> <span>Open to collab</span></label>
         </div>
       </div>
 
@@ -107,6 +116,7 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
   import { SAMPLE_LISTINGS } from '@/data/sample-world';
   import { cardHtml, matches, isVerified, type WorldFilters } from '@/lib/world';
   import { findCity } from '@/data/cities';
+  import { toSpecialty } from '@/data/specialties';
   import type { Listing } from '@/types/directory';
   import type { WorldMapApi } from '@/scripts/world-map';
 
@@ -118,7 +128,7 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
   const panel = $('[data-panel]');
   const byId = new Map(SAMPLE_LISTINGS.map((l) => [l.id, l]));
 
-  const f: WorldFilters = { kinds: [], discipline: '', studioType: '', verifiedOnly: false, text: '' };
+  const f: WorldFilters = { kinds: [], specialty: '', genre: '', openToCollab: false, studioType: '', verifiedOnly: false, text: '' };
   let sort = 'recommended';
   let inView = true;
   let active: string | null = null;
@@ -130,15 +140,20 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
   const t = params.get('type');
   if (t === 'musician' || t === 'studio' || t === 'organization') f.kinds = [t];
   f.text = params.get('q') ?? '';
-  const d = params.get('discipline');
-  if (d) f.discipline = d as WorldFilters['discipline'];
+  f.specialty = toSpecialty(params.get('specialty') ?? params.get('discipline')); // "discipline" kept for old links
+  f.genre = params.get('genre') ?? '';
+  f.openToCollab = params.get('collab') === '1';
+  f.verifiedOnly = params.get('verified') === '1';
   ($<HTMLInputElement>('[data-text]')).value = f.text;
-  ($<HTMLSelectElement>('[data-discipline]')).value = f.discipline ?? '';
+  ($<HTMLSelectElement>('[data-specialty]')).value = f.specialty ?? '';
+  ($<HTMLSelectElement>('[data-genre]')).value = f.genre ?? '';
+  ($<HTMLInputElement>('[data-collab]')).checked = !!f.openToCollab;
+  ($<HTMLInputElement>('[data-verified]')).checked = f.verifiedOnly;
 
   function writeUrl() {
     const u = new URL(location.href);
     const set = (k: string, v?: string) => (v ? u.searchParams.set(k, v) : u.searchParams.delete(k));
-    set('type', f.kinds[0]); set('q', f.text); set('discipline', f.discipline || ''); set('city', cityLabel);
+    set('type', f.kinds[0]); set('q', f.text); set('specialty', f.specialty || ''); set('genre', f.genre); set('collab', f.openToCollab ? '1' : ''); set('verified', f.verifiedOnly ? '1' : ''); set('city', cityLabel);
     history.replaceState(null, '', u);
   }
 
@@ -182,14 +197,19 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
       const k = b.dataset.kind as WorldFilters['kinds'][number] | '';
       f.kinds = k ? [k] : [];
       root.querySelectorAll<HTMLElement>('[data-only]').forEach((el) => (el.hidden = !!k && el.dataset.only !== k));
-      if (k !== 'musician') { f.discipline = ''; ($<HTMLSelectElement>('[data-discipline]')).value = ''; }
+      if (k && k !== 'musician') {
+        f.specialty = ''; f.genre = ''; f.openToCollab = false;
+        ($<HTMLSelectElement>('[data-specialty]')).value = ''; ($<HTMLSelectElement>('[data-genre]')).value = ''; ($<HTMLInputElement>('[data-collab]')).checked = false;
+      }
       if (k !== 'studio') { f.studioType = ''; ($<HTMLSelectElement>('[data-studio-type]')).value = ''; }
       render();
     }),
   );
   if (f.kinds[0]) root.querySelector<HTMLButtonElement>(`[data-kind="${f.kinds[0]}"]`)?.click();
 
-  $<HTMLSelectElement>('[data-discipline]').addEventListener('change', (e) => { f.discipline = (e.target as HTMLSelectElement).value as WorldFilters['discipline']; render(); });
+  $<HTMLSelectElement>('[data-specialty]').addEventListener('change', (e) => { f.specialty = toSpecialty((e.target as HTMLSelectElement).value); render(); });
+  $<HTMLSelectElement>('[data-genre]').addEventListener('change', (e) => { f.genre = (e.target as HTMLSelectElement).value; render(); });
+  $<HTMLInputElement>('[data-collab]').addEventListener('change', (e) => { f.openToCollab = (e.target as HTMLInputElement).checked; render(); });
   $<HTMLSelectElement>('[data-studio-type]').addEventListener('change', (e) => { f.studioType = (e.target as HTMLSelectElement).value as WorldFilters['studioType']; render(); });
   $<HTMLInputElement>('[data-verified]').addEventListener('change', (e) => { f.verifiedOnly = (e.target as HTMLInputElement).checked; render(); });
   $<HTMLSelectElement>('[data-sort]').addEventListener('change', (e) => { sort = (e.target as HTMLSelectElement).value; render(); });
@@ -197,7 +217,8 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
   let tt = 0;
   $<HTMLInputElement>('[data-text]').addEventListener('input', (e) => { clearTimeout(tt); tt = window.setTimeout(() => { f.text = (e.target as HTMLInputElement).value; render(); }, 160); });
   $('[data-clear]').addEventListener('click', () => {
-    f.kinds = []; f.discipline = ''; f.studioType = ''; f.verifiedOnly = false; f.text = '';
+    f.kinds = []; f.specialty = ''; f.genre = ''; f.openToCollab = false; f.studioType = ''; f.verifiedOnly = false; f.text = '';
+    ($<HTMLSelectElement>('[data-specialty]')).value = ''; ($<HTMLSelectElement>('[data-genre]')).value = ''; ($<HTMLInputElement>('[data-collab]')).checked = false;
     root.querySelector<HTMLButtonElement>('[data-kind=""]')?.click();
     ($<HTMLInputElement>('[data-verified]')).checked = false; ($<HTMLInputElement>('[data-text]')).value = '';
     render();

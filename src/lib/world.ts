@@ -1,12 +1,13 @@
 /** Pure helpers shared by the server render and the browser. No DOM access here. */
 import type { Listing, ListingKind } from '@/types/directory';
-import type { Discipline } from '@/types/musician';
-import { DISCIPLINES } from '@/data/disciplines';
+import { SPECIALTIES, allSpecialties, type Specialty } from '@/data/specialties';
 import { ORG_CATEGORY_LABEL } from '@/data/sample-world';
 
 export interface WorldFilters {
   kinds: ListingKind[]; // empty = all
-  discipline?: Discipline | '';
+  specialty?: Specialty | '';
+  genre?: string;
+  openToCollab?: boolean;
   studioType?: 'commercial' | 'home' | '';
   verifiedOnly: boolean;
   text: string;
@@ -18,11 +19,13 @@ export const isVerified = (l: Listing) =>
 export function matches(l: Listing, f: WorldFilters): boolean {
   if (f.kinds.length && !f.kinds.includes(l.kind)) return false;
   if (f.verifiedOnly && !isVerified(l)) return false;
-  if (f.discipline && (l.kind !== 'musician' || !l.disciplines.includes(f.discipline))) return false;
+  if (f.specialty && (l.kind !== 'musician' || !allSpecialties(l.primarySpecialty, l.specialties).includes(f.specialty))) return false;
+  if (f.genre && (l.kind !== 'musician' || !l.genres.includes(f.genre))) return false;
+  if (f.openToCollab && (l.kind !== 'musician' || !l.openToCollab)) return false;
   if (f.studioType && (l.kind !== 'studio' || l.studioType !== f.studioType)) return false;
   const q = f.text.trim().toLowerCase();
   if (q) {
-    const hay = [l.name, l.slug, l.location.city, l.location.country, ...(l.kind === 'musician' ? l.genres : l.services)]
+    const hay = [l.name, l.slug, l.location.city, l.location.region ?? '', l.location.country, ...(l.kind === 'musician' ? [...l.genres, ...allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s].label)] : l.services)]
       .join(' ')
       .toLowerCase();
     if (!hay.includes(q)) return false;
@@ -81,7 +84,7 @@ export function cardHtml(l: Listing): string {
   let tags: string[] = [];
   let foot = '';
   if (l.kind === 'musician') {
-    kindLabel = l.disciplines.map((d) => DISCIPLINES[d].label).join(' · ');
+    kindLabel = allSpecialties(l.primarySpecialty, l.specialties).map((d) => SPECIALTIES[d].label).join(' · ');
     tags = l.genres;
     foot =
       `<span class="wc__collab${l.openToCollab ? ' is-on' : ''}">${l.openToCollab ? 'Open to collab' : 'Not taking collabs'}</span>` +

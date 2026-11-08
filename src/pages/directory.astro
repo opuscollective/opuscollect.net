@@ -1,23 +1,22 @@
 ---
+/**
+ * The musician directory now lives in Opus World. This page keeps old links working:
+ * /directory?q=&discipline=&location= → /world?type=musician&q=&specialty=&city=
+ */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import ComingSoon from '@/components/layout/ComingSoon.astro';
-import SearchBar from '@/components/directory/SearchBar.astro';
 ---
-<BaseLayout title="Musician Directory" description="Search independent artists, producers, audio engineers and songwriters by discipline, genre and city." noindex>
-  <ComingSoon kicker="Musician Directory" phase="In development" title="The directory is being built." body="Search by name, discipline, genre and city is coming in the next phase. Join now and your profile can be among the first listed.">
-    <p class="dir-query t-meta" data-query hidden></p>
-    <div class="dir-search"><SearchBar id="dir-search" /></div>
-  </ComingSoon>
+<BaseLayout title="Musician Directory" noindex>
+  <meta http-equiv="refresh" content="0; url=/world?type=musician" slot="head" />
+  <section class="container" style="padding-block: 160px 120px">
+    <p>The directory has moved to <a href="/world?type=musician">Opus World</a>.</p>
+  </section>
 </BaseLayout>
 <script>
   const p = new URLSearchParams(location.search);
-  const parts = ['q', 'discipline', 'location'].map((k) => p.get(k)).filter(Boolean);
-  const el = document.querySelector<HTMLElement>('[data-query]');
-  if (el && parts.length) { el.textContent = `You searched for: ${parts.join(' · ')}`; el.hidden = false; }
-  const set = (id: string, v: string | null) => { const f = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null; if (f && v) f.value = v; };
-  set('dir-search-q', p.get('q')); set('dir-search-d', p.get('discipline')); set('dir-search-l', p.get('location'));
+  const u = new URL('/world', location.origin);
+  u.searchParams.set('type', 'musician');
+  const q = p.get('q'); if (q) u.searchParams.set('q', q);
+  const s = p.get('specialty') ?? p.get('discipline'); if (s) u.searchParams.set('specialty', s);
+  const c = p.get('location') ?? p.get('city'); if (c) u.searchParams.set('city', c);
+  location.replace(u);
 </script>
-<style>
-  .dir-query { color: var(--c-fg-muted); }
-  .dir-search { width: 100%; margin-top: 8px; }
-</style>

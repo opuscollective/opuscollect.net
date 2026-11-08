@@ -4,7 +4,7 @@
  * marker built from this file is labeled "Sample". Replace with D1 queries in Phase 3.
  * Generated deterministically so the map looks the same on every build.
  */
-import type { Discipline } from '@/types/musician';
+import type { Specialty } from '@/data/specialties';
 import type { Listing, MusicianListing, StudioListing, OrganizationListing, GeoPoint, OrganizationCategory } from '@/types/directory';
 import { CITIES, type City } from './cities';
 
@@ -45,12 +45,15 @@ const GENRES: Record<string, string[]> = {
   'São Paulo': ['Funk', 'MPB', 'Electronic'], Seoul: ['K-Pop', 'R&B'], Berlin: ['Techno', 'Electronic'],
   London: ['UK Rap', 'Grime', 'R&B', 'Electronic'], Atlanta: ['Hip-Hop', 'Trap', 'R&B'],
 };
-const DISCIPLINE_CYCLE: Discipline[][] = [
+// [primary, ...additional]
+const SPECIALTY_CYCLE: Specialty[][] = [
   ['recording-artist'], ['producer'], ['audio-engineer'], ['songwriter'], ['recording-artist', 'songwriter'],
-  ['producer', 'audio-engineer'], ['multi-disciplinary'],
+  ['producer', 'mixing-engineer'], ['vocalist', 'songwriter'], ['dj', 'producer'], ['instrumentalist'],
+  ['mastering-engineer', 'mixing-engineer'], ['composer', 'arranger'],
 ];
-const LABEL: Record<Discipline, string> = {
-  'recording-artist': 'Artist', producer: 'Producer', 'audio-engineer': 'Engineer', songwriter: 'Writer', 'multi-disciplinary': 'Creative',
+const LABEL: Record<Specialty, string> = {
+  'recording-artist': 'Artist', vocalist: 'Vocalist', songwriter: 'Writer', producer: 'Producer', 'audio-engineer': 'Engineer',
+  'mixing-engineer': 'Mixer', 'mastering-engineer': 'Mastering', dj: 'DJ', instrumentalist: 'Player', composer: 'Composer', arranger: 'Arranger',
 };
 
 const musicians: MusicianListing[] = [];
@@ -59,14 +62,14 @@ for (const [name, count] of SPREAD) {
   const c = city(name);
   for (let i = 0; i < count; i++) {
     n++;
-    const disciplines = DISCIPLINE_CYCLE[n % DISCIPLINE_CYCLE.length]!;
+    const [primary, ...additional] = SPECIALTY_CYCLE[n % SPECIALTY_CYCLE.length]!;
     const pool = GENRES[name] ?? GENRES.default!;
     const g1 = pick(pool); let g2 = pick(pool); if (g2 === g1) g2 = pool[(pool.indexOf(g1) + 1) % pool.length]!;
     musicians.push({
-      id: `m-${pad(n)}`, kind: 'musician', slug: `sample-${LABEL[disciplines[0]!].toLowerCase()}-${pad(n)}`,
-      name: `Sample ${LABEL[disciplines[0]!]} ${pad(n)}`,
+      id: `m-${pad(n)}`, kind: 'musician', slug: `sample-${LABEL[primary!].toLowerCase()}-${pad(n)}`,
+      name: `Sample ${LABEL[primary!]} ${pad(n)}`,
       location: near(c, 9, 'approximate'),
-      disciplines, genres: [g1, g2], verification: r() < 0.22 ? 'verified' : 'none', openToCollab: r() < 0.7,
+      primarySpecialty: primary!, specialties: additional, genres: [g1, g2], verification: r() < 0.22 ? 'verified' : 'none', openToCollab: r() < 0.7,
       highlight: r() < 0.5 ? 'Sample achievement line' : undefined, isSample: true,
     });
   }
