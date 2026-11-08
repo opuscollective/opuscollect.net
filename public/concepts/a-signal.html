@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Concept A · Signal · Opus Collective</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#030304;--glass:rgba(255,255,255,.045);--line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.18);--fg:#f4f3f5;--mut:#a7a2ab;--dim:#6e6973;--glow:rgba(190,200,255,.55);--e:cubic-bezier(.22,1,.36,1);--g:clamp(20px,4.5vw,72px)}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip}
+a{color:inherit;text-decoration:none}img{display:block;max-width:100%}
+.mono{font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.wrap{max-width:1440px;margin:0 auto;padding:0 var(--g)}
+.concept{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99;padding:8px 14px;border-radius:99px;background:#fff;color:#000;font:500 12px Geist;box-shadow:0 8px 30px rgba(0,0,0,.5);white-space:nowrap}
+/* ambient light */
+.aura{position:fixed;inset:0;pointer-events:none;z-index:0;background:
+ radial-gradient(600px 400px at var(--mx,70%) var(--my,20%),rgba(140,150,255,.10),transparent 70%),
+ radial-gradient(900px 600px at 10% 110%,rgba(255,255,255,.05),transparent 70%)}
+.grain{position:fixed;inset:-50%;pointer-events:none;z-index:1;opacity:.07;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");animation:g 1s steps(4) infinite}
+@keyframes g{0%{transform:translate(0)}25%{transform:translate(-3%,2%)}50%{transform:translate(2%,-3%)}75%{transform:translate(-1%,3%)}}
+main,header{position:relative;z-index:2}
+/* nav */
+header{position:sticky;top:12px;z-index:20;padding:0 var(--g)}
+.nav{max-width:1440px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;height:56px;padding:0 10px 0 18px;border-radius:16px;background:rgba(10,10,12,.55);border:1px solid var(--line);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}.brand img{height:18px}
+.nav ul{display:flex;gap:28px;list-style:none;margin:0;padding:0;font-size:14px;color:var(--mut)}.nav ul a:hover{color:#fff}
+.nav .cta{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:12px;font-size:14px;font-weight:500;border:1px solid var(--line2);transition:all .4s var(--e)}
+.btn.w{background:#fff;color:#000;border-color:#fff;box-shadow:0 0 0 0 var(--glow)}.btn.w:hover{box-shadow:0 0 30px -4px var(--glow)}
+.btn:hover{border-color:#fff}
+@media(max-width:900px){.nav ul,.nav .ghost{display:none}}
+/* hero */
+.hero{min-height:100svh;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:48px;padding-top:40px;padding-bottom:80px}
+.tag{display:inline-flex;align-items:center;gap:10px;padding:7px 12px 7px 8px;border-radius:99px;border:1px solid var(--line);background:var(--glass);color:var(--mut)}
+.tag i{width:8px;height:8px;border-radius:50%;background:#9effc1;box-shadow:0 0 12px #9effc1;animation:p 2s infinite}
+@keyframes p{50%{opacity:.35}}
+h1{margin:28px 0 24px;font-weight:500;font-size:clamp(48px,7.4vw,124px);line-height:.9;letter-spacing:-.065em}
+h1 .gr{background:linear-gradient(100deg,#fff 0%,#c9cbe0 35%,#6e6f86 70%,#fff 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sh 6s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+.lead{max-width:460px;font-size:18px;line-height:1.55;color:var(--mut);margin:0 0 36px}
+/* command search */
+.cmd{position:relative;max-width:620px;border-radius:18px;padding:1px;background:linear-gradient(120deg,rgba(255,255,255,.35),rgba(255,255,255,.06) 40%,rgba(160,170,255,.35));}
+.cmd-in{display:flex;align-items:center;gap:12px;height:64px;padding:0 10px 0 20px;border-radius:17px;background:rgba(12,12,15,.85);backdrop-filter:blur(20px)}
+.cmd input{flex:1;min-width:0;background:none;border:0;outline:0;color:#fff;font:400 17px Geist}.cmd input::placeholder{color:#76717b}
+.kbd{font:500 11px 'Geist Mono';color:var(--dim);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.chips a{padding:7px 12px;border-radius:10px;border:1px solid var(--line);font-size:13px;color:var(--mut);background:var(--glass)}.chips a:hover{color:#fff;border-color:var(--line2)}
+/* hero visual */
+.portal{position:relative;aspect-ratio:4/5;border-radius:28px;overflow:hidden;border:1px solid var(--line2);transform:perspective(1200px) rotateY(-8deg) rotateX(3deg);box-shadow:0 60px 120px -40px rgba(120,130,255,.35);transition:transform 1s var(--e)}
+.portal:hover{transform:perspective(1200px) rotateY(0) rotateX(0)}
+.portal img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.1)}
+.portal::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(3,3,4,.9));}
+.scan{position:absolute;left:0;right:0;height:120px;background:linear-gradient(180deg,transparent,rgba(200,210,255,.12),transparent);animation:sc 5s var(--e) infinite;z-index:1}
+@keyframes sc{from{top:-120px}to{top:100%}}
+.pcard{position:absolute;left:18px;right:18px;bottom:18px;z-index:2;display:flex;justify-content:space-between;align-items:flex-end;padding:16px 18px;border-radius:16px;background:rgba(20,20,24,.5);border:1px solid var(--line2);backdrop-filter:blur(16px)}
+.pcard b{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:500;letter-spacing:-.02em}.pcard span{color:var(--mut);font-size:13px}
+.float{position:absolute;z-index:2;padding:10px 12px;border-radius:12px;background:rgba(20,20,24,.6);border:1px solid var(--line2);backdrop-filter:blur(14px);font-size:12px;color:var(--mut)}
+.float b{display:block;color:#fff;font-size:14px;font-weight:500}
+.f1{top:22px;left:-26px}.f2{top:38%;right:-22px}
+@media(max-width:960px){.hero{grid-template-columns:1fr;padding-top:24px}.portal{max-width:420px;transform:none}.f1{left:12px}.f2{right:12px}}
+/* sections */
+section.s{padding:120px 0;border-top:1px solid var(--line)}
+.sh{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:48px}
+.sh h2{margin:12px 0 0;font-size:clamp(36px,4.6vw,72px);font-weight:500;letter-spacing:-.05em;line-height:.95}
+.sh p{max-width:380px;color:var(--mut);margin:0}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
+.card{position:relative;border-radius:22px;padding:10px;background:var(--glass);border:1px solid var(--line);transition:transform .6s var(--e),border-color .4s;transform-style:preserve-3d}
+.card:hover{border-color:var(--line2);transform:translateY(-6px)}
+.card .ph{position:relative;aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:radial-gradient(120% 90% at 50% 0%,var(--c1),transparent 60%),#0b0b0e;display:grid;place-items:center}
+.card .ph em{font-style:normal;font-size:72px;font-weight:500;letter-spacing:-.06em;color:rgba(255,255,255,.12)}
+.card .ph .pl{position:absolute;top:10px;left:10px;padding:5px 8px;border-radius:8px;border:1px dashed rgba(255,255,255,.5);background:rgba(0,0,0,.4);color:#fff}
+.card .ph .st{position:absolute;bottom:10px;left:10px;display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);color:#cfd;font-size:10px}
+.card .ph .st i{width:6px;height:6px;border-radius:50%;background:#9effc1;box-shadow:0 0 8px #9effc1}
+.card .meta{padding:16px 8px 8px}.card h3{margin:0;display:flex;align-items:center;gap:6px;font-size:18px;font-weight:500;letter-spacing:-.02em}
+.card p{margin:6px 0 0;color:var(--mut);font-size:13px}
+.card .row{display:flex;gap:6px;margin-top:14px}.card .row span{padding:4px 8px;border-radius:7px;border:1px solid var(--line);font-size:11px;color:var(--mut)}
+/* profile */
+.prof{position:relative;border-radius:32px;overflow:hidden;border:1px solid var(--line2);min-height:620px;display:flex;align-items:flex-end}
+.prof>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 25%;filter:grayscale(1) brightness(.75)}
+.prof::before{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(3,3,4,.92) 0%,rgba(3,3,4,.5) 50%,transparent),linear-gradient(0deg,rgba(3,3,4,.9),transparent 50%)}
+.pin{position:relative;z-index:2;width:100%;display:grid;grid-template-columns:1.2fr 1fr;gap:32px;padding:clamp(24px,4vw,56px);align-items:end}
+.pin h3{margin:14px 0 8px;font-size:clamp(56px,8vw,128px);font-weight:500;letter-spacing:-.07em;line-height:.85;display:flex;align-items:center;gap:16px}
+.pin .sub{color:var(--mut);font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{padding:16px;border-radius:16px;background:rgba(20,20,24,.5);border:1px solid var(--line2);backdrop-filter:blur(14px)}
+.stat b{display:block;font-size:22px;font-weight:500;letter-spacing:-.03em}.stat span{font-size:12px;color:var(--mut)}
+.links{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+@media(max-width:900px){.pin{grid-template-columns:1fr}.prof{min-height:720px}}
+.vb{display:inline-grid;place-items:center;width:.42em;height:.42em;min-width:20px;min-height:20px;border-radius:50%;background:#fff;color:#000;box-shadow:0 0 24px var(--glow)}
+.vb svg{width:60%;height:60%}
+.note{color:var(--dim);margin-top:14px}
+</style>
+</head>
+<body>
+<div class="aura" id="aura"></div><div class="grain"></div>
+<header><nav class="nav" aria-label="Main">
+<a class="brand" href="/"><img src="/images/oc-logo.png" alt="">Opus Collective</a>
+<ul><li><a href="#">Explore</a></li><li><a href="#">Verified</a></li><li><a href="#">Services</a></li><li><a href="#">Events</a></li><li><a href="#">About</a></li></ul>
+<div class="cta"><a class="btn ghost" href="#">Sign in</a><a class="btn w" href="#">Join Opus</a></div>
+</nav></header>
+<main>
+<section class="wrap hero">
+<div>
+<span class="tag mono"><i></i>The directory is opening</span>
+<h1>The future<br>of music is<br><span class="gr">independent.</span></h1>
+<p class="lead">Discover the artists, producers, engineers, and visionaries shaping what’s next.</p>
+<form class="cmd" action="/directory"><div class="cmd-in">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a8590" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+<input name="q" placeholder="Search producers in Atlanta, engineers in London…">
+<span class="kbd">⌘K</span><button class="btn w" type="submit" style="height:44px">Search</button></div></form>
+<div class="chips"><a href="#">Recording Artists</a><a href="#">Producers</a><a href="#">Audio Engineers</a><a href="#">Songwriters</a><a href="#">Verified only</a></div>
+</div>
+<div style="position:relative">
+<div class="portal"><div class="scan"></div><img src="/images/bogo-scenic.jpg" alt="Bogo, founder of Opus Collective">
+<div class="pcard"><div><b>Bogo <span class="vb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 12 4 4 8-8"/></svg></span></b><span>Recording Artist · Birmingham, AL</span></div><span class="mono">Founder</span></div></div>
+<div class="float f1"><span class="mono">Now playing</span><b>Scenic</b></div>
+<div class="float f2"><span class="mono">Open to</span><b>Collaboration</b></div>
+</div>
+</section>
+
+<section class="s"><div class="wrap">
+<div class="sh"><div><span class="mono" style="color:var(--dim)">01 · Featured</span><h2>Find your people.</h2></div><p>Glass cards, live status and a soft lift on hover. Photos light up as you browse.</p></div>
+<div class="grid">
+<a class="card" href="#" style="--c1:rgba(140,150,255,.35)"><div class="ph"><span class="pl mono">Placeholder</span><em>SA</em><span class="st mono"><i></i>Open to collab</span></div><div class="meta"><h3>Sample Artist 01 <span class="vb" style="font-size:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 12 4 4 8-8"/></svg></span></h3><p>Recording Artist · Birmingham, AL</p><div class="row"><span>R&amp;B</span><span>Alternative</span></div></div></a>
+<a class="card" href="#" style="--c1:rgba(255,160,120,.25)"><div class="ph"><span class="pl mono">Placeholder</span><em>SP</em><span class="st mono"><i></i>Open to collab</span></div><div class="meta"><h3>Sample Producer 02</h3><p>Producer · Atlanta, GA</p><div class="row"><span>Hip-Hop</span><span>Trap</span></div></div></a>
+<a class="card" href="#" style="--c1:rgba(120,230,200,.22)"><div class="ph"><span class="pl mono">Placeholder</span><em>SE</em></div><div class="meta"><h3>Sample Engineer 03 <span class="vb" style="font-size:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 12 4 4 8-8"/></svg></span></h3><p>Audio Engineer · London, UK</p><div class="row"><span>Afrobeats</span><span>Pop</span></div></div></a>
+<a class="card" href="#" style="--c1:rgba(230,200,255,.25)"><div class="ph"><span class="pl mono">Placeholder</span><em>SW</em><span class="st mono"><i></i>Open to collab</span></div><div class="meta"><h3>Sample Writer 04</h3><p>Songwriter · Nashville, TN</p><div class="row"><span>Country</span><span>Indie</span></div></div></a>
+</div></div></section>
+
+<section class="s"><div class="wrap">
+<div class="sh"><div><span class="mono" style="color:var(--dim)">02 · Profile</span><h2>Your page, in its best light.</h2></div><p>Concept profile header using Bogo’s photo. Figures shown are layout examples, not real stats.</p></div>
+<div class="prof"><img src="/images/bogo-standing.jpg" alt="">
+<div class="pin"><div><span class="tag mono"><i></i>Open to collaboration</span><h3>Bogo <span class="vb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 12 4 4 8-8"/></svg></span></h3><div class="sub">@bogo · Recording Artist · Birmingham, AL</div>
+<div class="links"><a class="btn w" href="#">Connect</a><a class="btn" href="#">Spotify ↗</a><a class="btn" href="#">Apple Music ↗</a><a class="btn" href="#">YouTube ↗</a></div></div>
+<div class="stats"><div class="stat"><b>Scenic</b><span>Latest project</span></div><div class="stat"><b>Amazing</b><span>Single</span></div><div class="stat"><b>Founder</b><span>Opus Collective</span></div></div>
+</div></div>
+</div></section>
+</main>
+<div class="concept">Concept A · Signal: dark glass, light and motion</div>
+<script>addEventListener('pointermove',e=>{const a=document.getElementById('aura');a.style.setProperty('--mx',e.clientX+'px');a.style.setProperty('--my',e.clientY+'px')},{passive:true})</script>
+</body>
+</html>

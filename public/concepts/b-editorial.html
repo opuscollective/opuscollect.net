@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Concept B · Cover Story · Opus Collective</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--fg:#fff;--mut:#9b96a0;--line:#1d1c1f;--e:cubic-bezier(.22,1,.36,1);--g:clamp(16px,3vw,40px)}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip}
+a{color:inherit;text-decoration:none}img{display:block;max-width:100%}
+.mono{font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.serif{font-family:'Instrument Serif',serif;font-weight:400;font-style:italic;letter-spacing:-.02em}
+.concept{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99;padding:8px 14px;border-radius:99px;background:#fff;color:#000;font:500 12px Geist;white-space:nowrap}
+/* nav */
+header{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:18px var(--g);mix-blend-mode:difference}
+header .b{display:flex;align-items:center;gap:10px;font-weight:600}header .b img{height:18px}
+header nav{display:flex;gap:26px;font-size:14px}
+header .j{padding:9px 16px;border:1px solid #fff;border-radius:99px;font-size:14px}
+@media(max-width:900px){header nav{display:none}}
+/* hero: full bleed cover */
+.cover{position:relative;height:100svh;min-height:640px;overflow:hidden}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;filter:grayscale(1) contrast(1.15);transform:scale(1.08);animation:z 3s var(--e) forwards}
+@keyframes z{to{transform:scale(1)}}
+.cover::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),transparent 30%,transparent 50%,#000 98%)}
+.mast{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:0 var(--g) 28px}
+.mast h1{margin:0;font-weight:800;font-size:13.8vw;line-height:.78;letter-spacing:-.075em;text-transform:uppercase;white-space:nowrap}
+.mast h1 .serif{text-transform:none;font-weight:400;font-size:.92em;letter-spacing:-.04em}
+.mrow{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-top:22px;padding-top:18px;border-top:1px solid rgba(255,255,255,.35);flex-wrap:wrap}
+.mrow p{margin:0;max-width:420px;font-size:17px;line-height:1.5;color:#ddd}
+.mrow .ctas{display:flex;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 24px;border-radius:99px;font-weight:500;border:1px solid #fff;transition:all .4s var(--e)}
+.pill.w{background:#fff;color:#000}.pill:hover{background:#fff;color:#000}
+.side{position:absolute;top:50%;right:var(--g);z-index:2;writing-mode:vertical-rl;transform:translateY(-50%) rotate(180deg);color:#ddd}
+/* marquee */
+.mq{overflow:hidden;border-block:1px solid var(--line);padding:22px 0}
+.mq div{display:flex;gap:48px;width:max-content;animation:m 30s linear infinite;font-size:clamp(28px,4vw,56px);font-weight:600;letter-spacing:-.04em;white-space:nowrap}
+.mq span:nth-child(even){color:#3a383d}
+@keyframes m{to{transform:translateX(-50%)}}
+/* index list directory */
+section{padding:120px var(--g)}
+.hd{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:end;margin-bottom:56px}
+.hd h2{margin:0;font-size:clamp(48px,8vw,140px);font-weight:700;letter-spacing:-.07em;line-height:.85}
+.hd h2 .serif{font-weight:400}
+.hd p{margin:0;justify-self:end;max-width:360px;color:var(--mut)}
+@media(max-width:800px){.hd{grid-template-columns:1fr}.hd p{justify-self:start}}
+.cards{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.c{position:relative;display:block;overflow:hidden;border-radius:4px;background:#0c0c0d}
+.c:nth-child(1){grid-column:span 6;aspect-ratio:4/5}.c:nth-child(2){grid-column:span 6;aspect-ratio:4/5;margin-top:80px}
+.c:nth-child(3){grid-column:span 4;aspect-ratio:3/4}.c:nth-child(4){grid-column:span 4;aspect-ratio:3/4;margin-top:40px}.c:nth-child(5){grid-column:span 4;aspect-ratio:3/4}
+@media(max-width:800px){.c:nth-child(n){grid-column:span 12;margin-top:0;aspect-ratio:4/5}}
+.c .bg{position:absolute;inset:0;background:radial-gradient(90% 70% at 30% 20%,#2a2a2d,#0a0a0b);display:grid;place-items:center;transition:transform 1.2s var(--e)}
+.c .bg b{font-size:clamp(80px,12vw,200px);font-weight:800;letter-spacing:-.08em;color:#161618}
+.c:hover .bg{transform:scale(1.05)}
+.c .num{position:absolute;top:16px;left:16px;font-size:13px;color:#aaa}
+.c .pl{position:absolute;top:14px;right:14px;padding:5px 9px;border:1px dashed #fff;border-radius:99px;color:#fff;background:rgba(0,0,0,.5)}
+.c .cap{position:absolute;left:0;right:0;bottom:0;padding:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;background:linear-gradient(0deg,rgba(0,0,0,.85),transparent)}
+.c .cap h3{margin:0;font-size:clamp(28px,3vw,48px);font-weight:700;letter-spacing:-.05em;line-height:.9}
+.c .cap h3 .serif{font-weight:400;display:block;font-size:.7em;color:#bbb}
+.c .cap span{color:#ccc;font-size:13px;text-align:right}
+/* profile spread */
+.spread{display:grid;grid-template-columns:1fr 1fr;min-height:100svh;border-top:1px solid var(--line);padding:0}
+.spread .ph{position:relative;overflow:hidden}.spread .ph img{width:100%;height:100%;object-fit:cover;filter:grayscale(1)}
+.spread .tx{padding:clamp(28px,5vw,80px);display:flex;flex-direction:column;justify-content:space-between;gap:40px;background:#f2efea;color:#0b0b0b}
+.spread .tx h2{margin:0;font-size:clamp(80px,13vw,220px);font-weight:800;letter-spacing:-.08em;line-height:.8}
+.spread .tx .q{font-family:'Instrument Serif',serif;font-style:italic;font-size:clamp(26px,2.6vw,40px);line-height:1.15;letter-spacing:-.02em;margin:0}
+.spread dl{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0;border-top:1px solid #0b0b0b}
+.spread dl div{padding:16px 0;border-bottom:1px solid #cfcac2}.spread dt{color:#6e6962}.spread dd{margin:4px 0 0;font-size:20px;font-weight:600;letter-spacing:-.03em}
+.spread .acts{display:flex;gap:10px;flex-wrap:wrap}.spread .pill{border-color:#0b0b0b}.spread .pill.k{background:#0b0b0b;color:#fff}
+.spread .pill:hover{background:#0b0b0b;color:#fff}
+.vb{display:inline-grid;place-items:center;width:.32em;height:.32em;border-radius:50%;background:#0b0b0b;color:#f2efea;vertical-align:.55em;margin-left:.08em}
+.vb svg{width:60%;height:60%}
+@media(max-width:900px){.spread{grid-template-columns:1fr}.spread .ph{height:80svh}}
+</style>
+</head>
+<body>
+<header><a class="b" href="/"><img src="/images/oc-logo.png" alt="">Opus Collective</a><nav><a href="#">Explore</a><a href="#">Verified</a><a href="#">Services</a><a href="#">Events</a><a href="#">About</a></nav><a class="j" href="#">Join Opus</a></header>
+<main>
+<section class="cover" style="padding:0">
+<img src="/images/bogo-scenic.jpg" alt="">
+
+<div class="mast">
+<h1>Independent<span class="serif">.</span></h1>
+<div class="mrow"><p>The future of music is independent. Discover the artists, producers, engineers, and visionaries shaping what’s next.</p>
+<div class="ctas"><a class="pill w" href="#">Explore the Directory →</a><a class="pill" href="#">Join Opus</a></div></div>
+</div>
+</section>
+<div class="mq" aria-hidden="true"><div><span>Recording Artists</span><span>Producers</span><span>Audio Engineers</span><span>Songwriters</span><span>Multi-disciplinary</span><span>Recording Artists</span><span>Producers</span><span>Audio Engineers</span><span>Songwriters</span><span>Multi-disciplinary</span></div></div>
+
+<section>
+<div class="hd"><h2>The <span class="serif">people</span><br>behind it.</h2><p>Members presented like magazine features: oversized names, staggered layout, a serif accent for warmth.</p></div>
+<div class="cards">
+<a class="c" href="#"><div class="bg"><b>SA</b></div><span class="num mono">No. 01</span><span class="pl mono">Placeholder</span><div class="cap"><h3>Sample Artist<span class="serif">Recording Artist</span></h3><span>Birmingham, AL<br>R&amp;B</span></div></a>
+<a class="c" href="#"><div class="bg"><b>SP</b></div><span class="num mono">No. 02</span><span class="pl mono">Placeholder</span><div class="cap"><h3>Sample Producer<span class="serif">Producer</span></h3><span>Atlanta, GA<br>Hip-Hop</span></div></a>
+<a class="c" href="#"><div class="bg"><b>SE</b></div><span class="num mono">No. 03</span><span class="pl mono">Placeholder</span><div class="cap"><h3>Sample Engineer<span class="serif">Audio Engineer</span></h3><span>London</span></div></a>
+<a class="c" href="#"><div class="bg"><b>SW</b></div><span class="num mono">No. 04</span><span class="pl mono">Placeholder</span><div class="cap"><h3>Sample Writer<span class="serif">Songwriter</span></h3><span>Nashville, TN</span></div></a>
+<a class="c" href="#"><div class="bg"><b>SM</b></div><span class="num mono">No. 05</span><span class="pl mono">Placeholder</span><div class="cap"><h3>Sample Multi<span class="serif">Multi-disciplinary</span></h3><span>Lagos</span></div></a>
+</div>
+</section>
+
+<section class="spread">
+<div class="ph"><img src="/images/bogo-lookaway.jpg" alt="Bogo"></div>
+<div class="tx">
+<div><span class="mono">Profile · Concept preview</span><h2>Bogo<span class="vb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 12 4 4 8-8"/></svg></span></h2></div>
+<p class="q">Founder of Opus Collective. Bio text goes here, written by the artist.</p>
+<dl><div><dt class="mono">Discipline</dt><dd>Recording Artist</dd></div><div><dt class="mono">Based in</dt><dd>Birmingham, AL</dd></div><div><dt class="mono">Latest</dt><dd>Scenic</dd></div><div><dt class="mono">Status</dt><dd>Open to collab</dd></div></dl>
+<div class="acts"><a class="pill k" href="#">Connect</a><a class="pill" href="#">Listen ↗</a></div>
+</div>
+</section>
+</main>
+<div class="concept">Concept B · Cover Story: magazine scale, photo-led</div>
+</body>
+</html>
