@@ -1,0 +1,49 @@
+---
+import SectionHeader from '../ui/SectionHeader.astro';
+import Button from '../ui/Button.astro';
+import { SERVICE_CATEGORIES } from '@/data/services';
+const PRINCIPLES = [
+  { t: 'Reviewed before listed', d: 'Every agency applies and is reviewed by Opus before it appears.' },
+  { t: 'Credentials on show', d: 'Portfolios, past work and credentials sit on every listing.' },
+  { t: 'Placement ≠ verification', d: 'Paid placement is always labeled and never buys verified status.' },
+];
+---
+<section class="section services" aria-labelledby="services-title">
+  <div class="container">
+    <SectionHeader index="04" label="Trusted services" tag="For the business of music" />
+    <div class="services__top">
+      <h2 id="services-title" class="t-h1" data-reveal>Vetted partners<br /><span class="dim">for your career.</span></h2>
+      <p class="t-lead" data-reveal style="--d:.1s">A separate directory of music industry services, reviewed for legitimacy so you can hire with confidence.</p>
+    </div>
+    <ul class="services__cats" role="list">
+      {SERVICE_CATEGORIES.map((c, i) => (
+        <li data-reveal style={`--d:${i * 0.05}s`}>
+          <a href={`/services?category=${encodeURIComponent(c)}`}><span class="t-meta">{String(i + 1).padStart(2, '0')}</span>{c}</a>
+        </li>
+      ))}
+      <li data-reveal style="--d:.35s" class="services__apply">
+        <a href="/services#apply"><span class="t-meta">Agencies</span>Apply for a listing →</a>
+      </li>
+    </ul>
+    <ul class="services__principles" role="list">
+      {PRINCIPLES.map((p, i) => (<li data-reveal style={`--d:${i * 0.08}s`}><h3>{p.t}</h3><p>{p.d}</p></li>))}
+    </ul>
+    <div data-reveal><Button href="/services" variant="secondary" arrow="right">Browse services</Button></div>
+  </div>
+</section>
+
+<style>
+  .services__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px 64px; margin-top: clamp(32px, 4vw, 56px); }
+  .services__top .t-lead { max-width: 420px; }
+  .services__cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: clamp(40px, 5vw, 64px) 0 0; padding: 0; background: var(--c-ink-600); border: 1px solid var(--c-ink-600); border-radius: var(--r-md); overflow: hidden; }
+  .services__cats li { background: var(--c-black); }
+  .services__cats a { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; min-height: 148px; height: 100%; padding: 22px; font-size: clamp(18px, 1.1rem + 0.3vw, 22px); font-weight: 500; letter-spacing: -0.025em; transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
+  .services__cats .t-meta { color: var(--c-fg-ghost); transition: color var(--dur); }
+  .services__cats a:hover { background: var(--c-white); color: var(--c-black); }
+  .services__cats a:hover .t-meta { color: #77727a; }
+  .services__apply a { background: var(--c-ink-800); }
+  .services__principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; margin: 48px 0 40px; padding: 0; }
+  .services__principles h3 { font-size: 17px; font-weight: 500; letter-spacing: -0.015em; margin-bottom: 8px; }
+  .services__principles p { font-size: 15px; color: var(--c-fg-faint); }
+  @media (max-width: 960px) { .services__cats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .services__principles { grid-template-columns: 1fr; gap: 20px; } }
+</style>

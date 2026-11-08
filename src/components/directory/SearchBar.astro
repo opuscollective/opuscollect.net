@@ -1,0 +1,85 @@
+---
+/**
+ * Directory search. A plain GET form to /directory so it works without JS
+ * and maps directly onto Phase 2/3 query params (?q=&discipline=&location=).
+ */
+import Icon from '../ui/Icon.astro';
+import { DISCIPLINES } from '@/data/disciplines';
+interface Props { id?: string }
+const { id = 'directory-search' } = Astro.props;
+---
+<form class="search" action="/directory" method="get" role="search" aria-label="Search the musician directory">
+  <div class="search__field search__field--q">
+    <label for={`${id}-q`} class="t-meta search__label">Search</label>
+    <div class="search__control">
+      <Icon name="search" size={20} class="search__icon" />
+      <input id={`${id}-q`} name="q" type="search" placeholder="Name or username" autocomplete="off" />
+    </div>
+  </div>
+  <div class="search__field">
+    <label for={`${id}-d`} class="t-meta search__label">Discipline</label>
+    <div class="search__control search__control--select">
+      <select id={`${id}-d`} name="discipline">
+        <option value="">All disciplines</option>
+        {Object.entries(DISCIPLINES).map(([value, d]) => <option value={value}>{d.plural}</option>)}
+      </select>
+    </div>
+  </div>
+  <div class="search__field">
+    <label for={`${id}-l`} class="t-meta search__label">Location</label>
+    <div class="search__control">
+      <Icon name="pin" size={18} class="search__icon" />
+      <input id={`${id}-l`} name="location" type="text" placeholder="City, state or country" autocomplete="off" />
+    </div>
+  </div>
+  <button class="search__submit" type="submit">
+    <span>Search</span>
+    <Icon name="arrow-right" size={18} />
+  </button>
+</form>
+
+<style>
+  .search {
+    display: grid; grid-template-columns: 1.5fr 1fr 1fr auto; align-items: stretch;
+    background: var(--c-ink-900); border: 1px solid var(--c-ink-600); border-radius: var(--r-lg);
+    padding: 8px; gap: 0;
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  }
+  .search:focus-within { border-color: #4a464c; box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.04); }
+  .search__field { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 12px 20px; min-width: 0; }
+  .search__field + .search__field { border-left: 1px solid var(--c-ink-600); }
+  .search__label { color: var(--c-fg-ghost); }
+  .search__control { display: flex; align-items: center; gap: 10px; }
+  :global(.search__icon) { color: var(--c-fg-faint); flex-shrink: 0; }
+  .search input, .search select {
+    width: 100%; min-width: 0; min-height: 32px; padding: 0; border: 0; outline: 0; background: transparent;
+    font-size: 17px; color: var(--c-white); letter-spacing: -0.01em;
+  }
+  .search input::placeholder { color: #7d7880; }
+  .search select { appearance: none; cursor: pointer; padding-right: 20px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238E8890' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right center; }
+  .search select option { background: var(--c-ink-900); color: var(--c-white); }
+  .search__field:focus-within .search__label { color: var(--c-fg-muted); }
+  .search input:focus-visible, .search select:focus-visible { outline: none; }
+  .search__submit {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    min-height: 64px; padding: 0 30px; border: 0; border-radius: calc(var(--r-lg) - 6px);
+    background: var(--c-white); color: var(--c-black); font-size: 16px; font-weight: 500;
+    transition: background var(--dur) var(--ease);
+  }
+  .search__submit:hover { background: #e6e3e7; }
+  .search__submit:focus-visible { outline-offset: 3px; }
+
+  @media (max-width: 900px) {
+    .search { grid-template-columns: 1fr 1fr; }
+    .search__field--q { grid-column: 1 / -1; }
+    .search__field--q + .search__field { border-left: 0; }
+    .search__field:not(.search__field--q) { border-top: 1px solid var(--c-ink-600); }
+    .search__submit { grid-column: 1 / -1; margin-top: 8px; min-height: 56px; }
+  }
+  @media (max-width: 520px) {
+    .search { grid-template-columns: 1fr; }
+    .search__field + .search__field { border-left: 0; }
+    .search__field { padding: 12px 14px; }
+  }
+</style>

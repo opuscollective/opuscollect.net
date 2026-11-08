@@ -1,0 +1,77 @@
+/* ==========================================================================
+   Opus Collective design tokens
+   One source of truth for color, type, space, radius and motion.
+   Palette and typeface carried over from the current opuscollect.net.
+   ========================================================================== */
+:root {
+  /* Color: ink scale (dark surfaces) */
+  --c-black: #000000;
+  --c-ink-900: #0a0a0b;   /* raised surface */
+  --c-ink-800: #0f0e10;   /* cards */
+  --c-ink-700: #161616;   /* hairlines on black */
+  --c-ink-600: #242125;   /* borders */
+  --c-ink-500: #2e2a30;   /* strong borders */
+
+  /* Color: text on dark */
+  --c-white: #ffffff;
+  --c-fg-muted: #c9c4cb;  /* nav, secondary */
+  --c-fg-subtle: #a39da5; /* body copy */
+  --c-fg-faint: #8e8890;  /* captions, de-emphasis in headlines */
+  --c-fg-ghost: #85808a;  /* legal, meta */
+
+  /* Color: paper (light editorial sections) */
+  --c-paper: #f2efea;
+  --c-paper-ink: #111111;
+  --c-paper-muted: #4a464c;
+  --c-paper-line: #d9d4cd;
+
+  /* Semantic */
+  --c-bg: var(--c-black);
+  --c-fg: var(--c-white);
+  --c-line: var(--c-ink-700);
+  --c-focus: var(--c-white);
+
+  /* Typography */
+  --font-sans: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Fluid type scale (min at 375px, max at 1440px) */
+  --t-display: clamp(3rem, 1.2rem + 7.6vw, 8.5rem);   /* hero */
+  --t-h1: clamp(2.5rem, 1.4rem + 4.6vw, 5.5rem);      /* section statements */
+  --t-h2: clamp(2rem, 1.3rem + 2.9vw, 3.75rem);
+  --t-h3: clamp(1.375rem, 1.15rem + 0.9vw, 1.875rem);
+  --t-lead: clamp(1.0625rem, 0.98rem + 0.35vw, 1.3125rem);
+  --t-body: 1rem;
+  --t-small: 0.875rem;
+  --t-meta: 0.6875rem;  /* uppercase mono labels */
+
+  --lh-tight: 0.95;
+  --lh-snug: 1.1;
+  --lh-body: 1.6;
+  --tr-display: -0.055em;
+  --tr-heading: -0.04em;
+  --tr-meta: 0.16em;
+
+  /* Space (4px base) */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;  --s-5: 24px;
+  --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;  --s-10: 128px;
+  --section-y: clamp(88px, 11vw, 168px);
+  --gutter: clamp(20px, 4.5vw, 72px);
+  --max-w: 1440px;
+
+  /* Shape */
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 0.2s;
+  --dur: 0.45s;
+  --dur-slow: 0.9s;
+
+  /* Layers */
+  --z-header: 50;
+  --z-menu: 60;
+}

@@ -1,0 +1,19 @@
+---
+interface Props { tone?: 'dark' | 'paper' | 'placeholder' }
+const { tone = 'dark' } = Astro.props;
+---
+<span class:list={['tag', `tag--${tone}`]}><slot /></span>
+
+<style>
+  .tag {
+    display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px;
+    border-radius: var(--r-pill); border: 1px solid var(--c-ink-600);
+    font-size: 12px; line-height: 1; color: var(--c-fg-muted); white-space: nowrap;
+  }
+  .tag--paper { border-color: var(--c-paper-line); color: var(--c-paper-muted); }
+  .tag--placeholder {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    border-style: dashed; border-color: rgba(255, 255, 255, 0.45); color: var(--c-white);
+    background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px);
+  }
+</style>

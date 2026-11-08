@@ -1,0 +1,23 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ComingSoon from '@/components/layout/ComingSoon.astro';
+import SearchBar from '@/components/directory/SearchBar.astro';
+---
+<BaseLayout title="Musician Directory" description="Search independent artists, producers, audio engineers and songwriters by discipline, genre and city." noindex>
+  <ComingSoon kicker="Musician Directory" phase="In development" title="The directory is being built." body="Search by name, discipline, genre and city is coming in the next phase. Join now and your profile can be among the first listed.">
+    <p class="dir-query t-meta" data-query hidden></p>
+    <div class="dir-search"><SearchBar id="dir-search" /></div>
+  </ComingSoon>
+</BaseLayout>
+<script>
+  const p = new URLSearchParams(location.search);
+  const parts = ['q', 'discipline', 'location'].map((k) => p.get(k)).filter(Boolean);
+  const el = document.querySelector<HTMLElement>('[data-query]');
+  if (el && parts.length) { el.textContent = `You searched for: ${parts.join(' · ')}`; el.hidden = false; }
+  const set = (id: string, v: string | null) => { const f = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null; if (f && v) f.value = v; };
+  set('dir-search-q', p.get('q')); set('dir-search-d', p.get('discipline')); set('dir-search-l', p.get('location'));
+</script>
+<style>
+  .dir-query { color: var(--c-fg-muted); }
+  .dir-search { width: 100%; margin-top: 8px; }
+</style>
