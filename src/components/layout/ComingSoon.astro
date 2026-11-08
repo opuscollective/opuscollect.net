@@ -1,0 +1,26 @@
+---
+/** Holding page for routes planned in later phases, so navigation never 404s. */
+import Button from '../ui/Button.astro';
+interface Props { kicker: string; title: string; body: string; phase: string }
+const { kicker, title, body, phase } = Astro.props;
+---
+<section class="soon">
+  <div class="container soon__inner">
+    <p class="t-meta soon__kicker">{kicker} · {phase}</p>
+    <h1 class="t-h1">{title}</h1>
+    <p class="t-lead">{body}</p>
+    <slot />
+    <div class="soon__ctas">
+      <Button href="/join.html" arrow="right">Join Opus</Button>
+      <Button href="/" variant="secondary">Back home</Button>
+    </div>
+  </div>
+</section>
+<style>
+  .soon { min-height: 72vh; display: flex; align-items: center; padding-block: 120px; }
+  .soon__inner { display: flex; flex-direction: column; gap: 24px; max-width: 980px; margin-left: 0; }
+  @media (min-width: 1441px) { .soon__inner { margin-left: auto; } }
+  .soon__kicker { color: var(--c-fg-faint); }
+  .soon .t-lead { max-width: 560px; }
+  .soon__ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+</style>

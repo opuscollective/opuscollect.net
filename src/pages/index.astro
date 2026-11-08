@@ -1,0 +1,33 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Hero from '@/components/home/Hero.astro';
+import DirectorySearch from '@/components/home/DirectorySearch.astro';
+import FeaturedMusicians from '@/components/home/FeaturedMusicians.astro';
+import DiscoverNetwork from '@/components/home/DiscoverNetwork.astro';
+import VerifiedIntro from '@/components/home/VerifiedIntro.astro';
+import TrustedServices from '@/components/home/TrustedServices.astro';
+import EventsPreview from '@/components/home/EventsPreview.astro';
+import JoinCTA from '@/components/home/JoinCTA.astro';
+import { SITE } from '@/data/site';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'Organization', name: SITE.name, url: SITE.url, logo: `${SITE.url}/images/oc-logo.png`, slogan: SITE.motto,
+      sameAs: ['https://www.instagram.com/opuscollect_/', 'https://www.youtube.com/@TheOpusCollective', 'https://www.tiktok.com/@opuscollective', 'https://soundcloud.com/opuscollective'] },
+    { '@type': 'WebSite', name: SITE.name, url: SITE.url,
+      potentialAction: { '@type': 'SearchAction', target: `${SITE.url}/directory?q={search_term_string}`, 'query-input': 'required name=search_term_string' } },
+  ],
+};
+---
+<BaseLayout overlayHeader>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  <Hero />
+  <DirectorySearch />
+  <FeaturedMusicians />
+  <DiscoverNetwork />
+  <VerifiedIntro />
+  <TrustedServices />
+  <EventsPreview />
+  <JoinCTA />
+</BaseLayout>

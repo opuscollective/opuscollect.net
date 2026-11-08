@@ -1,0 +1,23 @@
+---
+/**
+ * The Opus chapter label: hairline, "01 / LABEL" on the left, a tag on the right.
+ * Carried over from the current site so every page shares one system.
+ */
+interface Props { index: string; label: string; tag?: string; tone?: 'dark' | 'paper' }
+const { index, label, tag, tone = 'dark' } = Astro.props;
+---
+<div class:list={['section-header t-meta', `section-header--${tone}`]} data-reveal>
+  <span>{index} / {label}</span>
+  {tag && <span class="section-header__tag">{tag}</span>}
+</div>
+
+<style>
+  .section-header {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 20px;
+    border-top: 1px solid var(--c-ink-600); padding-top: 16px; color: #8a8a8a;
+  }
+  .section-header__tag { color: #7a7a7a; }
+  @media (max-width: 520px) { .section-header__tag { display: none; } }
+  .section-header--paper { border-color: var(--c-paper-line); color: #77716a; }
+  .section-header--paper .section-header__tag { color: #77716a; }
+</style>

@@ -1,0 +1,128 @@
+---
+import { NAV, ACCOUNT, SITE } from '@/data/site';
+import Icon from '../ui/Icon.astro';
+interface Props { overlay?: boolean }
+const { overlay = false } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+---
+<header class:list={['hdr', { 'hdr--overlay': overlay }]} data-header>
+  <div class="container hdr__inner">
+    <a href="/" class="hdr__brand" aria-label={`${SITE.name} home`}>
+      <img src="/images/oc-logo.png" alt="" width="34" height="22" />
+      <span>{SITE.name}</span>
+    </a>
+
+    <nav class="hdr__nav" aria-label="Main">
+      <ul role="list">
+        {NAV.map((item) => (
+          <li><a href={item.href} aria-current={path === item.href ? 'page' : undefined}>{item.label}</a></li>
+        ))}
+      </ul>
+    </nav>
+
+    <div class="hdr__actions">
+      <a href={ACCOUNT.signIn.href} class="hdr__signin">{ACCOUNT.signIn.label}</a>
+      <a href={ACCOUNT.join.href} class="hdr__join">{ACCOUNT.join.label}</a>
+      <button class="hdr__toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" data-menu-toggle>
+        <span class="sr-only">Menu</span>
+        <Icon name="menu" size={22} class="hdr__icon-open" />
+        <Icon name="close" size={22} class="hdr__icon-close" />
+      </button>
+    </div>
+  </div>
+
+  <div class="mmenu" id="mobile-menu" hidden data-menu>
+    <nav class="container" aria-label="Mobile">
+      <ul role="list" class="mmenu__list">
+        {NAV.map((item, i) => (
+          <li style={`--i:${i}`}><a href={item.href}>{item.label}</a></li>
+        ))}
+      </ul>
+      <div class="mmenu__actions">
+        <a href={ACCOUNT.join.href} class="hdr__join hdr__join--lg">{ACCOUNT.join.label}</a>
+        <a href={ACCOUNT.signIn.href} class="mmenu__signin">{ACCOUNT.signIn.label}</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-header]');
+  const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+  const menu = document.querySelector<HTMLElement>('[data-menu]');
+  if (header) {
+    const onScroll = () => header.classList.toggle('is-solid', window.scrollY > 24);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+  if (toggle && menu && header) {
+    const set = (open: boolean) => {
+      toggle.setAttribute('aria-expanded', String(open));
+      header.classList.toggle('is-open', open);
+      document.documentElement.style.overflow = open ? 'hidden' : '';
+      if (open) menu.hidden = false;
+      else setTimeout(() => { if (toggle.getAttribute('aria-expanded') === 'false') menu.hidden = true; }, 300);
+    };
+    toggle.addEventListener('click', () => set(toggle.getAttribute('aria-expanded') !== 'true'));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && header.classList.contains('is-open')) { set(false); toggle.focus(); } });
+    window.matchMedia('(min-width: 961px)').addEventListener('change', (e) => { if (e.matches) set(false); });
+  }
+</script>
+
+<style>
+  .hdr {
+    position: sticky; top: 0; z-index: var(--z-header);
+    background: rgba(0, 0, 0, 0.82); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    border-bottom: 1px solid var(--c-line);
+    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .hdr--overlay { position: fixed; inset: 0 0 auto; background: transparent; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .hdr--overlay.is-solid, .hdr.is-open { background: rgba(0, 0, 0, 0.86); border-color: var(--c-line); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); }
+
+  /* backdrop-filter makes the header the containing block for the fixed menu, so drop it while open */
+  .hdr.is-open { background: var(--c-black); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .hdr__inner { display: flex; align-items: center; justify-content: space-between; gap: 32px; height: 72px; }
+  .hdr__brand { display: inline-flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 600; letter-spacing: -0.015em; flex-shrink: 0; }
+  .hdr__brand img { height: 22px; width: auto; }
+
+  .hdr__nav ul { display: flex; gap: clamp(20px, 2.6vw, 40px); margin: 0; }
+  .hdr__nav a { position: relative; display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; color: var(--c-fg-muted); transition: color var(--dur-fast); }
+  .hdr__nav a::after { content: ''; position: absolute; left: 0; right: 0; bottom: 10px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform var(--dur) var(--ease); }
+  .hdr__nav a:hover, .hdr__nav a[aria-current] { color: var(--c-white); }
+  .hdr__nav a:hover::after, .hdr__nav a[aria-current]::after { transform: scaleX(1); transform-origin: left; }
+
+  .hdr__actions { display: flex; align-items: center; gap: 20px; }
+  .hdr__signin { font-size: 14px; color: var(--c-fg-muted); min-height: 44px; display: inline-flex; align-items: center; }
+  .hdr__signin:hover { color: var(--c-white); }
+  .hdr__join {
+    display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border-radius: var(--r-pill);
+    background: var(--c-white); color: var(--c-black); font-size: 14px; font-weight: 500; white-space: nowrap; transition: background var(--dur);
+  }
+  .hdr__join:hover { background: #e6e3e7; }
+  .hdr__toggle { display: none; width: 44px; height: 44px; place-items: center; border: 0; background: transparent; color: var(--c-white); margin-right: -10px; }
+  :global(.hdr__icon-close) { display: none; }
+  .is-open :global(.hdr__icon-open) { display: none; }
+  .is-open :global(.hdr__icon-close) { display: block; }
+
+  .mmenu { position: fixed; inset: 72px 0 0; background: var(--c-black); z-index: var(--z-menu); overflow-y: auto; opacity: 0; transition: opacity var(--dur) var(--ease); }
+  .is-open .mmenu { opacity: 1; }
+  .mmenu nav { display: flex; flex-direction: column; justify-content: space-between; min-height: 100%; padding-block: 32px 40px; gap: 40px; }
+  .mmenu__list { display: flex; flex-direction: column; margin: 0; }
+  .mmenu__list li { border-bottom: 1px solid var(--c-line); opacity: 0; transform: translateY(12px); transition: opacity .5s var(--ease), transform .5s var(--ease); transition-delay: calc(var(--i) * 50ms + 60ms); }
+  .is-open .mmenu__list li { opacity: 1; transform: none; }
+  .mmenu__list a { display: block; padding: 16px 0; font-size: clamp(32px, 9vw, 44px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; }
+  .mmenu__actions { display: flex; flex-direction: column; gap: 12px; }
+  .hdr__join--lg { justify-content: center; min-height: 56px; font-size: 16px; }
+  .mmenu__signin { display: inline-flex; justify-content: center; align-items: center; min-height: 56px; border: 1px solid var(--c-ink-500); border-radius: var(--r-pill); font-size: 16px; }
+
+  @media (max-width: 960px) {
+    .hdr__nav, .hdr__signin { display: none; }
+    .hdr__toggle { display: grid; }
+    .hdr__inner { height: 64px; }
+    .mmenu { inset: 64px 0 0; }
+  }
+  @media (max-width: 960px) { .hdr__actions { gap: 8px; } }
+  @media (max-width: 380px) {
+    .hdr__brand span { display: none; }
+  }
+</style>

@@ -1,0 +1,43 @@
+---
+import SectionHeader from '../ui/SectionHeader.astro';
+import MusicianCard from '../directory/MusicianCard.astro';
+import Button from '../ui/Button.astro';
+import { PLACEHOLDER_MUSICIANS } from '@/data/placeholder-musicians';
+const musicians = PLACEHOLDER_MUSICIANS;
+const anyPlaceholder = musicians.some((m) => m.isPlaceholder);
+---
+<section class="section featured" aria-labelledby="featured-title">
+  <div class="container">
+    <SectionHeader index="01" label="Featured" tag="Selected members" />
+    <div class="featured__head">
+      <h2 id="featured-title" class="t-h1" data-reveal>Featured<br /><span class="dim">musicians.</span></h2>
+      <div class="featured__aside" data-reveal style="--d:.1s">
+        <p class="t-lead">A closer look at members whose work stands out.</p>
+        <Button href="/directory" variant="ghost" arrow="right">View the full directory</Button>
+      </div>
+    </div>
+    {anyPlaceholder && (
+      <p class="featured__notice t-meta" role="note" data-reveal>
+        <span aria-hidden="true">◇</span> Placeholder profiles for design only. Real members appear here when the directory opens.
+      </p>
+    )}
+    <ul class="featured__grid" role="list">
+      {musicians.map((m, i) => <li><MusicianCard musician={m} index={i} /></li>)}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .featured__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px 64px; margin-top: clamp(32px, 4vw, 56px); }
+  .featured__aside { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 380px; }
+  .featured__notice { display: flex; gap: 10px; align-items: center; margin-top: 40px; padding: 12px 16px; border: 1px dashed var(--c-ink-500); border-radius: var(--r-sm); color: var(--c-fg-subtle); letter-spacing: 0.1em; }
+  .featured__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); margin: 24px 0 0; padding: 0; list-style: none; }
+  @media (max-width: 1080px) { .featured__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) {
+    .featured__grid { display: flex; overflow-x: auto; overflow-y: hidden; contain: paint; scroll-snap-type: x mandatory; gap: 14px; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scrollbar-width: none; }
+    .featured__grid::-webkit-scrollbar { display: none; }
+    .featured__grid > li { flex: 0 0 78%; scroll-snap-align: start; }
+    /* Cards off to the side never cross the viewport, so skip the reveal here. */
+    .featured__grid :global([data-reveal]) { opacity: 1; transform: none; transition: none; }
+  }
+</style>
