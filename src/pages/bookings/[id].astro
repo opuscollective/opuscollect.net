@@ -1,0 +1,75 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getBookingForCustomer, STATUS_LABEL } from '@/server/bookings';
+import { formatSlot, tzAbbr, money } from '@/lib/booking-time';
+import '@/styles/app.css';
+import '@/styles/business.css';
+export const prerender = false;
+
+const token = Astro.url.searchParams.get('t');
+// The private link carries a token: never leak it to other sites through the Referer header.
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+const found = await getBookingForCustomer(Astro.locals.runtime.env.DB, Astro.params.id ?? '', token, Astro.locals.user);
+if (!found) Astro.response.status = 404;
+const b = found?.booking;
+const s = found?.studio;
+const canCancel = !!b && (b.status === 'requested' || b.status === 'accepted') && (!b.start_at || b.start_at > Date.now());
+const when = b?.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project';
+const NEXT: Record<string, string> = {
+  requested: 'The studio has been notified and has up to 48 hours to reply. The time is held for you until then. You’ll get an email either way.',
+  accepted: 'The studio accepted. Online payment isn’t switched on yet, so the studio will confirm how to pay and any details you need.',
+  declined: 'The studio couldn’t take this booking. You can request another time.',
+  cancelled: 'This booking was cancelled.',
+  expired: 'The studio didn’t reply in time, so the request lapsed and the time was released. Nothing was charged.',
+};
+---
+<BaseLayout title={b ? `Booking ${b.ref}` : 'Booking not found'} noindex>
+  <section class="app">
+    <div class="app__wrap" style="margin-inline:auto">
+      {!b || !s ? (
+        <>
+          <h1 class="app__title">We couldn’t find that booking.</h1>
+          <p class="app__lead">Use the link in your confirmation email. If you have an Opus account, sign in to see your bookings.</p>
+          <div class="row" style="margin-top:24px"><a class="btn-app" href="/sign-in?next=/account/bookings">Sign in</a></div>
+        </>
+      ) : (
+        <>
+          <p class="t-meta app__kicker">Booking {b.ref}</p>
+          <h1 class="app__title">{b.service_name}</h1>
+          <p class="app__lead">with <a class="link" href={`/studios/${s.handle}`}>{s.name}</a></p>
+          <div class="panel" style="margin-top:24px">
+            <p><span class={`pill pill--${b.status}`}>{b.status === 'cancelled' && b.cancelled_by ? `Cancelled by ${b.cancelled_by === 'customer' ? 'you' : 'the studio'}` : STATUS_LABEL[b.status]}</span></p>
+            <dl class="bk__summary" style="margin-top:16px">
+              <div><dt class="dim">When</dt><dd><b>{when}</b></dd></div>
+              <div style="margin-top:8px"><dt class="dim">Price</dt><dd><b>{money(b.price_cents, b.currency)}</b>, paid to the studio. Nothing has been charged on Opus.</dd></div>
+              <div style="margin-top:8px"><dt class="dim">Name</dt><dd>{b.customer_name} · {b.customer_email}</dd></div>
+              {s.studioType === 'home' && <div style="margin-top:8px"><dt class="dim">Location</dt><dd>Home studio. The studio shares the address with you directly.</dd></div>}
+            </dl>
+            <p class="dim" style="margin-top:16px">{NEXT[b.status]}</p>
+            {b.business_note && <p class="bitem__msg" style="margin-top:12px">Note from the studio: {b.business_note}</p>}
+            {s.cancellationPolicy && <p class="bk__fine" style="margin-top:16px"><b>Cancellation policy.</b> {s.cancellationPolicy}</p>}
+            {canCancel && (
+              <div class="row" style="margin-top:20px">
+                <button class="btn-app btn-app--ghost" data-cancel={b.id} data-token={token ?? ''}>{b.status === 'requested' ? 'Withdraw request' : 'Cancel booking'}</button>
+              </div>
+            )}
+            {(b.status === 'declined' || b.status === 'expired') && <div class="row" style="margin-top:20px"><a class="btn-app" href={`/studios/${s.handle}`}>Choose another time</a></div>}
+            <p class="form-status" data-status role="status"></p>
+          </div>
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const b = document.querySelector<HTMLButtonElement>('[data-cancel]');
+  b?.addEventListener('click', async () => {
+    if (!confirm('Cancel this booking? The studio will be told and the time released.')) return;
+    b.disabled = true;
+    const r = await fetch(`/api/bookings/${b.dataset.cancel}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ as: 'customer', token: b.dataset.token || undefined }) });
+    if (r.ok) location.reload();
+    else { b.disabled = false; const s = document.querySelector<HTMLElement>('[data-status]')!; s.className = 'form-status notice notice--error'; s.textContent = (await r.json().catch(() => ({}))).error ?? 'Couldn’t cancel.'; }
+  });
+</script>

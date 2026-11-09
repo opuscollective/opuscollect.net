@@ -8,6 +8,8 @@ export interface FormOptions {
   body?: (form: HTMLFormElement) => unknown;
   onSuccess: (data: Record<string, unknown>) => void | Promise<void>;
   busyLabel?: string;
+  /** Called after an error response has been shown. */
+  onError?: (data: Record<string, unknown>, status: number) => void;
 }
 
 export function values(form: HTMLFormElement) {
@@ -57,6 +59,7 @@ export function bindForm(form: HTMLFormElement, opts: FormOptions) {
           field.append(p);
           field.querySelector<HTMLElement>('input, select, textarea')?.focus();
         } else status(form, msg, 'error');
+        opts.onError?.(data, res.status);
         return;
       }
       await opts.onSuccess(data);

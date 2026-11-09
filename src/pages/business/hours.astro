@@ -1,0 +1,94 @@
+---
+import BusinessShell from '@/components/business/BusinessShell.astro';
+import { getClosedDays, getRules } from '@/server/business';
+import { loadBusiness } from '@/server/business-page';
+import { localDay } from '@/lib/booking-time';
+export const prerender = false;
+
+const ctx = await loadBusiness(Astro);
+if ('redirect' in ctx) return ctx.redirect;
+const { studio, pending, db } = ctx;
+const [rules, closed] = await Promise.all([getRules(db, studio.id), getClosedDays(db, studio.id)]);
+const today = localDay(Date.now(), studio.timezone);
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const ORDER = [1, 2, 3, 4, 5, 6, 0];
+const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const upcomingClosed = closed.filter((c) => c.day >= today);
+---
+<BusinessShell title="Hours" section="hours" studio={studio} pending={pending}
+  lead={`When customers can request sessions, in your studio’s time zone (${studio.timezone.replace(/_/g, ' ')}). Change the zone on your studio profile.`}>
+  <form class="form" data-hours novalidate>
+    <div class="panel">
+      <h2>Weekly hours</h2>
+      {studio.studioType === 'remote' && <p class="dim">Remote projects don’t book a time slot, so hours only matter if you also offer sessions.</p>}
+      <div class="hours">
+        {ORDER.map((wd) => {
+          const r = rules.filter((x) => x.weekday === wd);
+          const first = r[0];
+          return (
+            <div class:list={['hours__row', { 'is-closed': !first }]} data-day={wd}>
+              <b>{DAYS[wd]}</b>
+              <label class="check"><input type="checkbox" data-open checked={!!first} /><span>Open</span></label>
+              <div class="hours__times">
+                <input class="input" type="time" step="900" data-start value={first ? hhmm(first.start_min) : '10:00'} aria-label={`${DAYS[wd]} opening time`} />
+                <span>to</span>
+                <input class="input" type="time" step="900" data-end value={first ? hhmm(first.end_min) : '18:00'} aria-label={`${DAYS[wd]} closing time`} />
+                {r.length > 1 && <span title="This day has more than one time range; saving keeps only the first.">+{r.length - 1} more</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p class="dim" style="font-size:13px;margin-top:12px">Times are on the quarter hour. A closing time of 00:00 means midnight.</p>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Closed dates</h2>
+      <p class="dim">Holidays or days off. No one can request a session on these dates.</p>
+      <div class="row" style="margin-top:12px">
+        <input class="input" type="date" min={today} data-closed-input aria-label="Add a closed date" style="max-width:200px" />
+        <button type="button" class="btn-app btn-app--ghost" data-closed-add>Add date</button>
+      </div>
+      <ul class="closed-list" role="list" data-closed-list>
+        {upcomingClosed.map((c) => <li data-closed={c.day}>{c.day}<button type="button" aria-label={`Remove ${c.day}`}>×</button></li>)}
+      </ul>
+    </div>
+
+    <div data-status class="form-status" style="margin-top:16px"></div>
+    <div class="row" style="margin-top:16px"><button class="btn-app" type="submit">Save hours</button></div>
+  </form>
+</BusinessShell>
+
+<script>
+  import { bindForm, status } from '@/scripts/form';
+  const form = document.querySelector<HTMLFormElement>('[data-hours]')!;
+  form.querySelectorAll<HTMLElement>('[data-day]').forEach((row) => {
+    row.querySelector<HTMLInputElement>('[data-open]')!.addEventListener('change', (e) => row.classList.toggle('is-closed', !(e.target as HTMLInputElement).checked));
+  });
+  const list = form.querySelector<HTMLUListElement>('[data-closed-list]')!;
+  const bindRemove = (li: HTMLElement) => li.querySelector('button')!.addEventListener('click', () => li.remove());
+  list.querySelectorAll<HTMLElement>('li').forEach(bindRemove);
+  form.querySelector('[data-closed-add]')!.addEventListener('click', () => {
+    const input = form.querySelector<HTMLInputElement>('[data-closed-input]')!;
+    const d = input.value;
+    if (!d || list.querySelector(`[data-closed="${d}"]`)) return;
+    const li = document.createElement('li');
+    li.dataset.closed = d; li.textContent = d;
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = '×'; b.setAttribute('aria-label', `Remove ${d}`);
+    li.append(b); bindRemove(li);
+    const after = [...list.querySelectorAll<HTMLElement>('li')].find((x) => x.dataset.closed! > d);
+    list.insertBefore(li, after ?? null);
+    input.value = '';
+  });
+  bindForm(form, {
+    url: '/api/business/hours',
+    body: (f) => ({
+      rules: [...f.querySelectorAll<HTMLElement>('[data-day]')]
+        .filter((r) => r.querySelector<HTMLInputElement>('[data-open]')!.checked)
+        .map((r) => ({ weekday: Number(r.dataset.day), start: r.querySelector<HTMLInputElement>('[data-start]')!.value, end: r.querySelector<HTMLInputElement>('[data-end]')!.value })),
+      closed: [...list.querySelectorAll<HTMLElement>('li')].map((li) => li.dataset.closed),
+    }),
+    busyLabel: 'Saving…',
+    onSuccess: () => status(form, 'Hours saved.', 'ok'),
+  });
+</script>

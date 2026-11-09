@@ -1,0 +1,69 @@
+---
+import BusinessShell from '@/components/business/BusinessShell.astro';
+import { listServices, type Service } from '@/server/business';
+import { loadBusiness } from '@/server/business-page';
+import { money } from '@/lib/booking-time';
+import ServiceForm from '@/components/business/ServiceForm.astro';
+export const prerender = false;
+
+const ctx = await loadBusiness(Astro);
+if ('redirect' in ctx) return ctx.redirect;
+const { studio, pending, db } = ctx;
+const services = await listServices(db, studio.id);
+const isRemote = studio.studioType === 'remote';
+const blank: Service = { id: '', name: '', description: '', mode: isRemote ? 'remote' : 'session', durationMin: 120, bufferMin: 0, priceCents: 0, currency: 'USD', active: true, sort: 0, roomId: null };
+const detail = (s: Service) => [s.mode === 'session' ? len(s.durationMin) + ' session' + (s.bufferMin ? ' · ' + s.bufferMin + ' min reset after' : '') : 'Remote project, no visit', s.description].filter(Boolean).join(' · ');
+const len = (m: number) => (m % 60 ? (Math.floor(m / 60) ? Math.floor(m / 60) + ' h ' : '') + (m % 60) + ' min' : m / 60 + ' h');
+---
+<BusinessShell title="Services" section="services" studio={studio} pending={pending}
+  lead="What customers can request, with your price. Prices are set here and checked on our server; customers can’t change them.">
+  <button slot="actions" type="button" class="btn-app" data-open="new">Add a service</button>
+
+  <div class="panel">
+    <form class="form svc-form" data-svc="new" novalidate>
+      <h2>New service</h2>
+      <ServiceForm s={blank} remoteOnly={isRemote} />
+    </form>
+    {services.length === 0 ? (
+      <p class="empty" data-empty><b>No services yet.</b>Add what you sell, for example “Recording session, 2 hours” or “Mix and master, one song”.</p>
+    ) : (
+      <ul role="list">{services.map((s) => (
+        <li class="svc" data-row={s.id}>
+          <div><b>{s.name}</b><small>{detail(s)}</small></div>
+          <div class="svc__price">{money(s.priceCents, s.currency)}</div>
+          <div class="svc__actions"><button type="button" class="btn-app btn-app--ghost" data-open={s.id}>Edit</button><button type="button" class="btn-app btn-app--ghost" data-archive={s.id}>Remove</button></div>
+          <form class="form svc-form" data-svc={s.id} novalidate style="grid-column:1/-1"><ServiceForm s={s} remoteOnly={isRemote} /></form>
+        </li>
+      ))}</ul>
+    )}
+  </div>
+  <p class="dim" style="margin-top:12px;font-size:13px">Removing a service hides it from your page. Requests already made for it keep their details and price.</p>
+</BusinessShell>
+
+<script>
+  import { bindForm, values } from '@/scripts/form';
+  document.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((b) => b.addEventListener('click', () => {
+    const f = document.querySelector<HTMLFormElement>(`[data-svc="${b.dataset.open}"]`)!;
+    f.classList.toggle('is-open');
+    if (f.classList.contains('is-open')) f.querySelector<HTMLInputElement>('[name="name"]')?.focus();
+  }));
+  document.querySelectorAll<HTMLFormElement>('[data-svc]').forEach((f) => {
+    const mode = () => f.querySelector<HTMLInputElement>('[name="mode"]:checked')?.value ?? 'session';
+    const sync = () => f.querySelectorAll<HTMLElement>('[data-session-only]').forEach((el) => (el.hidden = mode() !== 'session'));
+    f.querySelectorAll('[name="mode"]').forEach((r) => r.addEventListener('change', sync));
+    sync();
+    bindForm(f, {
+      url: '/api/business/service',
+      body: (form) => ({ ...values(form), id: form.dataset.svc === 'new' ? undefined : form.dataset.svc }),
+      busyLabel: 'Saving…',
+      onSuccess: () => location.reload(),
+    });
+    f.querySelector('[data-cancel]')?.addEventListener('click', () => f.classList.remove('is-open'));
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-archive]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Remove this service from your booking page?')) return;
+    const r = await fetch('/api/business/service-archive', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: b.dataset.archive }) });
+    if (r.ok) location.reload();
+    else alert((await r.json().catch(() => ({}))).error ?? 'Couldn’t remove it.');
+  }));
+</script>

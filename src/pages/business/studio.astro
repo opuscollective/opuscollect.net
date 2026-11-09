@@ -1,0 +1,133 @@
+---
+import BusinessShell from '@/components/business/BusinessShell.astro';
+import PlaceSelect from '@/components/business/PlaceSelect.astro';
+import { STUDIO_TYPES } from '@/server/business';
+import { loadBusiness } from '@/server/business-page';
+import { mediaUrl } from '@/server/profiles';
+export const prerender = false;
+
+const ctx = await loadBusiness(Astro);
+if ('redirect' in ctx) return ctx.redirect;
+const { studio: s, pending } = ctx;
+const isNew = Astro.url.searchParams.has('new');
+const ZONES = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu',
+  'America/Toronto', 'America/Mexico_City', 'America/Sao_Paulo', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Africa/Lagos', 'Africa/Johannesburg', 'Asia/Tokyo', 'Australia/Sydney'];
+const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
+---
+<BusinessShell title="Studio profile" section="studio" studio={s} pending={pending}
+  lead={isNew ? 'Studio created. Add a description and a photo, then set up services and hours.' : 'What customers see on your booking page and in Opus World.'}>
+  {s.status === 'published' && <button slot="actions" type="button" class="btn-app btn-app--ghost" data-unpublish>Unpublish</button>}
+
+  <form class="form" data-studio novalidate>
+    <div class="panel">
+      <h2>Basics</h2>
+      <label class="field"><span>Studio name *</span><input class="input" name="name" maxlength="80" required value={s.name} /></label>
+      <label class="field"><span>Page address</span><input class="input" name="handle" maxlength="40" value={s.handle} pattern="[a-z0-9-]+" /><small>opuscollect.net/studios/<b data-handle-preview>{s.handle}</b></small></label>
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend>Studio type *</legend>
+        <div class="bk__svc" style="margin-top:8px">
+          {Object.entries(STUDIO_TYPES).map(([k, v]) => (
+            <label><input type="radio" name="studioType" value={k} checked={s.studioType === k} /><span><b>{v.label}</b><small>{v.hint}</small></span><span></span></label>
+          ))}
+        </div>
+      </fieldset>
+      <label class="field"><span>City or area *</span><PlaceSelect selected={s.placeId} required /><small>Shown publicly. Opus World places you at the city’s centre, never at your address.</small></label>
+      <label class="field"><span>About the studio *</span><textarea class="textarea" name="bio" rows="6" maxlength="2000">{s.bio}</textarea><small>At least 40 characters. What you record, who you work with, what makes the room good.</small></label>
+      <label class="field"><span>Equipment</span><textarea class="textarea" name="equipment" rows="5" placeholder="One item per line, e.g. Neumann U87">{s.equipment.join('\n')}</textarea></label>
+      <div class="grid-2">
+        <label class="field"><span>Website</span><input class="input" name="website" type="url" value={s.website} placeholder="https://" /></label>
+        <label class="field"><span>Instagram</span><input class="input" name="instagram" type="url" value={s.instagram} placeholder="https://instagram.com/…" /></label>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Private address</h2>
+      <p class="dim">Only you can see this. It is never shown on your page or the map. You share it with a customer yourself once you accept their booking.</p>
+      <label class="field"><span>Street address</span><textarea class="textarea" name="privateAddress" rows="2" maxlength="300">{s.privateAddress}</textarea></label>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Booking rules</h2>
+      <p class="dim">Every booking is a request you accept or decline. Instant booking will come with online payments.</p>
+      <div class="grid-2">
+        <label class="field"><span>Time zone</span><select class="select" name="timezone">{zones.map((z) => <option value={z} selected={z === s.timezone}>{z.replace(/_/g, ' ')}</option>)}</select></label>
+        <label class="field"><span>Minimum notice (hours)</span><input class="input" name="minNoticeHours" type="number" min="0" max="336" value={s.minNoticeHours} /></label>
+        <label class="field"><span>How far ahead people can book (days)</span><input class="input" name="maxDaysAhead" type="number" min="1" max="365" value={s.maxDaysAhead} /></label>
+      </div>
+      <label class="field"><span>Booking policy</span><textarea class="textarea" name="bookingPolicy" rows="3" maxlength="1500" placeholder="E.g. guests allowed, what to bring, no smoking.">{s.bookingPolicy}</textarea></label>
+      <label class="field"><span>Cancellation policy</span><textarea class="textarea" name="cancellationPolicy" rows="3" maxlength="1500" placeholder="E.g. free cancellation up to 48 hours before.">{s.cancellationPolicy}</textarea></label>
+      <label class="check"><input type="checkbox" name="showOnMap" checked={s.showOnMap} /><span>Show the studio on the Opus World map. Your city is shown, never your address. When off, you still appear in search results.</span></label>
+    </div>
+
+    <div data-status class="form-status" style="margin-top:16px"></div>
+    <div class="row" style="margin-top:16px"><button class="btn-app" type="submit">Save</button></div>
+  </form>
+
+  <div class="panel" style="margin-top:16px" id="photos">
+    <h2>Photos</h2>
+    <p class="dim">A main photo is required to publish. JPEG, PNG or WebP. Location data is removed from every photo before upload.</p>
+    <div class="ph">
+      <div class="ph__col">
+        <div class="ph__img ph__img--photo" data-preview="photo" style={s.photoKey ? `background-image:url(${mediaUrl(s.photoKey)})` : ''}>{!s.photoKey && <span>No photo</span>}</div>
+        <label class="btn-app btn-app--ghost file-btn">Upload photo<input type="file" accept="image/jpeg,image/png,image/webp,image/heic" data-upload="photo" /></label>
+      </div>
+      <div class="ph__col">
+        <div class="ph__img ph__img--cover" data-preview="cover" style={s.coverKey ? `background-image:url(${mediaUrl(s.coverKey)})` : ''}>{!s.coverKey && <span>Optional cover image</span>}</div>
+        <div class="row">
+          <label class="btn-app btn-app--ghost file-btn">Upload cover<input type="file" accept="image/jpeg,image/png,image/webp" data-upload="cover" /></label>
+          {s.coverKey && <button type="button" class="btn-app btn-app--ghost" data-remove-cover>Remove</button>}
+        </div>
+      </div>
+    </div>
+    <p class="dim" data-upload-status role="status"></p>
+  </div>
+</BusinessShell>
+
+<script>
+  import { bindForm, values } from '@/scripts/form';
+  import { prepareImage } from '@/scripts/image';
+  const form = document.querySelector<HTMLFormElement>('[data-studio]')!;
+  const handle = form.querySelector<HTMLInputElement>('[name="handle"]')!;
+  handle.addEventListener('input', () => { document.querySelector('[data-handle-preview]')!.textContent = handle.value || '…'; });
+  bindForm(form, {
+    url: '/api/business/studio',
+    body: (f) => values(f),
+    busyLabel: 'Saving…',
+    onSuccess: () => { location.href = '/business/studio?saved=1'; },
+  });
+  if (new URLSearchParams(location.search).has('saved')) {
+    const box = form.querySelector<HTMLElement>('[data-status]')!;
+    box.className = 'form-status notice notice--ok'; box.textContent = 'Saved.';
+  }
+
+  document.querySelector<HTMLButtonElement>('[data-unpublish]')?.addEventListener('click', async () => {
+    if (!confirm('Unpublish your booking page? It disappears from Opus World and the link stops taking requests. Existing bookings are kept.')) return;
+    const r = await fetch('/api/business/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: false }) });
+    if (r.ok) location.href = '/business';
+  });
+
+  const up = document.querySelector<HTMLElement>('[data-upload-status]')!;
+  document.querySelectorAll<HTMLInputElement>('[data-upload]').forEach((input) => input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    const slot = input.dataset.upload as 'photo' | 'cover';
+    up.textContent = 'Preparing image…';
+    try {
+      // Re-encoded in the browser: resized, orientation fixed, all metadata (including GPS) dropped.
+      const blob = await prepareImage(file, slot === 'photo' ? 1200 : 2400, slot === 'photo' ? 'square' : 'free');
+      up.textContent = 'Uploading…';
+      const r = await fetch(`/api/business/image?slot=${slot}`, { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error ?? 'Upload failed.');
+      const el = document.querySelector<HTMLElement>(`[data-preview="${slot}"]`)!;
+      el.style.backgroundImage = `url(${d.url})`; el.textContent = '';
+      up.textContent = slot === 'photo' ? 'Photo updated.' : 'Cover updated.';
+    } catch (e) {
+      up.textContent = e instanceof Error ? e.message : 'Upload failed.';
+    } finally { input.value = ''; }
+  }));
+  document.querySelector<HTMLButtonElement>('[data-remove-cover]')?.addEventListener('click', async (e) => {
+    const r = await fetch('/api/business/image?slot=cover', { method: 'DELETE' });
+    if (r.ok) { const el = document.querySelector<HTMLElement>('[data-preview="cover"]')!; el.style.backgroundImage = ''; el.textContent = 'Optional cover image'; (e.target as HTMLElement).remove(); }
+  });
+</script>

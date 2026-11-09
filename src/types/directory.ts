@@ -42,6 +42,8 @@ interface ListingBase {
    * (e.g. Hoover → Birmingham). Absent when the listing is already at metro level.
    */
   metro?: { name: string; lat: number; lng: number };
+  /** False when the member chose not to appear on the map. They still appear in list results. */
+  onMap?: boolean;
 }
 
 export interface MusicianListing extends ListingBase {
@@ -55,7 +57,7 @@ export interface MusicianListing extends ListingBase {
   highlight?: string; // short achievement line, shown on the card
 }
 
-export type StudioType = 'commercial' | 'home';
+export type StudioType = 'commercial' | 'home' | 'remote';
 /** Future paid plans. Plan never affects verification. No billing is implemented. */
 export type StudioPlan = 'none' | 'listing' | 'pro';
 
@@ -68,6 +70,8 @@ export interface StudioListing extends ListingBase {
   verification: StudioVerification;
   plan: StudioPlan;
   acceptsBookingRequests: boolean;
+  /** Real studios: the lowest active service price, already formatted (e.g. "$85"). */
+  priceFrom?: string;
 }
 
 export type OrganizationCategory = 'label' | 'management' | 'collective' | 'marketing' | 'other';

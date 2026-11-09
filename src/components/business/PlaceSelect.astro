@@ -1,0 +1,17 @@
+---
+/** City or area picker: each metro followed by its suburbs. Only public centre points exist; never an address. */
+import { PLACES } from '@/data/places';
+interface Props { name?: string; selected?: string | null; required?: boolean }
+const { name = 'placeId', selected = null, required = false } = Astro.props;
+const metros = PLACES.filter((p) => p.kind === 'metro').sort((a, b) => a.countryName.localeCompare(b.countryName) || a.name.localeCompare(b.name));
+const localitiesOf = (id: string) => PLACES.filter((p) => p.kind === 'locality' && p.metroId === id).sort((a, b) => a.name.localeCompare(b.name));
+---
+<select class="select" name={name} required={required}>
+  <option value="">Choose a city or area</option>
+  {metros.map((m) => (
+    <optgroup label={`${m.name}${m.region ? `, ${m.region}` : ''} · ${m.countryName}`}>
+      <option value={m.id} selected={selected === m.id}>{m.name}{m.region ? `, ${m.region}` : ''}</option>
+      {localitiesOf(m.id).map((l) => <option value={l.id} selected={selected === l.id}>{l.name} ({m.name} area)</option>)}
+    </optgroup>
+  ))}
+</select>

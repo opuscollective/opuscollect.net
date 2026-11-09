@@ -1,0 +1,39 @@
+---
+/** Dashboard frame for Opus Business: section nav + page heading. Pages pass the studio and current section. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { STUDIO_TYPES, type Studio } from '@/server/business';
+import '@/styles/app.css';
+import '@/styles/business.css';
+interface Props { title: string; lead?: string; section: string; studio: Studio; pending?: number }
+const { title, lead, section, studio, pending = 0 } = Astro.props;
+const items = [
+  { key: 'overview', label: 'Overview', href: '/business' },
+  { key: 'bookings', label: 'Bookings', href: '/business/bookings', count: pending },
+  { key: 'services', label: 'Services', href: '/business/services' },
+  { key: 'hours', label: 'Hours', href: '/business/hours' },
+  { key: 'customers', label: 'Customers', href: '/business/customers' },
+  { key: 'studio', label: 'Studio profile', href: '/business/studio' },
+];
+---
+<BaseLayout title={`${title} · Business`} noindex>
+  <section class="app">
+    <div class="biz">
+      <nav class="biz__nav" aria-label="Business">
+        <div class="biz__studio"><b>{studio.name}</b><small>{STUDIO_TYPES[studio.studioType].label} · {studio.status === 'published' ? 'Live' : 'Draft'}</small></div>
+        {items.map((i) => (
+          <a href={i.href} aria-current={i.key === section ? 'page' : undefined}>
+            {i.label}{i.count ? <span class="count" aria-label={`${i.count} pending`}>{i.count}</span> : null}
+          </a>
+        ))}
+        {studio.status === 'published' && <a href={`/studios/${studio.handle}`}>Booking page ↗</a>}
+      </nav>
+      <div class="biz__main">
+        <div class="biz__head">
+          <div><h1>{title}</h1>{lead && <p>{lead}</p>}</div>
+          <slot name="actions" />
+        </div>
+        <slot />
+      </div>
+    </div>
+  </section>
+</BaseLayout>

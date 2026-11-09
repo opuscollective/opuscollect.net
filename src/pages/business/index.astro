@@ -1,0 +1,150 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import BusinessShell from '@/components/business/BusinessShell.astro';
+import PlaceSelect from '@/components/business/PlaceSelect.astro';
+import { STUDIO_TYPES, getMyStudio, studioChecklist } from '@/server/business';
+import { listBusinessBookings, listCustomers } from '@/server/bookings';
+import { formatSlot, tzAbbr, money } from '@/lib/booking-time';
+import '@/styles/app.css';
+import '@/styles/business.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const db = Astro.locals.runtime.env.DB;
+const studio = user ? await getMyStudio(db, user.id) : null;
+let data: null | {
+  check: Awaited<ReturnType<typeof studioChecklist>>; bookings: Awaited<ReturnType<typeof listBusinessBookings>>; customers: number;
+} = null;
+if (user && studio) {
+  const [check, bookings, customers] = await Promise.all([studioChecklist(db, studio, user.emailVerified), listBusinessBookings(db, studio.id), listCustomers(db, studio.id)]);
+  data = { check, bookings, customers: customers.length };
+}
+const t = Date.now();
+const pending = data?.bookings.filter((b) => b.status === 'requested') ?? [];
+const upcoming = data?.bookings.filter((b) => b.status === 'accepted' && (b.start_at ?? Infinity) >= t) ?? [];
+const monthStart = new Date(); monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
+const thisMonth = data?.bookings.filter((b) => b.created_at >= monthStart.getTime()).length ?? 0;
+const pageUrl = studio ? `${Astro.url.origin}/studios/${studio.handle}` : '';
+const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project');
+---
+{!user || !studio ? (
+  <BaseLayout title="Opus Business" description="Booking pages, requests and client management for recording studios, on Opus World.">
+    <section class="app">
+      <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+        <p class="t-meta app__kicker">Opus Business</p>
+        <h1 class="app__title">Run your studio’s bookings on Opus.</h1>
+        <p class="app__lead">A booking page you can share anywhere, services and prices, opening hours, and requests you accept or decline. Your studio also appears in Opus World, where artists search by city. Home studio addresses stay private.</p>
+        <ul class="steps" role="list" style="margin-top:28px">
+          <li><a href="#start"><i>1</i>Create your studio profile</a></li>
+          <li><a href="#start"><i>2</i>Add services, prices and weekly hours</a></li>
+          <li><a href="#start"><i>3</i>Publish and share your booking link</a></li>
+        </ul>
+        <p class="notice" style="margin-top:24px">Studio tools are in early access while we pilot in Birmingham. Online payments and subscriptions are not switched on yet, so nobody is charged. Bookings are requests you accept or decline.</p>
+
+        {!user ? (
+          <div class="row" style="margin-top:28px" id="start">
+            <a class="btn-app" href="/sign-up?next=/business">Create an account</a>
+            <a class="btn-app btn-app--ghost" href="/sign-in?next=/business">Sign in</a>
+          </div>
+        ) : (
+          <form class="form panel" data-new-studio novalidate id="start" style="margin-top:28px">
+            <h2>Set up your studio</h2>
+            <label class="field"><span>Studio name *</span><input class="input" name="name" maxlength="80" required autocomplete="organization" /></label>
+            <fieldset class="field" style="border:0;padding:0;margin:0">
+              <legend>What kind of studio? *</legend>
+              <div class="bk__svc" style="margin-top:8px">
+                {Object.entries(STUDIO_TYPES).map(([k, v], i) => (
+                  <label><input type="radio" name="studioType" value={k} checked={i === 0} /><span><b>{v.label}</b><small>{v.hint}</small></span><span></span></label>
+                ))}
+              </div>
+            </fieldset>
+            <label class="field"><span>City or area *</span><PlaceSelect required /><small>This is what the public sees. You can add a private address later; it is never shown.</small></label>
+            <div data-status class="form-status"></div>
+            <div><button class="btn-app" type="submit">Continue</button></div>
+          </form>
+        )}
+      </div>
+    </section>
+  </BaseLayout>
+) : (
+  <BusinessShell title="Overview" section="overview" studio={studio} pending={pending.length}
+    lead={studio.status === 'published' ? 'Your booking page is live.' : 'Finish these steps to publish your booking page.'}>
+    {studio.status === 'published' && (
+      <a slot="actions" class="btn-app btn-app--ghost" href={`/studios/${studio.handle}`}>View booking page</a>
+    )}
+
+    {studio.status !== 'published' && data && (
+      <div class="panel" style="margin-bottom:16px">
+        <h2>Get ready to publish</h2>
+        <ul class="steps" role="list">
+          {data.check.steps.map((s) => <li><a href={s.href} class:list={{ 'is-done': s.done }}><i aria-hidden="true">{s.done ? '✓' : ''}</i><span>{s.label}<span class="sr-only">{s.done ? ' (done)' : ' (to do)'}</span></span></a></li>)}
+        </ul>
+        <div class="row" style="margin-top:16px">
+          <button class="btn-app" type="button" data-publish="on" disabled={!data.check.ready}>Publish booking page</button>
+          {!data.check.ready && <span class="dim" style="font-size:13px">Available once every step is done.</span>}
+        </div>
+        <p class="form-status" data-publish-status role="status"></p>
+      </div>
+    )}
+
+    <dl class="stats">
+      <div class="stat"><dt>Requests waiting</dt><dd>{pending.length}</dd></div>
+      <div class="stat"><dt>Upcoming sessions</dt><dd>{upcoming.length}</dd></div>
+      <div class="stat"><dt>Requests this month</dt><dd>{thisMonth}</dd></div>
+      <div class="stat"><dt>Customers</dt><dd>{data?.customers ?? 0}</dd></div>
+    </dl>
+
+    {studio.status === 'published' && (
+      <div class="panel" style="margin-top:16px">
+        <h2>Your booking link</h2>
+        <p class="dim">Share it on Instagram, your website or in messages. Customers can request a session without an account.</p>
+        <div class="linkbox"><input class="input" readonly value={pageUrl} aria-label="Booking page link" data-link /><button class="btn-app btn-app--ghost" type="button" data-copy>Copy</button></div>
+      </div>
+    )}
+
+    <div class="panel" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between"><h2>Requests waiting for you</h2><a class="link" href="/business/bookings" style="font-size:14px">All bookings</a></div>
+      {pending.length === 0 ? <p class="empty"><b>No requests right now.</b>New requests appear here and in your email. Unanswered requests lapse after 48 hours.</p> : (
+        <ul class="blist" role="list">{pending.slice(0, 5).map((b) => (
+          <li class="bitem" data-booking={b.id}>
+            <div><p class="bitem__when">{b.service_name} · {when(b)}</p><p class="bitem__who">{b.customer_name} · {money(b.price_cents, b.currency)}</p></div>
+            <div class="bitem__actions"><button class="btn-app" data-act="accept">Accept</button><button class="btn-app btn-app--ghost" data-act="decline">Decline</button></div>
+            {b.customer_message && <p class="bitem__msg">{b.customer_message}</p>}
+          </li>
+        ))}</ul>
+      )}
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Upcoming</h2>
+      {upcoming.length === 0 ? <p class="empty"><b>Nothing scheduled.</b>Accepted sessions show here.</p> : (
+        <ul class="blist" role="list">{upcoming.slice(0, 8).map((b) => (
+          <li class="bitem"><div><p class="bitem__when">{when(b)}</p><p class="bitem__who">{b.service_name} · {b.customer_name}</p></div><div class="bitem__actions"><span class="pill pill--accepted">Accepted</span></div></li>
+        ))}</ul>
+      )}
+    </div>
+  </BusinessShell>
+)}
+
+<script>
+  import { bindForm, values } from '@/scripts/form';
+  const f = document.querySelector<HTMLFormElement>('[data-new-studio]');
+  if (f) bindForm(f, { url: '/api/business/studio', body: (form) => values(form), busyLabel: 'Creating…', onSuccess: () => { location.href = '/business/studio?new=1'; } });
+
+  document.querySelector<HTMLButtonElement>('[data-copy]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    const input = document.querySelector<HTMLInputElement>('[data-link]')!;
+    try { await navigator.clipboard.writeText(input.value); b.textContent = 'Copied'; } catch { input.select(); b.textContent = 'Press ⌘C'; }
+    setTimeout(() => (b.textContent = 'Copy'), 2000);
+  });
+
+  document.querySelector<HTMLButtonElement>('[data-publish]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement; b.disabled = true;
+    const r = await fetch('/api/business/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: true }) });
+    if (r.ok) location.reload();
+    else { b.disabled = false; const s = document.querySelector<HTMLElement>('[data-publish-status]')!; s.className = 'form-status notice notice--error'; s.textContent = (await r.json().catch(() => ({}))).error ?? 'Couldn’t publish.'; }
+  });
+
+  import { bindBookingActions } from '@/scripts/booking-actions';
+  bindBookingActions();
+</script>

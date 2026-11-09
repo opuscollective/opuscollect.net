@@ -4,6 +4,7 @@ import Icon from '../ui/Icon.astro';
 interface Props { overlay?: boolean }
 const { overlay = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const current = (href: string) => (href.includes('?') ? false : href === '/business' ? path.startsWith('/business') : path === href);
 ---
 <script is:inline>
   // Signed-in hint (not a credential): swap Sign in / Join for Your account.
@@ -11,15 +12,14 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 </script>
 <header class:list={['hdr', { 'hdr--overlay': overlay }]} data-header>
   <div class="container hdr__inner">
-    <a href="/" class="hdr__brand" aria-label={`${SITE.name} home`}>
+    <a href="/" class="hdr__brand" aria-label={`${SITE.product} home`}>
       <img src="/images/oc-logo.png" alt="" width="34" height="22" />
-      <span>{SITE.name}</span>
     </a>
 
     <nav class="hdr__nav" aria-label="Main">
       <ul role="list">
         {NAV.map((item) => (
-          <li><a href={item.href} aria-current={path === item.href ? 'page' : undefined}>{item.label}</a></li>
+          <li><a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}</a></li>
         ))}
       </ul>
     </nav>
