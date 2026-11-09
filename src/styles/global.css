@@ -18,6 +18,11 @@ body {
   overflow-x: clip;
 }
 img, svg, video { display: block; max-width: 100%; }
+.logo { filter: var(--logo-filter); }
+/* A section forced dark (the globe hero) re-reads its text colour from its own tokens. */
+.tone-dark { color: var(--text); }
+.link { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.link:hover { text-decoration-color: var(--accent); }
 h1, h2, h3, h4, p, figure, blockquote, ul, ol { margin: 0; }
 ul[role='list'], ol[role='list'] { list-style: none; padding: 0; }
 h1, h2, h3, h4 { font-weight: 500; text-wrap: balance; }
@@ -62,7 +67,7 @@ button { cursor: pointer; }
   letter-spacing: var(--tr-meta); text-transform: uppercase;
 }
 .dim { color: var(--c-fg-faint); }
-.section--paper .dim { color: #7d776f; }
+.section--paper .dim { color: var(--c-paper-faint); }
 
 /* ---------- Reveal on scroll (enhancement only) ---------- */
 .js [data-reveal] {

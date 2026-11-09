@@ -34,7 +34,18 @@ const ogImage = new URL(image, SITE.url).href;
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#f2efea" />
+    <script is:inline>
+      // Apply the saved theme before first paint (System, Light or Dark). See src/scripts/theme.ts.
+      (function () {
+        var p = 'system';
+        try { p = localStorage.getItem('opus.theme') || 'system'; } catch (e) {}
+        var t = p === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : p;
+        var d = document.documentElement;
+        d.dataset.theme = t; d.dataset.themePref = p;
+        if (t === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#141416');
+      })();
+    </script>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />

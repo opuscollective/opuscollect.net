@@ -1,0 +1,63 @@
+---
+/**
+ * Theme choice: System, Light or Dark. "icon" = a header button with a small menu;
+ * "segmented" = three buttons in a row (mobile menu, account settings).
+ * The choice is applied by src/scripts/theme.ts and saved in this browser.
+ */
+import Icon from './Icon.astro';
+interface Props { variant?: 'icon' | 'segmented' }
+const { variant = 'icon' } = Astro.props;
+const OPTIONS = [
+  { value: 'system', label: 'System', icon: 'monitor' },
+  { value: 'light', label: 'Light', icon: 'sun' },
+  { value: 'dark', label: 'Dark', icon: 'moon' },
+] as const;
+---
+{variant === 'icon' ? (
+  <div class="theme theme--icon" data-theme-switch>
+    <button class="theme__btn" type="button" aria-haspopup="true" aria-expanded="false" data-theme-open>
+      <span class="theme__ico theme__ico--light"><Icon name="sun" size={18} /></span>
+      <span class="theme__ico theme__ico--dark"><Icon name="moon" size={18} /></span>
+      <span class="sr-only">Theme</span>
+    </button>
+    <div class="theme__menu" role="menu" aria-label="Theme" hidden data-theme-menu>
+      {OPTIONS.map((o) => (
+        <button type="button" role="menuitemradio" aria-checked="false" data-theme-value={o.value}>
+          <Icon name={o.icon} size={16} /><span>{o.label}</span><Icon name="check" size={16} class="theme__check" />
+        </button>
+      ))}
+    </div>
+  </div>
+) : (
+  <div class="theme theme--seg" role="radiogroup" aria-label="Theme" data-theme-switch>
+    {OPTIONS.map((o) => (
+      <button type="button" role="radio" aria-checked="false" data-theme-value={o.value}>
+        <Icon name={o.icon} size={15} /><span>{o.label}</span>
+      </button>
+    ))}
+  </div>
+)}
+
+<script>
+  import { initThemeSwitches } from '@/scripts/theme';
+  initThemeSwitches();
+</script>
+
+<style>
+  .theme--icon { position: relative; }
+  .theme__btn { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: none; color: var(--text-2); }
+  .theme__btn:hover { color: var(--text); background: var(--surface-hover); }
+  .theme__ico { display: none; }
+  :global([data-theme='light']) .theme__ico--light, :global([data-theme='dark']) .theme__ico--dark { display: block; }
+  :global(html:not([data-theme])) .theme__ico--light { display: block; }
+  .theme__menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 168px; padding: 6px; border-radius: var(--r-md); background: var(--surface-raised); box-shadow: var(--shadow-pop); z-index: 10; }
+  .theme__menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text); font-size: 14px; text-align: left; }
+  .theme__menu button:hover { background: var(--surface-hover); }
+  .theme__menu button span { flex: 1; }
+  .theme__menu :global(.theme__check) { visibility: hidden; color: var(--accent); }
+  .theme__menu [aria-checked='true'] :global(.theme__check) { visibility: visible; }
+
+  .theme--seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--r-pill); background: var(--surface-sunken); }
+  .theme--seg button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: none; color: var(--text-2); font-size: 13px; }
+  .theme--seg [aria-checked='true'] { background: var(--surface-raised); color: var(--text); box-shadow: 0 1px 2px var(--shadow-c); }
+</style>

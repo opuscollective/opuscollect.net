@@ -1,0 +1,12 @@
+---
+/** Opus Collective page carried over from the v23 site. Content lives in src/legacy/join.html. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import html from '@/legacy/join.html?raw';
+import '@/styles/legacy.css';
+---
+<BaseLayout title="Join" description="Join Opus Collective. Get early access and be among the first independent creatives on Opus." image="/images/scenic-room.jpg">
+  <div class="legacy"><Fragment set:html={html} /></div>
+</BaseLayout>
+<script>
+  import '@/scripts/legacy-site.js';
+</script>

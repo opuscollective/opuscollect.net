@@ -11,11 +11,20 @@ export const SITE = {
 
 /** Routes that are not built yet point at an "in development" page, never a 404. */
 export const NAV = [
-  { label: 'Opus World', href: '/world' },
-  { label: 'Verified', href: '/verified' },
-  { label: 'Services', href: '/services' },
-  { label: 'Events', href: '/events' },
-  { label: 'Business', href: '/business' },
+  { label: 'Home', href: '/home' },
+  { label: 'World', href: '/world' },
+  { label: 'Charts', href: '/charts' },
+  { label: 'Network', href: '/network' },
+  { label: 'Music', href: '/music' },
+];
+
+/** Signed-in account menu. Business and settings live here, not in the main nav. */
+export const ACCOUNT_MENU = [
+  { label: 'Your profile', href: '/account/profile' },
+  { label: 'Connections', href: '/account/connections' },
+  { label: 'Bookings', href: '/account/bookings' },
+  { label: 'Business dashboard', href: '/business' },
+  { label: 'Account settings', href: '/account' },
 ];
 
 export const ACCOUNT = {
@@ -33,21 +42,22 @@ export const SOCIALS = [
 
 export const FOOTER_NAV = [
   {
-    title: 'Directory',
+    title: 'Opus',
     links: [
       { label: 'Opus World', href: '/world' },
       { label: 'Studios', href: '/world?type=studio' },
+      { label: 'Opus Charts', href: '/charts' },
       { label: 'Opus Verified', href: '/verified' },
       { label: 'Trusted services', href: '/services' },
     ],
   },
   {
-    title: 'Opus',
+    title: 'Opus Collective',
     links: [
-      { label: 'About', href: '/about.html' },
-      { label: 'Events', href: '/events.html' },
-      { label: 'Releases', href: '/releases.html' },
-      { label: 'Community', href: '/community.html' },
+      { label: 'About', href: '/about' },
+      { label: 'Events', href: '/events' },
+      { label: 'Releases', href: '/releases' },
+      { label: 'Community', href: '/community' },
     ],
   },
   {
@@ -55,6 +65,7 @@ export const FOOTER_NAV = [
     links: [
       { label: 'Join Opus', href: '/sign-up' },
       { label: 'Sign in', href: '/sign-in' },
+      { label: 'Business dashboard', href: '/business' },
     ],
   },
 ];

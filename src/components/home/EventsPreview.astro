@@ -9,7 +9,7 @@ const [lead, ...rest] = EVENTS;
     <SectionHeader index="05" label="Events & experiences" tag="In the room" />
     <div class="events__top">
       <h2 id="events-title" class="t-h1" data-reveal>From the server<br /><span class="dim">to the same room.</span></h2>
-      <a href="/events.html" class="events__all" data-reveal>All events <Icon name="arrow-right" size={16} /></a>
+      <a href="/events" class="events__all" data-reveal>All events <Icon name="arrow-right" size={16} /></a>
     </div>
     <div class="events__grid">
       <a href={lead.href} class="events__lead" data-reveal>
@@ -49,7 +49,7 @@ const [lead, ...rest] = EVENTS;
   .events__side { display: grid; grid-template-rows: 1fr 1fr; gap: clamp(16px, 2vw, 24px); }
   .events__card { display: flex; flex-direction: column; gap: 12px; padding: clamp(24px, 2.4vw, 36px); border: 1px solid var(--c-ink-600); border-radius: var(--r-lg); background: var(--c-ink-900); transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
   .events__card p { color: var(--c-fg-faint); font-size: 15px; flex: 1; }
-  .events__card:hover { border-color: #4a464c; background: var(--c-ink-800); }
+  .events__card:hover { border-color: var(--line-strong); background: var(--c-ink-800); }
   .t-meta { color: var(--c-fg-faint); }
   .events__place { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--c-fg-muted); }
   .events__card:hover .events__place :global(svg) { transform: translateX(3px); }

@@ -1,3 +1,5 @@
+// Behaviour for the Opus Collective pages carried over from the v23 site (waitlist form, countdown, reveals, carousels).
+// @ts-nocheck
 const form=document.querySelector('#waitlist-form');if(form){form.addEventListener('submit',async e=>{e.preventDefault();if(!form.reportValidity())return;const button=form.querySelector('button');const status=document.querySelector('#form-status');button.disabled=true;status.textContent='Adding you to the list…';try{const body=Object.fromEntries(new FormData(form));body.interest=new URLSearchParams(location.search).get('interest')||'membership';const response=await fetch('/api/waitlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json();if(!response.ok)throw new Error(data.error||'Something went wrong.');status.textContent=data.returning?"You’re already on the list. We updated your details.":"You’re on the list. Opus will reach out when there’s news. You can join the Discord now.";form.reset();}catch(error){status.textContent=error.message+' Please try again.';}finally{button.disabled=false;}});}
 
 (function(){

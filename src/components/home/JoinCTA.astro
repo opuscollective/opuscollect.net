@@ -22,10 +22,10 @@ import Button from '../ui/Button.astro';
     background: var(--c-white); color: var(--c-black); border-radius: var(--r-lg);
     padding: clamp(36px, 7vw, 112px); display: flex; flex-direction: column; gap: clamp(24px, 3vw, 40px);
   }
-  .join__kicker { color: #77727a; }
+  .join__kicker { color: color-mix(in srgb, var(--c-black) 58%, var(--c-white)); }
   .join__title { max-width: 11ch; font-size: clamp(2.6rem, 1rem + 6.4vw, 8rem); line-height: 0.92; letter-spacing: -0.06em; font-weight: 500; }
-  .join__foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 28px 48px; padding-top: 28px; border-top: 1px solid #dcd8dd; }
-  .join__foot p { max-width: 520px; font-size: var(--t-lead); line-height: 1.55; color: #4a464c; }
+  .join__foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 28px 48px; padding-top: 28px; border-top: 1px solid color-mix(in srgb, var(--c-black) 16%, var(--c-white)); }
+  .join__foot p { max-width: 520px; font-size: var(--t-lead); line-height: 1.55; color: color-mix(in srgb, var(--c-black) 74%, var(--c-white)); }
   .join__ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; }
   .join__alt { font-size: 15px; font-weight: 500; min-height: 44px; display: inline-flex; align-items: center; }
   .join__alt:hover { text-decoration: underline; text-underline-offset: 6px; }

@@ -1,57 +1,178 @@
 /* ==========================================================================
-   Opus Collective design tokens
-   One source of truth for color, type, space, radius and motion.
-   Palette and typeface carried over from the current opuscollect.net.
+   Opus design tokens
+   Components use ROLE tokens (--bg, --surface, --text, --line, --accent ...).
+   Each theme only swaps the values. Light is the default; dark is charcoal.
+
+   How a theme is chosen (see layouts/BaseLayout.astro):
+   - <html data-theme="light|dark"> is set before first paint from the saved
+     choice (System, Light or Dark). Without JavaScript the device setting wins.
+   - .tone-dark forces dark values on one section (the homepage globe hero),
+     whatever the page theme is.
    ========================================================================== */
+
+/* ---------- Light (default) ---------- */
 :root {
-  /* Color: ink scale (dark surfaces) */
-  --c-black: #000000;
-  --c-ink-900: #0a0a0b;   /* raised surface */
-  --c-ink-800: #0f0e10;   /* cards */
-  --c-ink-700: #161616;   /* hairlines on black */
-  --c-ink-600: #242125;   /* borders */
-  --c-ink-500: #2e2a30;   /* strong borders */
+  color-scheme: light;
 
-  /* Color: text on dark */
-  --c-white: #ffffff;
-  --c-fg-muted: #c9c4cb;  /* nav, secondary */
-  --c-fg-subtle: #a39da5; /* body copy */
-  --c-fg-faint: #8e8890;  /* captions, de-emphasis in headlines */
-  --c-fg-ghost: #85808a;  /* legal, meta */
+  --bg: #f2efea;               /* warm off-white, the Opus paper */
+  --surface: #ffffff;          /* cards, panels, sheets */
+  --surface-sunken: #ebe7e1;   /* inputs on panels, wells, segmented tracks, image placeholders */
+  --surface-hover: #f6f4f0;    /* row and button hover on a surface */
+  --surface-raised: #ffffff;   /* selected segment, menus, popovers */
+  --glass: rgba(255, 255, 255, 0.9);        /* translucent panels over the map */
+  --glass-header: rgba(242, 239, 234, 0.86);
+  --scrim: rgba(28, 24, 20, 0.32);
 
-  /* Color: paper (light editorial sections) */
-  --c-paper: #f2efea;
+  --text: #1a1a1c;             /* charcoal: headings, names, body */
+  --text-2: #4a464c;           /* secondary copy */
+  --text-3: #65606a;           /* captions, meta, placeholders */
+  --line-faint: #e4dfd8;       /* quiet hairlines */
+  --line: #d9d4cd;             /* borders */
+  --line-strong: #c4beb6;      /* inputs, dividers, scrollbars */
+
+  --accent: #2f5d8f;           /* deep icy blue: selection, links, focus, verification */
+  --accent-strong: #1f4570;
+  --accent-soft: rgba(47, 93, 143, 0.08);
+  --accent-line: rgba(47, 93, 143, 0.36);
+  --on-accent: #ffffff;
+
+  --live: #376c48;             /* availability only */
+  --live-soft: rgba(55, 108, 72, 0.1);
+  --danger: #a3362b;
+  --danger-line: rgba(163, 54, 43, 0.4);
+  --danger-soft: rgba(163, 54, 43, 0.07);
+  --warn-line: rgba(150, 110, 30, 0.45);
+
+  --shadow-c: rgba(40, 32, 24, 0.14);
+  --shadow-pop: 0 18px 48px -12px rgba(40, 32, 24, 0.22), 0 0 0 1px var(--line);
+  --paper-band: #ffffff;       /* "paper" editorial sections: white on off-white */
+  --wordmark: #e6e1da;         /* oversized footer wordmark */
+  --logo-filter: invert(1);    /* the logo file is white; shown charcoal on light */
+
+  /* Opus World map (MapLibre reads these at runtime) */
+  --map-bg: #e9e5df;
+  --map-water: #dfe3e7;
+  --map-land: #f8f6f2;
+  --map-park: #edefe6;
+  --map-border: rgba(60, 58, 66, 0.28);
+  --map-road: #ffffff;
+  --map-road-major: #e6e0d8;
+  --map-building: #ebe6df;
+  --map-label: #6b6670;
+  --map-horizon: #e3e0db;
+}
+
+/* ---------- Dark (charcoal) ---------- */
+/* The same values are written twice: once for an explicit choice (and dark sections),
+   once for visitors without JavaScript whose device prefers dark. Keep them in sync. */
+[data-theme='dark'], .tone-dark {
+  color-scheme: dark;
+
+  --bg: #141416;
+  --surface: #1c1c1f;
+  --surface-sunken: #111113;
+  --surface-hover: #232327;
+  --surface-raised: #2a2a2f;
+  --glass: rgba(28, 28, 31, 0.92);
+  --glass-header: rgba(20, 20, 22, 0.86);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  --text: #f2efea;
+  --text-2: #b8b2ba;
+  --text-3: #9a949c;
+  --line-faint: rgba(242, 239, 234, 0.06);
+  --line: rgba(242, 239, 234, 0.1);
+  --line-strong: rgba(242, 239, 234, 0.18);
+
+  --accent: #a9c7ec;
+  --accent-strong: #d6e4f5;
+  --accent-soft: rgba(169, 199, 236, 0.14);
+  --accent-line: rgba(169, 199, 236, 0.4);
+  --on-accent: #0a1220;
+
+  --live: #9fcaa9;
+  --live-soft: rgba(159, 202, 169, 0.14);
+  --danger: #e58a7f;
+  --danger-line: rgba(229, 138, 127, 0.4);
+  --danger-soft: rgba(229, 138, 127, 0.08);
+  --warn-line: rgba(214, 180, 110, 0.4);
+
+  --shadow-c: rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 18px 48px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--line-strong);
+  --paper-band: #f2efea;
+  --wordmark: #1b1b1e;
+  --logo-filter: none;
+
+  --map-bg: #141416;
+  --map-water: #0e0f11;
+  --map-land: #1c1d21;
+  --map-park: #181a1c;
+  --map-border: rgba(214, 220, 230, 0.18);
+  --map-road: #26282d;
+  --map-road-major: #31343b;
+  --map-building: #202125;
+  --map-label: #8e8890;
+  --map-horizon: #16181c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg: #141416; --surface: #1c1c1f; --surface-sunken: #111113; --surface-hover: #232327; --surface-raised: #2a2a2f;
+    --glass: rgba(28, 28, 31, 0.92); --glass-header: rgba(20, 20, 22, 0.86); --scrim: rgba(0, 0, 0, 0.6);
+    --text: #f2efea; --text-2: #b8b2ba; --text-3: #9a949c;
+    --line-faint: rgba(242, 239, 234, 0.06); --line: rgba(242, 239, 234, 0.1); --line-strong: rgba(242, 239, 234, 0.18);
+    --accent: #a9c7ec; --accent-strong: #d6e4f5; --accent-soft: rgba(169, 199, 236, 0.14); --accent-line: rgba(169, 199, 236, 0.4); --on-accent: #0a1220;
+    --live: #9fcaa9; --live-soft: rgba(159, 202, 169, 0.14);
+    --danger: #e58a7f; --danger-line: rgba(229, 138, 127, 0.4); --danger-soft: rgba(229, 138, 127, 0.08); --warn-line: rgba(214, 180, 110, 0.4);
+    --shadow-c: rgba(0, 0, 0, 0.5); --shadow-pop: 0 18px 48px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--line-strong);
+    --paper-band: #f2efea; --wordmark: #1b1b1e; --logo-filter: none;
+    --map-bg: #141416; --map-water: #0e0f11; --map-land: #1c1d21; --map-park: #181a1c; --map-border: rgba(214, 220, 230, 0.18);
+    --map-road: #26282d; --map-road-major: #31343b; --map-building: #202125; --map-label: #8e8890; --map-horizon: #16181c;
+  }
+}
+
+/* ---------- Older token names, kept so existing styles follow the theme ----------
+   Declared on every element that re-themes, so they resolve inside .tone-dark too.
+   New code uses the role tokens above. */
+:root, [data-theme], .tone-dark {
+  --c-bg: var(--bg);
+  --c-fg: var(--text);
+  --c-text: var(--text);
+  --c-white: var(--text);      /* "strongest foreground": text, primary button fill */
+  --c-black: var(--bg);        /* its pair: text on a primary button */
+  --c-focus: var(--text);
+  --c-fg-muted: var(--text-2);
+  --c-fg-subtle: var(--text-2);
+  --c-fg-faint: var(--text-3);
+  --c-fg-ghost: var(--text-3);
+  --c-ink-900: var(--surface);
+  --c-ink-800: var(--surface);
+  --c-ink-700: var(--line-faint);
+  --c-ink-600: var(--line);
+  --c-ink-500: var(--line-strong);
+  --c-line: var(--line-faint);
+  --c-surface-1: var(--surface);
+  --c-surface-2: var(--surface-sunken);
+  --c-surface-3: var(--surface-raised);
+  --c-hairline: var(--line-faint);
+  --c-hairline-strong: var(--line);
+  --c-accent: var(--accent);
+  --c-accent-strong: var(--accent-strong);
+  --c-accent-ink: var(--on-accent);
+  --c-accent-dim: var(--accent-soft);
+  --c-accent-line: var(--accent-line);
+  --c-accent-glow: var(--accent-line);
+  --c-live: var(--live);
+  --c-live-dim: var(--live-soft);
+}
+
+:root {
+  /* Paper: the fixed light editorial band (same in both themes; text on it stays dark) */
+  --c-paper: var(--paper-band);
   --c-paper-ink: #111111;
   --c-paper-muted: #4a464c;
   --c-paper-line: #d9d4cd;
-
-  /* Accent: Opus icy blue. The one brand color, used with a purpose:
-     selection, interactive state, verification, geographic activity and important information. */
-  --c-accent: #a9c7ec;
-  --c-accent-strong: #d6e4f5;
-  --c-accent-ink: #0a1220;                  /* text on an accent fill */
-  --c-accent-dim: rgba(169, 199, 236, 0.14); /* selected backgrounds */
-  --c-accent-line: rgba(169, 199, 236, 0.4); /* selected borders */
-  --c-accent-glow: rgba(169, 199, 236, 0.3);
-
-  /* Secondary: muted sage, only for availability (open to collaborate, taking bookings) */
-  --c-live: #9fcaa9;
-  --c-live-dim: rgba(159, 202, 169, 0.14);
-
-  /* Warm surfaces and lines for app UI (panels, cards, inputs) */
-  --c-surface-1: #0b0a0c;
-  --c-surface-2: #121114;
-  --c-surface-3: #1a191c;
-  --c-hairline: rgba(242, 239, 234, 0.07);
-  --c-hairline-strong: rgba(242, 239, 234, 0.13);
-  --c-text: #f2efea;                        /* off-white for app headings and names */
-  --shadow-pop: 0 18px 48px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--c-hairline-strong);
-
-  /* Semantic */
-  --c-bg: #050506;
-  --c-fg: var(--c-white);
-  --c-line: var(--c-ink-700);
-  --c-focus: var(--c-white);
+  --c-paper-faint: #6b655e;
 
   /* Typography */
   --font-sans: 'Geist', 'Helvetica Neue', Arial, sans-serif;
@@ -65,6 +186,8 @@
   --t-lead: clamp(1.0625rem, 0.98rem + 0.35vw, 1.3125rem);
   --t-body: 1rem;
   --t-small: 0.875rem;
+  --t-ui: 0.875rem;     /* compact app scale: dense lists and forms */
+  --t-ui-sm: 0.8125rem;
   --t-meta: 0.6875rem;  /* uppercase mono labels */
 
   --lh-tight: 0.95;

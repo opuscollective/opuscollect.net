@@ -19,31 +19,55 @@ import { aggregate, levelForZoom, nextZoom, placePoints, type Aggregate, type Ge
 
 const OFM = 'https://tiles.openfreemap.org';
 
-const C = {
-  bg: '#050506',
-  land: '#141518',
-  border: 'rgba(214,220,230,0.18)',
-  water: '#08090b',
-  road: '#202227',
-  roadMajor: '#2b2e35',
-  building: '#191a1e',
-  label: '#8e8890',
-};
+/** Map colours come from the theme tokens (--map-* in styles/tokens.css), so the map follows Light and Dark. */
+interface Palette { bg: string; land: string; border: string; water: string; park: string; road: string; roadMajor: string; building: string; label: string; horizon: string }
+
+function readPalette(): Palette {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+  return {
+    bg: v('--map-bg', '#141416'),
+    land: v('--map-land', '#1c1d21'),
+    border: v('--map-border', 'rgba(214,220,230,0.18)'),
+    water: v('--map-water', '#0e0f11'),
+    park: v('--map-park', '#181a1c'),
+    road: v('--map-road', '#26282d'),
+    roadMajor: v('--map-road-major', '#31343b'),
+    building: v('--map-building', '#202125'),
+    label: v('--map-label', '#8e8890'),
+    horizon: v('--map-horizon', '#16181c'),
+  };
+}
+
+const sky = (C: Palette) => ({
+  'sky-color': C.bg,
+  'horizon-color': C.horizon,
+  'fog-color': C.bg,
+  'sky-horizon-blend': 0.6,
+  'horizon-fog-blend': 0.6,
+  'fog-ground-blend': 0.9,
+  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.35, 4, 0.2, 6, 0] as maplibregl.ExpressionSpecification,
+});
+
+/** Repaints an existing map in the current theme, keeping its data, markers and camera. */
+function applyPalette(map: maplibregl.Map, C: Palette) {
+  const paint: [string, string, string][] = [
+    ['bg', 'background-color', C.water], ['land', 'fill-color', C.land], ['omt-water', 'fill-color', C.water],
+    ['omt-park', 'fill-color', C.park], ['omt-building', 'fill-color', C.building], ['omt-road-minor', 'line-color', C.road],
+    ['omt-road-major', 'line-color', C.roadMajor], ['borders', 'line-color', C.border], ['omt-place', 'text-color', C.label],
+    ['omt-place', 'text-halo-color', C.bg],
+  ];
+  for (const [id, prop, value] of paint) if (map.getLayer(id)) map.setPaintProperty(id, prop, value);
+  map.setSky(sky(C));
+}
 
 function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
+  const C = readPalette();
   return {
     version: 8,
     projection: { type: 'globe' },
     glyphs: `${OFM}/fonts/{fontstack}/{range}.pbf`,
-    sky: {
-      'sky-color': C.bg,
-      'horizon-color': '#0c0e12',
-      'fog-color': C.bg,
-      'sky-horizon-blend': 0.6,
-      'horizon-fog-blend': 0.6,
-      'fog-ground-blend': 0.9,
-      'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.35, 4, 0.2, 6, 0],
-    },
+    sky: sky(C),
     sources: {
       countries: { type: 'geojson', data: countries },
       omt: { type: 'vector', url: `${OFM}/planet`, attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' },
@@ -53,7 +77,7 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
       { id: 'land', type: 'fill', source: 'countries', paint: { 'fill-color': C.land } },
       // City detail (OpenFreeMap). Fades in as you zoom toward a city.
       { id: 'omt-water', type: 'fill', source: 'omt', 'source-layer': 'water', minzoom: 4, paint: { 'fill-color': C.water } },
-      { id: 'omt-park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 8, paint: { 'fill-color': '#121416' } },
+      { id: 'omt-park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 8, paint: { 'fill-color': C.park } },
       { id: 'omt-building', type: 'fill', source: 'omt', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': C.building } },
       { id: 'omt-road-minor', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 10,
         filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary']]],
@@ -128,6 +152,8 @@ export async function mountWorldMap(
   // On phones the bottom sheet covers the lower edge; centre the globe in the visible area.
   if (opts.padBottom) map.setPadding({ top: 0, left: 0, right: 0, bottom: opts.padBottom });
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+  const onTheme = () => { if (map.isStyleLoaded()) applyPalette(map, readPalette()); else map.once('load', () => applyPalette(map, readPalette())); };
+  window.addEventListener('opus:theme', onTheme);
 
   // Missing third-party tiles should not break the map. Log once and continue.
   let warned = false;
@@ -304,6 +330,6 @@ export async function mountWorldMap(
     getZoom: () => map.getZoom(),
     getCamera: () => { const c = map.getCenter(); return { center: [c.lng, c.lat], zoom: map.getZoom() }; },
     resize: () => map.resize(),
-    destroy() { stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
+    destroy() { window.removeEventListener('opus:theme', onTheme); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
   };
 }

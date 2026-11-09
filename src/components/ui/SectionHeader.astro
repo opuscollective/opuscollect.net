@@ -14,10 +14,10 @@ const { index, label, tag, tone = 'dark' } = Astro.props;
 <style>
   .section-header {
     display: flex; justify-content: space-between; align-items: baseline; gap: 20px;
-    border-top: 1px solid var(--c-ink-600); padding-top: 16px; color: #8a8a8a;
+    border-top: 1px solid var(--c-ink-600); padding-top: 16px; color: var(--text-3);
   }
-  .section-header__tag { color: #7a7a7a; }
+  .section-header__tag { color: var(--text-3); }
   @media (max-width: 520px) { .section-header__tag { display: none; } }
-  .section-header--paper { border-color: var(--c-paper-line); color: #77716a; }
-  .section-header--paper .section-header__tag { color: #77716a; }
+  .section-header--paper { border-color: var(--c-paper-line); color: var(--c-paper-faint); }
+  .section-header--paper .section-header__tag { color: var(--c-paper-faint); }
 </style>

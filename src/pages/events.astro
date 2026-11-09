@@ -1,0 +1,12 @@
+---
+/** Opus Collective page carried over from the v23 site. Content lives in src/legacy/events.html. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import html from '@/legacy/events.html?raw';
+import '@/styles/legacy.css';
+---
+<BaseLayout title="Events" description="Opus Collective events: The Opus Summit, conferences and community sessions for independent music." image="/images/event-opus-sessions.jpg">
+  <div class="legacy"><Fragment set:html={html} /></div>
+</BaseLayout>
+<script>
+  import '@/scripts/legacy-site.js';
+</script>

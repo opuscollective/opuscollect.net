@@ -111,8 +111,8 @@ const linkFields = [
               <textarea class="textarea" name="bio" maxlength="1200" rows="5" placeholder="Who you are, what you make, and who you want to work with.">{p?.bio ?? ''}</textarea>
               <small><span data-bio-count>{p?.bio.length ?? 0}</span> / 1200</small>
             </label>
-            <label class="check"><input type="checkbox" name="openToCollab" checked={p ? p.openToCollab : true} /> <span><b style="color:#fff;font-weight:500">Open to collaboration.</b> Members can send you connection requests with a project idea.</span></label>
-            <label class="check"><input type="checkbox" name="showOnMap" checked={p ? p.showOnMap : true} /> <span><b style="color:#fff;font-weight:500">Show me on the Opus World map.</b> Your pin sits at your city or area, never your address. Turn this off to appear in list results only.</span></label>
+            <label class="check"><input type="checkbox" name="openToCollab" checked={p ? p.openToCollab : true} /> <span><b style="color:var(--text);font-weight:500">Open to collaboration.</b> Members can send you connection requests with a project idea.</span></label>
+            <label class="check"><input type="checkbox" name="showOnMap" checked={p ? p.showOnMap : true} /> <span><b style="color:var(--text);font-weight:500">Show me on the Opus World map.</b> Your pin sits at your city or area, never your address. Turn this off to appear in list results only.</span></label>
           </div>
         </div>
 
@@ -176,7 +176,7 @@ const linkFields = [
   .pe-photo, .pe-cover { display: flex; flex-direction: column; gap: 12px; }
   .pe-photo__img { width: 160px; height: 160px; border-radius: 50%; }
   .pe-cover__img { width: 100%; aspect-ratio: 3 / 1; border-radius: var(--r-md); }
-  .pe-photo__img, .pe-cover__img { display: grid; place-items: center; background: #0d0e11 center / cover no-repeat; border: 1px solid var(--c-ink-600); color: #4a4c55; font-size: 13px; }
+  .pe-photo__img, .pe-cover__img { display: grid; place-items: center; background: var(--surface-sunken) center / cover no-repeat; border: 1px solid var(--c-ink-600); color: var(--line-strong); font-size: 13px; }
   .pe-file { position: relative; overflow: hidden; width: max-content; }
   .pe-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .pe-rows { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 14px; }
@@ -187,7 +187,7 @@ const linkFields = [
   :global(.pe-row--portfolio) { grid-template-columns: 1fr 2fr auto; }
   :global(.pe-row .input) { min-height: 42px; font-size: 14px; }
   :global(.pe-row__x) { width: 36px; height: 36px; border: 1px solid var(--c-ink-600); border-radius: 50%; background: none; color: var(--c-fg-faint); cursor: pointer; }
-  :global(.pe-row__x:hover) { color: #fff; border-color: #4a4c55; }
+  :global(.pe-row__x:hover) { color: var(--text); border-color: var(--line-strong); }
   @media (max-width: 720px) {
     .pe-photos { grid-template-columns: 1fr; }
     :global(.pe-row--credit), :global(.pe-row--portfolio) { grid-template-columns: 1fr 1fr; }
