@@ -25,11 +25,27 @@
   --c-paper-muted: #4a464c;
   --c-paper-line: #d9d4cd;
 
-  /* Accent: restrained icy blue (Opus World markers, focus, active states) */
-  --c-accent: #b4cdea;
-  --c-accent-strong: #d6e6f8;
-  --c-accent-dim: rgba(180, 205, 234, 0.16);
-  --c-accent-glow: rgba(180, 205, 234, 0.35);
+  /* Accent: Opus periwinkle. The one brand color, used with a purpose:
+     selection, interactive state, verification, geographic activity and important information. */
+  --c-accent: #9aaeff;
+  --c-accent-strong: #c9d3ff;
+  --c-accent-ink: #0b0f24;                  /* text on an accent fill */
+  --c-accent-dim: rgba(154, 174, 255, 0.14); /* selected backgrounds */
+  --c-accent-line: rgba(154, 174, 255, 0.4); /* selected borders */
+  --c-accent-glow: rgba(154, 174, 255, 0.3);
+
+  /* Secondary: muted sage, only for availability (open to collaborate, taking bookings) */
+  --c-live: #9fcaa9;
+  --c-live-dim: rgba(159, 202, 169, 0.14);
+
+  /* Warm surfaces and lines for app UI (panels, cards, inputs) */
+  --c-surface-1: #0b0a0c;
+  --c-surface-2: #121114;
+  --c-surface-3: #1a191c;
+  --c-hairline: rgba(242, 239, 234, 0.07);
+  --c-hairline-strong: rgba(242, 239, 234, 0.13);
+  --c-text: #f2efea;                        /* off-white for app headings and names */
+  --shadow-pop: 0 18px 48px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--c-hairline-strong);
 
   /* Semantic */
   --c-bg: #050506;

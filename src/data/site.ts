@@ -11,10 +11,10 @@ export const SITE = {
 
 /** Routes that are not built yet point at an "in development" page, never a 404. */
 export const NAV = [
-  { label: 'Explore', href: '/world' },
-  { label: 'People', href: '/world?type=musician' },
-  { label: 'Studios', href: '/world?type=studio' },
+  { label: 'Opus World', href: '/world' },
   { label: 'Verified', href: '/verified' },
+  { label: 'Services', href: '/services' },
+  { label: 'Events', href: '/events' },
   { label: 'Business', href: '/business' },
 ];
 

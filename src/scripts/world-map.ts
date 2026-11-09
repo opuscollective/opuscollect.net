@@ -75,6 +75,12 @@ export interface WorldMapApi {
   flyToListing(l: Listing): void;
   setActive(id: string | null): void;
   setHover(id: string | null): void;
+  /** Marks the searched city with a quiet accent ring (null clears it). */
+  setPlace(p: { lat: number; lng: number; name: string } | null): void;
+  zoomOut(): void;
+  /** Back to the whole globe. */
+  resetView(): void;
+  getCenter(): { lat: number; lng: number };
   getBounds(): maplibregl.LngLatBounds;
   getZoom(): number;
   resize(): void;
@@ -228,12 +234,26 @@ export async function mountWorldMap(
   ['mousedown', 'touchstart', 'wheel', 'dragstart'].forEach((ev) => map.on(ev as 'mousedown', stop));
   spin();
 
+  let place: maplibregl.Marker | null = null;
+
   return {
     setData(ls) { (map.getSource('listings') as GeoJSONSource).setData(toGeo(ls)); for (const m of onScreen.values()) m.remove(); onScreen.clear(); markers.clear(); },
     flyToCity(lat, lng) { stop(); map.flyTo({ center: [lng, lat], zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) }); },
     flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: reduce ? 0 : 900 }); },
     setActive(id) { active = id; paintStates(); },
     setHover(id) { hover = id; paintStates(); },
+    setPlace(p) {
+      place?.remove(); place = null;
+      if (!p) return;
+      const el = document.createElement('div');
+      el.className = 'wm-place';
+      el.setAttribute('aria-hidden', 'true');
+      el.innerHTML = `<i></i><span>${p.name.replace(/[&<>"]/g, '')}</span>`;
+      place = new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map);
+    },
+    resetView() { stop(); map.flyTo({ zoom: el.clientWidth < 700 ? 0.85 : 1.5, duration: reduce ? 0 : 1100, essential: true }); },
+    zoomOut() { stop(); map.easeTo({ zoom: Math.max(1.2, map.getZoom() - 3), duration: reduce ? 0 : 800 }); },
+    getCenter: () => { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
     getBounds: () => map.getBounds(),
     getZoom: () => map.getZoom(),
     resize: () => map.resize(),

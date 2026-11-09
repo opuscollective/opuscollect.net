@@ -4,7 +4,9 @@ import Icon from '../ui/Icon.astro';
 interface Props { overlay?: boolean }
 const { overlay = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
-const current = (href: string) => (href.includes('?') ? false : href === '/business' ? path.startsWith('/business') : path === href);
+// Profiles and studio pages belong to Opus World; dashboards to Business.
+const SECTIONS: Record<string, string[]> = { '/world': ['/world', '/m/', '/studios/'], '/business': ['/business'] };
+const current = (href: string) => (SECTIONS[href] ? SECTIONS[href].some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/')) : path === href.replace(/\.html$/, '') || path === href);
 ---
 <script is:inline>
   // Signed-in hint (not a credential): swap Sign in / Join for Your account.
@@ -98,6 +100,7 @@ const current = (href: string) => (href.includes('?') ? false : href === '/busin
   .hdr__nav a::after { content: ''; position: absolute; left: 0; right: 0; bottom: 10px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform var(--dur) var(--ease); }
   .hdr__nav a:hover, .hdr__nav a[aria-current] { color: var(--c-white); }
   .hdr__nav a:hover::after, .hdr__nav a[aria-current]::after { transform: scaleX(1); transform-origin: left; }
+  .hdr__nav a[aria-current]::after { background: var(--c-accent); }
 
   .hdr__actions { display: flex; align-items: center; gap: 20px; }
   .hdr__signin { font-size: 14px; color: var(--c-fg-muted); min-height: 44px; display: inline-flex; align-items: center; }

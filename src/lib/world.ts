@@ -25,7 +25,7 @@ export function matches(l: Listing, f: WorldFilters): boolean {
   if (f.studioType && (l.kind !== 'studio' || l.studioType !== f.studioType)) return false;
   const q = f.text.trim().toLowerCase();
   if (q) {
-    const hay = [l.name, l.slug, l.location.city, l.location.region ?? '', l.location.country, ...(l.kind === 'musician' ? [...l.genres, ...allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s].label)] : l.services)]
+    const hay = [l.name, l.slug, l.location.city, l.metro?.name ?? '', l.location.region ?? '', l.location.country, kindLabel(l), ...(l.kind === 'musician' ? [...l.genres, ...allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s].label)] : l.services)]
       .join(' ')
       .toLowerCase();
     if (!hay.includes(q)) return false;
@@ -73,50 +73,52 @@ const SEAL =
 export function badgeHtml(l: Listing): string {
   if (l.kind === 'musician' && l.verification === 'verified')
     return `<span class="vb" title="Opus Verified">${SEAL}<span class="sr-only">Opus Verified</span></span>`;
-  if (l.kind === 'studio' && l.verification === 'studio') return `<span class="vchip vchip--studio">${SEAL}Opus Studio Verified</span>`;
-  if (l.kind === 'studio' && l.verification === 'identity') return `<span class="vchip">Identity Verified</span>`;
+  if (l.kind === 'studio' && l.verification === 'studio') return `<span class="vb" title="Opus Studio Verified">${SEAL}<span class="sr-only">Opus Studio Verified</span></span>`;
+  if (l.kind === 'studio' && l.verification === 'identity') return `<span class="vchip">ID verified</span>`;
   return '';
 }
 
-/** Card markup used by both the static page and the client-side filter. */
-export function cardHtml(l: Listing): string {
-  const place = `${esc(l.location.city)}${l.location.region ? ', ' + esc(l.location.region) : ''} · ${esc(l.location.country)}`;
-  const sample = l.isSample ? '<span class="wc__sample">Sample</span>' : '';
-  let kindLabel = '';
-  let note = '';
-  let tags: string[] = [];
-  let foot = '';
-  if (l.kind === 'musician') {
-    kindLabel = allSpecialties(l.primarySpecialty, l.specialties).map((d) => SPECIALTIES[d].label).join(' · ');
-    tags = l.genres;
-    foot =
-      `<span class="wc__collab${l.openToCollab ? ' is-on' : ''}">${l.openToCollab ? 'Open to collab' : 'Not taking collabs'}</span>` +
-      (l.highlight ? `<span class="wc__hl">${esc(l.highlight)}</span>` : '');
-  } else if (l.kind === 'studio') {
-    kindLabel = l.studioType === 'home' ? 'Home studio' : l.studioType === 'remote' ? 'Remote services' : 'Commercial studio';
-    tags = l.services;
-    if (l.studioType === 'home') note = '<p class="wc__note">Approximate area. Exact address is shared only for a confirmed booking.</p>';
-    foot =
-      (l.priceFrom ? `<span class="wc__rate"><small>From </small>${esc(l.priceFrom)}</span>`
-        : l.hourlyRate ? `<span class="wc__rate">$${l.hourlyRate.amount}<small>/hr · sample rate</small></span>` : '') +
-      `<span class="wc__gear">${esc(l.equipment.slice(0, 2).join(' · '))}</span>`;
-  } else {
-    kindLabel = ORG_CATEGORY_LABEL[l.category];
-    tags = l.services;
+/** What a listing is, in a few words: Primary Specialty, studio type, or organization category. */
+export function kindLabel(l: Listing): string {
+  if (l.kind === 'musician') return SPECIALTIES[l.primarySpecialty]?.label ?? '';
+  if (l.kind === 'studio') return l.studioType === 'home' ? 'Home studio' : l.studioType === 'remote' ? 'Remote services' : 'Recording studio';
+  return ORG_CATEGORY_LABEL[l.category];
+}
+
+export function placeText(l: Listing): string {
+  const loc = l.location;
+  return loc.region ? `${loc.city}, ${loc.region}` : `${loc.city}, ${loc.country}`;
+}
+
+/** One short line on what you can do now: collaborate, book, or nothing (then omitted). */
+function statusHtml(l: Listing): string {
+  if (l.kind === 'musician') return l.openToCollab ? '<p class="wc__status is-live">Open to collaborate</p>' : '';
+  if (l.kind === 'studio') {
+    if (l.priceFrom) return `<p class="wc__status is-live">Taking requests<span> · from ${esc(l.priceFrom)}</span></p>`;
+    if (l.hourlyRate) return `<p class="wc__status">$${l.hourlyRate.amount}/hr<span> · sample rate</span></p>`;
   }
+  return '';
+}
+
+const ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>';
+
+/** Result card: photo, name, verification, what they do, where, and availability. Click selects on the map; the arrow opens the profile. */
+export function cardHtml(l: Listing): string {
+  const sample = l.isSample ? '<span class="wc__sample">Sample</span>' : '';
   const av = l.photo
-    ? `<img class="wc__av wc__av--${l.kind}" src="${esc(l.photo)}" alt="" loading="lazy" width="56" height="56" />`
+    ? `<img class="wc__av wc__av--${l.kind}" src="${esc(l.photo)}" alt="" loading="lazy" width="48" height="48" />`
     : `<div class="wc__av wc__av--${l.kind}" aria-hidden="true">${esc(initials(l.name))}</div>`;
-  const open = l.href ? `<a class="wc__open" href="${esc(l.href)}">${l.kind === 'studio' ? 'View studio' : 'View profile'}<span class="sr-only"> of ${esc(l.name)}</span></a>` : '';
-  return `<article class="wc wc--${l.kind}" data-id="${l.id}" tabindex="0" aria-label="${esc(l.name)}${l.isSample ? ', sample listing' : ''}">
+  const what = esc(kindLabel(l));
+  const open = l.href
+    ? `<a class="wc__open" href="${esc(l.href)}" aria-label="Open ${esc(l.name)}${l.kind === 'studio' ? ' studio page' : ' profile'}">${ARROW}</a>`
+    : '';
+  return `<article class="wc wc--${l.kind}" data-id="${l.id}" tabindex="0" aria-label="${esc(l.name)}, ${what}, ${esc(placeText(l))}${l.isSample ? ', sample listing' : ''}">
   ${av}
   <div class="wc__body">
     <div class="wc__top"><h3 class="wc__name">${esc(l.name)}</h3>${badgeHtml(l)}${sample}</div>
-    <p class="wc__kind">${esc(kindLabel)}</p>
-    <p class="wc__place">${place}</p>
-    ${note}
-    <div class="wc__tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>
-    ${foot || open ? `<div class="wc__foot">${foot}${open}</div>` : ''}
+    <p class="wc__meta">${what}<span aria-hidden="true"> · </span>${esc(placeText(l))}</p>
+    ${statusHtml(l)}
   </div>
+  ${open}
 </article>`;
 }

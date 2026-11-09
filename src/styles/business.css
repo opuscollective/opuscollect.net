@@ -48,7 +48,7 @@
 @media (max-width: 640px) { .bitem { grid-template-columns: 1fr; } .bitem__actions { justify-content: flex-start; } }
 
 .pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: var(--r-pill); border: 1px solid var(--c-ink-500); font-size: 12px; color: var(--c-fg-subtle); white-space: nowrap; }
-.pill--requested { border-color: rgba(180, 205, 234, 0.5); color: var(--c-accent); }
+.pill--requested { border-color: var(--c-accent-line); color: var(--c-accent); }
 .pill--accepted { background: var(--c-accent-dim); border-color: transparent; color: #fff; }
 .pill--declined, .pill--cancelled, .pill--expired { color: var(--c-fg-ghost); }
 
