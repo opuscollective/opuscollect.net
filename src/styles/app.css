@@ -43,7 +43,7 @@
 
 .notice { padding: 14px 16px; border: 1px solid var(--c-ink-600); border-radius: var(--r-md); background: var(--c-ink-900); font-size: 14px; line-height: 1.55; color: var(--c-fg-subtle); }
 .notice b { color: #fff; font-weight: 500; }
-.notice--ok { border-color: rgba(180, 205, 234, 0.35); }
+.notice--ok { border-color: var(--c-accent-line); }
 .notice--warn { border-color: #5a4a2f; }
 .notice--error { border-color: #5a2f33; color: #f0c4c4; }
 .form-status:empty { display: none; }
