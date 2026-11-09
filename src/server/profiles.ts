@@ -33,6 +33,7 @@ export interface ProfileData {
   placeId: string | null;
   bio: string;
   openToCollab: boolean;
+  showOnMap: boolean;
   photoKey: string | null;
   coverKey: string | null;
   links: Partial<Record<LinkKey, string>>;
@@ -47,7 +48,7 @@ export interface ProfileData {
 
 interface Row {
   id: string; handle: string; display_name: string; primary_specialty: string | null; bio: string; place_id: string | null;
-  photo_key: string | null; cover_key: string | null; open_to_collab: number; links: string; credits: string; achievements: string;
+  photo_key: string | null; cover_key: string | null; open_to_collab: number; show_on_map: number; links: string; credits: string; achievements: string;
   collaborations: string; portfolio: string; status: ProfileData['status']; verification: ProfileData['verification']; updated_at: number;
   owner_user_id: string;
 }
@@ -65,7 +66,7 @@ async function hydrate(db: D1Database, r: Row): Promise<ProfileData> {
     primarySpecialty: (r.primary_specialty as Specialty) ?? null,
     specialties: specs.filter((s) => !s.is_primary).map((s) => s.specialty),
     genres: (gn!.results as { genre: string }[]).map((g) => g.genre),
-    placeId: r.place_id, bio: r.bio, openToCollab: !!r.open_to_collab, photoKey: r.photo_key, coverKey: r.cover_key,
+    placeId: r.place_id, bio: r.bio, openToCollab: !!r.open_to_collab, showOnMap: r.show_on_map !== 0, photoKey: r.photo_key, coverKey: r.cover_key,
     links: parse(r.links, {}), credits: parse(r.credits, []), achievements: parse(r.achievements, []),
     collaborations: parse(r.collaborations, []), portfolio: parse(r.portfolio, []),
     status: r.status, verification: r.verification, updatedAt: r.updated_at,
@@ -87,10 +88,10 @@ export async function getPublicProfile(db: D1Database, handle: string, viewerId:
 }
 
 // ---------- validation ----------
-const slugify = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 30);
-const RESERVED = new Set(['admin', 'account', 'api', 'world', 'opus', 'support', 'help', 'settings', 'verified', 'sign-in', 'sign-up', 'about', 'legal', 'new', 'edit']);
+export const slugify = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 30);
+export const RESERVED = new Set(['admin', 'account', 'api', 'world', 'opus', 'support', 'help', 'settings', 'verified', 'sign-in', 'sign-up', 'about', 'legal', 'new', 'edit', 'business', 'studios', 'bookings', 'venues', 'opportunities', 'people', 'media']);
 
-function cleanUrl(v: unknown, hosts: string[] | null): string {
+export function cleanUrl(v: unknown, hosts: string[] | null): string {
   const s = str(v, 500);
   if (!s) return '';
   let u: URL;
@@ -107,7 +108,7 @@ const list = (v: unknown, max: number) => (Array.isArray(v) ? v.slice(0, max) : 
 
 export interface SaveInput {
   handle?: unknown; displayName?: unknown; primarySpecialty?: unknown; specialties?: unknown; genres?: unknown;
-  placeId?: unknown; bio?: unknown; openToCollab?: unknown; links?: unknown; credits?: unknown; achievements?: unknown;
+  placeId?: unknown; bio?: unknown; openToCollab?: unknown; showOnMap?: unknown; links?: unknown; credits?: unknown; achievements?: unknown;
   collaborations?: unknown; portfolio?: unknown; publish?: unknown;
 }
 
@@ -184,16 +185,17 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
   const t = now();
   const id = existing?.id ?? randomId();
   const openToCollab = body.openToCollab === false ? 0 : 1;
+  const showOnMap = body.showOnMap === false ? 0 : 1;
   const stmts: D1PreparedStatement[] = [];
   if (existing) {
-    stmts.push(db.prepare(`UPDATE profiles SET handle=?, display_name=?, primary_specialty=?, bio=?, place_id=?, open_to_collab=?, links=?, credits=?,
+    stmts.push(db.prepare(`UPDATE profiles SET handle=?, display_name=?, primary_specialty=?, bio=?, place_id=?, open_to_collab=?, show_on_map=?, links=?, credits=?,
       achievements=?, collaborations=?, portfolio=?, updated_at=? WHERE id=?`)
-      .bind(handle, displayName, primary, bio, placeId, openToCollab, JSON.stringify(links), JSON.stringify(credits),
+      .bind(handle, displayName, primary, bio, placeId, openToCollab, showOnMap, JSON.stringify(links), JSON.stringify(credits),
         JSON.stringify(achievements), JSON.stringify(collaborations), JSON.stringify(portfolio), t, id));
   } else {
-    stmts.push(db.prepare(`INSERT INTO profiles (id, kind, owner_user_id, handle, display_name, primary_specialty, bio, place_id, open_to_collab, links, credits,
-      achievements, collaborations, portfolio, status, created_at, updated_at) VALUES (?, 'musician', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`)
-      .bind(id, user.id, handle, displayName, primary, bio, placeId, openToCollab, JSON.stringify(links), JSON.stringify(credits),
+    stmts.push(db.prepare(`INSERT INTO profiles (id, kind, owner_user_id, handle, display_name, primary_specialty, bio, place_id, open_to_collab, show_on_map, links, credits,
+      achievements, collaborations, portfolio, status, created_at, updated_at) VALUES (?, 'musician', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`)
+      .bind(id, user.id, handle, displayName, primary, bio, placeId, openToCollab, showOnMap, JSON.stringify(links), JSON.stringify(credits),
         JSON.stringify(achievements), JSON.stringify(collaborations), JSON.stringify(portfolio), t, t));
   }
   stmts.push(db.prepare('DELETE FROM profile_specialties WHERE profile_id = ?').bind(id));
@@ -267,10 +269,13 @@ export function stripWebpMetadata(buf: Uint8Array): Uint8Array {
   return res;
 }
 
-export async function uploadImage(env: Env, user: SessionUser, request: Request, slot: 'photo' | 'cover') {
+/** Any profile the user owns can take a photo and cover; defaults to their musician profile. */
+export interface ImageTarget { id: string; photoKey: string | null; coverKey: string | null; status: string }
+
+export async function uploadImage(env: Env, user: SessionUser, request: Request, slot: 'photo' | 'cover', target?: ImageTarget | null) {
   const db = env.DB;
   await limit(db, `upload:${user.id}`, 30, 60 * 60_000);
-  const profile = await getMyProfile(db, user.id);
+  const profile = target === undefined ? await getMyProfile(db, user.id) : target;
   if (!profile) throw new HttpError(400, 'Save your profile details before adding photos.');
   const len = Number(request.headers.get('content-length') || 0);
   if (len > MAX_BYTES) throw new HttpError(413, 'Images must be 5 MB or smaller.');
@@ -292,8 +297,8 @@ export async function uploadImage(env: Env, user: SessionUser, request: Request,
   return key;
 }
 
-export async function removeImage(env: Env, user: SessionUser, slot: 'photo' | 'cover') {
-  const profile = await getMyProfile(env.DB, user.id);
+export async function removeImage(env: Env, user: SessionUser, slot: 'photo' | 'cover', target?: ImageTarget | null) {
+  const profile = target === undefined ? await getMyProfile(env.DB, user.id) : target;
   if (!profile) return;
   const old = slot === 'photo' ? profile.photoKey : profile.coverKey;
   if (!old) return;

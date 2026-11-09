@@ -1,0 +1,27 @@
+---
+import BusinessShell from '@/components/business/BusinessShell.astro';
+import { listCustomers } from '@/server/bookings';
+import { loadBusiness } from '@/server/business-page';
+export const prerender = false;
+
+const ctx = await loadBusiness(Astro);
+if ('redirect' in ctx) return ctx.redirect;
+const { studio, pending, db } = ctx;
+const customers = await listCustomers(db, studio.id);
+const date = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: studio.timezone, month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(t));
+---
+<BusinessShell title="Customers" section="customers" studio={studio} pending={pending}
+  lead="Everyone who has requested a booking with you. Only you can see this list.">
+  <div class="panel">
+    {customers.length === 0 ? <p class="empty"><b>No customers yet.</b>When someone requests a booking, they’re added here, with or without an Opus account.</p> : (
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Name</th><th>Contact</th><th>Requests</th><th>Accepted</th><th>Last request</th></tr></thead>
+          <tbody>{customers.map((c) => (
+            <tr><td><b>{c.name}</b></td><td><a class="link" href={`mailto:${c.email}`}>{c.email}</a>{c.phone && <><br />{c.phone}</>}</td><td>{c.requests}</td><td>{c.accepted}</td><td>{date(c.last_seen_at)}</td></tr>
+          ))}</tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</BusinessShell>

@@ -1,0 +1,75 @@
+---
+import BusinessShell from '@/components/business/BusinessShell.astro';
+import { listBusinessBookings, STATUS_LABEL } from '@/server/bookings';
+import { loadBusiness } from '@/server/business-page';
+import { formatSlot, tzAbbr, money } from '@/lib/booking-time';
+export const prerender = false;
+
+const ctx = await loadBusiness(Astro);
+if ('redirect' in ctx) return ctx.redirect;
+const { studio, pending, db } = ctx;
+const all = await listBusinessBookings(db, studio.id);
+const t = Date.now();
+const groups = {
+  requests: all.filter((b) => b.status === 'requested'),
+  upcoming: all.filter((b) => b.status === 'accepted' && (b.end_at ?? Infinity) >= t),
+  past: all.filter((b) => !(b.status === 'requested' || (b.status === 'accepted' && (b.end_at ?? Infinity) >= t))).reverse(),
+};
+const TABS = [
+  { key: 'requests', label: 'Requests', empty: 'No requests waiting. Unanswered requests lapse after 48 hours, or at the session time if sooner.' },
+  { key: 'upcoming', label: 'Upcoming', empty: 'No accepted sessions coming up.' },
+  { key: 'past', label: 'Past', empty: 'Finished, declined, cancelled and expired bookings show here.' },
+] as const;
+const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project');
+const SOURCE: Record<string, string> = { directory: 'Opus World', link: 'Booking link', direct: 'Direct' };
+---
+<BusinessShell title="Bookings" section="bookings" studio={studio} pending={pending}
+  lead="Accept or decline requests. The customer gets an email either way. Nothing is charged until online payments are switched on.">
+  <div class="panel">
+    <div class="tabs" role="tablist">
+      {TABS.map((tb, i) => <button role="tab" id={`tab-${tb.key}`} aria-controls={`pane-${tb.key}`} aria-selected={i === 0 ? 'true' : 'false'} data-tab={tb.key}>{tb.label} ({groups[tb.key].length})</button>)}
+    </div>
+    {TABS.map((tb, i) => (
+      <div role="tabpanel" id={`pane-${tb.key}`} aria-labelledby={`tab-${tb.key}`} hidden={i !== 0}>
+        {groups[tb.key].length === 0 ? <p class="empty"><b>Nothing here.</b>{tb.empty}</p> : (
+          <ul class="blist" role="list">{groups[tb.key].map((b) => (
+            <li class="bitem" data-booking={b.id}>
+              <div>
+                <p class="bitem__when">{b.service_name} · {when(b)}</p>
+                <p class="bitem__who">{b.customer_name} · <a class="link" href={`mailto:${b.customer_email}`}>{b.customer_email}</a>{b.customer_phone && ` · ${b.customer_phone}`}</p>
+                <p class="bitem__meta">{b.ref} · {money(b.price_cents, b.currency)} · from {SOURCE[b.source] ?? b.source}{b.status === 'requested' && b.expires_at ? ` · lapses ${formatSlot(b.expires_at, studio.timezone)}` : ''}</p>
+              </div>
+              <div class="bitem__actions">
+                {b.status === 'requested' && <><button class="btn-app" data-act="accept">Accept</button><button class="btn-app btn-app--ghost" data-act="decline">Decline</button></>}
+                {b.status === 'accepted' && tb.key === 'upcoming' && <><span class={`pill pill--accepted`}>Accepted</span><button class="btn-app btn-app--ghost" data-act="cancel">Cancel</button></>}
+                {tb.key === 'past' && <span class={`pill pill--${b.status}`}>{b.status === 'requested' ? 'Waiting' : b.status === 'cancelled' && b.cancelled_by ? `Cancelled by ${b.cancelled_by === 'business' ? 'you' : 'customer'}` : b.status === 'accepted' ? 'Completed' : STATUS_LABEL[b.status]}</span>}
+              </div>
+              {b.customer_message && <p class="bitem__msg">“{b.customer_message}”</p>}
+              {b.business_note && <p class="bitem__msg">Your note: {b.business_note}</p>}
+            </li>
+          ))}</ul>
+        )}
+      </div>
+    ))}
+  </div>
+</BusinessShell>
+
+<script>
+  import { bindBookingActions } from '@/scripts/booking-actions';
+  bindBookingActions();
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+  const show = (key: string) => tabs.forEach((b) => {
+    const on = b.dataset.tab === key;
+    b.setAttribute('aria-selected', String(on));
+    document.getElementById(`pane-${b.dataset.tab}`)!.hidden = !on;
+  });
+  tabs.forEach((b, i) => {
+    b.addEventListener('click', () => { show(b.dataset.tab!); history.replaceState(null, '', `#${b.dataset.tab}`); });
+    b.addEventListener('keydown', (e) => {
+      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]!; n.focus(); n.click(); }
+    });
+  });
+  const h = location.hash.slice(1);
+  if (tabs.some((b) => b.dataset.tab === h)) show(h);
+</script>

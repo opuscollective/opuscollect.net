@@ -14,7 +14,7 @@ interface Props {
   hideFooter?: boolean;
 }
 const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false } = Astro.props;
-const fullTitle = title ? `${title} · ${SITE.name}` : `${SITE.name} · The professional network for independent music`;
+const fullTitle = title ? `${title} · ${SITE.product}` : `${SITE.product} · The professional network for independent music`;
 const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogImage = new URL(image, SITE.url).href;
 ---

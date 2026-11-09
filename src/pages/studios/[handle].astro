@@ -1,0 +1,217 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { STUDIO_TYPES, getPublicStudio, listServices } from '@/server/business';
+import { mediaUrl } from '@/server/profiles';
+import { PLACES, placeLabel } from '@/data/places';
+import { money } from '@/lib/booking-time';
+import '@/styles/app.css';
+import '@/styles/business.css';
+export const prerender = false;
+
+const viewer = Astro.locals.user;
+const db = Astro.locals.runtime.env.DB;
+const studio = await getPublicStudio(db, Astro.params.handle ?? '', viewer?.id ?? null);
+if (!studio) return new Response(null, { status: 404, statusText: 'Not found' });
+const services = await listServices(db, studio.id);
+const place = PLACES.find((p) => p.id === studio.placeId);
+const isOwner = viewer?.id === studio.ownerUserId;
+const live = studio.status === 'published';
+const canBook = live && !isOwner && services.length > 0;
+const len = (m: number) => (m % 60 ? (Math.floor(m / 60) ? Math.floor(m / 60) + ' h ' : '') + (m % 60) + ' min' : m / 60 + ' h');
+const BADGE: Record<string, string> = { identity: 'Identity Verified', studio: 'Opus Studio Verified' };
+const source = Astro.url.searchParams.get('from') === 'world' ? 'directory' : 'link';
+const description = `${studio.name}: ${STUDIO_TYPES[studio.studioType].label.toLowerCase()}${place ? ` in ${place.name}` : ''}. Request a session on Opus World.`;
+---
+<BaseLayout title={studio.name} description={description} noindex={!live} image={studio.photoKey ? mediaUrl(studio.photoKey) ?? undefined : undefined}>
+  <div class="sp-cover" style={studio.coverKey ? `background-image:url(${mediaUrl(studio.coverKey)})` : ''}></div>
+  <div class="sp">
+    <header class="sp__head">
+      <div class="sp__photo" style={studio.photoKey ? `background-image:url(${mediaUrl(studio.photoKey)})` : ''} role="img" aria-label={`${studio.name} photo`}></div>
+      <div>
+        <h1>{studio.name}</h1>
+        <p class="sp__sub">
+          <span>{STUDIO_TYPES[studio.studioType].label}</span>
+          {place && <span>{studio.studioType === 'home' ? `${place.name} area` : placeLabel(place)}</span>}
+          {BADGE[studio.verification] && <span class="pill pill--accepted">{BADGE[studio.verification]}</span>}
+        </p>
+      </div>
+    </header>
+
+    <div class="sp__body">
+      {!live && <p class="notice notice--warn" style="margin-top:24px">Draft preview. Only you can see this page. <a class="link" href="/business">Publish it</a> to start taking requests.</p>}
+      {isOwner && live && <p class="notice" style="margin-top:24px">This is your public page. <a class="link" href="/business">Back to your dashboard</a>.</p>}
+      <section><h2>About</h2><p class="sp__bio">{studio.bio}</p></section>
+      {services.length > 0 && (
+        <section><h2>Services and prices</h2>
+          <ul role="list">{services.map((s) => (
+            <li class="svc"><div><b>{s.name}</b><small>{s.mode === 'session' ? len(s.durationMin) : 'Remote project'}{s.description && ` · ${s.description}`}</small></div><div class="svc__price">{money(s.priceCents, s.currency)}</div></li>
+          ))}</ul>
+        </section>
+      )}
+      {studio.equipment.length > 0 && <section><h2>Equipment</h2><ul class="sp__gear" role="list">{studio.equipment.map((e) => <li>{e}</li>)}</ul></section>}
+      {(studio.bookingPolicy || studio.cancellationPolicy) && (
+        <section><h2>Policies</h2>
+          {studio.bookingPolicy && <p class="sp__policy"><b>Booking.</b> {studio.bookingPolicy}</p>}
+          {studio.cancellationPolicy && <p class="sp__policy" style="margin-top:10px"><b>Cancellation.</b> {studio.cancellationPolicy}</p>}
+        </section>
+      )}
+      {studio.studioType === 'home' && <section><h2>Location</h2><p class="sp__policy">This is a home studio. The exact address is shared by the studio after they accept your request.</p></section>}
+      {(studio.website || studio.instagram) && (
+        <section><h2>Links</h2><p class="row">
+          {studio.website && <a class="link" href={studio.website} rel="noopener nofollow ugc" target="_blank">Website</a>}
+          {studio.instagram && <a class="link" href={studio.instagram} rel="noopener nofollow ugc" target="_blank">Instagram</a>}
+        </p></section>
+      )}
+    </div>
+
+    <aside class="sp__book" aria-label="Request a booking">
+      {canBook ? (
+        <div class="bk" data-bk data-handle={studio.handle} data-source={source} data-home={studio.studioType === 'home' ? '1' : ''} data-tz={studio.timezone}>
+          <div data-steps>
+            <h2>Request a booking</h2>
+            <p class="bk__fine" style="margin-top:6px">The studio accepts or declines within 48 hours. Nothing is charged on Opus.</p>
+
+            <div class="bk__step">
+              <p class="bk__label">Service</p>
+              <div class="bk__svc">
+                {services.map((s, i) => (
+                  <label><input type="radio" name="service" value={s.id} checked={i === 0} data-mode={s.mode} data-name={s.name} data-price={money(s.priceCents, s.currency)} data-len={s.mode === 'session' ? len(s.durationMin) : ''} />
+                    <span><b>{s.name}</b><small>{s.mode === 'session' ? len(s.durationMin) : 'Remote project, no visit'}</small></span><span class="price">{money(s.priceCents, s.currency)}</span></label>
+                ))}
+              </div>
+            </div>
+
+            <div class="bk__step" data-when>
+              <p class="bk__label"><span>Day</span><span data-tzlabel></span></p>
+              <div class="bk__days" data-days><div class="skel" style="grid-column:span 5"></div></div>
+              <div class="bk__nav"><button type="button" data-prev hidden>← Earlier</button><button type="button" data-next>Later dates →</button></div>
+              <p class="bk__label" style="margin-top:16px">Time</p>
+              <div class="bk__times" data-times></div>
+              <p class="bk__fine" data-times-empty hidden>No open times on this day. Try another.</p>
+            </div>
+
+            <form class="form bk__step" data-form novalidate>
+              <label class="field"><span>Your name *</span><input class="input" name="name" autocomplete="name" maxlength="80" required value="" /></label>
+              <label class="field"><span>Email *</span><input class="input" name="email" type="email" autocomplete="email" maxlength="254" required value={viewer?.email ?? ''} readonly={!!viewer} /></label>
+              <label class="field"><span>Phone</span><input class="input" name="phone" type="tel" autocomplete="tel" maxlength="30" /></label>
+              <label class="field"><span>{studio.studioType === 'home' ? 'About your session *' : 'Message to the studio'}</span><textarea class="textarea" name="message" rows="3" maxlength="1000" placeholder="What are you working on? How many people are coming?"></textarea>
+                {studio.studioType === 'home' && <small>Home studios ask for a short note before accepting.</small>}</label>
+              <div class="bk__summary" data-summary hidden></div>
+              <div data-status class="form-status"></div>
+              <button class="btn-app btn-app--block" type="submit">Send request</button>
+              <p class="bk__fine">By sending a request you agree to share these details with {studio.name}. Payment is arranged with the studio after they accept; online payment is not switched on yet.</p>
+            </form>
+          </div>
+          <div class="bk__done" data-done hidden>
+            <h2 tabindex="-1">Request sent</h2>
+            <p class="bk__summary" data-done-summary></p>
+            <p class="bk__fine">We emailed you a link to view or cancel the request. Keep it: it works without an account.</p>
+            <p style="margin-top:16px"><a class="btn-app btn-app--ghost" data-done-link href="#">View your request</a></p>
+          </div>
+        </div>
+      ) : (
+        <div class="bk"><h2>Bookings</h2><p class="bk__fine" style="margin-top:8px">{isOwner ? 'Customers will see the booking form here.' : 'This studio isn’t taking requests right now.'}</p></div>
+      )}
+    </aside>
+  </div>
+</BaseLayout>
+
+<script>
+  import { bindForm, values } from '@/scripts/form';
+  const root = document.querySelector<HTMLElement>('[data-bk]');
+  if (root) {
+    const handle = root.dataset.handle!;
+    const form = root.querySelector<HTMLFormElement>('[data-form]')!;
+    const daysEl = root.querySelector<HTMLElement>('[data-days]')!;
+    const timesEl = root.querySelector<HTMLElement>('[data-times]')!;
+    const emptyEl = root.querySelector<HTMLElement>('[data-times-empty]')!;
+    const whenEl = root.querySelector<HTMLElement>('[data-when]')!;
+    const summary = root.querySelector<HTMLElement>('[data-summary]')!;
+    const prev = root.querySelector<HTMLButtonElement>('[data-prev]')!;
+    const next = root.querySelector<HTMLButtonElement>('[data-next]')!;
+    type Day = { day: string; slots: { at: number; label: string }[] };
+    let days: Day[] = [], day: string | null = null, at: number | null = null, atLabel = '', from: string | null = null, nextFrom = '', today = '';
+    const history: string[] = [];
+
+    const svc = () => root.querySelector<HTMLInputElement>('[name="service"]:checked')!;
+    const dayName = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+    const dayLong = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
+    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+    function renderSummary() {
+      const s = svc();
+      const session = s.dataset.mode === 'session';
+      if (session && !at) { summary.hidden = true; return; }
+      summary.hidden = false;
+      summary.innerHTML = `<b>${esc(s.dataset.name!)}</b><br>${session ? `${esc(dayLong(day!))} at ${esc(atLabel)} (${esc(s.dataset.len!)})` : 'Remote project'}<br>Price <b>${esc(s.dataset.price!)}</b>, paid to the studio. No Opus fees for customers.`;
+    }
+    function renderTimes() {
+      const d = days.find((x) => x.day === day);
+      timesEl.replaceChildren(...(d?.slots ?? []).map((s) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'bk__time'; b.textContent = s.label;
+        b.setAttribute('aria-pressed', String(s.at === at));
+        b.addEventListener('click', () => { at = s.at; atLabel = s.label; renderTimes(); renderSummary(); });
+        return b;
+      }));
+      emptyEl.hidden = !!d?.slots.length || !day;
+    }
+    function renderDays() {
+      daysEl.replaceChildren(...days.map((d) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'bk__day'; b.disabled = d.slots.length === 0;
+        b.setAttribute('aria-pressed', String(d.day === day));
+        b.setAttribute('aria-label', `${dayLong(d.day)}, ${d.slots.length ? `${d.slots.length} open times` : 'no open times'}`);
+        b.innerHTML = `<small>${dayName(d.day)}</small><b>${Number(d.day.slice(8))}</b>`;
+        b.addEventListener('click', () => { day = d.day; at = null; renderDays(); renderTimes(); renderSummary(); });
+        return b;
+      }));
+    }
+    async function load(start: string | null) {
+      at = null; renderSummary();
+      daysEl.innerHTML = '<div class="skel" style="grid-column:span 5"></div>'; timesEl.replaceChildren();
+      const q = new URLSearchParams({ service: svc().value });
+      if (start) q.set('from', start);
+      const r = await fetch(`/api/studios/${encodeURIComponent(handle)}/slots?${q}`);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { daysEl.innerHTML = `<p class="bk__fine">${esc(d.error ?? 'Couldn’t load times.')}</p>`; return; }
+      days = d.days; from = d.from; nextFrom = d.next; today = d.today;
+      root!.querySelector('[data-tzlabel]')!.textContent = `Times in ${String(d.timezone).split('/').pop()!.replace(/_/g, ' ')} time`;
+      day = days.find((x) => x.slots.length)?.day ?? null;
+      prev.hidden = from === today;
+      renderDays(); renderTimes();
+      if (!day) { emptyEl.hidden = false; emptyEl.textContent = 'No open times in these two weeks. Try later dates.'; }
+      else emptyEl.textContent = 'No open times on this day. Try another.';
+    }
+    function onService() {
+      const session = svc().dataset.mode === 'session';
+      whenEl.hidden = !session;
+      history.length = 0;
+      if (session) load(null); else { at = null; renderSummary(); }
+    }
+    root.querySelectorAll('[name="service"]').forEach((r) => r.addEventListener('change', onService));
+    next.addEventListener('click', () => { if (from) history.push(from); load(nextFrom); });
+    prev.addEventListener('click', () => load(history.pop() ?? null));
+    onService();
+
+    bindForm(form, {
+      url: '/api/bookings',
+      body: (f) => {
+        const s = svc();
+        return { ...values(f), handle, serviceId: s.value, start: s.dataset.mode === 'session' ? at : undefined, source: root.dataset.source };
+      },
+      busyLabel: 'Sending…',
+      // A taken time (409) means the grid is stale: reload it so the customer can pick again.
+      onError: (_d, code) => { if (code === 409) load(day); },
+      onSuccess: (d) => {
+        root.querySelector<HTMLElement>('[data-steps]')!.hidden = true;
+        const done = root.querySelector<HTMLElement>('[data-done]')!;
+        done.hidden = false;
+        root.querySelector('[data-done-summary]')!.innerHTML = `<b>${esc(svc().dataset.name!)}</b><br>${esc(String(d.when))}<br>Reference <b>${esc(String(d.ref))}</b>`;
+        root.querySelector<HTMLAnchorElement>('[data-done-link]')!.href = String(d.manageUrl);
+        done.querySelector('h2')!.focus?.();
+        done.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      },
+    });
+  }
+</script>

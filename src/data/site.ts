@@ -1,5 +1,7 @@
 export const SITE = {
   name: 'Opus Collective',
+  /** The platform's product name, used in page titles and the app. The organization name stays in the footer, About and legal pages. */
+  product: 'Opus World',
   url: 'https://opuscollect.net',
   motto: 'The Future. The Legacy. The Sound.',
   description:
@@ -9,11 +11,11 @@ export const SITE = {
 
 /** Routes that are not built yet point at an "in development" page, never a 404. */
 export const NAV = [
-  { label: 'Opus World', href: '/world' },
+  { label: 'Explore', href: '/world' },
+  { label: 'People', href: '/world?type=musician' },
+  { label: 'Studios', href: '/world?type=studio' },
   { label: 'Verified', href: '/verified' },
-  { label: 'Services', href: '/services' },
-  { label: 'Events', href: '/events.html' },
-  { label: 'About', href: '/about.html' },
+  { label: 'Business', href: '/business' },
 ];
 
 export const ACCOUNT = {

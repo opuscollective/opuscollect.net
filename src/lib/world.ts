@@ -8,7 +8,7 @@ export interface WorldFilters {
   specialty?: Specialty | '';
   genre?: string;
   openToCollab?: boolean;
-  studioType?: 'commercial' | 'home' | '';
+  studioType?: 'commercial' | 'home' | 'remote' | '';
   verifiedOnly: boolean;
   text: string;
 }
@@ -48,6 +48,7 @@ export function stats(listings: Listing[]) {
 export function byCity(listings: Listing[]) {
   const m = new Map<string, { city: string; country: string; lat: number; lng: number; count: number }>();
   for (const l of listings) {
+    if (l.onMap === false) continue;
     // Aggregate to the metro area (suburbs count toward their city).
     const pt = l.metro ?? { name: l.location.city, lat: l.location.lat, lng: l.location.lng };
     const k = `${pt.name}|${l.location.country}`;
@@ -92,11 +93,12 @@ export function cardHtml(l: Listing): string {
       `<span class="wc__collab${l.openToCollab ? ' is-on' : ''}">${l.openToCollab ? 'Open to collab' : 'Not taking collabs'}</span>` +
       (l.highlight ? `<span class="wc__hl">${esc(l.highlight)}</span>` : '');
   } else if (l.kind === 'studio') {
-    kindLabel = l.studioType === 'home' ? 'Home studio' : 'Commercial studio';
+    kindLabel = l.studioType === 'home' ? 'Home studio' : l.studioType === 'remote' ? 'Remote services' : 'Commercial studio';
     tags = l.services;
     if (l.studioType === 'home') note = '<p class="wc__note">Approximate area. Exact address is shared only for a confirmed booking.</p>';
     foot =
-      (l.hourlyRate ? `<span class="wc__rate">$${l.hourlyRate.amount}<small>/hr · sample rate</small></span>` : '') +
+      (l.priceFrom ? `<span class="wc__rate"><small>From </small>${esc(l.priceFrom)}</span>`
+        : l.hourlyRate ? `<span class="wc__rate">$${l.hourlyRate.amount}<small>/hr · sample rate</small></span>` : '') +
       `<span class="wc__gear">${esc(l.equipment.slice(0, 2).join(' · '))}</span>`;
   } else {
     kindLabel = ORG_CATEGORY_LABEL[l.category];
@@ -105,7 +107,7 @@ export function cardHtml(l: Listing): string {
   const av = l.photo
     ? `<img class="wc__av wc__av--${l.kind}" src="${esc(l.photo)}" alt="" loading="lazy" width="56" height="56" />`
     : `<div class="wc__av wc__av--${l.kind}" aria-hidden="true">${esc(initials(l.name))}</div>`;
-  const open = l.href ? `<a class="wc__open" href="${esc(l.href)}">View profile<span class="sr-only"> of ${esc(l.name)}</span></a>` : '';
+  const open = l.href ? `<a class="wc__open" href="${esc(l.href)}">${l.kind === 'studio' ? 'View studio' : 'View profile'}<span class="sr-only"> of ${esc(l.name)}</span></a>` : '';
   return `<article class="wc wc--${l.kind}" data-id="${l.id}" tabindex="0" aria-label="${esc(l.name)}${l.isSample ? ', sample listing' : ''}">
   ${av}
   <div class="wc__body">

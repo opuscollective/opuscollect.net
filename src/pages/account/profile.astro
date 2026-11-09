@@ -103,6 +103,7 @@ const linkFields = [
               <small><span data-bio-count>{p?.bio.length ?? 0}</span> / 1200</small>
             </label>
             <label class="check"><input type="checkbox" name="openToCollab" checked={p ? p.openToCollab : true} /> <span><b style="color:#fff;font-weight:500">Open to collaboration.</b> Members can send you connection requests with a project idea.</span></label>
+            <label class="check"><input type="checkbox" name="showOnMap" checked={p ? p.showOnMap : true} /> <span><b style="color:#fff;font-weight:500">Show me on the Opus World map.</b> Your pin sits at your city or area, never your address. Turn this off to appear in list results only.</span></label>
           </div>
         </div>
 
@@ -272,7 +273,7 @@ const linkFields = [
       document.querySelectorAll<HTMLInputElement>('[data-link]').forEach((i) => (links[i.dataset.link!] = i.value.trim()));
       return {
         displayName: v.displayName, handle: v.handle, primarySpecialty: v.primarySpecialty, placeId: v.placeId, bio: v.bio,
-        openToCollab: v.openToCollab, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'), links,
+        openToCollab: v.openToCollab, showOnMap: v.showOnMap, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'), links,
         credits: readRows('credits'), portfolio: readRows('portfolio'),
         achievements: readRows('achievements').map((r) => r.value), collaborations: readRows('collaborations').map((r) => r.value),
         publish: intent === 'publish' ? true : intent === 'unpublish' ? false : undefined,

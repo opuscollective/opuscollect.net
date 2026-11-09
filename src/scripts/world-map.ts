@@ -119,6 +119,7 @@ export async function mountWorldMap(
   const toGeo = (ls: Listing[]): GeoJSON.FeatureCollection => {
     const groups = new Map<string, Listing[]>();
     for (const l of ls) {
+      if (l.onMap === false) continue;
       const k = `${l.location.lat.toFixed(4)},${l.location.lng.toFixed(4)}`;
       (groups.get(k) ?? groups.set(k, []).get(k)!).push(l);
     }

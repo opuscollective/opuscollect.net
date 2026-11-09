@@ -1,0 +1,28 @@
+---
+/** Fields for adding or editing one service. Prices are typed in dollars; the server converts and validates. */
+import type { Service } from '@/server/business';
+interface Props { s: Service; remoteOnly?: boolean }
+const { s, remoteOnly = false } = Astro.props;
+const len = (m: number) => (m % 60 ? (Math.floor(m / 60) ? Math.floor(m / 60) + ' h ' : '') + (m % 60) + ' min' : m / 60 + ' h');
+const DURATIONS = Array.from({ length: (720 - 30) / 15 + 1 }, (_, i) => 30 + i * 15);
+const BUFFERS = Array.from({ length: 240 / 15 + 1 }, (_, i) => i * 15);
+const price = s.priceCents ? (s.priceCents / 100).toFixed(s.priceCents % 100 ? 2 : 0) : '';
+---
+<label class="field"><span>Name *</span><input class="input" name="name" maxlength="80" required value={s.name} placeholder="Recording session, 2 hours" /></label>
+{remoteOnly ? <input type="hidden" name="mode" value="remote" /> : (
+  <fieldset class="field" style="border:0;padding:0;margin:0">
+    <legend>Type</legend>
+    <div class="row" style="margin-top:6px">
+      <label class="check"><input type="radio" name="mode" value="session" checked={s.mode === 'session'} /><span>Session at the studio (books a time)</span></label>
+      <label class="check"><input type="radio" name="mode" value="remote" checked={s.mode === 'remote'} /><span>Remote project (no time slot)</span></label>
+    </div>
+  </fieldset>
+)}
+<div class="grid-2">
+  <label class="field"><span>Price (USD) *</span><input class="input" name="price" inputmode="decimal" required value={price} placeholder="85" /><small>The full price of one booking.</small></label>
+  <label class="field" data-session-only><span>Length</span><select class="select" name="durationMin">{DURATIONS.map((m) => <option value={m} selected={m === s.durationMin}>{len(m)}</option>)}</select></label>
+  <label class="field" data-session-only><span>Reset time after</span><select class="select" name="bufferMin">{BUFFERS.map((m) => <option value={m} selected={m === s.bufferMin}>{m ? len(m) : 'None'}</option>)}</select><small>Blocked on your calendar for setup or breakdown.</small></label>
+</div>
+<label class="field"><span>Description</span><textarea class="textarea" name="description" rows="2" maxlength="600" placeholder={s.mode === 'remote' ? 'What’s included and typical turnaround, e.g. 2 revisions, 5 working days.' : 'What’s included, e.g. engineer, 2 vocal mics.'}>{s.description}</textarea></label>
+<div data-status class="form-status"></div>
+<div class="row"><button class="btn-app" type="submit">Save service</button><button class="btn-app btn-app--ghost" type="button" data-cancel>Cancel</button></div>

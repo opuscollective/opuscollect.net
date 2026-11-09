@@ -2,7 +2,9 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import '@/styles/app.css';
 export const prerender = false;
-if (Astro.locals.user) return Astro.redirect('/account');
+const raw = Astro.url.searchParams.get('next') ?? '';
+const next = /^\/(?!\/)[\w\-/?=&%.]*$/.test(raw) ? raw : '';
+if (Astro.locals.user) return Astro.redirect(next || '/account');
 ---
 <BaseLayout title="Join Opus" description="Create your Opus account to build your profile and connect with musicians around the world." noindex>
   <section class="app app--center">
@@ -11,7 +13,7 @@ if (Astro.locals.user) return Astro.redirect('/account');
       <h1 class="app__title">Create your account.</h1>
       <p class="app__lead">Browsing Opus World is open to everyone. An account lets you build your profile, connect with other musicians and apply for Opus Verified.</p>
 
-      <form class="form" data-signup novalidate>
+      <form class="form" data-signup data-next={next} novalidate>
         <label class="field"><span>Email</span>
           <input class="input" name="email" type="email" autocomplete="email" required inputmode="email" />
         </label>
@@ -32,5 +34,5 @@ if (Astro.locals.user) return Astro.redirect('/account');
 <script>
   import { bindForm } from '@/scripts/form';
   const form = document.querySelector<HTMLFormElement>('[data-signup]')!;
-  bindForm(form, { url: '/api/auth/register', busyLabel: 'Creating account…', onSuccess: () => { location.href = '/account/profile?welcome=1'; } });
+  bindForm(form, { url: '/api/auth/register', busyLabel: 'Creating account…', onSuccess: () => { location.href = form.dataset.next || '/account/profile?welcome=1'; } });
 </script>

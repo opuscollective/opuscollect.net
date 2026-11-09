@@ -6,7 +6,7 @@
  */
 import { esc } from '@/lib/html';
 
-interface Mail { to: string; subject: string; heading: string; body: string; action: { label: string; url: string }; footnote: string }
+export interface Mail { to: string; subject: string; heading: string; body: string; action: { label: string; url: string }; footnote: string }
 
 function render(m: Mail) {
   const html = `<!doctype html><html><body style="margin:0;background:#050506;padding:40px 16px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#f2efea">
@@ -62,4 +62,9 @@ export const resetPasswordMail = (to: string, url: string): Mail => ({
   body: 'Someone asked to reset the password for this Opus account. If that was you, choose a new password. The link works for 1 hour and only once.',
   action: { label: 'Choose a new password', url },
   footnote: "If you didn't ask for this, you can ignore this email. Your password won't change.",
+});
+
+/** A plain notification with one button (bookings, requests). */
+export const noticeMail = (to: string, subject: string, heading: string, body: string, label: string, url: string, footnote = 'You’re receiving this because of activity on Opus World.'): Mail => ({
+  to, subject, heading, body, action: { label, url }, footnote,
 });
