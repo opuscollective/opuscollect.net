@@ -25,8 +25,14 @@
   --c-paper-muted: #4a464c;
   --c-paper-line: #d9d4cd;
 
+  /* Accent: restrained icy blue (Opus World markers, focus, active states) */
+  --c-accent: #b4cdea;
+  --c-accent-strong: #d6e6f8;
+  --c-accent-dim: rgba(180, 205, 234, 0.16);
+  --c-accent-glow: rgba(180, 205, 234, 0.35);
+
   /* Semantic */
-  --c-bg: var(--c-black);
+  --c-bg: #050506;
   --c-fg: var(--c-white);
   --c-line: var(--c-ink-700);
   --c-focus: var(--c-white);
@@ -60,9 +66,9 @@
   --max-w: 1440px;
 
   /* Shape */
-  --r-sm: 8px;
-  --r-md: 14px;
-  --r-lg: 20px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
   --r-pill: 999px;
 
   /* Motion */

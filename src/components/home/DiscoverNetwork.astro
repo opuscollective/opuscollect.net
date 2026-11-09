@@ -1,12 +1,12 @@
 ---
 import SectionHeader from '../ui/SectionHeader.astro';
 import Icon from '../ui/Icon.astro';
-import { DISCIPLINES } from '@/data/disciplines';
-const entries = Object.entries(DISCIPLINES);
+import { SPECIALTIES } from '@/data/specialties';
+const entries = Object.entries(SPECIALTIES);
 ---
 <section class="section network" aria-labelledby="network-title">
   <div class="container">
-    <SectionHeader index="02" label="Discover your network" tag="Five disciplines" />
+    <SectionHeader index="02" label="Discover your network" tag={`${entries.length} specialties`} />
     <div class="network__layout">
       <div class="network__intro">
         <h2 id="network-title" class="t-h1" data-reveal>Every role<br /><span class="dim">behind the record.</span></h2>
@@ -17,7 +17,7 @@ const entries = Object.entries(DISCIPLINES);
       <ol class="network__list" role="list">
         {entries.map(([key, d], i) => (
           <li data-reveal style={`--d:${i * 0.06}s`}>
-            <a href={`/directory?discipline=${key}`} class="network__row">
+            <a href={`/world?type=musician&specialty=${key}`} class="network__row">
               <span class="network__num t-meta">{String(i + 1).padStart(2, '0')}</span>
               <span class="network__name">{d.plural}</span>
               <span class="network__blurb">{d.blurb}</span>

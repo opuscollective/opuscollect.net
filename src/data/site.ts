@@ -9,7 +9,7 @@ export const SITE = {
 
 /** Routes that are not built yet point at an "in development" page, never a 404. */
 export const NAV = [
-  { label: 'Explore', href: '/directory' },
+  { label: 'Opus World', href: '/world' },
   { label: 'Verified', href: '/verified' },
   { label: 'Services', href: '/services' },
   { label: 'Events', href: '/events.html' },
@@ -18,7 +18,7 @@ export const NAV = [
 
 export const ACCOUNT = {
   signIn: { label: 'Sign In', href: '/sign-in' },
-  join: { label: 'Join Opus', href: '/join.html' },
+  join: { label: 'Join Opus', href: '/sign-up' },
 };
 
 export const SOCIALS = [
@@ -33,7 +33,8 @@ export const FOOTER_NAV = [
   {
     title: 'Directory',
     links: [
-      { label: 'Explore musicians', href: '/directory' },
+      { label: 'Opus World', href: '/world' },
+      { label: 'Studios', href: '/world?type=studio' },
       { label: 'Opus Verified', href: '/verified' },
       { label: 'Trusted services', href: '/services' },
     ],
@@ -50,7 +51,7 @@ export const FOOTER_NAV = [
   {
     title: 'Membership',
     links: [
-      { label: 'Join Opus', href: '/join.html' },
+      { label: 'Join Opus', href: '/sign-up' },
       { label: 'Sign in', href: '/sign-in' },
     ],
   },

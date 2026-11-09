@@ -1,0 +1,118 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import '@/styles/app.css';
+export const prerender = false;
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/account');
+const db = Astro.locals.runtime.env.DB;
+const profile = await db
+  .prepare("SELECT handle, display_name, status FROM profiles WHERE owner_user_id = ? AND kind = 'musician'")
+  .bind(user.id).first<{ handle: string; display_name: string; status: string }>();
+const reset = Astro.url.searchParams.has('reset');
+const pending = await db
+  .prepare("SELECT COUNT(*) AS n FROM connections WHERE addressee_id = ? AND status = 'pending'")
+  .bind(user.id).first<{ n: number }>().catch(() => null);
+---
+<BaseLayout title="Your account" noindex>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+      <p class="t-meta app__kicker">Account</p>
+      <h1 class="app__title">Your account</h1>
+      <p class="app__lead">Signed in as <b style="color:#fff;font-weight:500">{user.email}</b></p>
+
+      {reset && <p class="notice notice--ok" style="margin-top:24px">Your password was changed. Other devices were signed out.</p>}
+
+      <div style="margin-top:32px">
+        {!user.emailVerified && (
+          <div class="panel" data-verify-panel>
+            <h2>Confirm your email</h2>
+            <p class="dim">We sent a link to {user.email}. Confirming lets you publish your profile and connect with members.</p>
+            <div class="row" style="margin-top:16px">
+              <button class="btn-app btn-app--ghost" type="button" data-resend>Send a new link</button>
+              <span class="dim" data-resend-status role="status" style="font-size:14px"></span>
+            </div>
+          </div>
+        )}
+
+        <div class="panel">
+          <h2>Your profile</h2>
+          {profile ? (
+            <>
+              <p class="dim">{profile.display_name} · {profile.status === 'published' ? 'Public in Opus World' : 'Draft, only you can see it'}</p>
+              <div class="row" style="margin-top:16px">
+                <a class="btn-app" href="/account/profile">Edit profile</a>
+                <a class="btn-app btn-app--ghost" href={`/m/${profile.handle}`}>View profile</a>
+              </div>
+            </>
+          ) : (
+            <>
+              <p class="dim">You haven’t set up your profile yet. It takes about three minutes.</p>
+              <div class="row" style="margin-top:16px"><a class="btn-app" href="/account/profile">Create your profile</a></div>
+            </>
+          )}
+        </div>
+
+        <div class="panel">
+          <h2>Connections</h2>
+          <p class="dim">{pending?.n ? `${pending.n} request${pending.n === 1 ? '' : 's'} waiting for your reply.` : 'See requests, accepted connections and anyone you’ve blocked.'}</p>
+          <div class="row" style="margin-top:16px"><a class="btn-app btn-app--ghost" href="/account/connections">Manage connections</a></div>
+        </div>
+
+        <div class="panel">
+          <h2>Change password</h2>
+          <form class="form" data-password novalidate style="margin-top:16px">
+            <div class="grid-2">
+              <label class="field"><span>Current password</span><input class="input" name="current" type="password" autocomplete="current-password" required /></label>
+              <label class="field"><span>New password</span><input class="input" name="password" type="password" autocomplete="new-password" required minlength="10" /></label>
+            </div>
+            <div data-status class="form-status"></div>
+            <div><button class="btn-app btn-app--ghost" type="submit">Update password</button></div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <h2>Sign out</h2>
+          <p class="dim">Sign out of Opus on this device.</p>
+          <div class="row" style="margin-top:16px"><button class="btn-app btn-app--ghost" type="button" data-logout>Sign out</button></div>
+        </div>
+
+        <div class="panel">
+          <h2>Delete account</h2>
+          <p class="dim">Permanently deletes your account, profile, photos and connections. This can’t be undone.</p>
+          <details style="margin-top:16px">
+            <summary class="link" style="cursor:pointer;font-size:14px;width:max-content">I want to delete my account</summary>
+            <form class="form" data-delete novalidate style="margin-top:16px">
+              <div class="grid-2">
+                <label class="field"><span>Password</span><input class="input" name="password" type="password" autocomplete="current-password" required /></label>
+                <label class="field"><span>Type DELETE to confirm</span><input class="input" name="confirm" type="text" autocomplete="off" required /></label>
+              </div>
+              <div data-status class="form-status"></div>
+              <div><button class="btn-app btn-app--danger" type="submit">Delete my account</button></div>
+            </form>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+<script>
+  import { bindForm, status } from '@/scripts/form';
+  const pw = document.querySelector<HTMLFormElement>('[data-password]')!;
+  bindForm(pw, { url: '/api/account/password', busyLabel: 'Updating…', onSuccess: () => { pw.reset(); status(pw, 'Password updated. Other devices were signed out.', 'ok'); } });
+  const del = document.querySelector<HTMLFormElement>('[data-delete]')!;
+  bindForm(del, { url: '/api/account/delete', busyLabel: 'Deleting…', onSuccess: () => { location.href = '/?deleted=1'; } });
+
+  document.querySelector('[data-logout]')?.addEventListener('click', async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    location.href = '/';
+  });
+  const resend = document.querySelector<HTMLButtonElement>('[data-resend]');
+  const rs = document.querySelector<HTMLElement>('[data-resend-status]');
+  resend?.addEventListener('click', async () => {
+    resend.disabled = true;
+    const r = await fetch('/api/auth/resend-verification', { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (rs) rs.textContent = r.ok ? (d.emailStatus === 'unconfigured' ? 'Email sending isn’t set up yet. Please try again later.' : 'Sent. Check your inbox.') : d.error ?? 'Couldn’t send. Try again.';
+    resend.disabled = false;
+  });
+</script>

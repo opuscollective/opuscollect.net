@@ -1,7 +1,34 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import ComingSoon from '@/components/layout/ComingSoon.astro';
+import '@/styles/app.css';
+export const prerender = false;
+// Only allow same-site relative redirects after sign-in.
+const raw = Astro.url.searchParams.get('next') ?? '/account';
+const next = /^\/(?!\/)[\w\-/?=&%.]*$/.test(raw) ? raw : '/account';
+if (Astro.locals.user) return Astro.redirect(next);
 ---
-<BaseLayout title="Sign In" noindex>
-  <ComingSoon kicker="Accounts" phase="In development" title="Member accounts are on the way." body="Sign in arrives with member profiles. Join the list and we’ll tell you the moment you can claim yours." />
+<BaseLayout title="Sign in" noindex>
+  <section class="app app--center">
+    <div class="app__wrap">
+      <p class="t-meta app__kicker">Members</p>
+      <h1 class="app__title">Sign in to Opus.</h1>
+      <form class="form" data-signin data-next={next} novalidate>
+        <label class="field"><span>Email</span>
+          <input class="input" name="email" type="email" autocomplete="email" required inputmode="email" />
+        </label>
+        <label class="field"><span>Password</span>
+          <input class="input" name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <div data-status class="form-status"></div>
+        <button class="btn-app btn-app--block" type="submit">Sign in</button>
+      </form>
+      <p class="app__alt"><a href="/forgot-password">Forgot your password?</a></p>
+      <p class="app__alt">New to Opus? <a href="/sign-up">Create an account</a></p>
+    </div>
+  </section>
 </BaseLayout>
+<script>
+  import { bindForm } from '@/scripts/form';
+  const form = document.querySelector<HTMLFormElement>('[data-signin]')!;
+  bindForm(form, { url: '/api/auth/login', busyLabel: 'Signing in…', onSuccess: () => { location.href = form.dataset.next || '/account'; } });
+</script>

@@ -5,6 +5,10 @@ interface Props { overlay?: boolean }
 const { overlay = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 ---
+<script is:inline>
+  // Signed-in hint (not a credential): swap Sign in / Join for Your account.
+  if (document.cookie.split('; ').indexOf('opus_in=1') > -1) document.documentElement.classList.add('is-signed-in');
+</script>
 <header class:list={['hdr', { 'hdr--overlay': overlay }]} data-header>
   <div class="container hdr__inner">
     <a href="/" class="hdr__brand" aria-label={`${SITE.name} home`}>
@@ -21,8 +25,9 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
     </nav>
 
     <div class="hdr__actions">
-      <a href={ACCOUNT.signIn.href} class="hdr__signin">{ACCOUNT.signIn.label}</a>
-      <a href={ACCOUNT.join.href} class="hdr__join">{ACCOUNT.join.label}</a>
+      <a href={ACCOUNT.signIn.href} class="hdr__signin" data-auth-out>{ACCOUNT.signIn.label}</a>
+      <a href={ACCOUNT.join.href} class="hdr__join" data-auth-out>{ACCOUNT.join.label}</a>
+      <a href="/account" class="hdr__join" data-auth-in hidden>Your account</a>
       <button class="hdr__toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" data-menu-toggle>
         <span class="sr-only">Menu</span>
         <Icon name="menu" size={22} class="hdr__icon-open" />
@@ -39,8 +44,9 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
         ))}
       </ul>
       <div class="mmenu__actions">
-        <a href={ACCOUNT.join.href} class="hdr__join hdr__join--lg">{ACCOUNT.join.label}</a>
-        <a href={ACCOUNT.signIn.href} class="mmenu__signin">{ACCOUNT.signIn.label}</a>
+        <a href={ACCOUNT.join.href} class="hdr__join hdr__join--lg" data-auth-out>{ACCOUNT.join.label}</a>
+        <a href={ACCOUNT.signIn.href} class="mmenu__signin" data-auth-out>{ACCOUNT.signIn.label}</a>
+        <a href="/account" class="hdr__join hdr__join--lg" data-auth-in hidden>Your account</a>
       </div>
     </nav>
   </div>
@@ -70,6 +76,8 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 </script>
 
 <style>
+  :global(.is-signed-in) [data-auth-out] { display: none !important; }
+  :global(.is-signed-in) [data-auth-in] { display: inline-flex !important; }
   .hdr {
     position: sticky; top: 0; z-index: var(--z-header);
     background: rgba(0, 0, 0, 0.82); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2);
