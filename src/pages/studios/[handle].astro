@@ -2,7 +2,7 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { STUDIO_TYPES, getPublicStudio, listServices } from '@/server/business';
 import { mediaUrl } from '@/server/profiles';
-import { PLACES, placeLabel } from '@/data/places';
+import { PLACES, visibleLabel } from '@/data/places';
 import { money } from '@/lib/booking-time';
 import '@/styles/app.css';
 import '@/styles/business.css';
@@ -31,7 +31,7 @@ const description = `${studio.name}: ${STUDIO_TYPES[studio.studioType].label.toL
         <h1>{studio.name}</h1>
         <p class="sp__sub">
           <span>{STUDIO_TYPES[studio.studioType].label}</span>
-          {place && <span>{studio.studioType === 'home' ? `${place.name} area` : placeLabel(place)}</span>}
+          {place && <span>{studio.studioType === 'home' ? `${place.name} area` : visibleLabel(studio.placeId, studio.locationVisibility)}</span>}
           {BADGE[studio.verification] && <span class="pill pill--accepted">{BADGE[studio.verification]}</span>}
         </p>
       </div>
@@ -64,7 +64,7 @@ const description = `${studio.name}: ${STUDIO_TYPES[studio.studioType].label.toL
       )}
     </div>
 
-    <aside class="sp__book" aria-label="Request a booking">
+    <aside class="sp__book" id="book" aria-label="Request a booking">
       {canBook ? (
         <div class="bk" data-bk data-handle={studio.handle} data-source={source} data-home={studio.studioType === 'home' ? '1' : ''} data-tz={studio.timezone}>
           <div data-steps>

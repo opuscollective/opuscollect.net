@@ -1,0 +1,21 @@
+---
+/**
+ * ProfilePreview container. Its content comes from lib/world-preview.ts.
+ * Placement depends on the view (see world.css): a panel over the results in Split,
+ * a floating card in Map, a side drawer in List, a bottom sheet on phones.
+ */
+---
+<section class="world__preview" data-preview hidden role="dialog" aria-modal="false" aria-labelledby="pv-name">
+  <div class="pvw__bar">
+    <button type="button" class="pvw__back" data-preview-close>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      <span>Back to results</span>
+    </button>
+    <span class="pvw__label" data-preview-label aria-hidden="true"></span>
+    <button type="button" class="pvw__close" data-preview-close aria-label="Close preview">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="pvw__body" data-preview-body tabindex="-1"></div>
+</section>
+<div class="world__scrim" data-scrim hidden></div>

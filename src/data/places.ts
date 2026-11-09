@@ -79,3 +79,16 @@ export const PLACE_BY_ID = new Map(PLACES.map((p) => [p.id, p]));
 
 export const placeLabel = (p: Pick<Place, 'name' | 'region' | 'countryName'>) =>
   [p.name, p.region, p.countryName].filter(Boolean).join(', ');
+
+/**
+ * The public label for a member's place, honoring their visibility choice.
+ * Returns '' when they hide their location.
+ */
+export function visibleLabel(placeId: string | null | undefined, vis: 'city' | 'metro' | 'region' | 'hidden' = 'city'): string {
+  const p = placeId ? PLACE_BY_ID.get(placeId) : undefined;
+  if (!p || vis === 'hidden') return '';
+  const metro = PLACE_BY_ID.get(p.metroId) ?? p;
+  if (vis === 'region') return [metro.region, metro.countryName].filter(Boolean).join(', ');
+  if (vis === 'metro') return placeLabel(p.kind === 'locality' ? { ...metro, name: `${metro.name} area` } : metro);
+  return placeLabel(p);
+}

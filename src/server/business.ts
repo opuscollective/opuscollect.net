@@ -18,7 +18,7 @@ export const STUDIO_TYPES: Record<StudioType, { label: string; hint: string }> =
 
 export interface Studio {
   id: string; handle: string; name: string; studioType: StudioType; placeId: string | null; bio: string;
-  photoKey: string | null; coverKey: string | null; status: 'draft' | 'published' | 'hidden'; showOnMap: boolean;
+  photoKey: string | null; coverKey: string | null; status: 'draft' | 'published' | 'hidden'; showOnMap: boolean; locationVisibility: 'city' | 'metro';
   equipment: string[]; website: string; instagram: string;
   timezone: string; bookingMode: 'request' | 'instant'; minNoticeHours: number; maxDaysAhead: number;
   bookingPolicy: string; cancellationPolicy: string; verification: string; ownerUserId: string; updatedAt: number;
@@ -34,7 +34,7 @@ export interface Rule { weekday: number; start_min: number; end_min: number }
 
 interface StudioRow {
   id: string; handle: string; display_name: string; bio: string; place_id: string | null; photo_key: string | null; cover_key: string | null;
-  status: Studio['status']; show_on_map: number; links: string; verification: string; owner_user_id: string; updated_at: number;
+  status: Studio['status']; show_on_map: number; location_visibility: string | null; links: string; verification: string; owner_user_id: string; updated_at: number;
   studio_type: string; equipment: string; private_address: string | null; timezone: string; booking_mode: 'request' | 'instant';
   min_notice_hours: number; max_days_ahead: number; booking_policy: string; cancellation_policy: string; studio_verification: string;
 }
@@ -46,7 +46,7 @@ function toStudio(r: StudioRow): StudioPrivate {
   const pa = parse<{ text?: string }>(r.private_address, {});
   return {
     id: r.id, handle: r.handle, name: r.display_name, studioType: (r.studio_type as StudioType) ?? 'commercial', placeId: r.place_id, bio: r.bio,
-    photoKey: r.photo_key, coverKey: r.cover_key, status: r.status, showOnMap: r.show_on_map !== 0,
+    photoKey: r.photo_key, coverKey: r.cover_key, status: r.status, showOnMap: r.show_on_map !== 0, locationVisibility: r.location_visibility === 'metro' ? 'metro' : 'city',
     equipment: parse(r.equipment, []), website: links.website ?? '', instagram: links.instagram ?? '',
     timezone: r.timezone, bookingMode: r.booking_mode, minNoticeHours: r.min_notice_hours, maxDaysAhead: r.max_days_ahead,
     bookingPolicy: r.booking_policy, cancellationPolicy: r.cancellation_policy, verification: r.studio_verification,
@@ -118,7 +118,7 @@ export async function studioChecklist(db: D1Database, s: Studio, emailVerified: 
 export interface StudioInput {
   name?: unknown; handle?: unknown; studioType?: unknown; placeId?: unknown; bio?: unknown; equipment?: unknown;
   website?: unknown; instagram?: unknown; privateAddress?: unknown; timezone?: unknown; minNoticeHours?: unknown;
-  maxDaysAhead?: unknown; bookingPolicy?: unknown; cancellationPolicy?: unknown; showOnMap?: unknown; publish?: unknown;
+  maxDaysAhead?: unknown; bookingPolicy?: unknown; cancellationPolicy?: unknown; showOnMap?: unknown; locationVisibility?: unknown; publish?: unknown;
 }
 
 const intIn = (v: unknown, lo: number, hi: number, d: number) => {
@@ -150,6 +150,8 @@ export async function saveStudio(env: Env, user: SessionUser, body: StudioInput)
   const bookingPolicy = str(body.bookingPolicy, 1500);
   const cancellationPolicy = str(body.cancellationPolicy, 1500);
   const showOnMap = body.showOnMap === false ? 0 : 1;
+  // Studios show their city or their metro area. A studio taking bookings always has a public area.
+  const vis = body.locationVisibility === 'metro' ? 'metro' : body.locationVisibility === 'city' ? 'city' : (existing?.locationVisibility ?? 'city');
 
   let handle = slugify(str(body.handle, 40)) || existing?.handle || slugify(name) || 'studio';
   if (handle.length < 3) handle = `${handle}-studio`;
@@ -166,14 +168,14 @@ export async function saveStudio(env: Env, user: SessionUser, body: StudioInput)
   const pa = privateAddress ? JSON.stringify({ text: privateAddress }) : null;
   const stmts: D1PreparedStatement[] = [];
   if (existing) {
-    stmts.push(db.prepare('UPDATE profiles SET handle=?, display_name=?, bio=?, place_id=?, show_on_map=?, links=?, updated_at=? WHERE id=? AND owner_user_id=?')
-      .bind(handle, name, bio, placeId, showOnMap, links, t, id, user.id));
+    stmts.push(db.prepare('UPDATE profiles SET handle=?, display_name=?, bio=?, place_id=?, show_on_map=?, location_visibility=?, links=?, updated_at=? WHERE id=? AND owner_user_id=?')
+      .bind(handle, name, bio, placeId, showOnMap, vis, links, t, id, user.id));
     stmts.push(db.prepare(`UPDATE studio_details SET studio_type=?, equipment=?, private_address=?, timezone=?, min_notice_hours=?, max_days_ahead=?,
       booking_policy=?, cancellation_policy=?, accepts_booking_requests=1 WHERE profile_id=?`)
       .bind(studioType, JSON.stringify(equipment), pa, timezone, minNoticeHours, maxDaysAhead, bookingPolicy, cancellationPolicy, id));
   } else {
-    stmts.push(db.prepare(`INSERT INTO profiles (id, kind, owner_user_id, handle, display_name, bio, place_id, show_on_map, links, status, created_at, updated_at)
-      VALUES (?, 'studio', ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`).bind(id, user.id, handle, name, bio, placeId, showOnMap, links, t, t));
+    stmts.push(db.prepare(`INSERT INTO profiles (id, kind, owner_user_id, handle, display_name, bio, place_id, show_on_map, location_visibility, links, status, created_at, updated_at)
+      VALUES (?, 'studio', ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`).bind(id, user.id, handle, name, bio, placeId, showOnMap, vis, links, t, t));
     stmts.push(db.prepare(`INSERT INTO studio_details (profile_id, studio_type, equipment, private_address, timezone, min_notice_hours, max_days_ahead,
       booking_policy, cancellation_policy, accepts_booking_requests) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`)
       .bind(id, studioType, JSON.stringify(equipment), pa, timezone, minNoticeHours, maxDaysAhead, bookingPolicy, cancellationPolicy));

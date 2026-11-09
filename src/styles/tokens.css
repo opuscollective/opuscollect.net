@@ -25,14 +25,14 @@
   --c-paper-muted: #4a464c;
   --c-paper-line: #d9d4cd;
 
-  /* Accent: Opus periwinkle. The one brand color, used with a purpose:
+  /* Accent: Opus icy blue. The one brand color, used with a purpose:
      selection, interactive state, verification, geographic activity and important information. */
-  --c-accent: #9aaeff;
-  --c-accent-strong: #c9d3ff;
-  --c-accent-ink: #0b0f24;                  /* text on an accent fill */
-  --c-accent-dim: rgba(154, 174, 255, 0.14); /* selected backgrounds */
-  --c-accent-line: rgba(154, 174, 255, 0.4); /* selected borders */
-  --c-accent-glow: rgba(154, 174, 255, 0.3);
+  --c-accent: #a9c7ec;
+  --c-accent-strong: #d6e4f5;
+  --c-accent-ink: #0a1220;                  /* text on an accent fill */
+  --c-accent-dim: rgba(169, 199, 236, 0.14); /* selected backgrounds */
+  --c-accent-line: rgba(169, 199, 236, 0.4); /* selected borders */
+  --c-accent-glow: rgba(169, 199, 236, 0.3);
 
   /* Secondary: muted sage, only for availability (open to collaborate, taking bookings) */
   --c-live: #9fcaa9;

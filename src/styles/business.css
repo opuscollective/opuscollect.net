@@ -149,3 +149,10 @@
 .closed-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .closed-list li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; border: 1px solid var(--c-ink-600); border-radius: var(--r-pill); font-size: 13px; color: var(--c-fg-subtle); }
 .closed-list button { width: 26px; height: 26px; border-radius: 50%; border: 0; background: #16171b; color: #fff; cursor: pointer; }
+
+/* Studio gallery manager */
+.gal { list-style: none; margin: 16px 0 12px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.gal:empty { display: none; }
+.gal li { display: flex; flex-direction: column; gap: 8px; }
+.gal img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; border: 1px solid var(--c-ink-600); background: #0d0e11; }
+.gal .btn-app { align-self: flex-start; }

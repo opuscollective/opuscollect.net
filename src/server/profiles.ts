@@ -7,6 +7,7 @@ import { GENRES } from '@/data/genres';
 import { HttpError, audit, now, randomId, str } from './util';
 import { limit } from './ratelimit';
 import type { SessionUser } from './session';
+import type { LocationVisibility } from '@/types/directory';
 
 export const LINK_KEYS = ['spotify', 'appleMusic', 'soundcloud', 'youtube', 'instagram', 'tiktok', 'website'] as const;
 export type LinkKey = (typeof LINK_KEYS)[number];
@@ -34,6 +35,7 @@ export interface ProfileData {
   bio: string;
   openToCollab: boolean;
   showOnMap: boolean;
+  locationVisibility: LocationVisibility;
   photoKey: string | null;
   coverKey: string | null;
   links: Partial<Record<LinkKey, string>>;
@@ -48,7 +50,7 @@ export interface ProfileData {
 
 interface Row {
   id: string; handle: string; display_name: string; primary_specialty: string | null; bio: string; place_id: string | null;
-  photo_key: string | null; cover_key: string | null; open_to_collab: number; show_on_map: number; links: string; credits: string; achievements: string;
+  photo_key: string | null; cover_key: string | null; open_to_collab: number; show_on_map: number; location_visibility: LocationVisibility | null; links: string; credits: string; achievements: string;
   collaborations: string; portfolio: string; status: ProfileData['status']; verification: ProfileData['verification']; updated_at: number;
   owner_user_id: string;
 }
@@ -66,7 +68,7 @@ async function hydrate(db: D1Database, r: Row): Promise<ProfileData> {
     primarySpecialty: (r.primary_specialty as Specialty) ?? null,
     specialties: specs.filter((s) => !s.is_primary).map((s) => s.specialty),
     genres: (gn!.results as { genre: string }[]).map((g) => g.genre),
-    placeId: r.place_id, bio: r.bio, openToCollab: !!r.open_to_collab, showOnMap: r.show_on_map !== 0, photoKey: r.photo_key, coverKey: r.cover_key,
+    placeId: r.place_id, bio: r.bio, openToCollab: !!r.open_to_collab, showOnMap: r.show_on_map !== 0, locationVisibility: r.location_visibility ?? 'city', photoKey: r.photo_key, coverKey: r.cover_key,
     links: parse(r.links, {}), credits: parse(r.credits, []), achievements: parse(r.achievements, []),
     collaborations: parse(r.collaborations, []), portfolio: parse(r.portfolio, []),
     status: r.status, verification: r.verification, updatedAt: r.updated_at,
@@ -104,11 +106,15 @@ export function cleanUrl(v: unknown, hosts: string[] | null): string {
   return u.toString();
 }
 
+export const VISIBILITY: readonly LocationVisibility[] = ['city', 'metro', 'region', 'hidden'];
+export const toVisibility = (v: unknown, fallback: LocationVisibility = 'city'): LocationVisibility =>
+  typeof v === 'string' && (VISIBILITY as readonly string[]).includes(v) ? (v as LocationVisibility) : fallback;
+
 const list = (v: unknown, max: number) => (Array.isArray(v) ? v.slice(0, max) : []);
 
 export interface SaveInput {
   handle?: unknown; displayName?: unknown; primarySpecialty?: unknown; specialties?: unknown; genres?: unknown;
-  placeId?: unknown; bio?: unknown; openToCollab?: unknown; showOnMap?: unknown; links?: unknown; credits?: unknown; achievements?: unknown;
+  placeId?: unknown; bio?: unknown; openToCollab?: unknown; showOnMap?: unknown; locationVisibility?: unknown; links?: unknown; credits?: unknown; achievements?: unknown;
   collaborations?: unknown; portfolio?: unknown; publish?: unknown;
 }
 
@@ -186,16 +192,17 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
   const id = existing?.id ?? randomId();
   const openToCollab = body.openToCollab === false ? 0 : 1;
   const showOnMap = body.showOnMap === false ? 0 : 1;
+  const vis = toVisibility(body.locationVisibility, existing?.locationVisibility);
   const stmts: D1PreparedStatement[] = [];
   if (existing) {
-    stmts.push(db.prepare(`UPDATE profiles SET handle=?, display_name=?, primary_specialty=?, bio=?, place_id=?, open_to_collab=?, show_on_map=?, links=?, credits=?,
+    stmts.push(db.prepare(`UPDATE profiles SET handle=?, display_name=?, primary_specialty=?, bio=?, place_id=?, open_to_collab=?, show_on_map=?, location_visibility=?, links=?, credits=?,
       achievements=?, collaborations=?, portfolio=?, updated_at=? WHERE id=?`)
-      .bind(handle, displayName, primary, bio, placeId, openToCollab, showOnMap, JSON.stringify(links), JSON.stringify(credits),
+      .bind(handle, displayName, primary, bio, placeId, openToCollab, showOnMap, vis, JSON.stringify(links), JSON.stringify(credits),
         JSON.stringify(achievements), JSON.stringify(collaborations), JSON.stringify(portfolio), t, id));
   } else {
-    stmts.push(db.prepare(`INSERT INTO profiles (id, kind, owner_user_id, handle, display_name, primary_specialty, bio, place_id, open_to_collab, show_on_map, links, credits,
-      achievements, collaborations, portfolio, status, created_at, updated_at) VALUES (?, 'musician', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`)
-      .bind(id, user.id, handle, displayName, primary, bio, placeId, openToCollab, showOnMap, JSON.stringify(links), JSON.stringify(credits),
+    stmts.push(db.prepare(`INSERT INTO profiles (id, kind, owner_user_id, handle, display_name, primary_specialty, bio, place_id, open_to_collab, show_on_map, location_visibility, links, credits,
+      achievements, collaborations, portfolio, status, created_at, updated_at) VALUES (?, 'musician', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`)
+      .bind(id, user.id, handle, displayName, primary, bio, placeId, openToCollab, showOnMap, vis, JSON.stringify(links), JSON.stringify(credits),
         JSON.stringify(achievements), JSON.stringify(collaborations), JSON.stringify(portfolio), t, t));
   }
   stmts.push(db.prepare('DELETE FROM profile_specialties WHERE profile_id = ?').bind(id));
@@ -277,24 +284,58 @@ export async function uploadImage(env: Env, user: SessionUser, request: Request,
   await limit(db, `upload:${user.id}`, 30, 60 * 60_000);
   const profile = target === undefined ? await getMyProfile(db, user.id) : target;
   if (!profile) throw new HttpError(400, 'Save your profile details before adding photos.');
-  const len = Number(request.headers.get('content-length') || 0);
-  if (len > MAX_BYTES) throw new HttpError(413, 'Images must be 5 MB or smaller.');
-  const type = (request.headers.get('content-type') || '').split(';')[0]!.trim();
-  const raw = new Uint8Array(await request.arrayBuffer());
-  if (raw.length > MAX_BYTES) throw new HttpError(413, 'Images must be 5 MB or smaller.');
-  if (raw.length < 100) throw new HttpError(400, 'That image is empty.');
-  let clean: Uint8Array; let ext: string;
-  // Check the actual bytes, not just the declared type.
-  if (raw[0] === 0xff && raw[1] === 0xd8 && type === 'image/jpeg') { clean = stripJpegMetadata(raw); ext = 'jpg'; }
-  else if (type === 'image/webp' && String.fromCharCode(...raw.subarray(8, 12)) === 'WEBP') { clean = stripWebpMetadata(raw); ext = 'webp'; }
-  else throw new HttpError(415, 'Use a JPEG or WebP image.');
-
+  const { clean, ext, type } = await cleanUpload(request);
   const key = `p/${profile.id}/${slot}-${randomId(12)}.${ext}`;
   await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } });
   const old = slot === 'photo' ? profile.photoKey : profile.coverKey;
   await db.prepare(`UPDATE profiles SET ${slot === 'photo' ? 'photo_key' : 'cover_key'} = ?, updated_at = ? WHERE id = ?`).bind(key, now(), profile.id).run();
   if (old) await env.MEDIA.delete(old);
   return key;
+}
+
+/** Reads an uploaded image, checks its real bytes, and strips all metadata (including GPS). */
+async function cleanUpload(request: Request): Promise<{ clean: Uint8Array; ext: string; type: string }> {
+  const len = Number(request.headers.get('content-length') || 0);
+  if (len > MAX_BYTES) throw new HttpError(413, 'Images must be 5 MB or smaller.');
+  const type = (request.headers.get('content-type') || '').split(';')[0]!.trim();
+  const raw = new Uint8Array(await request.arrayBuffer());
+  if (raw.length > MAX_BYTES) throw new HttpError(413, 'Images must be 5 MB or smaller.');
+  if (raw.length < 100) throw new HttpError(400, 'That image is empty.');
+  // Check the actual bytes, not just the declared type.
+  if (raw[0] === 0xff && raw[1] === 0xd8 && type === 'image/jpeg') return { clean: stripJpegMetadata(raw), ext: 'jpg', type };
+  if (type === 'image/webp' && String.fromCharCode(...raw.subarray(8, 12)) === 'WEBP') return { clean: stripWebpMetadata(raw), ext: 'webp', type };
+  throw new HttpError(415, 'Use a JPEG or WebP image.');
+}
+
+// ---------- galleries ----------
+export const GALLERY_MAX = 8;
+export interface GalleryImage { id: string; url: string }
+
+export async function listGallery(db: D1Database, profileId: string): Promise<GalleryImage[]> {
+  const { results } = await db.prepare('SELECT id, key FROM profile_gallery WHERE profile_id = ? ORDER BY sort, created_at').bind(profileId).all<{ id: string; key: string }>();
+  return results.map((r) => ({ id: r.id, url: mediaUrl(r.key)! }));
+}
+
+/** Adds a photo to a profile's gallery. The caller passes a profile the user owns. */
+export async function addGalleryImage(env: Env, user: SessionUser, request: Request, profile: { id: string }) {
+  const db = env.DB;
+  await limit(db, `upload:${user.id}`, 30, 60 * 60_000);
+  const n = await db.prepare('SELECT COUNT(*) AS n FROM profile_gallery WHERE profile_id = ?').bind(profile.id).first<{ n: number }>();
+  if ((n?.n ?? 0) >= GALLERY_MAX) throw new HttpError(400, `A gallery holds up to ${GALLERY_MAX} photos. Remove one first.`);
+  const { clean, ext, type } = await cleanUpload(request);
+  const key = `p/${profile.id}/gallery-${randomId(12)}.${ext}`;
+  await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } });
+  const id = randomId();
+  await db.prepare('INSERT INTO profile_gallery (id, profile_id, key, sort, created_at) VALUES (?, ?, ?, ?, ?)').bind(id, profile.id, key, (n?.n ?? 0), now()).run();
+  return { id, url: mediaUrl(key)! };
+}
+
+export async function removeGalleryImage(env: Env, profile: { id: string }, imageId: unknown) {
+  const id = str(imageId, 40);
+  const row = await env.DB.prepare('SELECT key FROM profile_gallery WHERE id = ? AND profile_id = ?').bind(id, profile.id).first<{ key: string }>();
+  if (!row) throw new HttpError(404, 'That photo is already gone.');
+  await env.DB.prepare('DELETE FROM profile_gallery WHERE id = ?').bind(id).run();
+  await env.MEDIA.delete(row.key);
 }
 
 export async function removeImage(env: Env, user: SessionUser, slot: 'photo' | 'cover', target?: ImageTarget | null) {
