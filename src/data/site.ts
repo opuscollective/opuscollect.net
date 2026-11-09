@@ -18,7 +18,7 @@ export const NAV = [
 
 export const ACCOUNT = {
   signIn: { label: 'Sign In', href: '/sign-in' },
-  join: { label: 'Join Opus', href: '/join.html' },
+  join: { label: 'Join Opus', href: '/sign-up' },
 };
 
 export const SOCIALS = [
@@ -51,7 +51,7 @@ export const FOOTER_NAV = [
   {
     title: 'Membership',
     links: [
-      { label: 'Join Opus', href: '/join.html' },
+      { label: 'Join Opus', href: '/sign-up' },
       { label: 'Sign in', href: '/sign-in' },
     ],
   },

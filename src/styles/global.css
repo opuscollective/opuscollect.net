@@ -1,4 +1,6 @@
 @import './tokens.css';
+/* The hidden attribute always wins over component display rules. */
+[hidden] { display: none !important; }
 
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; }

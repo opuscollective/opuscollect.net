@@ -5,7 +5,7 @@
  * Generated deterministically so the map looks the same on every build.
  */
 import type { Specialty } from '@/data/specialties';
-import type { Listing, MusicianListing, StudioListing, OrganizationListing, GeoPoint, OrganizationCategory } from '@/types/directory';
+import { ORG_CATEGORY_LABEL, type Listing, type MusicianListing, type StudioListing, type OrganizationListing, type GeoPoint, type OrganizationCategory } from '@/types/directory';
 import { CITIES, type City } from './cities';
 
 // Small seeded RNG (mulberry32) so output is stable.
@@ -101,7 +101,7 @@ const ORGS: [string, OrganizationCategory, string[]][] = [
   ['London', 'label', ['Releases', 'Publishing']], ['Lagos', 'management', ['Artist management', 'Touring']],
   ['Toronto', 'collective', ['Community']], ['Nashville', 'marketing', ['Playlisting', 'Social']],
 ];
-const CAT_LABEL: Record<OrganizationCategory, string> = { label: 'Label', management: 'Management', collective: 'Collective', marketing: 'Agency', other: 'Organization' };
+const CAT_LABEL = ORG_CATEGORY_LABEL;
 const organizations: OrganizationListing[] = ORGS.map(([name, category, services], i) => ({
   id: `o-${pad(i + 1)}`, kind: 'organization', slug: `sample-org-${pad(i + 1)}`,
   name: `Sample ${CAT_LABEL[category]} ${pad(i + 1)}`, location: near(city(name), 5, 'exact'),
@@ -109,4 +109,3 @@ const organizations: OrganizationListing[] = ORGS.map(([name, category, services
 }));
 
 export const SAMPLE_LISTINGS: Listing[] = [...musicians, ...studios, ...organizations];
-export const ORG_CATEGORY_LABEL = CAT_LABEL;

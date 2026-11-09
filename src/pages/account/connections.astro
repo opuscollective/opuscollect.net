@@ -1,0 +1,102 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { listConnections, type ConnItem } from '@/server/connections';
+import { SPECIALTIES, type Specialty } from '@/data/specialties';
+import { PLACE_BY_ID } from '@/data/places';
+import { mediaUrl } from '@/server/profiles';
+import '@/styles/app.css';
+export const prerender = false;
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/account/connections');
+const { incoming, outgoing, connected, blocked } = await listConnections(Astro.locals.runtime.env.DB, user.id);
+const sub = (c: ConnItem) => [c.other.specialty ? SPECIALTIES[c.other.specialty as Specialty]?.label : null, c.other.placeId ? PLACE_BY_ID.get(c.other.placeId)?.name : null].filter(Boolean).join(' · ');
+const when = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+---
+<BaseLayout title="Connections" noindex>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+      <p class="t-meta app__kicker"><a href="/account">Account</a> / Connections</p>
+      <h1 class="app__title">Connections</h1>
+      <p class="app__lead">Requests come with an introduction, so every connection starts with a reason to work together. When you accept, you’ll both see each other’s email.</p>
+
+      <div class="panel" style="margin-top:32px">
+        <h2>Requests for you <span class="dim">({incoming.length})</span></h2>
+        {incoming.length === 0 ? <p class="dim">No new requests. Make sure “Open to collaboration” is on in your profile.</p> : (
+          <ul class="cx" role="list">{incoming.map((c) => (
+            <li class="cx__item" data-id={c.id}>
+              <a class="cx__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+                <span class="cx__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''}></span>
+                <span><b>{c.other.name}</b><small>{sub(c)}</small></span>
+              </a>
+              <p class="cx__msg">“{c.message}”</p>
+              <div class="row"><button class="btn-app" data-act="accept">Accept</button><button class="btn-app btn-app--ghost" data-act="decline">Decline</button><span class="dim cx__date">{when(c.createdAt)}</span></div>
+            </li>
+          ))}</ul>
+        )}
+      </div>
+
+      <div class="panel">
+        <h2>Connected <span class="dim">({connected.length})</span></h2>
+        {connected.length === 0 ? <p class="dim">No connections yet. Find people in <a class="link" href="/world?type=musician&collab=1">Opus World</a>.</p> : (
+          <ul class="cx" role="list">{connected.map((c) => (
+            <li class="cx__item" data-id={c.id}>
+              <a class="cx__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+                <span class="cx__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''}></span>
+                <span><b>{c.other.name}</b><small>{sub(c)}</small></span>
+              </a>
+              <div class="row"><a class="btn-app btn-app--ghost" href={`mailto:${c.other.email}`}>Email {c.other.email}</a><button class="btn-app btn-app--ghost" data-act="remove">Remove</button></div>
+            </li>
+          ))}</ul>
+        )}
+      </div>
+
+      <div class="panel">
+        <h2>Sent <span class="dim">({outgoing.length})</span></h2>
+        {outgoing.length === 0 ? <p class="dim">No pending requests.</p> : (
+          <ul class="cx" role="list">{outgoing.map((c) => (
+            <li class="cx__item" data-id={c.id}>
+              <a class="cx__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+                <span class="cx__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''}></span>
+                <span><b>{c.other.name}</b><small>Waiting for a reply · sent {when(c.createdAt)}</small></span>
+              </a>
+              <div class="row"><button class="btn-app btn-app--ghost" data-act="withdraw">Withdraw</button></div>
+            </li>
+          ))}</ul>
+        )}
+      </div>
+
+      {blocked.length > 0 && (
+        <div class="panel">
+          <h2>Blocked</h2>
+          <ul class="cx" role="list">{blocked.map((b) => (
+            <li class="cx__item"><span class="cx__who"><span><b>{b.display_name ?? 'Opus member'}</b></span></span>
+              {b.handle && <div class="row"><button class="btn-app btn-app--ghost" data-unblock={b.handle}>Unblock</button></div>}</li>
+          ))}</ul>
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+<style>
+  .cx { margin-top: 16px; }
+  .cx__item { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: 1px solid var(--c-line); }
+  .cx__who { display: flex; gap: 12px; align-items: center; }
+  .cx__who b { display: block; color: #fff; font-weight: 500; }
+  .cx__who small { display: block; font-size: 13px; color: var(--c-fg-faint); margin-top: 2px; }
+  .cx__av { width: 44px; height: 44px; border-radius: 50%; background: #15161a center / cover no-repeat; flex-shrink: 0; }
+  .cx__msg { font-size: 15px; line-height: 1.6; color: var(--c-fg-muted); white-space: pre-line; }
+  .cx__date { font-size: 13px; margin-left: auto; }
+</style>
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-act]').forEach((b) => b.addEventListener('click', async () => {
+    const id = b.closest<HTMLElement>('[data-id]')!.dataset.id;
+    if (b.dataset.act === 'remove' && !confirm('Remove this connection?')) return;
+    b.disabled = true;
+    const r = await fetch(`/api/connections/${id}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: b.dataset.act }) });
+    if (r.ok) location.reload(); else { b.disabled = false; alert((await r.json().catch(() => ({}))).error ?? 'Something went wrong.'); }
+  }));
+  document.querySelectorAll<HTMLButtonElement>('[data-unblock]').forEach((b) => b.addEventListener('click', async () => {
+    const r = await fetch('/api/connections/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ handle: b.dataset.unblock, on: false }) });
+    if (r.ok) location.reload();
+  }));
+</script>

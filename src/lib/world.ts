@@ -1,7 +1,7 @@
 /** Pure helpers shared by the server render and the browser. No DOM access here. */
-import type { Listing, ListingKind } from '@/types/directory';
+import { ORG_CATEGORY_LABEL, type Listing, type ListingKind } from '@/types/directory';
 import { SPECIALTIES, allSpecialties, type Specialty } from '@/data/specialties';
-import { ORG_CATEGORY_LABEL } from '@/data/sample-world';
+import { esc } from './html';
 
 export interface WorldFilters {
   kinds: ListingKind[]; // empty = all
@@ -33,6 +33,7 @@ export function matches(l: Listing, f: WorldFilters): boolean {
   return true;
 }
 
+export type WorldStats = ReturnType<typeof stats>;
 export function stats(listings: Listing[]) {
   return {
     musicians: listings.filter((l) => l.kind === 'musician').length,
@@ -47,16 +48,17 @@ export function stats(listings: Listing[]) {
 export function byCity(listings: Listing[]) {
   const m = new Map<string, { city: string; country: string; lat: number; lng: number; count: number }>();
   for (const l of listings) {
-    const k = `${l.location.city}|${l.location.country}`;
+    // Aggregate to the metro area (suburbs count toward their city).
+    const pt = l.metro ?? { name: l.location.city, lat: l.location.lat, lng: l.location.lng };
+    const k = `${pt.name}|${l.location.country}`;
     const e = m.get(k);
     if (e) e.count++;
-    else m.set(k, { city: l.location.city, country: l.location.country, lat: l.location.lat, lng: l.location.lng, count: 1 });
+    else m.set(k, { city: pt.name, country: l.location.country, lat: pt.lat, lng: pt.lng, count: 1 });
   }
   return [...m.values()];
 }
 
-const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ESC[c]!);
+export { esc };
 // Placeholder avatars show the sample number (e.g. "07"); real members will have photos.
 const initials = (s: string) => {
   const num = s.match(/(\d+)\s*$/)?.[1];
@@ -100,15 +102,19 @@ export function cardHtml(l: Listing): string {
     kindLabel = ORG_CATEGORY_LABEL[l.category];
     tags = l.services;
   }
+  const av = l.photo
+    ? `<img class="wc__av wc__av--${l.kind}" src="${esc(l.photo)}" alt="" loading="lazy" width="56" height="56" />`
+    : `<div class="wc__av wc__av--${l.kind}" aria-hidden="true">${esc(initials(l.name))}</div>`;
+  const open = l.href ? `<a class="wc__open" href="${esc(l.href)}">View profile<span class="sr-only"> of ${esc(l.name)}</span></a>` : '';
   return `<article class="wc wc--${l.kind}" data-id="${l.id}" tabindex="0" aria-label="${esc(l.name)}${l.isSample ? ', sample listing' : ''}">
-  <div class="wc__av wc__av--${l.kind}" aria-hidden="true">${esc(initials(l.name))}</div>
+  ${av}
   <div class="wc__body">
     <div class="wc__top"><h3 class="wc__name">${esc(l.name)}</h3>${badgeHtml(l)}${sample}</div>
     <p class="wc__kind">${esc(kindLabel)}</p>
     <p class="wc__place">${place}</p>
     ${note}
     <div class="wc__tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>
-    ${foot ? `<div class="wc__foot">${foot}</div>` : ''}
+    ${foot || open ? `<div class="wc__foot">${foot}${open}</div>` : ''}
   </div>
 </article>`;
 }

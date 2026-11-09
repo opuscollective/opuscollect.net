@@ -1,0 +1,28 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { verifyEmail } from '@/server/auth';
+import '@/styles/app.css';
+export const prerender = false;
+const token = Astro.url.searchParams.get('token') ?? '';
+const ok = token ? await verifyEmail(Astro.locals.runtime.env, token) : false;
+---
+<BaseLayout title={ok ? 'Email confirmed' : 'Confirm your email'} noindex>
+  <section class="app app--center">
+    <div class="app__wrap">
+      <p class="t-meta app__kicker">Account</p>
+      {ok ? (
+        <>
+          <h1 class="app__title">Your email is confirmed.</h1>
+          <p class="app__lead">You can now publish your profile and connect with other members.</p>
+          <p class="app__alt"><a class="btn-app" href={Astro.locals.user ? '/account/profile' : '/sign-in?next=/account/profile'}>Continue to your profile</a></p>
+        </>
+      ) : (
+        <>
+          <h1 class="app__title">This link didn’t work.</h1>
+          <p class="app__lead">It may have expired (links last 24 hours) or already been used. Sign in and send a new one from your account page.</p>
+          <p class="app__alt"><a class="btn-app" href="/account">Go to your account</a></p>
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,190 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
+import { SPECIALTIES, allSpecialties } from '@/data/specialties';
+import { PLACE_BY_ID, placeLabel } from '@/data/places';
+import { getPublicProfile, mediaUrl } from '@/server/profiles';
+import { relationship } from '@/server/connections';
+import '@/styles/app.css';
+export const prerender = false;
+
+const handle = Astro.params.handle ?? '';
+const viewer = Astro.locals.user;
+const db = Astro.locals.runtime.env.DB;
+const found = await getPublicProfile(db, handle, viewer?.id ?? null);
+if (!found) {
+  Astro.response.status = 404;
+  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Profile not found · Opus Collective</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:#fff;font-family:system-ui,sans-serif;text-align:center"><div><p style="color:#8e8890;letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This profile isn’t available.</h1><p style="color:#a39da5">It may be unpublished or the address may have changed.</p><p><a href="/world" style="color:#fff">Explore Opus World</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+const { profile: p, isOwner, ownerId } = found;
+if (p.handle !== handle) return Astro.redirect(`/m/${p.handle}`, 301);
+
+const place = p.placeId ? PLACE_BY_ID.get(p.placeId) : undefined;
+const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
+const rel = viewer ? await relationship(db, viewer.id, ownerId) : null;
+const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
+const links = Object.entries(p.links).filter(([, v]) => !!v);
+const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${place ? ` · ${place.name}` : ''} on Opus.`;
+---
+<BaseLayout title={p.displayName} description={desc} noindex={p.status !== 'published'} image={p.photoKey ? mediaUrl(p.photoKey)! : undefined}>
+  {isOwner && p.status !== 'published' && (
+    <div class="mp-preview"><span><b>Preview.</b> Only you can see this draft.</span> <a class="link" href="/account/profile">Back to editing</a></div>
+  )}
+  <article class="mp">
+    <div class="mp__cover" style={p.coverKey ? `background-image:url(${mediaUrl(p.coverKey)})` : ''} aria-hidden="true"></div>
+    <div class="mp__inner">
+      <header class="mp__head">
+        <div class="mp__photo" style={p.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''} role="img" aria-label={`Photo of ${p.displayName}`}></div>
+        <div class="mp__id">
+          <h1 class="mp__name">{p.displayName}{p.verification === 'verified' && <VerifiedBadge size={22} />}</h1>
+          {roles.length > 0 && <p class="mp__roles"><span class="mp__primary">{roles[0]}</span>{roles.slice(1).map((r) => <span>{r}</span>)}</p>}
+          <p class="mp__meta">
+            {place && <span>{placeLabel(place)}</span>}
+            <span class:list={['mp__collab', { 'is-on': p.openToCollab }]}>{p.openToCollab ? 'Open to collaboration' : 'Not taking new collaborations'}</span>
+          </p>
+        </div>
+        <div class="mp__actions">
+          {isOwner ? (
+            <a class="btn-app btn-app--ghost" href="/account/profile">Edit profile</a>
+          ) : !viewer ? (
+            p.openToCollab && <a class="btn-app" href={`/sign-in?next=/m/${p.handle}`}>Connect</a>
+          ) : rel?.state === 'connected' ? (
+            <a class="btn-app btn-app--ghost" href="/account/connections">Connected</a>
+          ) : rel?.state === 'sent' ? (
+            <a class="btn-app btn-app--ghost" href="/account/connections">Request sent</a>
+          ) : rel?.state === 'received' ? (
+            <a class="btn-app" href="/account/connections">Respond to request</a>
+          ) : rel?.state === 'none' && p.openToCollab ? (
+            <button class="btn-app" type="button" data-connect-open>Connect</button>
+          ) : null}
+          {viewer && !isOwner && (
+            <details class="mp__more">
+              <summary aria-label="More actions">···</summary>
+              <div><button type="button" data-block={rel?.state === 'blocked' ? 'off' : 'on'}>{rel?.state === 'blocked' ? 'Unblock' : 'Block'} {p.displayName}</button></div>
+            </details>
+          )}
+        </div>
+      </header>
+
+      {viewer && !isOwner && rel?.state === 'none' && p.openToCollab && (
+        <form class="panel mp__connect" data-connect hidden novalidate>
+          <h2>Connect with {p.displayName}</h2>
+          <p class="dim">Introduce yourself and what you’d like to make together. If they accept, you’ll both see each other’s email.</p>
+          <input type="hidden" name="to" value={p.handle} />
+          <label class="field" style="margin-top:14px"><span class="sr-only">Introduction</span>
+            <textarea class="textarea" name="message" maxlength="600" rows="4" placeholder="Hi, I’m a producer in Atlanta working on an R&B EP. I’d love a topline on one track…"></textarea>
+          </label>
+          <div data-status class="form-status" style="margin-top:12px"></div>
+          <div class="row" style="margin-top:12px"><button class="btn-app" type="submit">Send request</button><button class="btn-app btn-app--ghost" type="button" data-connect-cancel>Cancel</button></div>
+        </form>
+      )}
+
+      <div class="mp__grid">
+        <div class="mp__main">
+          {p.bio && <section class="mp__sec"><h2 class="t-meta">About</h2><p class="mp__bio">{p.bio}</p></section>}
+          {p.credits.length > 0 && (
+            <section class="mp__sec"><h2 class="t-meta">Credits</h2>
+              <ul class="mp__credits" role="list">
+                {p.credits.map((c) => (
+                  <li>
+                    <span class="mp__ct">{c.url ? <a href={c.url} target="_blank" rel="noopener nofollow ugc">{c.title}</a> : c.title}</span>
+                    <span class="dim">{[c.artist, c.role, c.year].filter(Boolean).join(' · ')}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {p.achievements.length > 0 && (
+            <section class="mp__sec"><h2 class="t-meta">Notable achievements</h2>
+              <ul class="mp__list" role="list">{p.achievements.map((a) => <li>{a}</li>)}</ul>
+              <p class="mp__note">Listed by the member. Opus Verified status is shown by the badge next to their name.</p>
+            </section>
+          )}
+          {p.collaborations.length > 0 && (
+            <section class="mp__sec"><h2 class="t-meta">Past collaborations</h2>
+              <ul class="mp__tags" role="list">{p.collaborations.map((a) => <li>{a}</li>)}</ul>
+            </section>
+          )}
+          {p.portfolio.length > 0 && (
+            <section class="mp__sec"><h2 class="t-meta">Portfolio</h2>
+              <ul class="mp__links" role="list">{p.portfolio.map((x) => <li><a href={x.url} target="_blank" rel="noopener nofollow ugc">{x.title || new URL(x.url).hostname} ↗</a></li>)}</ul>
+            </section>
+          )}
+        </div>
+        <aside class="mp__side">
+          {p.genres.length > 0 && <section class="mp__sec"><h2 class="t-meta">Genres</h2><ul class="mp__tags" role="list">{p.genres.map((g) => <li>{g}</li>)}</ul></section>}
+          {roles.length > 0 && <section class="mp__sec"><h2 class="t-meta">Specialties</h2><ul class="mp__tags" role="list">{roles.map((r, i) => <li class:list={{ 'is-primary': i === 0 }}>{r}</li>)}</ul></section>}
+          {links.length > 0 && (
+            <section class="mp__sec"><h2 class="t-meta">Listen and follow</h2>
+              <ul class="mp__links" role="list">{links.map(([k, v]) => <li><a href={v} target="_blank" rel="noopener nofollow ugc">{LINK_LABEL[k] ?? k} ↗</a></li>)}</ul>
+            </section>
+          )}
+          {place && <section class="mp__sec"><h2 class="t-meta">Based in</h2><p><a class="link" href={`/world?city=${encodeURIComponent(place.name)}`}>{placeLabel(place)}</a></p></section>}
+        </aside>
+      </div>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .mp-preview { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding: 10px 16px; border-bottom: 1px solid #2c3038; background: #0c0e12; font-size: 14px; color: var(--c-fg-subtle); }
+  .mp-preview b { color: #fff; font-weight: 500; }
+  .mp__cover { height: clamp(140px, 22vw, 300px); background: #0b0c0f center / cover no-repeat; border-bottom: 1px solid var(--c-line); }
+  .mp__inner { max-width: 1080px; margin: 0 auto; padding: 0 var(--gutter) 96px; }
+  .mp__head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 24px; align-items: end; margin-top: -64px; }
+  .mp__photo { width: 148px; height: 148px; border-radius: 50%; border: 4px solid var(--c-bg); background: #15161a center / cover no-repeat; }
+  .mp__name { display: flex; align-items: center; gap: 10px; font-size: clamp(2rem, 1.4rem + 2vw, 3.2rem); line-height: 1; letter-spacing: -0.045em; font-weight: 500; }
+  .mp__roles { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 15px; color: var(--c-fg-faint); }
+  .mp__primary { color: #fff; }
+  .mp__meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 14px; color: var(--c-fg-subtle); }
+  .mp__collab { display: inline-flex; align-items: center; gap: 7px; }
+  .mp__collab::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #3a3c42; }
+  .mp__collab.is-on { color: var(--c-accent); }
+  .mp__collab.is-on::before { background: var(--c-accent); }
+  .mp__actions { display: flex; gap: 10px; align-items: center; }
+  .mp__more { position: relative; }
+  .mp__more summary { list-style: none; display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid var(--c-ink-500); border-radius: 50%; cursor: pointer; color: var(--c-fg-muted); letter-spacing: 1px; }
+  .mp__more summary::-webkit-details-marker { display: none; }
+  .mp__more div { position: absolute; right: 0; top: 56px; z-index: 5; min-width: 200px; padding: 6px; border: 1px solid var(--c-ink-600); border-radius: var(--r-md); background: #0c0d10; }
+  .mp__more button { width: 100%; padding: 10px 12px; border: 0; background: none; color: #f0b4b4; text-align: left; font: inherit; font-size: 14px; border-radius: 6px; cursor: pointer; }
+  .mp__more button:hover { background: #16181c; }
+  .mp__connect { margin-top: 28px; }
+  .mp__grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: clamp(32px, 6vw, 80px); margin-top: 48px; }
+  .mp__sec + .mp__sec { margin-top: 40px; }
+  .mp__sec h2 { color: var(--c-fg-faint); margin-bottom: 14px; }
+  .mp__bio { white-space: pre-line; font-size: 17px; line-height: 1.65; color: var(--c-fg-muted); max-width: 64ch; }
+  .mp__credits li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 14px 0; border-bottom: 1px solid var(--c-line); font-size: 15px; }
+  .mp__credits li:first-child { border-top: 1px solid var(--c-line); }
+  .mp__credits a, .mp__links a { color: #fff; }
+  .mp__credits a:hover, .mp__links a:hover { color: var(--c-accent-strong); }
+  .mp__list li { padding: 10px 0 10px 18px; position: relative; color: var(--c-fg-muted); line-height: 1.5; }
+  .mp__list li::before { content: ''; position: absolute; left: 0; top: 19px; width: 6px; height: 1px; background: var(--c-fg-faint); }
+  .mp__note { margin-top: 10px; font-size: 12px; color: var(--c-fg-ghost); }
+  .mp__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mp__tags li { padding: 6px 11px; border: 1px solid var(--c-ink-600); border-radius: var(--r-pill); font-size: 13px; color: var(--c-fg-subtle); }
+  .mp__tags li.is-primary { border-color: rgba(180, 205, 234, .45); color: #fff; }
+  .mp__links { display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
+  @media (max-width: 860px) {
+    .mp__head { grid-template-columns: 1fr; align-items: start; margin-top: -56px; gap: 16px; }
+    .mp__photo { width: 112px; height: 112px; }
+    .mp__grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  import { bindForm } from '@/scripts/form';
+  const form = document.querySelector<HTMLFormElement>('[data-connect]');
+  const open = document.querySelector<HTMLButtonElement>('[data-connect-open]');
+  open?.addEventListener('click', () => { if (form) { form.hidden = false; form.querySelector('textarea')?.focus(); } });
+  document.querySelector('[data-connect-cancel]')?.addEventListener('click', () => { if (form) form.hidden = true; });
+  if (form) bindForm(form, { url: '/api/connections', busyLabel: 'Sending…', onSuccess: () => location.reload() });
+
+  document.querySelector<HTMLButtonElement>('[data-block]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    const on = b.dataset.block === 'on';
+    if (on && !confirm('Block this member? They won’t be able to send you requests, and any connection between you is removed.')) return;
+    const handle = location.pathname.split('/').pop();
+    const r = await fetch('/api/connections/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ handle, on }) });
+    if (r.ok) location.reload();
+  });
+</script>

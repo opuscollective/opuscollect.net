@@ -113,15 +113,35 @@ export async function mountWorldMap(
     if (!warned) { warned = true; console.warn('Map tile source unavailable; showing base layers only.', e.error?.message); }
   });
 
-  const toGeo = (ls: Listing[]): GeoJSON.FeatureCollection => ({
-    type: 'FeatureCollection',
-    features: ls.map((l) => ({
-      type: 'Feature',
-      id: l.id,
-      properties: { id: l.id, kind: l.kind, approx: l.location.precision === 'approximate' },
-      geometry: { type: 'Point', coordinates: [l.location.lng, l.location.lat] },
-    })),
-  });
+  // Members share public city/locality centre points, never home locations. When several share one
+  // point, spread them on a small ring around it so each stays selectable when zoomed in. The ring is
+  // derived only from the public point and the member's order, so it reveals nothing new.
+  const toGeo = (ls: Listing[]): GeoJSON.FeatureCollection => {
+    const groups = new Map<string, Listing[]>();
+    for (const l of ls) {
+      const k = `${l.location.lat.toFixed(4)},${l.location.lng.toFixed(4)}`;
+      (groups.get(k) ?? groups.set(k, []).get(k)!).push(l);
+    }
+    const features: GeoJSON.Feature[] = [];
+    for (const g of groups.values()) {
+      g.forEach((l, i) => {
+        let { lat, lng } = l.location;
+        if (g.length > 1) {
+          const r = 0.006 * (1 + Math.floor(i / 8)); // degrees, roughly 600 m per ring
+          const a = (i % 8) / Math.min(8, g.length) * Math.PI * 2;
+          lat += r * Math.sin(a);
+          lng += (r * Math.cos(a)) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+        }
+        features.push({
+          type: 'Feature',
+          id: l.id,
+          properties: { id: l.id, kind: l.kind, approx: l.location.precision === 'approximate' },
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+        });
+      });
+    }
+    return { type: 'FeatureCollection', features };
+  };
 
   await new Promise<void>((res) => map.on('load', () => res()));
 
@@ -210,7 +230,7 @@ export async function mountWorldMap(
   return {
     setData(ls) { (map.getSource('listings') as GeoJSONSource).setData(toGeo(ls)); for (const m of onScreen.values()) m.remove(); onScreen.clear(); markers.clear(); },
     flyToCity(lat, lng) { stop(); map.flyTo({ center: [lng, lat], zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) }); },
-    flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], zoom: Math.max(map.getZoom(), 12.5), duration: reduce ? 0 : 900 }); },
+    flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: reduce ? 0 : 900 }); },
     setActive(id) { active = id; paintStates(); },
     setHover(id) { hover = id; paintStates(); },
     getBounds: () => map.getBounds(),

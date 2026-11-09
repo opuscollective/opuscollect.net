@@ -1,14 +1,10 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { SAMPLE_LISTINGS } from '@/data/sample-world';
 import { SPECIALTIES } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
 import { CITIES } from '@/data/cities';
-import { cardHtml, stats } from '@/lib/world';
 import '@/styles/world.css';
 
-const s = stats(SAMPLE_LISTINGS);
-const initial = SAMPLE_LISTINGS.slice(0, 24);
 ---
 <BaseLayout
   title="Opus World"
@@ -78,17 +74,17 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
         </div>
       </div>
 
-      <dl class="wp__stats" aria-label="Sample data statistics">
-        <div><dt>Musicians</dt><dd>{s.musicians}</dd></div>
-        <div><dt>Studios</dt><dd>{s.studios}</dd></div>
-        <div><dt>Countries</dt><dd>{s.countries}</dd></div>
-        <div><dt>Verified</dt><dd>{s.verified}</dd></div>
-        <div><dt>Orgs</dt><dd>{s.organizations}</dd></div>
-        <p class="wp__sample t-meta">Sample data · not real members</p>
+      <dl class="wp__stats" aria-label="Opus World statistics" data-stats hidden>
+        <div><dt>Musicians</dt><dd data-stat="musicians">0</dd></div>
+        <div><dt>Studios</dt><dd data-stat="studios">0</dd></div>
+        <div><dt>Countries</dt><dd data-stat="countries">0</dd></div>
+        <div><dt>Verified</dt><dd data-stat="verified">0</dd></div>
+        <div><dt>Orgs</dt><dd data-stat="organizations">0</dd></div>
+        <p class="wp__sample t-meta" data-sample-note hidden>Preview build · includes labeled sample listings</p>
       </dl>
 
       <div class="wp__bar">
-        <p class="wp__count" data-count aria-live="polite">{SAMPLE_LISTINGS.length} results worldwide</p>
+        <p class="wp__count" data-count aria-live="polite">Loading members…</p>
         <label class="wp__sort"><span class="sr-only">Sort</span>
           <select data-sort>
             <option value="recommended">Recommended</option>
@@ -101,11 +97,11 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
       <label class="wp__inview"><input type="checkbox" data-inview checked /> Update results as I move the map</label>
 
       <div class="wp__results" id="world-results" data-results tabindex="-1">
-        <Fragment set:html={initial.map(cardHtml).join('')} />
+        {[0, 1, 2, 3].map(() => <div class="wc wc--skeleton" aria-hidden="true"><span></span><span></span></div>)}
       </div>
       <div class="wp__empty" data-empty hidden>
-        <p><b>No listings here yet.</b></p>
-        <p>Try zooming out, clearing filters, or searching a nearby city. Opus is just opening, so new members appear here first.</p>
+        <p><b data-empty-title>No listings here yet.</b></p>
+        <p data-empty-body>Try zooming out, clearing filters, or searching a nearby city. Opus is just opening, so new members appear here first.</p>
         <button type="button" data-clear>Clear filters</button>
       </div>
     </aside>
@@ -113,8 +109,8 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
 </BaseLayout>
 
 <script>
-  import { SAMPLE_LISTINGS } from '@/data/sample-world';
   import { cardHtml, matches, isVerified, type WorldFilters } from '@/lib/world';
+  import type { WorldStats } from '@/lib/world';
   import { findCity } from '@/data/cities';
   import { toSpecialty } from '@/data/specialties';
   import type { Listing } from '@/types/directory';
@@ -126,7 +122,9 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
   const empty = $('[data-empty]');
   const count = $('[data-count]');
   const panel = $('[data-panel]');
-  const byId = new Map(SAMPLE_LISTINGS.map((l) => [l.id, l]));
+  let ALL: Listing[] = [];
+  let byId = new Map<string, Listing>();
+  let loaded = false;
 
   const f: WorldFilters = { kinds: [], specialty: '', genre: '', openToCollab: false, studioType: '', verifiedOnly: false, text: '' };
   let sort = 'recommended';
@@ -159,7 +157,7 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
 
   // ---------- Filtering + rendering ----------
   function visible(): Listing[] {
-    let ls = SAMPLE_LISTINGS.filter((l) => matches(l, f));
+    let ls = ALL.filter((l) => matches(l, f));
     if (map && inView && map.getZoom() >= 4) {
       const b = map.getBounds();
       ls = ls.filter((l) => b.contains([l.location.lng, l.location.lat]));
@@ -180,13 +178,14 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
   }
 
   function render(updateMap = true) {
+    if (!loaded) return;
     const ls = visible();
     results.innerHTML = ls.map(cardHtml).join('');
     empty.hidden = ls.length > 0;
     const where = map && inView && map.getZoom() >= 4 ? (cityLabel ? `in ${cityLabel} area` : 'in this map area') : 'worldwide';
-    count.textContent = `${ls.length} result${ls.length === 1 ? '' : 's'} ${where}`;
+    count.textContent = ALL.length === 0 ? 'No members yet' : `${ls.length} result${ls.length === 1 ? '' : 's'} ${where}`;
     if (active) results.querySelector(`[data-id="${active}"]`)?.classList.add('is-active');
-    if (updateMap) map?.setData(SAMPLE_LISTINGS.filter((l) => matches(l, f)));
+    if (updateMap) map?.setData(ALL.filter((l) => matches(l, f)));
     writeUrl();
   }
 
@@ -333,7 +332,7 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
     if (!hasWebGL()) { $('[data-map-loading]').remove(); $('[data-map-fallback]').hidden = false; root.classList.add('is-nomap'); render(); return; }
     try {
       const { mountWorldMap } = await import('@/scripts/world-map');
-      map = await mountWorldMap(host, SAMPLE_LISTINGS.filter((l) => matches(l, f)), {
+      map = await mountWorldMap(host, ALL.filter((l) => matches(l, f)), {
         onSelect: (id) => select(id, true),
         onMove: () => { if (inView) render(false); },
       }, { padBottom: mobile.matches ? peekPx() : 0 });
@@ -347,6 +346,30 @@ const initial = SAMPLE_LISTINGS.slice(0, 24);
       $('[data-map-loading]').remove(); $('[data-map-fallback]').hidden = false; root.classList.add('is-nomap'); render();
     }
   }
-  render();
-  boot();
+  // ---------- Data: real published members from the directory API ----------
+  async function load() {
+    try {
+      const r = await fetch('/api/world');
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = (await r.json()) as { listings: Listing[]; stats: WorldStats; includesSample: boolean };
+      ALL = d.listings;
+      byId = new Map(ALL.map((l) => [l.id, l]));
+      const st = $('[data-stats]');
+      for (const [k, v] of Object.entries(d.stats)) { const el = st.querySelector(`[data-stat="${k}"]`); if (el) el.textContent = String(v); }
+      st.hidden = ALL.length === 0;
+      $('[data-sample-note]').hidden = !d.includesSample;
+      if (ALL.length === 0) {
+        $('[data-empty-title]').textContent = 'Opus World is just opening.';
+        $('[data-clear]').hidden = true;
+        $('[data-empty-body]').innerHTML = 'Members appear here as soon as they publish a profile. <a class="link" href="/sign-up">Create yours</a> and be one of the first on the map.';
+      }
+    } catch (err) {
+      console.error('Could not load Opus World', err);
+      $('[data-empty-title]').textContent = 'We couldn’t load Opus World.';
+      $('[data-empty-body]').textContent = 'Check your connection and refresh the page.';
+    }
+    loaded = true;
+    render();
+  }
+  load().then(boot);
 </script>

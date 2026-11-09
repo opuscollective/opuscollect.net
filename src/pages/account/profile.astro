@@ -1,0 +1,316 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { SPECIALTIES } from '@/data/specialties';
+import { GENRES } from '@/data/genres';
+import { PLACES, placeLabel } from '@/data/places';
+import { getMyProfile, missingForPublish, mediaUrl } from '@/server/profiles';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/account/profile');
+const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
+const missing = profile ? missingForPublish(profile, user.emailVerified) : null;
+const welcome = Astro.url.searchParams.has('welcome');
+
+// Group places: each metro followed by its localities, sorted by country then name.
+const metros = PLACES.filter((p) => p.kind === 'metro').sort((a, b) => a.countryName.localeCompare(b.countryName) || a.name.localeCompare(b.name));
+const localitiesOf = (id: string) => PLACES.filter((p) => p.kind === 'locality' && p.metroId === id).sort((a, b) => a.name.localeCompare(b.name));
+
+const p = profile;
+const linkFields = [
+  ['spotify', 'Spotify', 'open.spotify.com/artist/…'], ['appleMusic', 'Apple Music', 'music.apple.com/…'], ['soundcloud', 'SoundCloud', 'soundcloud.com/…'],
+  ['youtube', 'YouTube', 'youtube.com/@…'], ['instagram', 'Instagram', 'instagram.com/…'], ['tiktok', 'TikTok', 'tiktok.com/@…'], ['website', 'Website', 'yourname.com'],
+] as const;
+---
+<BaseLayout title="Edit profile" noindex>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+      <p class="t-meta app__kicker">{p ? 'Your profile' : 'Step 1 of 1'}</p>
+      <h1 class="app__title">{p ? 'Edit your profile' : 'What’s your specialty?'}</h1>
+      <p class="app__lead">{p ? 'Changes save as a draft until you publish. Published profiles appear in Opus World at city level only.' : 'Set up your professional profile. You can save a draft and finish later. Nothing is public until you publish.'}</p>
+
+      {welcome && !user.emailVerified && <p class="notice" style="margin-top:20px">Welcome to Opus. We sent a confirmation link to <b>{user.email}</b>. You can build your profile now and publish once your email is confirmed.</p>}
+
+      <div class="notice" style="margin-top:20px" data-state>
+        {p?.status === 'published'
+          ? <span><b>Published.</b> Your profile is public at <a class="link" href={`/m/${p.handle}`}>opuscollect.net/m/{p.handle}</a>.</span>
+          : missing && missing.length
+            ? <span><b>Draft.</b> To publish, add: {missing.join(', ')}.</span>
+            : p ? <span><b>Draft.</b> Ready to publish.</span> : <span><b>New profile.</b> Required fields are marked.</span>}
+      </div>
+
+      <form class="form" data-profile novalidate>
+        <!-- Photos -->
+        <div class="panel">
+          <h2>Photos</h2>
+          <p class="dim">A clear photo of you (required). JPEG or WebP. Location data is removed from every photo you upload.</p>
+          <div class="pe-photos">
+            <div class="pe-photo">
+              <div class="pe-photo__img" data-photo-preview style={p?.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''}>{!p?.photoKey && <span>No photo</span>}</div>
+              <label class="btn-app btn-app--ghost pe-file">Upload photo<input type="file" accept="image/jpeg,image/png,image/webp,image/heic" data-upload="photo" /></label>
+            </div>
+            <div class="pe-cover">
+              <div class="pe-cover__img" data-cover-preview style={p?.coverKey ? `background-image:url(${mediaUrl(p.coverKey)})` : ''}>{!p?.coverKey && <span>Optional cover image</span>}</div>
+              <div class="row">
+                <label class="btn-app btn-app--ghost pe-file">Upload cover<input type="file" accept="image/jpeg,image/png,image/webp" data-upload="cover" /></label>
+                {p?.coverKey && <button type="button" class="btn-app btn-app--ghost" data-remove="cover">Remove</button>}
+              </div>
+            </div>
+          </div>
+          <p class="dim" data-upload-status role="status"></p>
+          {!p && <p class="dim">Save your details first, then add photos.</p>}
+        </div>
+
+        <!-- Basics -->
+        <div class="panel">
+          <h2>Basics</h2>
+          <div class="form" style="margin-top:16px">
+            <div class="grid-2">
+              <label class="field"><span>Artist or professional name *</span><input class="input" name="displayName" value={p?.displayName ?? ''} maxlength="80" required /></label>
+              <label class="field"><span>Profile address</span><input class="input" name="handle" value={p?.handle ?? ''} maxlength="30" placeholder="your-name" /><small>opuscollect.net/m/<b data-handle-preview>{p?.handle || 'your-name'}</b></small></label>
+            </div>
+            <label class="field"><span>Primary Specialty *</span>
+              <select class="select" name="primarySpecialty" required>
+                <option value="">Choose your main role</option>
+                {Object.entries(SPECIALTIES).map(([k, s]) => <option value={k} selected={p?.primarySpecialty === k}>{s.label}</option>)}
+              </select>
+            </label>
+            <fieldset class="field" style="border:0;padding:0;margin:0"><legend>Additional Specialties <span class="dim">(up to 6)</span></legend>
+              <div class="chips" data-specialties>
+                {Object.entries(SPECIALTIES).map(([k, s]) => <label class="chip"><input type="checkbox" value={k} checked={p?.specialties.includes(k as never)} /><span>{s.label}</span></label>)}
+              </div>
+            </fieldset>
+            <fieldset class="field" style="border:0;padding:0;margin:0"><legend>Genres * <span class="dim">(up to 5)</span></legend>
+              <div class="chips" data-genres>
+                {GENRES.map((g) => <label class="chip"><input type="checkbox" value={g} checked={p?.genres.includes(g)} /><span>{g}</span></label>)}
+              </div>
+            </fieldset>
+            <label class="field"><span>City *</span>
+              <select class="select" name="placeId" required>
+                <option value="">Choose your city or area</option>
+                {metros.map((m) => (
+                  <optgroup label={`${m.name}${m.region ? ', ' + m.region : ''} · ${m.countryName}`}>
+                    <option value={m.id} selected={p?.placeId === m.id}>{placeLabel(m)}</option>
+                    {localitiesOf(m.id).map((l) => <option value={l.id} selected={p?.placeId === l.id}>{l.name} ({m.name} area)</option>)}
+                  </optgroup>
+                ))}
+              </select>
+              <small>Only the city or area shows publicly, never an address. Suburbs are grouped into their metro area on the map until enough members share them. Don’t see your city? Choose the nearest one for now.</small>
+            </label>
+            <label class="field"><span>Short biography *</span>
+              <textarea class="textarea" name="bio" maxlength="1200" rows="5" placeholder="Who you are, what you make, and who you want to work with.">{p?.bio ?? ''}</textarea>
+              <small><span data-bio-count>{p?.bio.length ?? 0}</span> / 1200</small>
+            </label>
+            <label class="check"><input type="checkbox" name="openToCollab" checked={p ? p.openToCollab : true} /> <span><b style="color:#fff;font-weight:500">Open to collaboration.</b> Members can send you connection requests with a project idea.</span></label>
+          </div>
+        </div>
+
+        <!-- Links -->
+        <div class="panel">
+          <h2>Listen and follow</h2>
+          <p class="dim">Optional. Links to where your work lives.</p>
+          <div class="grid-2" style="margin-top:16px">
+            {linkFields.map(([k, label, ph]) => (
+              <label class="field"><span>{label}</span><input class="input" data-link={k} value={p?.links[k] ?? ''} placeholder={ph} inputmode="url" /></label>
+            ))}
+          </div>
+        </div>
+
+        <!-- Credits -->
+        <div class="panel">
+          <h2>Professional credits</h2>
+          <p class="dim">Optional. Releases you worked on and your role.</p>
+          <div data-rows="credits" data-template="credit" class="pe-rows"></div>
+          <button type="button" class="btn-app btn-app--ghost" data-add="credits">Add a credit</button>
+        </div>
+
+        <div class="panel">
+          <h2>Notable achievements</h2>
+          <p class="dim">Optional. Placements, charting, awards, sync, tours. Keep each to one line.</p>
+          <div data-rows="achievements" data-template="line" class="pe-rows"></div>
+          <button type="button" class="btn-app btn-app--ghost" data-add="achievements">Add an achievement</button>
+        </div>
+
+        <div class="panel">
+          <h2>Past collaborations</h2>
+          <p class="dim">Optional. Artists, producers or brands you’ve worked with.</p>
+          <div data-rows="collaborations" data-template="line" class="pe-rows"></div>
+          <button type="button" class="btn-app btn-app--ghost" data-add="collaborations">Add a collaboration</button>
+        </div>
+
+        <div class="panel">
+          <h2>Portfolio</h2>
+          <p class="dim">Optional. Press, videos, case studies or anything else that shows your work.</p>
+          <div data-rows="portfolio" data-template="portfolio" class="pe-rows"></div>
+          <button type="button" class="btn-app btn-app--ghost" data-add="portfolio">Add a link</button>
+        </div>
+
+        <div data-status class="form-status"></div>
+        <div class="pe-actions">
+          <button class="btn-app btn-app--ghost" type="submit" data-intent="save">{p?.status === 'published' ? 'Save' : 'Save draft'}</button>
+          {p && <a class="btn-app btn-app--ghost" href={`/m/${p.handle}`} target="_blank" data-preview>Preview</a>}
+          {p?.status === 'published'
+            ? <button class="btn-app btn-app--ghost" type="submit" data-intent="unpublish">Unpublish</button>
+            : null}
+          {p?.status !== 'published' && <button class="btn-app" type="submit" data-intent="publish">Save and publish</button>}
+        </div>
+      </form>
+    </div>
+  </section>
+  <script type="application/json" id="profile-data" set:html={JSON.stringify(p ?? null).replace(/</g, '\\u003c')}></script>
+</BaseLayout>
+
+<style>
+  .pe-photos { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; margin-top: 16px; align-items: start; }
+  .pe-photo, .pe-cover { display: flex; flex-direction: column; gap: 12px; }
+  .pe-photo__img { width: 160px; height: 160px; border-radius: 50%; }
+  .pe-cover__img { width: 100%; aspect-ratio: 3 / 1; border-radius: var(--r-md); }
+  .pe-photo__img, .pe-cover__img { display: grid; place-items: center; background: #0d0e11 center / cover no-repeat; border: 1px solid var(--c-ink-600); color: #4a4c55; font-size: 13px; }
+  .pe-file { position: relative; overflow: hidden; width: max-content; }
+  .pe-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .pe-rows { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 14px; }
+  .pe-rows:empty { margin: 8px 0; }
+  .pe-actions { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding: 14px 0; background: linear-gradient(to top, var(--c-bg) 70%, transparent); }
+  :global(.pe-row) { display: grid; gap: 8px; grid-template-columns: 1fr auto; align-items: center; }
+  :global(.pe-row--credit) { grid-template-columns: 2fr 1.2fr 1.4fr 0.7fr 2fr auto; }
+  :global(.pe-row--portfolio) { grid-template-columns: 1fr 2fr auto; }
+  :global(.pe-row .input) { min-height: 42px; font-size: 14px; }
+  :global(.pe-row__x) { width: 36px; height: 36px; border: 1px solid var(--c-ink-600); border-radius: 50%; background: none; color: var(--c-fg-faint); cursor: pointer; }
+  :global(.pe-row__x:hover) { color: #fff; border-color: #4a4c55; }
+  @media (max-width: 720px) {
+    .pe-photos { grid-template-columns: 1fr; }
+    :global(.pe-row--credit), :global(.pe-row--portfolio) { grid-template-columns: 1fr 1fr; }
+    :global(.pe-row--credit .pe-row__x), :global(.pe-row--portfolio .pe-row__x) { justify-self: end; }
+  }
+</style>
+
+<script>
+  import { bindForm, values } from '@/scripts/form';
+  import { prepareImage } from '@/scripts/image';
+
+  type Row = Record<string, string>;
+  const data = JSON.parse(document.getElementById('profile-data')!.textContent || 'null') as null | {
+    handle: string; credits: Row[]; achievements: string[]; collaborations: string[]; portfolio: Row[];
+  };
+  const form = document.querySelector<HTMLFormElement>('[data-profile]')!;
+
+  // ----- repeatable rows -----
+  const TEMPLATES: Record<string, { cls: string; fields: [string, string, string][] }> = {
+    credit: { cls: 'pe-row pe-row--credit', fields: [['title', 'Release or song', '120'], ['role', 'Your role', '80'], ['artist', 'Artist', '120'], ['year', 'Year', '4'], ['url', 'Link (optional)', '500']] },
+    portfolio: { cls: 'pe-row pe-row--portfolio', fields: [['title', 'Title', '120'], ['url', 'https://…', '500']] },
+    line: { cls: 'pe-row', fields: [['value', '', '200']] },
+  };
+  function addRow(host: HTMLElement, v: Row | string = {}) {
+    const t = TEMPLATES[host.dataset.template!]!;
+    const row = document.createElement('div');
+    row.className = t.cls;
+    for (const [k, ph, max] of t.fields) {
+      const i = document.createElement('input');
+      i.className = 'input'; i.dataset.k = k; i.placeholder = ph; i.maxLength = Number(max);
+      i.setAttribute('aria-label', ph || host.dataset.rows!);
+      i.value = typeof v === 'string' ? v : v[k] ?? '';
+      row.append(i);
+    }
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'pe-row__x'; x.textContent = '×'; x.setAttribute('aria-label', 'Remove');
+    x.addEventListener('click', () => row.remove());
+    row.append(x);
+    host.append(row);
+    return row;
+  }
+  document.querySelectorAll<HTMLElement>('[data-rows]').forEach((host) => {
+    const key = host.dataset.rows as 'credits' | 'achievements' | 'collaborations' | 'portfolio';
+    (data?.[key] ?? []).forEach((v) => addRow(host, v as Row | string));
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-add]').forEach((b) => b.addEventListener('click', () => {
+    const host = document.querySelector<HTMLElement>(`[data-rows="${b.dataset.add}"]`)!;
+    addRow(host).querySelector('input')?.focus();
+  }));
+  const readRows = (key: string) => Array.from(document.querySelectorAll<HTMLElement>(`[data-rows="${key}"] > div`)).map((row) => {
+    const o: Row = {};
+    row.querySelectorAll<HTMLInputElement>('input').forEach((i) => (o[i.dataset.k!] = i.value.trim()));
+    return o;
+  });
+
+  // ----- chip limits -----
+  function capChips(sel: string, max: number) {
+    const host = document.querySelector<HTMLElement>(sel)!;
+    const update = () => {
+      const boxes = Array.from(host.querySelectorAll<HTMLInputElement>('input'));
+      const n = boxes.filter((b) => b.checked).length;
+      boxes.forEach((b) => (b.disabled = !b.checked && n >= max));
+    };
+    host.addEventListener('change', update); update();
+  }
+  capChips('[data-specialties]', 6);
+  capChips('[data-genres]', 5);
+  // The primary specialty can't also be an additional one.
+  const primary = form.querySelector<HTMLSelectElement>('[name="primarySpecialty"]')!;
+  const syncPrimary = () => document.querySelectorAll<HTMLInputElement>('[data-specialties] input').forEach((b) => {
+    const isP = b.value === primary.value;
+    if (isP) b.checked = false;
+    b.closest('.chip')!.toggleAttribute('hidden', isP);
+  });
+  primary.addEventListener('change', syncPrimary); syncPrimary();
+
+  const bio = form.querySelector<HTMLTextAreaElement>('[name="bio"]')!;
+  bio.addEventListener('input', () => (document.querySelector('[data-bio-count]')!.textContent = String(bio.value.length)));
+  const handle = form.querySelector<HTMLInputElement>('[name="handle"]')!;
+  handle.addEventListener('input', () => (document.querySelector('[data-handle-preview]')!.textContent = handle.value || 'your-name'));
+
+  // ----- save / publish -----
+  let intent = 'save';
+  form.querySelectorAll<HTMLButtonElement>('[data-intent]').forEach((b) => b.addEventListener('click', () => (intent = b.dataset.intent!)));
+  bindForm(form, {
+    url: '/api/profile',
+    busyLabel: 'Saving…',
+    body: (f) => {
+      const v = values(f);
+      const checked = (sel: string) => Array.from(document.querySelectorAll<HTMLInputElement>(`${sel} input:checked`)).map((i) => i.value);
+      const links: Record<string, string> = {};
+      document.querySelectorAll<HTMLInputElement>('[data-link]').forEach((i) => (links[i.dataset.link!] = i.value.trim()));
+      return {
+        displayName: v.displayName, handle: v.handle, primarySpecialty: v.primarySpecialty, placeId: v.placeId, bio: v.bio,
+        openToCollab: v.openToCollab, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'), links,
+        credits: readRows('credits'), portfolio: readRows('portfolio'),
+        achievements: readRows('achievements').map((r) => r.value), collaborations: readRows('collaborations').map((r) => r.value),
+        publish: intent === 'publish' ? true : intent === 'unpublish' ? false : undefined,
+      };
+    },
+    onSuccess: () => { location.href = `/account/profile?saved=${intent}`; },
+  });
+
+  // ----- photos -----
+  const upStatus = document.querySelector<HTMLElement>('[data-upload-status]')!;
+  document.querySelectorAll<HTMLInputElement>('[data-upload]').forEach((input) => input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!data) { upStatus.textContent = 'Save your details first, then add photos.'; input.value = ''; return; }
+    const slot = input.dataset.upload as 'photo' | 'cover';
+    upStatus.textContent = 'Preparing image…';
+    try {
+      // Re-encode in the browser: resizes, fixes orientation and drops all metadata (including GPS) before upload.
+      const blob = await prepareImage(file, slot === 'photo' ? 800 : 2000, slot === 'photo' ? 'square' : 'free');
+      upStatus.textContent = 'Uploading…';
+      const r = await fetch(`/api/profile/image?slot=${slot}`, { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error ?? 'Upload failed.');
+      const el = document.querySelector<HTMLElement>(slot === 'photo' ? '[data-photo-preview]' : '[data-cover-preview]')!;
+      el.style.backgroundImage = `url(${d.url})`; el.textContent = '';
+      upStatus.textContent = slot === 'photo' ? 'Photo updated.' : 'Cover updated.';
+    } catch (e) {
+      upStatus.textContent = e instanceof Error ? e.message : 'Upload failed.';
+    } finally { input.value = ''; }
+  }));
+  document.querySelector<HTMLButtonElement>('[data-remove="cover"]')?.addEventListener('click', async (e) => {
+    const r = await fetch('/api/profile/image?slot=cover', { method: 'DELETE' });
+    if (r.ok) { const el = document.querySelector<HTMLElement>('[data-cover-preview]')!; el.style.backgroundImage = ''; el.textContent = 'Optional cover image'; (e.target as HTMLElement).remove(); }
+  });
+
+  const saved = new URLSearchParams(location.search).get('saved');
+  if (saved) {
+    const st = document.querySelector<HTMLElement>('[data-state]');
+    if (st) st.insertAdjacentHTML('afterbegin', `<b>${saved === 'publish' ? 'Saved and published.' : saved === 'unpublish' ? 'Unpublished.' : 'Draft saved.'}</b> `);
+  }
+</script>

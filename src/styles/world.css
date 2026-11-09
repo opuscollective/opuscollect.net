@@ -138,6 +138,18 @@
 .wc__rate { color: #fff; font-weight: 500; font-variant-numeric: tabular-nums; }
 .wc__rate small { color: var(--c-fg-ghost); font-weight: 400; }
 .wc__gear { color: var(--c-fg-ghost); }
+.wc__open { margin-left: auto; color: #fff; font-size: 12px; text-decoration: underline; text-decoration-color: #4a4c55; text-underline-offset: 3px; }
+.wc__open:hover { text-decoration-color: var(--c-accent); }
+img.wc__av { object-fit: cover; }
+
+.wc--skeleton { pointer-events: none; display: grid; gap: 10px; min-height: 96px; }
+.wc--skeleton span { display: block; height: 14px; border-radius: 4px; background: linear-gradient(90deg, #15161a 0%, #1f2126 50%, #15161a 100%); background-size: 200% 100%; animation: wc-shimmer 1.4s ease-in-out infinite; }
+.wc--skeleton span + span { width: 60%; }
+@keyframes wc-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .wc--skeleton span { animation: none; } }
+
+/* Markers on the far side of the globe are hidden, not drawn faintly over the ocean. */
+.wm.maplibregl-marker-covered { opacity: 0 !important; pointer-events: none; }
 
 /* Verification badges */
 .vb { display: inline-flex; width: 16px; height: 16px; flex-shrink: 0; }

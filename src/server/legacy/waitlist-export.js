@@ -1,4 +1,4 @@
-// Cloudflare Pages Function: GET /api/waitlist-export?key=YOUR_EXPORT_KEY
+// GET (called from src/pages/api/waitlist-export.ts): /api/waitlist-export?key=YOUR_EXPORT_KEY
 // Downloads every signup as a CSV you can open in Excel or Google Sheets.
 export async function onRequestGet({ request, env }) {
   const key = new URL(request.url).searchParams.get('key') || '';

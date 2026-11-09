@@ -1,0 +1,36 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import '@/styles/app.css';
+export const prerender = false;
+if (Astro.locals.user) return Astro.redirect('/account');
+---
+<BaseLayout title="Join Opus" description="Create your Opus account to build your profile and connect with musicians around the world." noindex>
+  <section class="app app--center">
+    <div class="app__wrap">
+      <p class="t-meta app__kicker">Join Opus</p>
+      <h1 class="app__title">Create your account.</h1>
+      <p class="app__lead">Browsing Opus World is open to everyone. An account lets you build your profile, connect with other musicians and apply for Opus Verified.</p>
+
+      <form class="form" data-signup novalidate>
+        <label class="field"><span>Email</span>
+          <input class="input" name="email" type="email" autocomplete="email" required inputmode="email" />
+        </label>
+        <label class="field"><span>Password</span>
+          <input class="input" name="password" type="password" autocomplete="new-password" required minlength="10" />
+          <small>At least 10 characters. A short phrase works well.</small>
+        </label>
+        <label class="field check"><input type="checkbox" name="agree" required />
+          <span>I agree to the <a class="link" href="/legal#terms" target="_blank">Terms</a> and <a class="link" href="/legal#privacy" target="_blank">Privacy Policy</a>.</span>
+        </label>
+        <div data-status class="form-status"></div>
+        <button class="btn-app btn-app--block" type="submit">Create account</button>
+      </form>
+      <p class="app__alt">Already a member? <a href="/sign-in">Sign in</a></p>
+    </div>
+  </section>
+</BaseLayout>
+<script>
+  import { bindForm } from '@/scripts/form';
+  const form = document.querySelector<HTMLFormElement>('[data-signup]')!;
+  bindForm(form, { url: '/api/auth/register', busyLabel: 'Creating account…', onSuccess: () => { location.href = '/account/profile?welcome=1'; } });
+</script>

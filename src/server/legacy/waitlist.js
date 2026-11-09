@@ -1,4 +1,4 @@
-// Cloudflare Pages Function: POST /api/waitlist
+// POST /api/waitlist (called from src/pages/api/waitlist.ts on the Worker)
 // Saves each signup to the KV namespace bound as WAITLIST (backup),
 // then adds the person to your Kit form so you can email the list.
 const KIT_FORM_ID = '10621918';
@@ -88,7 +88,7 @@ export async function onRequestPost({ request, env }) {
     interests,
     joined: existing?.joined || now,
     updated: now,
-    country: request.cf?.country || '',
+    country: (request.cf || {}).country || '',
   };
   // Backup first, so nobody is lost even if Kit is down.
   await env.WAITLIST.put(key, JSON.stringify(record));

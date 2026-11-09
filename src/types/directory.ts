@@ -34,6 +34,14 @@ interface ListingBase {
   location: GeoPoint;
   /** Development sample data. Always rendered with a visible "Sample" label. */
   isSample?: boolean;
+  /** Public profile URL and photo for real members. */
+  href?: string;
+  photo?: string;
+  /**
+   * The metro-area point this listing counts toward when the globe is zoomed out
+   * (e.g. Hoover → Birmingham). Absent when the listing is already at metro level.
+   */
+  metro?: { name: string; lat: number; lng: number };
 }
 
 export interface MusicianListing extends ListingBase {
@@ -72,3 +80,8 @@ export interface OrganizationListing extends ListingBase {
 }
 
 export type Listing = MusicianListing | StudioListing | OrganizationListing;
+
+/** Display labels for organization categories. */
+export const ORG_CATEGORY_LABEL: Record<OrganizationCategory, string> = {
+  label: 'Label', management: 'Management', collective: 'Collective', marketing: 'Agency', other: 'Organization',
+};
