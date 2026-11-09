@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { archiveService, getMyStudio, saveAvailability, saveService, saveStudio, setStudioPublished, studioChecklist } from '@/server/business';
-import { removeImage, uploadImage } from '@/server/profiles';
+import { addGalleryImage, removeGalleryImage, removeImage, uploadImage } from '@/server/profiles';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
 export const prerender = false;
@@ -8,7 +8,8 @@ export const prerender = false;
 /**
  * Opus Business owner endpoints (all require sign-in; every write checks ownership on the server).
  * POST studio · publish · service · service-archive · hours · image?slot=photo|cover
- * DELETE image?slot=cover
+ * DELETE image?slot=cover · gallery?id=…
+ * POST gallery (image bytes) adds a gallery photo
  */
 export const POST: APIRoute = async ({ locals, request, params, url }) => {
   try {
@@ -38,6 +39,11 @@ export const POST: APIRoute = async ({ locals, request, params, url }) => {
         const key = await uploadImage(env, user, request, slot, studio);
         return json({ ok: true, url: `/media/${key}` });
       }
+      case 'gallery': {
+        const studio = await getMyStudio(env.DB, user.id);
+        if (!studio) throw new HttpError(400, 'Save your studio details before adding photos.');
+        return json({ ok: true, ...(await addGalleryImage(env, user, request, studio)) });
+      }
       default: throw new HttpError(404, 'Not found.');
     }
   } catch (e) { return fail(e); }
@@ -47,6 +53,12 @@ export const DELETE: APIRoute = async ({ locals, params, url }) => {
   try {
     const user = locals.user;
     if (!user) throw new HttpError(401, 'Please sign in first.');
+    if (params.action === 'gallery') {
+      const studio = await getMyStudio(locals.runtime.env.DB, user.id);
+      if (!studio) throw new HttpError(404, 'Set up your studio first.');
+      await removeGalleryImage(locals.runtime.env, studio, url.searchParams.get('id'));
+      return json({ ok: true });
+    }
     if (params.action !== 'image') throw new HttpError(404, 'Not found.');
     const slot = url.searchParams.get('slot');
     if (slot !== 'photo' && slot !== 'cover') throw new HttpError(400, 'Unknown image slot.');

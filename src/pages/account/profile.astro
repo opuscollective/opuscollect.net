@@ -98,6 +98,15 @@ const linkFields = [
               </select>
               <small>Only the city or area shows publicly, never an address. Suburbs are grouped into their metro area on the map until enough members share them. Don’t see your city? Choose the nearest one for now.</small>
             </label>
+            <label class="field"><span>Public location</span>
+              <select class="select" name="locationVisibility">
+                <option value="city" selected={!p || p.locationVisibility === 'city'}>Show my city or suburb</option>
+                <option value="metro" selected={p?.locationVisibility === 'metro'}>Show only my metro area (e.g. Birmingham area)</option>
+                <option value="region" selected={p?.locationVisibility === 'region'}>Show only my state or country (not on the map)</option>
+                <option value="hidden" selected={p?.locationVisibility === 'hidden'}>Don’t show my location (not on the map)</option>
+              </select>
+              <small>Opus never sends a more precise location than you choose here, not even behind the scenes.</small>
+            </label>
             <label class="field"><span>Short biography *</span>
               <textarea class="textarea" name="bio" maxlength="1200" rows="5" placeholder="Who you are, what you make, and who you want to work with.">{p?.bio ?? ''}</textarea>
               <small><span data-bio-count>{p?.bio.length ?? 0}</span> / 1200</small>
@@ -273,7 +282,7 @@ const linkFields = [
       document.querySelectorAll<HTMLInputElement>('[data-link]').forEach((i) => (links[i.dataset.link!] = i.value.trim()));
       return {
         displayName: v.displayName, handle: v.handle, primarySpecialty: v.primarySpecialty, placeId: v.placeId, bio: v.bio,
-        openToCollab: v.openToCollab, showOnMap: v.showOnMap, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'), links,
+        openToCollab: v.openToCollab, showOnMap: v.showOnMap, locationVisibility: v.locationVisibility, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'), links,
         credits: readRows('credits'), portfolio: readRows('portfolio'),
         achievements: readRows('achievements').map((r) => r.value), collaborations: readRows('collaborations').map((r) => r.value),
         publish: intent === 'publish' ? true : intent === 'unpublish' ? false : undefined,

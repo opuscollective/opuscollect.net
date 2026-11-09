@@ -2,7 +2,7 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import { SPECIALTIES, allSpecialties } from '@/data/specialties';
-import { PLACE_BY_ID, placeLabel } from '@/data/places';
+import { PLACE_BY_ID, visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
 import { relationship } from '@/server/connections';
 import '@/styles/app.css';
@@ -19,12 +19,16 @@ if (!found) {
 const { profile: p, isOwner, ownerId } = found;
 if (p.handle !== handle) return Astro.redirect(`/m/${p.handle}`, 301);
 
-const place = p.placeId ? PLACE_BY_ID.get(p.placeId) : undefined;
+// Honour the member's location choice (city, metro area, state/country, or hidden).
+const where = visibleLabel(p.placeId, p.locationVisibility);
+// Links to the metro area on Opus World, unless the member shows only a region or nothing.
+const metroPlace = p.placeId ? PLACE_BY_ID.get(PLACE_BY_ID.get(p.placeId)?.metroId ?? '') : undefined;
+const worldCity = p.locationVisibility === 'city' || p.locationVisibility === 'metro' ? metroPlace?.name : undefined;
 const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
 const rel = viewer ? await relationship(db, viewer.id, ownerId) : null;
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
 const links = Object.entries(p.links).filter(([, v]) => !!v);
-const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${place ? ` · ${place.name}` : ''} on Opus.`;
+const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${where ? ` · ${where}` : ''} on Opus.`;
 ---
 <BaseLayout title={p.displayName} description={desc} noindex={p.status !== 'published'} image={p.photoKey ? mediaUrl(p.photoKey)! : undefined}>
   {isOwner && p.status !== 'published' && (
@@ -39,7 +43,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           <h1 class="mp__name">{p.displayName}{p.verification === 'verified' && <VerifiedBadge size={22} />}</h1>
           {roles.length > 0 && <p class="mp__roles"><span class="mp__primary">{roles[0]}</span>{roles.slice(1).map((r) => <span>{r}</span>)}</p>}
           <p class="mp__meta">
-            {place && <span>{placeLabel(place)}</span>}
+            {where && <span>{where}</span>}
             <span class:list={['mp__collab', { 'is-on': p.openToCollab }]}>{p.openToCollab ? 'Open to collaboration' : 'Not taking new collaborations'}</span>
           </p>
         </div>
@@ -47,7 +51,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {isOwner ? (
             <a class="btn-app btn-app--ghost" href="/account/profile">Edit profile</a>
           ) : !viewer ? (
-            p.openToCollab && <a class="btn-app" href={`/sign-in?next=/m/${p.handle}`}>Connect</a>
+            p.openToCollab && <a class="btn-app" href={'/sign-in?next=' + encodeURIComponent('/m/' + p.handle + '?connect=1')}>Connect</a>
           ) : rel?.state === 'connected' ? (
             <a class="btn-app btn-app--ghost" href="/account/connections">Connected</a>
           ) : rel?.state === 'sent' ? (
@@ -119,7 +123,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               <ul class="mp__links" role="list">{links.map(([k, v]) => <li><a href={v} target="_blank" rel="noopener nofollow ugc">{LINK_LABEL[k] ?? k} ↗</a></li>)}</ul>
             </section>
           )}
-          {place && <section class="mp__sec"><h2 class="t-meta">Based in</h2><p><a class="link" href={`/world?city=${encodeURIComponent(place.name)}`}>{placeLabel(place)}</a></p></section>}
+          {where && worldCity && <section class="mp__sec"><h2 class="t-meta">Based in</h2><p><a class="link" href={`/world?city=${encodeURIComponent(worldCity)}`}>{where}</a></p></section>}
         </aside>
       </div>
     </div>
@@ -176,6 +180,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   const form = document.querySelector<HTMLFormElement>('[data-connect]');
   const open = document.querySelector<HTMLButtonElement>('[data-connect-open]');
   open?.addEventListener('click', () => { if (form) { form.hidden = false; form.querySelector('textarea')?.focus(); } });
+  // Arriving from an Opus World preview's Connect button opens the introduction form directly.
+  if (new URLSearchParams(location.search).get('connect') === '1' && open && form) { form.hidden = false; form.scrollIntoView({ block: 'center' }); form.querySelector('textarea')?.focus({ preventScroll: true }); }
   document.querySelector('[data-connect-cancel]')?.addEventListener('click', () => { if (form) form.hidden = true; });
   if (form) bindForm(form, { url: '/api/connections', busyLabel: 'Sending…', onSuccess: () => location.reload() });
 

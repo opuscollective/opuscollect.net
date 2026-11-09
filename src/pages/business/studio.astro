@@ -3,13 +3,14 @@ import BusinessShell from '@/components/business/BusinessShell.astro';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import { STUDIO_TYPES } from '@/server/business';
 import { loadBusiness } from '@/server/business-page';
-import { mediaUrl } from '@/server/profiles';
+import { GALLERY_MAX, listGallery, mediaUrl } from '@/server/profiles';
 export const prerender = false;
 
 const ctx = await loadBusiness(Astro);
 if ('redirect' in ctx) return ctx.redirect;
 const { studio: s, pending } = ctx;
 const isNew = Astro.url.searchParams.has('new');
+const gallery = await listGallery(Astro.locals.runtime.env.DB, s.id);
 const ZONES = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu',
   'America/Toronto', 'America/Mexico_City', 'America/Sao_Paulo', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Africa/Lagos', 'Africa/Johannesburg', 'Asia/Tokyo', 'Australia/Sydney'];
 const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
@@ -32,6 +33,13 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
         </div>
       </fieldset>
       <label class="field"><span>City or area *</span><PlaceSelect selected={s.placeId} required /><small>Shown publicly. Opus World places you at the city’s centre, never at your address.</small></label>
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend>How precisely to show your location</legend>
+        <div class="bk__svc" style="margin-top:8px">
+          <label><input type="radio" name="locationVisibility" value="city" checked={s.locationVisibility === 'city'} /><span><b>City or suburb</b><small>Your chosen city. A suburb only shows on its own when several members share it.</small></span><span></span></label>
+          <label><input type="radio" name="locationVisibility" value="metro" checked={s.locationVisibility === 'metro'} /><span><b>Metro area only</b><small>For example “Birmingham area” instead of Hoover.</small></span><span></span></label>
+        </div>
+      </fieldset>
       <label class="field"><span>About the studio *</span><textarea class="textarea" name="bio" rows="6" maxlength="2000">{s.bio}</textarea><small>At least 40 characters. What you record, who you work with, what makes the room good.</small></label>
       <label class="field"><span>Equipment</span><textarea class="textarea" name="equipment" rows="5" placeholder="One item per line, e.g. Neumann U87">{s.equipment.join('\n')}</textarea></label>
       <div class="grid-2">
@@ -81,6 +89,18 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
     </div>
     <p class="dim" data-upload-status role="status"></p>
   </div>
+
+  <div class="panel" style="margin-top:16px" id="gallery">
+    <h2>Gallery</h2>
+    <p class="dim">Up to {GALLERY_MAX} photos of the rooms, booth and gear. They appear in your Opus World preview and booking page. Location data is removed before upload.</p>
+    <ul class="gal" data-gallery data-max={GALLERY_MAX}>
+      {gallery.map((g) => (
+        <li data-gid={g.id}><img src={g.url} alt="" loading="lazy" /><button type="button" class="btn-app btn-app--ghost" data-gal-remove={g.id} aria-label="Remove photo">Remove</button></li>
+      ))}
+    </ul>
+    <label class="btn-app btn-app--ghost file-btn" data-gal-add hidden={gallery.length >= GALLERY_MAX}>Add photos<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-gal-input /></label>
+    <p class="dim" data-gal-status role="status"></p>
+  </div>
 </BusinessShell>
 
 <script>
@@ -126,6 +146,38 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
       up.textContent = e instanceof Error ? e.message : 'Upload failed.';
     } finally { input.value = ''; }
   }));
+  // Gallery: add several at once, remove one at a time.
+  const gal = document.querySelector<HTMLUListElement>('[data-gallery]')!;
+  const galStatus = document.querySelector<HTMLElement>('[data-gal-status]')!;
+  const galAdd = document.querySelector<HTMLElement>('[data-gal-add]')!;
+  const GMAX = Number(gal.dataset.max) || 8;
+  const syncGal = () => { galAdd.hidden = gal.children.length >= GMAX; };
+  document.querySelector<HTMLInputElement>('[data-gal-input]')!.addEventListener('change', async (e) => {
+    const input = e.target as HTMLInputElement;
+    const files = [...(input.files ?? [])].slice(0, GMAX - gal.children.length);
+    for (const [i, file] of files.entries()) {
+      galStatus.textContent = `Uploading ${i + 1} of ${files.length}…`;
+      try {
+        const blob = await prepareImage(file, 2000, 'free');
+        const r = await fetch('/api/business/gallery', { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error ?? 'Upload failed.');
+        const li = document.createElement('li'); li.dataset.gid = d.id;
+        li.innerHTML = `<img src="${d.url}" alt="" /><button type="button" class="btn-app btn-app--ghost" data-gal-remove="${d.id}" aria-label="Remove photo">Remove</button>`;
+        gal.append(li);
+      } catch (err) { galStatus.textContent = err instanceof Error ? err.message : 'Upload failed.'; input.value = ''; syncGal(); return; }
+    }
+    galStatus.textContent = files.length ? 'Gallery updated.' : '';
+    input.value = ''; syncGal();
+  });
+  gal.addEventListener('click', async (e) => {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-gal-remove]')?.dataset.galRemove;
+    if (!id) return;
+    const r = await fetch(`/api/business/gallery?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (r.ok) { gal.querySelector(`[data-gid="${id}"]`)?.remove(); galStatus.textContent = 'Photo removed.'; syncGal(); }
+    else galStatus.textContent = 'Couldn’t remove that photo. Try again.';
+  });
+
   document.querySelector<HTMLButtonElement>('[data-remove-cover]')?.addEventListener('click', async (e) => {
     const r = await fetch('/api/business/image?slot=cover', { method: 'DELETE' });
     if (r.ok) { const el = document.querySelector<HTMLElement>('[data-preview="cover"]')!; el.style.backgroundImage = ''; el.textContent = 'Optional cover image'; (e.target as HTMLElement).remove(); }

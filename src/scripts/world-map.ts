@@ -14,7 +14,8 @@ import maplibregl, { type GeoJSONSource, type StyleSpecification } from 'maplibr
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
-import type { Listing } from '@/types/directory';
+import { hasPoint, type Listing } from '@/types/directory';
+import { aggregate, levelForZoom, nextZoom, placePoints, type Aggregate, type GeoLevel } from '@/lib/world-geo';
 
 const OFM = 'https://tiles.openfreemap.org';
 
@@ -69,10 +70,14 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
   };
 }
 
+export interface Camera { center: [number, number]; zoom: number }
+
 export interface WorldMapApi {
   setData(listings: Listing[]): void;
   flyToCity(lat: number, lng: number): void;
   flyToListing(l: Listing): void;
+  /** Pan just enough to bring a listing into view, without changing the zoom the visitor chose. */
+  ensureVisible(l: Listing): void;
   setActive(id: string | null): void;
   setHover(id: string | null): void;
   /** Marks the searched city with a quiet accent ring (null clears it). */
@@ -83,24 +88,35 @@ export interface WorldMapApi {
   getCenter(): { lat: number; lng: number };
   getBounds(): maplibregl.LngLatBounds;
   getZoom(): number;
+  getCamera(): Camera;
   resize(): void;
+  /** Frees the WebGL context and all markers (List view). */
+  destroy(): void;
+}
+
+export interface MapCallbacks {
+  onSelect: (id: string) => void;
+  onMove: () => void;
+  /** A grouped marker (country, region, metro or cluster) was opened. */
+  onGroup?: (name: string | null) => void;
 }
 
 export async function mountWorldMap(
   el: HTMLElement,
   initial: Listing[],
-  cb: { onSelect: (id: string) => void; onMove: () => void },
-  opts: { padBottom?: number } = {},
+  cb: MapCallbacks,
+  opts: { padBottom?: number; camera?: Camera | null } = {},
 ): Promise<WorldMapApi> {
   const topo = (await fetch('/data/countries-50m.json').then((r) => r.json())) as Topology;
   const countries = feature(topo, topo.objects.countries as GeometryCollection) as unknown as GeoJSON.FeatureCollection;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const homeZoom = () => (el.clientWidth < 700 ? 0.85 : 1.5);
 
   const map = new maplibregl.Map({
     container: el,
     style: buildStyle(countries),
-    center: [-40, 28],
-    zoom: el.clientWidth < 700 ? 0.85 : 1.5,
+    center: opts.camera?.center ?? [-40, 28],
+    zoom: opts.camera?.zoom ?? homeZoom(),
     minZoom: 0.4,
     maxZoom: 17,
     attributionControl: { compact: true },
@@ -119,72 +135,85 @@ export async function mountWorldMap(
     if (!warned) { warned = true; console.warn('Map tile source unavailable; showing base layers only.', e.error?.message); }
   });
 
-  // Members share public city/locality centre points, never home locations. When several share one
-  // point, spread them on a small ring around it so each stays selectable when zoomed in. The ring is
-  // derived only from the public point and the member's order, so it reveals nothing new.
-  const toGeo = (ls: Listing[]): GeoJSON.FeatureCollection => {
-    const groups = new Map<string, Listing[]>();
-    for (const l of ls) {
-      if (l.onMap === false) continue;
-      const k = `${l.location.lat.toFixed(4)},${l.location.lng.toFixed(4)}`;
-      (groups.get(k) ?? groups.set(k, []).get(k)!).push(l);
+  // ---- Data by level: Country → Region → Metro → City/Suburb (see lib/world-geo) ----
+  let data = initial;
+  let level: GeoLevel = levelForZoom(map.getZoom());
+  const groups = new Map<string, Aggregate>();
+  function toGeo(): GeoJSON.FeatureCollection {
+    groups.clear();
+    if (level === 'place') {
+      return {
+        type: 'FeatureCollection',
+        features: placePoints(data).map((p) => ({
+          type: 'Feature', properties: { id: p.id, kind: p.kind, approx: p.approx, n: 1 }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+        })),
+      };
     }
-    const features: GeoJSON.Feature[] = [];
-    for (const g of groups.values()) {
-      g.forEach((l, i) => {
-        let { lat, lng } = l.location;
-        if (g.length > 1) {
-          const r = 0.006 * (1 + Math.floor(i / 8)); // degrees, roughly 600 m per ring
-          const a = (i % 8) / Math.min(8, g.length) * Math.PI * 2;
-          lat += r * Math.sin(a);
-          lng += (r * Math.cos(a)) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
-        }
-        features.push({
-          type: 'Feature',
-          id: l.id,
-          properties: { id: l.id, kind: l.kind, approx: l.location.precision === 'approximate' },
-          geometry: { type: 'Point', coordinates: [lng, lat] },
-        });
-      });
-    }
-    return { type: 'FeatureCollection', features };
-  };
+    const aggs = aggregate(data, level);
+    for (const a of aggs) groups.set(a.key, a);
+    return {
+      type: 'FeatureCollection',
+      features: aggs.map((a) => ({ type: 'Feature', properties: { agg: a.key, n: a.count }, geometry: { type: 'Point', coordinates: [a.lng, a.lat] } })),
+    };
+  }
 
   await new Promise<void>((res) => map.on('load', () => res()));
 
-  map.addSource('listings', { type: 'geojson', data: toGeo(initial), cluster: true, clusterRadius: 44, clusterMaxZoom: 12 });
+  // Groups that would overlap on screen merge into one count (summed), then split as you zoom in.
+  map.addSource('listings', {
+    type: 'geojson', data: toGeo(), cluster: true, clusterRadius: 46, clusterMaxZoom: 13,
+    clusterProperties: { n: ['+', ['get', 'n']] },
+  });
   // Invisible layer so querySourceFeatures has something to read; markers are HTML for full styling control.
   map.addLayer({ id: 'listings-hit', type: 'circle', source: 'listings', paint: { 'circle-radius': 0, 'circle-opacity': 0 } });
 
-  // ---- HTML markers (clusters + single listings) ----
+  // ---- MapMarker: HTML markers for listings, groups and clusters ----
   const markers = new Map<string, maplibregl.Marker>();
   let onScreen = new Map<string, maplibregl.Marker>();
   let active: string | null = null;
   let hover: string | null = null;
+  const size = (n: number) => String(Math.round(Math.min(54, 28 + Math.sqrt(n) * 3.6)));
 
   type SrcFeature = ReturnType<typeof map.querySourceFeatures>[number];
   function makeEl(f: SrcFeature): HTMLElement {
     const p = f.properties as Record<string, unknown>;
     const btn = document.createElement('button');
     btn.type = 'button';
+    const at = (f.geometry as GeoJSON.Point).coordinates as [number, number];
     if (p.cluster) {
-      const n = Number(p.point_count);
+      const n = Number(p.n ?? p.point_count);
       btn.className = 'wm wm--cluster';
-      btn.style.setProperty('--s', String(Math.min(60, 28 + Math.sqrt(n) * 6)));
-      btn.innerHTML = `<span>${n}</span>`;
-      btn.setAttribute('aria-label', `${n} listings here. Zoom in`);
+      btn.style.setProperty('--s', size(n));
+      btn.innerHTML = '<span>' + n + '</span>';
+      btn.setAttribute('aria-label', n + ' members here. Zoom in');
       btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
+        e.stopPropagation(); stop();
         const src = map.getSource('listings') as GeoJSONSource;
         const z = await src.getClusterExpansionZoom(Number(p.cluster_id));
-        map.easeTo({ center: (f.geometry as GeoJSON.Point).coordinates as [number, number], zoom: Math.min(z + 0.3, 16), duration: reduce ? 0 : 700 });
+        map.easeTo({ center: at, zoom: Math.min(z + 0.4, 16), duration: reduce ? 0 : 700 });
+        cb.onGroup?.(null);
+      });
+    } else if (p.agg) {
+      const a = groups.get(String(p.agg))!;
+      btn.className = 'wm wm--agg wm--' + a.level;
+      btn.dataset.agg = a.key;
+      btn.style.setProperty('--s', size(a.count));
+      btn.innerHTML = '<span>' + a.count + '</span><em>' + a.name.replace(/[&<>"]/g, '') + '</em>';
+      btn.setAttribute('aria-label', a.count + ' in ' + a.name + '. Show them');
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation(); stop();
+        const [w, s, ea, n] = a.bounds;
+        const z = nextZoom(a.level);
+        if (ea - w < 0.05 && n - s < 0.05) map.flyTo({ center: [a.lng, a.lat], zoom: z, duration: reduce ? 0 : 900, essential: true });
+        else map.fitBounds([[w, s], [ea, n]], { padding: 90, maxZoom: z, duration: reduce ? 0 : 900 });
+        cb.onGroup?.(a.name);
       });
     } else {
-      btn.className = `wm wm--${p.kind}${p.approx ? ' wm--approx' : ''}`;
+      btn.className = 'wm wm--' + p.kind + (p.approx ? ' wm--approx' : '');
       btn.dataset.id = String(p.id);
-      btn.setAttribute('aria-label', `Show listing ${p.id}`);
+      btn.setAttribute('aria-label', 'Show listing ' + p.id);
       btn.innerHTML = '<i></i>';
-      btn.addEventListener('click', (e) => { e.stopPropagation(); cb.onSelect(String(p.id)); });
+      btn.addEventListener('click', (e) => { e.stopPropagation(); stop(); cb.onSelect(String(p.id)); });
     }
     return btn;
   }
@@ -193,8 +222,11 @@ export async function mountWorldMap(
     const next = new Map<string, maplibregl.Marker>();
     for (const f of map.querySourceFeatures('listings')) {
       const p = f.properties as Record<string, unknown>;
-      const key = p.cluster ? `c${p.cluster_id}` : String(p.id);
+      const key = p.cluster ? 'c' + p.cluster_id + ':' + p.n : p.agg ? String(p.agg) : String(p.id);
       if (next.has(key)) continue;
+      // Right after a level change the source can still return the previous level's features for a frame.
+      if (p.agg && !groups.has(String(p.agg))) continue;
+      if (!p.cluster && !p.agg && level !== 'place') continue;
       let m = markers.get(key);
       if (!m) {
         m = new maplibregl.Marker({ element: makeEl(f) }).setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number]);
@@ -208,22 +240,31 @@ export async function mountWorldMap(
     paintStates();
   }
 
+  /** The selected or hovered listing lights up its own marker, or the group that holds it. */
   function paintStates() {
     for (const [k, m] of onScreen) {
       const e = m.getElement();
-      e.classList.toggle('is-active', k === active);
-      e.classList.toggle('is-hover', k === hover);
+      const g = groups.get(k);
+      e.classList.toggle('is-active', g ? !!active && g.ids.includes(active) : k === active);
+      e.classList.toggle('is-hover', g ? !!hover && g.ids.includes(hover) : k === hover);
     }
+  }
+
+  function refreshData() {
+    (map.getSource('listings') as GeoJSONSource).setData(toGeo());
+    for (const m of onScreen.values()) m.remove();
+    onScreen.clear(); markers.clear();
   }
 
   let raf = 0;
   // Throttle (not debounce): during continuous animation a debounce would never fire.
   const schedule = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; renderMarkers(); }); };
   map.on('render', () => { if (map.isSourceLoaded('listings')) schedule(); });
+  map.on('zoom', () => { const l = levelForZoom(map.getZoom()); if (l !== level) { level = l; refreshData(); } });
   map.on('moveend', () => cb.onMove());
 
-  // Slow idle spin on the globe until the visitor touches the map.
-  let spinning = !reduce;
+  // Slow idle spin on the globe until the visitor touches the map (first visit only, never when restoring a view).
+  let spinning = !reduce && !opts.camera;
   const spin = () => {
     if (!spinning || map.getZoom() > 2.5) return;
     const c = map.getCenter();
@@ -237,25 +278,32 @@ export async function mountWorldMap(
   let place: maplibregl.Marker | null = null;
 
   return {
-    setData(ls) { (map.getSource('listings') as GeoJSONSource).setData(toGeo(ls)); for (const m of onScreen.values()) m.remove(); onScreen.clear(); markers.clear(); },
+    setData(ls) { data = ls; refreshData(); },
     flyToCity(lat, lng) { stop(); map.flyTo({ center: [lng, lat], zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) }); },
     flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: reduce ? 0 : 900 }); },
+    ensureVisible(l) {
+      if (!hasPoint(l) || l.onMap === false) return;
+      if (map.getBounds().contains([l.location.lng, l.location.lat])) return;
+      stop(); map.easeTo({ center: [l.location.lng, l.location.lat], duration: reduce ? 0 : 700 });
+    },
     setActive(id) { active = id; paintStates(); },
     setHover(id) { hover = id; paintStates(); },
     setPlace(p) {
       place?.remove(); place = null;
       if (!p) return;
-      const el = document.createElement('div');
-      el.className = 'wm-place';
-      el.setAttribute('aria-hidden', 'true');
-      el.innerHTML = `<i></i><span>${p.name.replace(/[&<>"]/g, '')}</span>`;
-      place = new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map);
+      const pe = document.createElement('div');
+      pe.className = 'wm-place';
+      pe.setAttribute('aria-hidden', 'true');
+      pe.innerHTML = '<i></i><span>' + p.name.replace(/[&<>"]/g, '') + '</span>';
+      place = new maplibregl.Marker({ element: pe }).setLngLat([p.lng, p.lat]).addTo(map);
     },
-    resetView() { stop(); map.flyTo({ zoom: el.clientWidth < 700 ? 0.85 : 1.5, duration: reduce ? 0 : 1100, essential: true }); },
+    resetView() { stop(); map.flyTo({ zoom: homeZoom(), duration: reduce ? 0 : 1100, essential: true }); },
     zoomOut() { stop(); map.easeTo({ zoom: Math.max(1.2, map.getZoom() - 3), duration: reduce ? 0 : 800 }); },
     getCenter: () => { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
     getBounds: () => map.getBounds(),
     getZoom: () => map.getZoom(),
+    getCamera: () => { const c = map.getCenter(); return { center: [c.lng, c.lat], zoom: map.getZoom() }; },
     resize: () => map.resize(),
+    destroy() { stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
   };
 }

@@ -5,7 +5,8 @@
 import { SPECIALTIES, allSpecialties, type Specialty } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
 import { CITIES } from '@/data/cities';
-import type { Listing } from '@/types/directory';
+import { placeText } from './world';
+import { hasPoint, type Listing } from '@/types/directory';
 
 export type Suggestion =
   | { type: 'place'; label: string; detail: string; lat: number; lng: number; count: number }
@@ -26,9 +27,10 @@ export function placeIndex(listings: Listing[]): Place[] {
   const key = (name: string, country: string) => `${norm(name)}|${country}`;
   for (const c of CITIES) map.set(key(c.name, c.country), { name: c.name, detail: [c.region, c.countryName].filter(Boolean).join(', '), lat: c.lat, lng: c.lng, count: 0 });
   for (const l of listings) {
+    if (!hasPoint(l)) continue; // members who show only a region, or nothing, add no place
     const metro = l.metro ?? { name: l.location.city.replace(/ area$/, ''), lat: l.location.lat, lng: l.location.lng };
     const k = key(metro.name, l.location.country);
-    const p = map.get(k) ?? map.set(k, { name: metro.name, detail: [l.location.region, l.location.country].filter(Boolean).join(', '), lat: metro.lat, lng: metro.lng, count: 0 }).get(k)!;
+    const p = map.get(k) ?? map.set(k, { name: metro.name, detail: [l.location.region, l.location.countryName ?? l.location.country].filter(Boolean).join(', '), lat: metro.lat, lng: metro.lng, count: 0 }).get(k)!;
     p.count++;
   }
   return [...map.values()];
@@ -59,6 +61,6 @@ export function suggest(query: string, listings: Listing[], places: Place[]): Su
   }
 
   const people = listings.filter((l) => starts(norm(l.name), q)).slice(0, 4);
-  out.push(...people.map((l) => ({ type: 'listing' as const, label: l.name, detail: l.location.city, id: l.id })));
+  out.push(...people.map((l) => ({ type: 'listing' as const, label: l.name, detail: placeText(l), id: l.id })));
   return out.slice(0, 10);
 }

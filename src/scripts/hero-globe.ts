@@ -33,7 +33,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     .pointLng('lng')
     .pointAltitude(0.006)
     .pointRadius((d: object) => 0.22 + Math.min(0.38, Math.sqrt((d as CityPoint).count) * 0.08))
-    .pointColor(() => '#c9d3ff')
+    .pointColor(() => '#d6e4f5')
     .pointsMerge(false)
     .pointLabel((d: object) => {
       const p = d as CityPoint;
@@ -44,7 +44,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     .ringsData(points.filter((p) => p.count >= 5))
     .ringLat('lat')
     .ringLng('lng')
-    .ringColor(() => (t: number) => `rgba(154,174,255,${0.45 * (1 - t)})`)
+    .ringColor(() => (t: number) => `rgba(169, 199, 236,${0.45 * (1 - t)})`)
     .ringMaxRadius(3)
     .ringPropagationSpeed(0.8)
     .ringRepeatPeriod(2200);

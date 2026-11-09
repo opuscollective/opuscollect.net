@@ -106,6 +106,7 @@ const organizations: OrganizationListing[] = ORGS.map(([name, category, services
   id: `o-${pad(i + 1)}`, kind: 'organization', slug: `sample-org-${pad(i + 1)}`,
   name: `Sample ${CAT_LABEL[category]} ${pad(i + 1)}`, location: near(city(name), 5, 'exact'),
   category, services, verified: false, isSample: true,
+  summary: 'Sample organization for the preview build. Not a real company.',
 }));
 
 export const SAMPLE_LISTINGS: Listing[] = [...musicians, ...studios, ...organizations];
