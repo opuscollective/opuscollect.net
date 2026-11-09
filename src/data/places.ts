@@ -37,7 +37,8 @@ const METROS: Place[] = CITIES.map((c) => ({
 }));
 
 // [metro name, locality name, lat, lng]. Centres are city-hall / town-centre level points.
-const LOCALITIES: [string, string, number, number][] = [
+// [metro, locality, lat, lng, region if it differs from the metro's]
+const LOCALITIES: [string, string, number, number, string?][] = [
   ['Birmingham', 'Hoover', 33.4054, -86.8114], ['Birmingham', 'Vestavia Hills', 33.4487, -86.7878],
   ['Birmingham', 'Homewood', 33.4718, -86.8008], ['Birmingham', 'Mountain Brook', 33.5009, -86.7522],
   ['Birmingham', 'Bessemer', 33.4018, -86.9544], ['Birmingham', 'Trussville', 33.6198, -86.6089],
@@ -51,7 +52,7 @@ const LOCALITIES: [string, string, number, number][] = [
   ['Miami', 'Miami Gardens', 25.942, -80.2456], ['Miami', 'Fort Lauderdale', 26.1224, -80.1373],
   ['New York', 'Brooklyn', 40.6782, -73.9442], ['New York', 'Queens', 40.7282, -73.7949],
   ['New York', 'The Bronx', 40.8448, -73.8648], ['New York', 'Manhattan', 40.7831, -73.9712],
-  ['New York', 'Newark', 40.7357, -74.1724], ['New York', 'Jersey City', 40.7178, -74.0431],
+  ['New York', 'Newark', 40.7357, -74.1724, 'NJ'], ['New York', 'Jersey City', 40.7178, -74.0431, 'NJ'],
   ['Chicago', 'Evanston', 42.0451, -87.6877], ['Chicago', 'Oak Park', 41.885, -87.7845],
   ['Los Angeles', 'Inglewood', 33.9617, -118.3531], ['Los Angeles', 'Compton', 33.8958, -118.2201],
   ['Los Angeles', 'Long Beach', 33.7701, -118.1937], ['Los Angeles', 'Pasadena', 34.1478, -118.1445],
@@ -64,11 +65,11 @@ const LOCALITIES: [string, string, number, number][] = [
   ['Johannesburg', 'Soweto', -26.2485, 27.854], ['Johannesburg', 'Pretoria', -25.7479, 28.2293],
 ];
 
-const LOCALITY_PLACES: Place[] = LOCALITIES.map(([metro, name, lat, lng]) => {
+const LOCALITY_PLACES: Place[] = LOCALITIES.map(([metro, name, lat, lng, ownRegion]) => {
   const m = METROS.find((x) => x.name === metro);
   if (!m) throw new Error(`Unknown metro ${metro}`);
   return {
-    id: metroId({ name, region: m.region, country: m.country }), name, region: m.region, country: m.country,
+    id: metroId({ name, region: ownRegion ?? m.region, country: m.country }), name, region: ownRegion ?? m.region, country: m.country,
     countryName: m.countryName, lat, lng, kind: 'locality', metroId: m.id,
   };
 });
