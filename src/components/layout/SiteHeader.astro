@@ -83,11 +83,7 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
       <ul role="list" class="mmenu__list">
         {NAV.map((item, i) => (
           <li style={`--i:${i}`}>
-            <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>
-              <span class="mmenu__ico"><Icon name={item.icon} size={22} /></span>
-              <span class="mmenu__txt"><span class="mmenu__label">{item.label}</span><span class="mmenu__blurb">{item.blurb}</span></span>
-              <Icon name="arrow-right" size={18} class="mmenu__go" />
-            </a>
+            <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}</a>
           </li>
         ))}
       </ul>
@@ -202,14 +198,9 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
   .mmenu__list { display: flex; flex-direction: column; margin: 0; }
   .mmenu__list li { border-bottom: 1px solid var(--line-faint); opacity: 0; transform: translateY(12px); transition: opacity .5s var(--ease), transform .5s var(--ease); transition-delay: calc(var(--i) * 50ms + 60ms); }
   .is-open .mmenu__list li { opacity: 1; transform: none; }
-  .mmenu__list a { display: flex; align-items: center; gap: 16px; padding: 16px 0; }
-  .mmenu__ico { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: var(--r-md); background: var(--surface-sunken); color: var(--text); }
-  .mmenu__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-  .mmenu__label { font-size: 24px; font-weight: 500; letter-spacing: -0.035em; line-height: 1.1; }
-  .mmenu__blurb { font-size: 13px; line-height: 1.4; color: var(--text-3); }
-  .mmenu__list :global(.mmenu__go) { flex: none; color: var(--text-3); }
-  .mmenu__list a[aria-current] .mmenu__label { color: var(--accent); }
-  .mmenu__list a[aria-current] .mmenu__ico { background: var(--accent-soft); color: var(--accent); }
+  /* Large editorial type, as in the original menu. */
+  .mmenu__list a { display: block; padding: 14px 0; font-size: clamp(30px, 8.5vw, 42px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; }
+  .mmenu__list a[aria-current] { color: var(--accent); }
   .mmenu__ask { display: flex; flex-direction: column; gap: 10px; }
   .mmenu__ask label { color: var(--text-3); }
   .mmenu__field { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text-3); }
