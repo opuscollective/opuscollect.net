@@ -69,7 +69,7 @@ export const initials = (s: string) => {
 };
 
 const SEAL =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M12 1.8l2.3 1.7 2.85-.2.9 2.7 2.35 1.6-.9 2.73.9 2.73-2.35 1.6-.9 2.7-2.85-.2L12 22.2l-2.3-1.7-2.85.2-.9-2.7-2.35-1.6.9-2.73-.9-2.73 2.35-1.6.9-2.7 2.85.2z"/><path class="c" d="M8 12.2l2.6 2.6L16.2 9"/></svg>';
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M14.54 2.53A4.2 4.2 0 0 1 18.93 5.07A4.2 4.2 0 0 1 21.47 9.46A4.2 4.2 0 0 1 21.47 14.54A4.2 4.2 0 0 1 18.93 18.93A4.2 4.2 0 0 1 14.54 21.47A4.2 4.2 0 0 1 9.46 21.47A4.2 4.2 0 0 1 5.07 18.93A4.2 4.2 0 0 1 2.53 14.54A4.2 4.2 0 0 1 2.53 9.46A4.2 4.2 0 0 1 5.07 5.07A4.2 4.2 0 0 1 9.46 2.53A4.2 4.2 0 0 1 14.54 2.53Z"/><path class="c" d="M8.4 12.3l2.4 2.4 4.9-5"/></svg>';
 
 export function badgeHtml(l: Listing): string {
   // Sample listings show the badge only to preview the design, and say so.

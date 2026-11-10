@@ -41,4 +41,7 @@ const external = /^https?:\/\//.test(href);
   .btn--ghost:hover span { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 1px; }
   .btn--inverse { background: var(--c-black); color: var(--c-white); }
   .btn--inverse:hover { background: var(--surface-hover); }
+  /* Paper sections stay light in both themes: the button is solid charcoal there. */
+  :global(.section--paper) .btn--inverse { background: var(--c-paper-ink); color: var(--c-paper); }
+  :global(.section--paper) .btn--inverse:hover { background: #2c2b2f; }
 </style>
