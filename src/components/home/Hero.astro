@@ -134,6 +134,8 @@ const STARTS = [
     const c = findCity(q);
     if (!c) return; // Not just a city name: submit to /world as a keyword search (honest empty state if nothing matches).
     e.preventDefault();
+    // Phones: the globe sits below the entry, out of view, so open the city in Opus World directly.
+    if (matchMedia('(max-width: 900px)').matches) { location.href = `/world?city=${encodeURIComponent(c.name)}`; return; }
     if (api) api.flyTo(c.lat, c.lng);
     if (result) {
       result.innerHTML = `<a href="/world?city=${encodeURIComponent(c.name)}">Open ${c.name} in Opus World →</a>`;
@@ -215,11 +217,23 @@ const STARTS = [
   :global(.gl-tip) { padding: 8px 10px; background: var(--glass); border: 1px solid var(--line-strong); border-radius: 6px; font: 13px var(--font-sans); color: var(--text); display: flex; flex-direction: column; gap: 2px; }
   :global(.gl-tip span) { color: var(--text-3); font-size: 12px; }
 
+  /* Phones and small tablets: brand statement and the Opus entry come first, then the globe.
+     .hero__inner dissolves (display: contents) so its children and the one globe instance share a single
+     column and can be reordered without moving or duplicating any markup. */
   @media (max-width: 900px) {
-    .hero { flex-direction: column; align-items: stretch; padding-top: 64px; min-height: auto; }
-    /* Whole globe visible on phones; vertical swipes scroll the page, sideways swipes turn the globe. */
-    .hero__globe { position: relative; top: auto; right: auto; transform: none; width: min(100%, 560px); min-height: 0; overflow: hidden; margin: 0 auto; align-self: center; touch-action: pan-y; }
-    .hero__fade { background: linear-gradient(0deg, var(--c-bg) 0%, transparent 22%); }
-    .hero__inner { margin-top: -4vw; }
+    .hero { flex-direction: column; align-items: stretch; gap: 20px; min-height: auto; padding: 88px var(--gutter) 40px; }
+    .hero__inner { display: contents; }
+    .hero__eyebrow { order: 1; }
+    .hero__title { order: 2; font-size: clamp(2.75rem, 12vw, 3.75rem); max-width: none; }
+    .opus-entry { order: 3; width: 100%; max-width: 560px; margin-top: 4px; padding-top: 20px; }
+    .hero__globe { order: 4; position: relative; top: auto; right: auto; transform: none; width: min(100%, 420px); aspect-ratio: 1; margin: 0 auto -8px; align-self: center; overflow: hidden; touch-action: pan-y; }
+    .hero__lead { order: 5; }
+    .hero__stats, .hero__first { order: 6; }
+    .hero__stats { margin-top: 0; }
+    .hero__fade { display: none; }
+    /* One swipeable row of starting points instead of several wrapped lines. */
+    .opus-entry__chips { flex-wrap: nowrap; overflow-x: auto; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); scrollbar-width: none; }
+    .opus-entry__chips::-webkit-scrollbar { display: none; }
+    .opus-entry__chips a { white-space: nowrap; }
   }
 </style>

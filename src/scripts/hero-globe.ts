@@ -61,9 +61,9 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   controls.enableDamping = true;
   controls.minDistance = 140;
   controls.maxDistance = 520;
-  // Phones: the globe sits in its own square, so pull back a little to show the whole sphere.
+  // Phones and small tablets: the globe sits in its own square below the Opus entry; fill it with the whole sphere.
   const narrow = () => el.clientWidth < 600;
-  globe.pointOfView({ lat: 28, lng: -40, altitude: narrow() ? 2.5 : 2.1 }, 0);
+  globe.pointOfView({ lat: 28, lng: -40, altitude: narrow() ? 1.95 : 2.1 }, 0);
 
   // OrbitControls sets touch-action:none on the canvas, which traps the page scroll on phones.
   // Let the browser keep vertical swipes (page scroll) and pinch; sideways drags still turn the globe.
