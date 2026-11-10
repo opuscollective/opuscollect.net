@@ -1,58 +1,52 @@
 ---
+/** Events and community programs as a row of pictures. Details live on /events and /community. */
 import SectionHeader from '../ui/SectionHeader.astro';
 import Icon from '../ui/Icon.astro';
-import { EVENTS } from '@/data/events';
-const [lead, ...rest] = EVENTS;
+const CARDS = [
+  { title: 'The Opus Summit', kicker: 'Summer 2027', href: '/events#summit', image: '/images/summit-resort.jpg', alt: 'Aerial view of a resort pool lit up at night', photo: true },
+  { title: 'Collective Call', kicker: 'In the Discord', href: '/community', image: '/images/event-collective-call.jpg', alt: 'Collective Call graphic' },
+  { title: 'Feedback Wednesday', kicker: 'In the Discord', href: '/community', image: '/images/event-feedback-wednesday.jpg', alt: 'Feedback Wednesday graphic' },
+  { title: 'Live Music Reviews', kicker: 'In the Discord', href: '/community', image: '/images/event-live-reviews.jpg', alt: 'Live Music Reviews graphic' },
+];
 ---
 <section class="section events" aria-labelledby="events-title">
   <div class="container">
-    <SectionHeader index="05" label="Events & experiences" tag="In the room" />
+    <SectionHeader index="03" label="Opus Collective" tag="In the room" />
     <div class="events__top">
-      <h2 id="events-title" class="t-h1" data-reveal>From the server<br /><span class="dim">to the same room.</span></h2>
+      <h2 id="events-title" class="t-h2" data-reveal>From the server <span class="dim">to the same room.</span></h2>
       <a href="/events" class="events__all" data-reveal>All events <Icon name="arrow-right" size={16} /></a>
     </div>
-    <div class="events__grid">
-      <a href={lead.href} class="events__lead" data-reveal>
-        <img src={lead.image} alt={lead.imageAlt} loading="lazy" decoding="async" width="2000" height="1500" />
-        <div class="events__lead-copy">
-          <span class="t-meta">{lead.kicker}</span>
-          <h3 class="t-h2">{lead.title}</h3>
-          <p>{lead.detail}</p>
-          <span class="events__place">{lead.place}</span>
-        </div>
-      </a>
-      <div class="events__side">
-        {rest.map((e, i) => (
-          <a href={e.href} class="events__card" data-reveal style={`--d:${(i + 1) * 0.1}s`}>
-            <span class="t-meta">{e.kicker}</span>
-            <h3 class="t-h3">{e.title}</h3>
-            <p>{e.detail}</p>
-            <span class="events__place">{e.place} <Icon name="arrow-right" size={16} /></span>
-          </a>
-        ))}
-      </div>
-    </div>
+    <ul class="events__row" role="list">
+    {CARDS.map((c, i) => (
+      <li data-reveal style={`--d:${i * 0.06}s`}>
+        <a href={c.href} class="events__card">
+          <span class:list={['events__img', { 'events__img--photo': c.photo }]}><img src={c.image} alt={c.alt} loading="lazy" decoding="async" /></span>
+          <span class="t-meta events__kicker">{c.kicker}</span>
+          <span class="events__title">{c.title}</span>
+        </a>
+      </li>
+    ))}
+    </ul>
   </div>
 </section>
 
 <style>
-  .events__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; margin-top: clamp(32px, 4vw, 56px); }
+  .events__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px 24px; margin-top: clamp(28px, 3.5vw, 48px); }
+  .events__top h2 { max-width: 18ch; }
   .events__all { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 15px; font-weight: 500; }
   .events__all:hover { text-decoration: underline; text-underline-offset: 6px; }
-  .events__grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: clamp(16px, 2vw, 24px); margin-top: clamp(32px, 4vw, 56px); }
-  .events__lead { position: relative; isolation: isolate; min-height: clamp(440px, 46vw, 640px); border-radius: var(--r-lg); overflow: hidden; display: flex; align-items: flex-end; outline: 1px solid rgba(255,255,255,.08); outline-offset: -1px; }
-  .events__lead img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; filter: grayscale(1) contrast(1.05); transition: filter 1.1s var(--ease), transform 1.4s var(--ease); }
-  .events__lead::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.85) 100%); }
-  .events__lead:hover img { filter: grayscale(0); transform: scale(1.03); }
-  .events__lead-copy { display: flex; flex-direction: column; gap: 12px; padding: clamp(24px, 3vw, 44px); max-width: 560px; }
-  .events__lead-copy p { color: rgba(255,255,255,.82); }
-  .events__side { display: grid; grid-template-rows: 1fr 1fr; gap: clamp(16px, 2vw, 24px); }
-  .events__card { display: flex; flex-direction: column; gap: 12px; padding: clamp(24px, 2.4vw, 36px); border: 1px solid var(--c-ink-600); border-radius: var(--r-lg); background: var(--c-ink-900); transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
-  .events__card p { color: var(--c-fg-faint); font-size: 15px; flex: 1; }
-  .events__card:hover { border-color: var(--line-strong); background: var(--c-ink-800); }
-  .t-meta { color: var(--c-fg-faint); }
-  .events__place { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--c-fg-muted); }
-  .events__card:hover .events__place :global(svg) { transform: translateX(3px); }
-  .events__place :global(svg) { transition: transform var(--dur) var(--ease); }
-  @media (max-width: 960px) { .events__grid { grid-template-columns: 1fr; } .events__side { grid-template-rows: none; } }
+  .events__row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: clamp(24px, 3vw, 40px) 0 0; padding: 0; list-style: none; }
+  .events__card { display: flex; flex-direction: column; gap: 8px; }
+  .events__img { display: block; aspect-ratio: 4 / 3; border-radius: var(--r-lg); overflow: hidden; background: #0b0b0c; }
+  .events__img img { width: 100%; height: 100%; object-fit: contain; transition: transform 1.2s var(--ease); }
+  .events__img--photo img { object-fit: cover; }
+  .events__card:hover img { transform: scale(1.04); }
+  .events__kicker { margin-top: 6px; color: var(--text-3); }
+  .events__title { font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
+  /* Phones: one swipeable row. */
+  @media (max-width: 760px) {
+    .events__row { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 72%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 10px; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); }
+    .events__row::-webkit-scrollbar { display: none; }
+    .events__row li { scroll-snap-align: start; }
+  }
 </style>

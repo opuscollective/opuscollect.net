@@ -2,63 +2,29 @@
 import SectionHeader from '../ui/SectionHeader.astro';
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
 import Button from '../ui/Button.astro';
-const SIGNALS = [
-  { k: 'Major placements', v: 'Recognized industry placements and documented credits.' },
-  { k: 'Organic reach', v: 'Meaningful streaming milestones and 20,000+ authentic YouTube subscribers.' },
-  { k: 'Professional record', v: 'Established experience, editorial coverage or awards.' },
-];
-const STEPS = ['Apply with your profile', 'Submit evidence', 'Opus reviews', 'Badge on your profile'];
 ---
 <section class="section section--paper vintro on-paper" aria-labelledby="verified-title">
   <div class="container">
-    <SectionHeader index="03" label="Opus Verified" tag="Recognition" tone="paper" />
+    <SectionHeader index="02" label="Opus Verified" tag="Recognition" tone="paper" />
     <div class="vintro__grid">
       <div class="vintro__statement">
-        <div class="vintro__seal" data-reveal aria-hidden="true"><VerifiedBadge size={56} tone="dark" /></div>
+        <div class="vintro__seal" data-reveal aria-hidden="true"><VerifiedBadge size={52} tone="dark" /></div>
         <h2 id="verified-title" class="t-display" data-reveal style="--d:.05s">Earned.<br /><span class="vintro__muted">Never bought.</span></h2>
-        <p class="t-lead" data-reveal style="--d:.1s">
-          Opus Verified recognizes musicians with independently verifiable professional achievements. It can’t be purchased, and premium membership never grants it.
-        </p>
-        <div data-reveal style="--d:.15s"><Button href="/verified" variant="inverse" arrow="right">How verification works</Button></div>
       </div>
-
-      <div class="vintro__detail">
-        <div class="vintro__block" data-reveal>
-          <h3 class="t-meta">What reviewers look for</h3>
-          <dl>
-            {SIGNALS.map((s) => (<div><dt>{s.k}</dt><dd>{s.v}</dd></div>))}
-          </dl>
-          <p class="vintro__fine">Preliminary standards. Criteria will evolve as the directory grows.</p>
-        </div>
-        <div class="vintro__block" data-reveal style="--d:.1s">
-          <h3 class="t-meta">The process</h3>
-          <ol role="list" class="vintro__steps">
-            {STEPS.map((s, i) => <li><span>{String(i + 1).padStart(2, '0')}</span>{s}</li>)}
-          </ol>
-          <p class="vintro__fine">Verification is reviewed by people and can be revoked if standards are no longer met.</p>
-        </div>
+      <div class="vintro__side" data-reveal style="--d:.1s">
+        <p class="t-lead">Recognition for real, checkable achievements. It can’t be purchased, and no membership grants it.</p>
+        <Button href="/verified" variant="inverse" arrow="right">How verification works</Button>
       </div>
     </div>
   </div>
 </section>
 
 <style>
-  .vintro__grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(48px, 7vw, 128px); margin-top: clamp(40px, 5vw, 72px); }
-  .vintro__statement { display: flex; flex-direction: column; align-items: flex-start; gap: 28px; }
-  .vintro__seal { margin-bottom: 8px; }
-  .vintro__statement .t-display { font-size: clamp(3rem, 1.4rem + 6.2vw, 7.5rem); }
+  .vintro__grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: end; gap: 32px clamp(48px, 7vw, 128px); margin-top: clamp(32px, 4vw, 56px); }
+  .vintro__statement { display: flex; flex-direction: column; align-items: flex-start; gap: 24px; }
+  .vintro__statement .t-display { font-size: clamp(3rem, 1.4rem + 5.4vw, 6.75rem); }
   .vintro__muted { color: var(--c-paper-faint); }
-  .vintro__statement .t-lead { max-width: 480px; }
-  .vintro__detail { display: flex; flex-direction: column; gap: 48px; }
-  .vintro__block h3 { color: var(--c-paper-faint); padding-bottom: 14px; border-bottom: 1px solid var(--c-paper-line); }
-  .vintro__block dl { margin: 0; }
-  .vintro__block dl > div { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--c-paper-line); }
-  .vintro__block dt { font-weight: 500; letter-spacing: -0.015em; }
-  .vintro__block dd { margin: 0; color: var(--c-paper-muted); font-size: 15px; }
-  .vintro__steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; }
-  .vintro__steps li { display: flex; flex-direction: column; gap: 10px; padding: 20px 16px 20px 0; border-bottom: 1px solid var(--c-paper-line); font-weight: 500; letter-spacing: -0.015em; }
-  .vintro__steps span { font-family: var(--font-mono); font-size: 11px; color: var(--c-paper-faint); }
-  .vintro__fine { margin-top: 14px; font-size: 13px; color: var(--c-paper-faint); }
-  @media (max-width: 960px) { .vintro__grid { grid-template-columns: 1fr; } }
-  @media (max-width: 520px) { .vintro__block dl > div { grid-template-columns: 1fr; gap: 4px; } }
+  .vintro__side { display: flex; flex-direction: column; align-items: flex-start; gap: 24px; }
+  .vintro__side .t-lead { max-width: 420px; }
+  @media (max-width: 860px) { .vintro__grid { grid-template-columns: 1fr; } }
 </style>

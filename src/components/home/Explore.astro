@@ -1,0 +1,65 @@
+---
+/**
+ * Homepage discovery, in one visual block: a studio photo, the most-searched specialties,
+ * and a way into the full map. Replaces the longer Opus World, specialties and services sections.
+ */
+import SectionHeader from '../ui/SectionHeader.astro';
+import Icon from '../ui/Icon.astro';
+import { SPECIALTIES, SPECIALTY_KEYS, type Specialty } from '@/data/specialties';
+const PICKS: Specialty[] = ['producer', 'recording-artist', 'songwriter', 'vocalist', 'mixing-engineer', 'dj'];
+---
+<section class="section explore" aria-labelledby="explore-title">
+  <div class="container">
+    <SectionHeader index="01" label="Opus World" tag="Find your people" />
+    <h2 id="explore-title" class="t-h1 explore__title" data-reveal>Every role<br /><span class="dim">behind the record.</span></h2>
+    <div class="explore__grid">
+      <a class="explore__photo tone-dark" href="/world?type=studio" data-reveal>
+        <img src="/images/scenic-room.jpg" alt="A home studio lit in blue and purple, with monitors and a desk" loading="lazy" decoding="async" width="1600" height="2400" />
+        <span class="explore__cap"><b>Studios</b><span>Commercial and home studios</span></span>
+        <span class="explore__arrow" aria-hidden="true"><Icon name="arrow-right" size={20} /></span>
+      </a>
+      {PICKS.map((k, i) => (
+        <a class="explore__tile" href={`/world?type=musician&specialty=${k}`} data-reveal style={`--d:${(i + 1) * 0.05}s`}>
+          <span class="explore__name">{SPECIALTIES[k].plural}</span>
+          <span class="explore__arrow" aria-hidden="true"><Icon name="arrow-right" size={18} /></span>
+        </a>
+      ))}
+      <a class="explore__all" href="/world" data-reveal style="--d:.35s">
+        <span class="explore__globe" aria-hidden="true"><Icon name="globe" size={22} /></span>
+        <span class="explore__name">Open the map</span>
+        <span class="explore__sub">All {SPECIALTY_KEYS.length} specialties, worldwide</span>
+        <span class="explore__arrow" aria-hidden="true"><Icon name="arrow-right" size={18} /></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .explore__title { margin-top: clamp(28px, 3.5vw, 48px); }
+  .explore__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: clamp(150px, 13vw, 200px); gap: 12px; margin-top: clamp(28px, 3.5vw, 48px); }
+  .explore__grid > a { position: relative; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; padding: 20px; border-radius: var(--r-lg); overflow: hidden; isolation: isolate; transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+  .explore__photo { grid-column: span 2; grid-row: span 2; color: var(--text); }
+  .explore__photo img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; transition: transform 1.2s var(--ease); }
+  .explore__photo::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, transparent 45%, rgba(10, 10, 12, 0.8)); }
+  .explore__photo:hover img { transform: scale(1.03); }
+  .explore__cap { display: flex; flex-direction: column; gap: 4px; }
+  .explore__cap b { font-size: clamp(28px, 1.4rem + 1.4vw, 44px); font-weight: 500; letter-spacing: -0.045em; line-height: 1; }
+  .explore__cap span { font-size: 14px; color: var(--text-2); }
+  .explore__tile { border: 1px solid var(--line); background: var(--surface); }
+  .explore__tile:hover { border-color: var(--line-strong); background: var(--surface-hover); }
+  .explore__name { font-size: clamp(20px, 1rem + 0.8vw, 28px); font-weight: 500; letter-spacing: -0.035em; line-height: 1.05; max-width: 10ch; }
+  .explore__all { grid-column: span 2; background: var(--text); color: var(--bg); }
+  .explore__globe { position: absolute; top: 20px; left: 20px; display: flex; }
+  .explore__sub { font-size: 14px; opacity: 0.7; }
+  .explore__all:hover { background: color-mix(in srgb, var(--text) 88%, var(--bg)); }
+  .explore__arrow { position: absolute; top: 18px; right: 18px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid currentColor; opacity: 0.4; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+  .explore__grid > a:hover .explore__arrow { opacity: 1; transform: rotate(-45deg); }
+  @media (max-width: 760px) {
+    .explore__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 112px; gap: 8px; }
+    .explore__photo { grid-row: span 2; }
+    .explore__grid > a { padding: 14px; border-radius: var(--r-md); }
+    .explore__arrow { top: 12px; right: 12px; width: 30px; height: 30px; }
+    .explore__globe { top: 14px; left: 14px; }
+    .explore__name { font-size: 18px; }
+  }
+</style>
