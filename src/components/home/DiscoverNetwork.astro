@@ -52,5 +52,14 @@ const entries = Object.entries(SPECIALTIES);
     .network__layout { grid-template-columns: 1fr; }
     .network__intro { position: static; }
   }
+  /* Phones: eleven full-width rows become a compact two-column grid of tappable specialties. */
+  @media (max-width: 600px) {
+    .network__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; border-top: 0; }
+    .network__list li { border-bottom: 0; }
+    .network__row { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 18px; min-height: 96px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+    .network__row::before, .network__blurb, .network__go { display: none; }
+    .network__name { font-size: 19px; letter-spacing: -0.03em; }
+    .network__row:hover .network__name { transform: none; }
+  }
   @media (max-width: 520px) { .network__row { grid-template-columns: 32px minmax(0, 1fr) 40px; column-gap: 10px; } .network__go { width: 40px; height: 40px; } }
 </style>

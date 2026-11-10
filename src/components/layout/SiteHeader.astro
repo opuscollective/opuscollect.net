@@ -5,19 +5,32 @@ import ThemeSwitch from '../ui/ThemeSwitch.astro';
 interface Props { overlay?: boolean }
 const { overlay = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
-// Profiles and studio pages belong to World; account pages to Home.
+// Which pages light up each nav item. Studio pages belong to Studios; profiles to Discover.
+// /world is prerendered, so the query string isn't known here; a small script below corrects it in the browser.
+const isStudios = !Astro.url.pathname.startsWith('/world') && Astro.url.searchParams.get('type') === 'studio';
 const SECTIONS: Record<string, string[]> = {
-  '/home': ['/home', '/account', '/business', '/bookings'],
-  '/world': ['/world', '/m/', '/studios/'],
-  '/charts': ['/charts'],
-  '/network': ['/network'],
-  '/music': ['/music'],
+  '/world': isStudios ? ['/m/'] : ['/world', '/m/'],
+  '/world?type=studio': isStudios ? ['/world', '/studios/'] : ['/studios/'],
+  '/verified': ['/verified'],
+  '/community': ['/community', '/about', '/events', '/releases'],
 };
 const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/'));
 ---
 <script is:inline>
   // Signed-in hint (not a credential): swap Sign in / Join for the account menu.
   if (document.cookie.split('; ').indexOf('opus_in=1') > -1) document.documentElement.classList.add('is-signed-in');
+</script>
+<script is:inline>
+  // On /world, "Studios" is the studio filter of the same page: mark the right nav item.
+  document.addEventListener('DOMContentLoaded', function () {
+    if (location.pathname.replace(/\/$/, '') !== '/world') return;
+    var studios = new URLSearchParams(location.search).get('type') === 'studio';
+    document.querySelectorAll('.hdr__nav a, .mmenu__list a').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (h === '/world') studios ? a.removeAttribute('aria-current') : a.setAttribute('aria-current', 'page');
+      if (h === '/world?type=studio') studios ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
+    });
+  });
 </script>
 <header class:list={['hdr', { 'hdr--overlay': overlay, 'tone-dark': overlay }]} data-header data-overlay={overlay ? '' : undefined}>
   <div class="container hdr__inner">
@@ -60,9 +73,22 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
 
   <div class="mmenu" id="mobile-menu" hidden data-menu>
     <nav class="container" aria-label="Mobile">
+      <form class="mmenu__ask" action="/world" method="get" role="search">
+        <label for="mmenu-q" class="t-meta">What are you trying to accomplish?</label>
+        <div class="mmenu__field">
+          <Icon name="search" size={18} />
+          <input id="mmenu-q" name="q" type="search" placeholder="A producer in Birmingham…" autocomplete="off" />
+        </div>
+      </form>
       <ul role="list" class="mmenu__list">
         {NAV.map((item, i) => (
-          <li style={`--i:${i}`}><a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}</a></li>
+          <li style={`--i:${i}`}>
+            <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>
+              <span class="mmenu__ico"><Icon name={item.icon} size={22} /></span>
+              <span class="mmenu__txt"><span class="mmenu__label">{item.label}</span><span class="mmenu__blurb">{item.blurb}</span></span>
+              <Icon name="arrow-right" size={18} class="mmenu__go" />
+            </a>
+          </li>
         ))}
       </ul>
       <div class="mmenu__actions">
@@ -171,12 +197,24 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
 
   .mmenu { position: fixed; inset: 72px 0 0; background: var(--bg); z-index: var(--z-menu); overflow-y: auto; opacity: 0; transition: opacity var(--dur) var(--ease); }
   .is-open .mmenu { opacity: 1; }
-  .mmenu nav { display: flex; flex-direction: column; justify-content: space-between; min-height: 100%; padding-block: 24px 40px; gap: 32px; }
+  .mmenu nav { display: flex; flex-direction: column; min-height: 100%; padding-block: 20px 40px; gap: 20px; }
+  .mmenu__actions { margin-top: auto; }
   .mmenu__list { display: flex; flex-direction: column; margin: 0; }
   .mmenu__list li { border-bottom: 1px solid var(--line-faint); opacity: 0; transform: translateY(12px); transition: opacity .5s var(--ease), transform .5s var(--ease); transition-delay: calc(var(--i) * 50ms + 60ms); }
   .is-open .mmenu__list li { opacity: 1; transform: none; }
-  .mmenu__list a { display: block; padding: 14px 0; font-size: clamp(30px, 8.5vw, 42px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; }
-  .mmenu__list a[aria-current] { color: var(--accent); }
+  .mmenu__list a { display: flex; align-items: center; gap: 16px; padding: 16px 0; }
+  .mmenu__ico { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: var(--r-md); background: var(--surface-sunken); color: var(--text); }
+  .mmenu__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .mmenu__label { font-size: 24px; font-weight: 500; letter-spacing: -0.035em; line-height: 1.1; }
+  .mmenu__blurb { font-size: 13px; line-height: 1.4; color: var(--text-3); }
+  .mmenu__list :global(.mmenu__go) { flex: none; color: var(--text-3); }
+  .mmenu__list a[aria-current] .mmenu__label { color: var(--accent); }
+  .mmenu__list a[aria-current] .mmenu__ico { background: var(--accent-soft); color: var(--accent); }
+  .mmenu__ask { display: flex; flex-direction: column; gap: 10px; }
+  .mmenu__ask label { color: var(--text-3); }
+  .mmenu__field { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text-3); }
+  .mmenu__field:focus-within { border-color: var(--accent); }
+  .mmenu__field input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--text); font-size: 16px; }
   .mmenu__actions { display: flex; flex-direction: column; gap: 12px; }
   .mmenu__acct { margin: 0 0 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
   .mmenu__acct a, .mmenu__acct button { display: flex; align-items: center; min-height: 44px; font-size: 15px; color: var(--text-2); background: none; border: 0; padding: 0; }

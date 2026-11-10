@@ -9,14 +9,16 @@ export const SITE = {
   location: 'Birmingham, AL',
 };
 
-/** Routes that are not built yet point at an "in development" page, never a 404. */
+/**
+ * Main navigation: only what works today, so nothing in the header is a dead end.
+ * Charts, Network and Music join the header as each one ships (their pages already exist and say so).
+ */
 export const NAV = [
-  { label: 'Home', href: '/home' },
-  { label: 'World', href: '/world' },
-  { label: 'Charts', href: '/charts' },
-  { label: 'Network', href: '/network' },
-  { label: 'Music', href: '/music' },
-];
+  { label: 'Discover', href: '/world', icon: 'globe', blurb: 'People by specialty and city, on the map or as a list' },
+  { label: 'Studios', href: '/world?type=studio', icon: 'mic', blurb: 'Commercial and home studios you can book' },
+  { label: 'Verified', href: '/verified', icon: 'shield', blurb: 'What Opus Verified means and how to earn it' },
+  { label: 'Community', href: '/community', icon: 'users', blurb: 'Opus Collective, events and the Discord' },
+] as const;
 
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
 export const ACCOUNT_MENU = [
