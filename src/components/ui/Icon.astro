@@ -1,6 +1,6 @@
 ---
 /** Small inline icon set. Stroke-based so it inherits currentColor. */
-interface Props { name: 'arrow-right' | 'arrow-up-right' | 'search' | 'menu' | 'close' | 'pin' | 'sun' | 'moon' | 'monitor' | 'user' | 'chevron-down' | 'check' | 'globe' | 'mic' | 'shield' | 'users'; size?: number; class?: string }
+interface Props { name: 'arrow-right' | 'arrow-up-right' | 'search' | 'menu' | 'close' | 'pin' | 'sun' | 'moon' | 'monitor' | 'user' | 'chevron-down' | 'check' | 'globe' | 'mic' | 'shield' | 'users' | 'disc'; size?: number; class?: string }
 const { name, size = 18, class: cls } = Astro.props;
 const paths: Record<Props['name'], string> = {
   'arrow-right': 'M4 12h15M13 6l6 6-6 6',
@@ -17,6 +17,7 @@ const paths: Record<Props['name'], string> = {
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3 12h18M12 3c2.4 2.7 3.6 5.7 3.6 9s-1.2 6.3-3.6 9c-2.4-2.7-3.6-5.7-3.6-9S9.6 5.7 12 3Z',
   mic: 'M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3ZM6 11a6 6 0 0 0 12 0M12 17v4M9 21h6',
   shield: 'M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3ZM9 12l2 2 4-4',
+  disc: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
   users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM2 21a7 7 0 0 1 14 0M16 3.5a4 4 0 0 1 0 7.5M22 21a7 7 0 0 0-4-6.3',
   pin: 'M12 21s-6-5.6-6-11a6 6 0 1 1 12 0c0 5.4-6 11-6 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
 };

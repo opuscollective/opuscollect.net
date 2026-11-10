@@ -1,0 +1,393 @@
+---
+/**
+ * Release builder: details, sound (genres + moods), tracks, credits linked to Opus World,
+ * and "find people for this song" ranked by how well their sound matches.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { GENRES } from '@/data/genres';
+import { CREDIT_ROLES, CREDIT_ROLE_KEYS, LIMITS, MOODS, RELEASE_KINDS, RELEASE_LINK_KEYS, RELEASE_LINK_LABEL, roleLabel } from '@/data/music';
+import { getReleaseForOwner, missingForPublish, type Credit } from '@/server/releases';
+import { mediaUrl } from '@/server/profiles';
+import { HttpError } from '@/server/util';
+import '@/styles/app.css';
+import '@/styles/music.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const id = Astro.params.id ?? '';
+if (!user) return Astro.redirect(`/sign-in?next=${encodeURIComponent(`/music/${id}`)}`);
+const r = await getReleaseForOwner(Astro.locals.runtime.env.DB, user, id).catch((e) => {
+  if (e instanceof HttpError && e.status === 404) return null;
+  throw e;
+});
+if (!r) return Astro.redirect('/music');
+
+const missing = missingForPublish(r);
+const today = new Date().toISOString().slice(0, 10);
+const groups: { key: string; label: string; credits: Credit[] }[] = [
+  { key: '', label: r.tracks.length ? 'Whole release' : 'Credits', credits: r.credits.filter((c) => !c.trackId) },
+  ...r.tracks.map((t) => ({ key: t.id, label: `${t.position}. ${t.title}`, credits: r.credits.filter((c) => c.trackId === t.id) })),
+].filter((g) => g.key === '' || g.credits.length);
+const STATUS: Record<Credit['status'], [string, string]> = {
+  confirmed: ['Confirmed', 'mu-pill--confirmed'], pending: ['Waiting to confirm', 'mu-pill--pending'],
+  declined: ['Declined', 'mu-pill--declined'], unlinked: ['Not on Opus', 'mu-pill--draft'],
+};
+const hasVibe = r.genres.length > 0 || r.moods.length > 0;
+---
+<BaseLayout title={r.title === 'Untitled' ? 'New release' : r.title} noindex>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+      <p class="t-meta app__kicker"><a href="/music">Music</a> / {r.released ? 'Past release' : 'Release builder'}</p>
+      <h1 class="app__title">{r.title === 'Untitled' ? (r.released ? 'Add a past release' : 'New release') : r.title}</h1>
+      <p class="app__lead">{r.released
+        ? 'Add a release that’s already out, credit who worked on it, and publish it to your record.'
+        : 'Plan the release, line up the people on it, and publish it when it’s out. Everything stays private until you publish.'}</p>
+
+      <div class="notice" style="margin-top:20px">
+        {r.status === 'published'
+          ? <span><b>On your profile.</b> Public at <a class="link" href={`/r/${r.id}`}>opuscollect.net/r/{r.id}</a>.</span>
+          : missing.length ? <span><b>Draft.</b> To publish, add {missing.join(' and ')}.</span>
+          : <span><b>Draft.</b> Ready to publish. <a class="link" href={`/r/${r.id}`}>Preview</a></span>}
+      </div>
+
+      <form class="form" data-release novalidate>
+        <div class="panel">
+          <h2>Release</h2>
+          <div class="mb-head" style="margin-top:16px">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div class="mb-cover mu-cover" data-cover style={r.coverKey ? `background-image:url(${mediaUrl(r.coverKey)})` : ''}>{!r.coverKey && 'No artwork'}</div>
+              <label class="btn-app btn-app--ghost mb-file">Upload artwork<input type="file" accept="image/jpeg,image/png,image/webp" data-cover-input /></label>
+              <p class="dim" data-cover-status role="status" style="font-size:13px"></p>
+            </div>
+            <div class="form" style="margin-top:0">
+              <label class="field"><span>Title *</span><input class="input" name="title" value={r.title === 'Untitled' ? '' : r.title} maxlength="120" placeholder="Scenic" required /></label>
+              <div class="grid-2">
+                <label class="field"><span>Type</span>
+                  <select class="select" name="kind">{Object.entries(RELEASE_KINDS).map(([k, l]) => <option value={k} selected={r.kind === k}>{l}</option>)}</select>
+                </label>
+                <label class="field"><span data-date-label>{r.released ? 'Release date *' : 'Planned release date'}</span><input class="input" type="date" name="releaseDate" value={r.releaseDate ?? ''} max={r.released ? today : undefined} /></label>
+              </div>
+              <label class="check"><input type="checkbox" name="released" checked={r.released} /> <span>This is already out. Add it to my record as a past release.</span></label>
+            </div>
+          </div>
+          <label class="field" style="margin-top:18px"><span>About this release</span><textarea class="textarea" name="description" maxlength="1500" placeholder="What it is, where it came from, who it’s for.">{r.description}</textarea></label>
+        </div>
+
+        <div class="panel">
+          <h2>Sound</h2>
+          <p class="dim">The vibe of the release. Opus uses it to find people whose sound fits, and the moods carry over to everyone credited.</p>
+          <fieldset class="field" style="border:0;padding:0;margin:16px 0 0"><legend>Genres <span class="dim">(up to {LIMITS.genres})</span></legend>
+            <div class="chips" data-chips="genres" data-max={LIMITS.genres}>{GENRES.map((g) => <label class="chip"><input type="checkbox" value={g} checked={r.genres.includes(g)} /><span>{g}</span></label>)}</div>
+          </fieldset>
+          <fieldset class="field" style="border:0;padding:0;margin:18px 0 0"><legend>Moods <span class="dim">(up to {LIMITS.moods})</span></legend>
+            <div class="chips" data-chips="moods" data-max={LIMITS.moods}>{MOODS.map((m) => <label class="chip"><input type="checkbox" value={m} checked={r.moods.includes(m)} /><span>{m}</span></label>)}</div>
+          </fieldset>
+        </div>
+
+        <div class="panel">
+          <h2>Tracks</h2>
+          <p class="dim">In order. A single can have one track or none.</p>
+          <div class="mb-tracks" data-tracks></div>
+          <button type="button" class="btn-app btn-app--ghost" data-add-track>Add track</button>
+        </div>
+
+        <div class="panel">
+          <h2>Where to listen</h2>
+          <p class="dim">{r.released ? 'Links to the release on streaming services.' : 'Add these on release day.'}</p>
+          <div class="grid-2" style="margin-top:16px">
+            {RELEASE_LINK_KEYS.map((k) => <label class="field"><span>{RELEASE_LINK_LABEL[k]}</span><input class="input" name={`link:${k}`} value={r.links[k] ?? ''} maxlength="500" placeholder={k === 'other' ? 'https://…' : ''} /></label>)}
+          </div>
+        </div>
+
+        <div data-status class="form-status"></div>
+        <div class="mb-actions">
+          {r.status === 'published' && <a class="btn-app btn-app--ghost" href={`/r/${r.id}`}>View page</a>}
+          <button type="button" class="btn-app btn-app--ghost" data-publish={r.status === 'published' ? 'unpublish' : 'publish'}>{r.status === 'published' ? 'Unpublish' : 'Save and publish'}</button>
+          <button type="submit" class="btn-app">Save</button>
+        </div>
+      </form>
+
+      <!-- Credits -->
+      <div class="panel" id="credits">
+        <h2>Credits</h2>
+        <p class="dim">Search Opus World to credit someone. They get a request, and the credit links to their profile once they confirm. For people who aren’t on Opus yet, type their name.</p>
+        {groups.map((g) => (
+          <div class="mb-group" style="margin-top:18px">
+            {(r.tracks.length > 0) && <h3>{g.label}</h3>}
+            {g.credits.length === 0 ? <p class="dim">No credits yet.</p> : g.credits.map((c) => (
+              <div class="mb-credit" data-credit={c.id}>
+                <span class="mb-credit__av" style={c.photoKey ? `background-image:url(${mediaUrl(c.photoKey)})` : ''}></span>
+                <span class="mb-credit__text">{c.handle && c.status === 'confirmed' ? <a class="link" href={`/m/${c.handle}`}>{c.name}</a> : c.name}<small>{roleLabel(c.role)}</small></span>
+                <span class:list={['mu-pill', STATUS[c.status][1]]}>{STATUS[c.status][0]}</span>
+                <button type="button" class="mb-x" data-remove-credit aria-label={`Remove ${c.name} as ${roleLabel(c.role)}`}>×</button>
+              </div>
+            ))}
+          </div>
+        ))}
+
+        <form class="form" data-credit-form novalidate style="margin-top:24px">
+          <div class="grid-2">
+            <label class="field"><span>Role</span>
+              <select class="select" name="role">{CREDIT_ROLE_KEYS.map((k) => <option value={k} selected={k === 'producer'}>{CREDIT_ROLES[k].label}</option>)}</select>
+            </label>
+            <label class="field"><span>On</span>
+              <select class="select" name="trackId"><option value="">The whole release</option>{r.tracks.map((t) => <option value={t.id}>{t.position}. {t.title}</option>)}</select>
+            </label>
+          </div>
+          <div class="field mb-picker">
+            <span>Person</span>
+            <input class="input" name="name" maxlength="80" autocomplete="off" placeholder="Search Opus World, or type a name" data-person />
+            <div class="mb-picked" data-picked hidden><b data-picked-name></b><button type="button" class="mb-x" data-unpick aria-label="Choose someone else">×</button></div>
+            <div class="mb-suggest" data-suggest role="listbox"></div>
+            <small data-person-hint>Pick someone from the list to link their profile. Anything else is added as a plain name.</small>
+          </div>
+          <label class="field" data-note-field hidden><span>Message with the request <span class="dim">(optional)</span></span><textarea class="textarea" name="note" maxlength="400" rows="2" placeholder="Thanks for the mix on this one."></textarea></label>
+          <div data-status class="form-status"></div>
+          <div class="row"><button type="submit" class="btn-app">Add credit</button>{r.tracks.length === 0 && <span class="dim" style="font-size:13px">Save tracks above to credit them one by one.</span>}</div>
+        </form>
+      </div>
+
+      <!-- Find people -->
+      <div class="panel" id="find">
+        <h2>Find people for this song</h2>
+        <p class="dim">Opus World members ranked by how well their sound fits this release: their genres, plus the moods of releases they’re confirmed on.</p>
+        {!hasVibe && <p class="notice notice--warn" style="margin-top:14px">Pick genres and moods under <b>Sound</b> and save. That’s what matching uses.</p>}
+        <form class="form" data-find novalidate style="margin-top:18px">
+          <div class="grid-2">
+            <label class="field"><span>Who do you need?</span>
+              <select class="select" name="role"><option value="">Anyone</option>{CREDIT_ROLE_KEYS.filter((k) => CREDIT_ROLES[k].finds.length).map((k) => <option value={k} selected={k === 'featured-artist'}>{CREDIT_ROLES[k].label}</option>)}</select>
+            </label>
+            <label class="field"><span>For</span>
+              <select class="select" name="trackId"><option value="">The whole release</option>{r.tracks.map((t) => <option value={t.id}>{t.position}. {t.title}</option>)}</select>
+            </label>
+          </div>
+          <label class="field"><span>Anything else <span class="dim">(optional)</span></span><input class="input" name="q" maxlength="80" placeholder="Atlanta, falsetto, live bass…" /></label>
+          <label class="check"><input type="checkbox" name="open" checked /> <span>Only people open to collaboration</span></label>
+          <label class="field"><span>Message with requests <span class="dim">(optional)</span></span><textarea class="textarea" name="note" maxlength="400" rows="2" placeholder="Working on a moody R&B single and your sound fits. Want to hop on it?"></textarea></label>
+          <div class="row"><button type="submit" class="btn-app">Find people</button></div>
+        </form>
+        <p class="dim" data-find-status role="status" style="margin-top:14px"></p>
+        <div class="mb-people" data-people></div>
+      </div>
+
+      <div class="panel">
+        <h2>Delete release</h2>
+        <p class="dim">Removes the release, its tracks and every credit on it, including from other members’ profiles.</p>
+        <div class="row" style="margin-top:14px"><button type="button" class="btn-app btn-app--danger" data-delete>Delete release</button></div>
+      </div>
+    </div>
+  </section>
+  <script type="application/json" id="release-data" set:html={JSON.stringify({ id: r.id, tracks: r.tracks }).replace(/</g, '\\u003c')}></script>
+</BaseLayout>
+
+<script>
+  import { status, values } from '@/scripts/form';
+  import { prepareImage } from '@/scripts/image';
+
+  const data = JSON.parse(document.getElementById('release-data')!.textContent!) as { id: string; tracks: { id: string; title: string }[] };
+  const api = (path = '', init?: RequestInit) => fetch(`/api/releases/${data.id}${path}`, { headers: { 'content-type': 'application/json' }, ...init });
+  const post = async (path: string, body: unknown) => {
+    const r = await api(path, { method: 'POST', body: JSON.stringify(body) });
+    const d = (await r.json().catch(() => ({}))) as Record<string, any>;
+    if (!r.ok) throw new Error(d.error ?? 'Something went wrong. Please try again.');
+    return d;
+  };
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
+  // ----- chip limits -----
+  document.querySelectorAll<HTMLElement>('[data-chips]').forEach((host) => {
+    const max = Number(host.dataset.max);
+    const sync = () => {
+      const boxes = [...host.querySelectorAll<HTMLInputElement>('input')];
+      const full = boxes.filter((b) => b.checked).length >= max;
+      boxes.forEach((b) => (b.disabled = full && !b.checked));
+    };
+    host.addEventListener('change', sync); sync();
+  });
+  const chips = (name: string) => [...document.querySelectorAll<HTMLInputElement>(`[data-chips="${name}"] input:checked`)].map((i) => i.value);
+
+  // ----- tracks -----
+  const tracksHost = document.querySelector<HTMLElement>('[data-tracks]')!;
+  function renumber() {
+    const rows = [...tracksHost.children] as HTMLElement[];
+    rows.forEach((row, i) => {
+      row.querySelector('.mb-track__n')!.textContent = String(i + 1);
+      row.querySelector<HTMLButtonElement>('[data-up]')!.disabled = i === 0;
+      row.querySelector<HTMLButtonElement>('[data-down]')!.disabled = i === rows.length - 1;
+    });
+  }
+  function addTrack(t: { id?: string; title?: string } = {}, focus = false) {
+    const row = document.createElement('div');
+    row.className = 'mb-track';
+    row.dataset.id = t.id ?? '';
+    row.innerHTML = `<span class="mb-track__n"></span><input class="input" maxlength="120" placeholder="Track title" aria-label="Track title" />
+      <button type="button" class="mb-x" data-up aria-label="Move up">↑</button><button type="button" class="mb-x" data-down aria-label="Move down">↓</button>
+      <button type="button" class="mb-x" data-x aria-label="Remove track">×</button>`;
+    row.querySelector('input')!.value = t.title ?? '';
+    row.querySelector('[data-x]')!.addEventListener('click', () => {
+      if (row.dataset.id && !confirm('Remove this track? Credits on it are removed when you save.')) return;
+      row.remove(); renumber();
+    });
+    row.querySelector('[data-up]')!.addEventListener('click', () => { row.previousElementSibling?.before(row); renumber(); });
+    row.querySelector('[data-down]')!.addEventListener('click', () => { row.nextElementSibling?.after(row); renumber(); });
+    tracksHost.append(row); renumber();
+    if (focus) row.querySelector('input')!.focus();
+  }
+  data.tracks.forEach((t) => addTrack(t));
+  document.querySelector('[data-add-track]')!.addEventListener('click', () => addTrack({}, true));
+
+  // ----- save / publish -----
+  const form = document.querySelector<HTMLFormElement>('[data-release]')!;
+  const releasedBox = form.querySelector<HTMLInputElement>('[name="released"]')!;
+  releasedBox.addEventListener('change', () => {
+    document.querySelector('[data-date-label]')!.textContent = releasedBox.checked ? 'Release date *' : 'Planned release date';
+  });
+  const body = () => {
+    const v = values(form);
+    const links: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) if (k.startsWith('link:')) links[k.slice(5)] = val;
+    return {
+      action: 'save', title: v.title, kind: v.kind, releaseDate: v.releaseDate, released: v.released, description: v.description,
+      genres: chips('genres'), moods: chips('moods'), links,
+      tracks: [...tracksHost.children].map((row) => ({ id: (row as HTMLElement).dataset.id, title: row.querySelector('input')!.value })),
+    };
+  };
+  async function save() {
+    await post('', body());
+  }
+  const busy = (b: HTMLButtonElement | null, on: boolean, label?: string) => { if (b) { b.disabled = on; if (label) b.textContent = label; } };
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    busy(btn, true, 'Saving…');
+    try { await save(); location.reload(); }
+    catch (err) { status(form, (err as Error).message); busy(btn, false, 'Save'); }
+  });
+  document.querySelector<HTMLButtonElement>('[data-publish]')!.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    const publish = b.dataset.publish === 'publish';
+    const label = b.textContent ?? '';
+    busy(b, true, publish ? 'Publishing…' : 'Unpublishing…');
+    try {
+      if (publish) await save();
+      await post('', { action: publish ? 'publish' : 'unpublish' });
+      location.reload();
+    } catch (err) { status(form, (err as Error).message); busy(b, false, label); }
+  });
+  document.querySelector('[data-delete]')!.addEventListener('click', async () => {
+    if (!confirm('Delete this release for good? Every credit on it goes too.')) return;
+    try { await post('', { action: 'delete' }); location.href = '/music'; } catch (err) { alert((err as Error).message); }
+  });
+
+  // ----- artwork -----
+  const coverInput = document.querySelector<HTMLInputElement>('[data-cover-input]')!;
+  const coverStatus = document.querySelector<HTMLElement>('[data-cover-status]')!;
+  coverInput.addEventListener('change', async () => {
+    const file = coverInput.files?.[0];
+    if (!file) return;
+    coverStatus.textContent = 'Preparing artwork…';
+    try {
+      const blob = await prepareImage(file, 1600, 'square');
+      coverStatus.textContent = 'Uploading…';
+      const r = await fetch(`/api/releases/${data.id}/cover`, { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error ?? 'Upload failed.');
+      const el = document.querySelector<HTMLElement>('[data-cover]')!;
+      el.style.backgroundImage = `url(${d.url})`; el.textContent = '';
+      coverStatus.textContent = 'Artwork updated.';
+    } catch (e) { coverStatus.textContent = (e as Error).message; }
+    coverInput.value = '';
+  });
+
+  // ----- credits -----
+  document.querySelectorAll<HTMLButtonElement>('[data-remove-credit]').forEach((b) => b.addEventListener('click', async () => {
+    const row = b.closest<HTMLElement>('[data-credit]')!;
+    b.disabled = true;
+    try { await post('/credits', { remove: row.dataset.credit }); row.remove(); } catch (e) { b.disabled = false; alert((e as Error).message); }
+  }));
+
+  const cform = document.querySelector<HTMLFormElement>('[data-credit-form]')!;
+  const person = cform.querySelector<HTMLInputElement>('[data-person]')!;
+  const suggest = cform.querySelector<HTMLElement>('[data-suggest]')!;
+  const picked = cform.querySelector<HTMLElement>('[data-picked]')!;
+  const noteField = cform.querySelector<HTMLElement>('[data-note-field]')!;
+  let pickedHandle = '';
+  let timer = 0;
+  const pick = (handle: string, name: string, self: boolean) => {
+    pickedHandle = handle;
+    picked.hidden = false; person.hidden = true; suggest.innerHTML = '';
+    cform.querySelector('[data-picked-name]')!.textContent = self ? `${name} (you)` : name;
+    noteField.hidden = self;
+  };
+  cform.querySelector('[data-unpick]')!.addEventListener('click', () => {
+    pickedHandle = ''; picked.hidden = true; person.hidden = false; noteField.hidden = true; person.value = ''; person.focus();
+  });
+  person.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = person.value.trim();
+    if (q.length < 2) { suggest.innerHTML = ''; return; }
+    timer = window.setTimeout(async () => {
+      const r = await fetch(`/api/people?q=${encodeURIComponent(q)}`);
+      const d = (await r.json().catch(() => ({ people: [] }))) as { people?: { handle: string; name: string; specialty: string | null; photo: string | null; self: boolean }[] };
+      if (person.value.trim() !== q) return;
+      suggest.innerHTML = (d.people ?? []).map((p) =>
+        `<button type="button" role="option" data-h="${esc(p.handle)}" data-n="${esc(p.name)}" data-self="${p.self ? 1 : 0}"><span class="mb-credit__av" style="${p.photo ? `background-image:url(${esc(p.photo)})` : ''}"></span><span>${esc(p.name)}${p.self ? ' (you)' : ''} <small>@${esc(p.handle)}</small></span></button>`).join('');
+    }, 200);
+  });
+  suggest.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-h]');
+    if (b) pick(b.dataset.h!, b.dataset.n!, b.dataset.self === '1');
+  });
+  document.addEventListener('click', (e) => { if (!cform.contains(e.target as Node)) suggest.innerHTML = ''; });
+  cform.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const v = values(cform);
+    const btn = cform.querySelector<HTMLButtonElement>('button[type="submit"]');
+    busy(btn, true, 'Adding…');
+    try {
+      await post('/credits', { role: v.role, trackId: v.trackId, note: v.note, ...(pickedHandle ? { handle: pickedHandle } : { name: person.value }) });
+      location.hash = 'credits'; location.reload();
+    } catch (err) { status(cform, (err as Error).message); busy(btn, false, 'Add credit'); }
+  });
+
+  // ----- find people -----
+  const fform = document.querySelector<HTMLFormElement>('[data-find]')!;
+  const peopleHost = document.querySelector<HTMLElement>('[data-people]')!;
+  const findStatus = document.querySelector<HTMLElement>('[data-find-status]')!;
+  type Person = { handle: string; name: string; specialty: string | null; place: string; photo: string | null; openToCollab: boolean; verified: boolean; releases: number; credited: boolean; match: { score: number; genres: string[]; moods: string[] } };
+  fform.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const v = values(fform);
+    const role = String(v.role || '');
+    const params = new URLSearchParams({ q: String(v.q || ''), open: v.open ? '1' : '0', ...(role ? { role } : {}) });
+    findStatus.textContent = 'Searching Opus World…'; peopleHost.innerHTML = '';
+    const r = await api(`/talent?${params}`);
+    const d = (await r.json().catch(() => ({}))) as { people?: Person[]; error?: string };
+    if (!r.ok) { findStatus.textContent = d.error ?? 'Something went wrong.'; return; }
+    const people = d.people ?? [];
+    findStatus.textContent = people.length ? `${people.length} ${people.length === 1 ? 'person' : 'people'}, best fit first.` : 'No one matches yet. Try “Anyone”, fewer words, or include people not open to collaboration.';
+    const roleName = (fform.querySelector<HTMLSelectElement>('[name="role"]')!.selectedOptions[0]?.textContent ?? 'collaborator').trim();
+    peopleHost.innerHTML = people.map((p) => {
+      const why = [...p.match.genres, ...p.match.moods];
+      return `<div class="mb-person" data-h="${esc(p.handle)}">
+        <a class="mb-person__top" href="/m/${esc(p.handle)}" target="_blank" rel="noopener"><span class="mb-credit__av" style="${p.photo ? `background-image:url(${esc(p.photo)})` : ''}"></span>
+          <span><b>${esc(p.name)}${p.verified ? ' ✓' : ''}</b><small>${esc([p.specialty, p.place].filter(Boolean).join(' · '))}</small></span></a>
+        <p class="mb-person__why">${why.length ? `Shares <strong>${why.map(esc).join(', ')}</strong>` : 'No shared genres or moods yet'}${p.releases ? ` · ${p.releases} release${p.releases === 1 ? '' : 's'} on Opus` : ''}</p>
+        ${p.credited ? '<span class="mu-pill mu-pill--draft" style="align-self:flex-start">Already on this release</span>'
+          : role ? `<button type="button" class="btn-app btn-app--ghost" data-invite>Request as ${esc(roleName)}</button>` : `<a class="btn-app btn-app--ghost" href="/m/${esc(p.handle)}" target="_blank" rel="noopener">View profile</a>`}
+      </div>`;
+    }).join('');
+  });
+  peopleHost.addEventListener('click', async (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-invite]');
+    if (!b) return;
+    const card = b.closest<HTMLElement>('[data-h]')!;
+    const v = values(fform);
+    busy(b, true, 'Sending…');
+    try {
+      await post('/credits', { handle: card.dataset.h, role: v.role, trackId: v.trackId, note: v.note });
+      b.replaceWith(Object.assign(document.createElement('span'), { className: 'mu-pill mu-pill--pending', textContent: 'Request sent' }));
+    } catch (err) { busy(b, false, 'Try again'); alert((err as Error).message); }
+  });
+  if (location.hash === '#credits') document.getElementById('credits')?.scrollIntoView();
+</script>

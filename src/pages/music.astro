@@ -1,7 +1,117 @@
 ---
+/**
+ * Opus Music hub: your releases (in progress, out now, past), and credits waiting for you to confirm.
+ */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import ComingSoon from '@/components/layout/ComingSoon.astro';
+import { roleLabel } from '@/data/music';
+import { listMyReleases, myCreditRequests, releaseMeta } from '@/server/releases';
+import { mediaUrl } from '@/server/profiles';
+import '@/styles/app.css';
+import '@/styles/music.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const db = Astro.locals.runtime.env.DB;
+const profile = user
+  ? await db.prepare("SELECT handle, status FROM profiles WHERE owner_user_id = ? AND kind = 'musician'").bind(user.id).first<{ handle: string; status: string }>()
+  : null;
+const releases = user ? await listMyReleases(db, user.id) : [];
+const requests = user ? await myCreditRequests(db, user.id) : [];
+const building = releases.filter((r) => r.status === 'draft');
+const out = releases.filter((r) => r.status === 'published');
 ---
-<BaseLayout title="Music" description="Projects, songs, linked credits and releases on Opus." noindex>
-  <ComingSoon kicker="Music" phase="In development" title="Your projects, songs and credits." body="Keep projects and releases together, link credits to the people you worked with and let them confirm. Release checklists will guide what to do before and after release day." />
+<BaseLayout title="Music" description="Build releases on Opus, credit the people who made them, and find collaborators whose sound fits." noindex={!!user}>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+      <p class="t-meta app__kicker">Music</p>
+      <h1 class="app__title">Your releases and credits</h1>
+      <p class="app__lead">Build a release, credit everyone who worked on it straight from Opus World, and add past releases to your record. Credits show on someone’s profile only after they confirm them.</p>
+
+      {!user ? (
+        <div class="panel" style="margin-top:32px">
+          <h2>Sign in to build a release</h2>
+          <p class="dim">Releases live on your Opus profile, so you’ll need an account first.</p>
+          <div class="row" style="margin-top:16px"><a class="btn-app" href="/sign-in?next=/music">Sign in</a><a class="btn-app btn-app--ghost" href="/sign-up">Join Opus</a></div>
+        </div>
+      ) : !profile ? (
+        <div class="panel" style="margin-top:32px">
+          <h2>Set up your profile first</h2>
+          <p class="dim">Releases and credits appear on your Opus profile, so start there. It takes a few minutes.</p>
+          <div class="row" style="margin-top:16px"><a class="btn-app" href="/account/profile">Set up your profile</a></div>
+        </div>
+      ) : (
+        <>
+          <div class="row" style="margin-top:28px">
+            <button class="btn-app" type="button" data-new>New release</button>
+            <button class="btn-app btn-app--ghost" type="button" data-new="past">Add a past release</button>
+          </div>
+          <p class="dim mu-err" data-new-status role="alert"></p>
+
+          {requests.length > 0 && (
+            <div class="panel" style="margin-top:28px">
+              <h2>Credits waiting for you <span class="dim">({requests.length})</span></h2>
+              <p class="dim">Confirm to add the release to your profile. Decline if the credit isn’t right.</p>
+              <ul class="mu-req" role="list">{requests.map((r) => (
+                <li data-credit={r.id}>
+                  <a class="mu-req__cover" href={`/r/${r.releaseId}`} style={r.coverKey ? `background-image:url(${mediaUrl(r.coverKey)})` : ''} aria-label={r.releaseTitle}></a>
+                  <div class="mu-req__body">
+                    <p><b>{roleLabel(r.role)}</b> on {r.trackTitle ? <>“{r.trackTitle}” from </> : null}<a class="link" href={`/r/${r.releaseId}`}>{r.releaseTitle}</a></p>
+                    <p class="dim">From {r.fromHandle ? <a class="link" href={`/m/${r.fromHandle}`}>{r.from}</a> : r.from}{r.releaseStatus !== 'published' && ' · not released yet'}</p>
+                    {r.note && <p class="mu-req__note">“{r.note}”</p>}
+                    <div class="row"><button class="btn-app" data-answer="confirm">Confirm</button><button class="btn-app btn-app--ghost" data-answer="decline">Decline</button></div>
+                  </div>
+                </li>
+              ))}</ul>
+            </div>
+          )}
+
+          <div class="panel" style="margin-top:28px">
+            <h2>In progress <span class="dim">({building.length})</span></h2>
+            {building.length === 0 ? <p class="dim">Nothing in progress. Start a new release to plan tracks and line up credits.</p> : (
+              <ul class="mu-list" role="list">{building.map((r) => (
+                <li><a href={`/music/${r.id}`} class="mu-item">
+                  <span class="mu-item__cover" style={r.coverKey ? `background-image:url(${mediaUrl(r.coverKey)})` : ''}></span>
+                  <span class="mu-item__text"><b>{r.title}</b><small>{[releaseMeta(r), r.released ? 'Past release' : null, r.trackCount ? `${r.trackCount} track${r.trackCount === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}</small></span>
+                  {r.pending > 0 && <span class="mu-pill">{r.pending} waiting to confirm</span>}
+                  <span class="mu-pill mu-pill--draft">Draft</span>
+                </a></li>
+              ))}</ul>
+            )}
+          </div>
+
+          <div class="panel">
+            <h2>On your profile <span class="dim">({out.length})</span></h2>
+            {out.length === 0 ? <p class="dim">Published releases show on your profile{profile.status === 'published' ? '' : ' once your profile is published'}. Add past releases to build your record.</p> : (
+              <ul class="mu-list" role="list">{out.map((r) => (
+                <li><a href={`/music/${r.id}`} class="mu-item">
+                  <span class="mu-item__cover" style={r.coverKey ? `background-image:url(${mediaUrl(r.coverKey)})` : ''}></span>
+                  <span class="mu-item__text"><b>{r.title}</b><small>{[r.artist, releaseMeta(r)].filter(Boolean).join(' · ')}</small></span>
+                  {r.pending > 0 && <span class="mu-pill">{r.pending} waiting to confirm</span>}
+                </a></li>
+              ))}</ul>
+            )}
+            {profile.status === 'published' && <p class="dim" style="margin-top:14px">See how it looks on <a class="link" href={`/m/${profile.handle}`}>your profile</a>.</p>}
+          </div>
+        </>
+      )}
+    </div>
+  </section>
 </BaseLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-new]').forEach((b) => b.addEventListener('click', async () => {
+    const msg = document.querySelector<HTMLElement>('[data-new-status]')!;
+    b.disabled = true; msg.textContent = '';
+    const r = await fetch('/api/releases', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ past: b.dataset.new === 'past' }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) location.href = `/music/${d.id}`;
+    else { b.disabled = false; msg.textContent = d.error ?? 'Something went wrong.'; }
+  }));
+  document.querySelectorAll<HTMLButtonElement>('[data-answer]').forEach((b) => b.addEventListener('click', async () => {
+    const li = b.closest<HTMLElement>('[data-credit]')!;
+    li.querySelectorAll('button').forEach((x) => (x.disabled = true));
+    const r = await fetch(`/api/credits/${li.dataset.credit}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: b.dataset.answer }) });
+    if (r.ok) location.reload();
+    else { li.querySelectorAll('button').forEach((x) => (x.disabled = false)); alert((await r.json().catch(() => ({}))).error ?? 'Something went wrong.'); }
+  }));
+</script>

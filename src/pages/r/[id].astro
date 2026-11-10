@@ -1,0 +1,110 @@
+---
+/**
+ * Public release page. Credits link to Opus profiles only once the member has confirmed them.
+ * Drafts are visible to the owner and to members credited on them (so they can review a request).
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { RELEASE_LINK_LABEL, roleLabel, type ReleaseLinkKey } from '@/data/music';
+import { artistLine, formatDate, getVisibleRelease, releaseMeta, type Credit } from '@/server/releases';
+import { mediaUrl } from '@/server/profiles';
+import '@/styles/app.css';
+import '@/styles/music.css';
+export const prerender = false;
+
+const viewer = Astro.locals.user;
+const found = await getVisibleRelease(Astro.locals.runtime.env.DB, Astro.params.id ?? '', viewer?.id ?? null);
+if (!found) {
+  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Release not found · Opus</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:#f2efea;font-family:system-ui,sans-serif;text-align:center"><div><p style="color:#8a858c;letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This release isn’t available.</h1><p style="color:#a39da5">It may not be published yet, or it was removed.</p><p><a href="/music" style="color:#f2efea">Go to Music</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+const { release: r, isOwner, myCredits } = found;
+// Declined credits never show. Pending ones show as a plain name until confirmed.
+const shown = r.credits.filter((c) => c.status !== 'declined');
+const wholeCredits = shown.filter((c) => !c.trackId && c.role !== 'primary-artist');
+const primary = shown.filter((c) => !c.trackId && c.role === 'primary-artist');
+const byTrack = (id: string) => shown.filter((c) => c.trackId === id);
+const linked = (c: Credit) => c.status === 'confirmed' && c.handle;
+const links = Object.entries(r.links).filter(([, v]) => !!v) as [ReleaseLinkKey, string][];
+const pendingMine = myCredits.filter((c) => c.status === 'pending');
+const by = artistLine(r);
+---
+<BaseLayout title={`${r.title} · ${by}`} description={`${r.title} by ${by}${r.description ? `. ${r.description.slice(0, 140)}` : ''}`} image={r.coverKey ? mediaUrl(r.coverKey)! : undefined} noindex={r.status !== 'published'}>
+  {r.status !== 'published' && (
+    <div class="mp-preview" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface-sunken);font-size:14px;color:var(--c-fg-subtle)">
+      <span><b style="color:var(--text);font-weight:500">Not published.</b> {isOwner ? 'Only you and the people credited can see this.' : 'You can see this because you’re credited on it.'}</span>
+      {isOwner && <a class="link" href={`/music/${r.id}`}>Back to editing</a>}
+    </div>
+  )}
+  <article class="rp">
+    <header class="rp__head">
+      <div class="rp__cover" style={r.coverKey ? `background-image:url(${mediaUrl(r.coverKey)})` : ''} role="img" aria-label={`Artwork for ${r.title}`}></div>
+      <div>
+        <p class="t-meta dim">{releaseMeta(r)}{r.releaseDate && r.released ? ` · ${formatDate(r.releaseDate)}` : ''}</p>
+        <h1 class="rp__title">{r.title}</h1>
+        <p class="rp__by">{primary.length
+          ? primary.map((c, i) => <>{i > 0 && ', '}{linked(c) ? <a class="rp__person" href={`/m/${c.handle}`}>{c.name}</a> : c.name}</>)
+          : r.ownerHandle ? <a class="rp__person" href={`/m/${r.ownerHandle}`}>{r.ownerName}</a> : r.ownerName}</p>
+        {r.description && <p class="rp__desc">{r.description}</p>}
+        {isOwner && <div class="row" style="margin-top:20px"><a class="btn-app btn-app--ghost" href={`/music/${r.id}`}>Edit release</a></div>}
+      </div>
+    </header>
+
+    {pendingMine.length > 0 && (
+      <div class="panel rp__mine">
+        <h2>You’re credited as {pendingMine.map((c) => roleLabel(c.role)).join(', ')}</h2>
+        <p class="dim">Confirm to add this release to your Opus profile, or decline if it isn’t right.</p>
+        <div class="row" style="margin-top:14px" data-ids={pendingMine.map((c) => c.id).join(',')}>
+          <button class="btn-app" data-answer="confirm">Confirm</button><button class="btn-app btn-app--ghost" data-answer="decline">Decline</button>
+        </div>
+      </div>
+    )}
+
+    <div class="rp__grid">
+      <div>
+        {r.tracks.length > 0 && (
+          <section class="rp__sec"><h2 class="t-meta">Tracks</h2>
+            <ol class="rp__tracks" role="list">{r.tracks.map((t) => {
+              const tc = byTrack(t.id);
+              return (
+                <li>
+                  <div class="rp__track"><span>{t.position}</span>{t.title}</div>
+                  {tc.length > 0 && <p class="rp__tcredits">{tc.map((c, i) => <>{i > 0 && ' · '}{roleLabel(c.role)}: {linked(c) ? <a href={`/m/${c.handle}`}>{c.name}</a> : c.name}</>)}</p>}
+                </li>
+              );
+            })}</ol>
+          </section>
+        )}
+        {wholeCredits.length > 0 && (
+          <section class="rp__sec"><h2 class="t-meta">Credits</h2>
+            <ul class="rp__credits" role="list">{wholeCredits.map((c) => (
+              <li>{linked(c) ? <a class="rp__person" href={`/m/${c.handle}`}>{c.name}</a> : <span>{c.name}</span>}<span class="dim">{roleLabel(c.role)}</span></li>
+            ))}</ul>
+          </section>
+        )}
+      </div>
+      <aside>
+        {links.length > 0 && (
+          <section class="rp__sec"><h2 class="t-meta">Listen</h2>
+            <ul class="rp__links" role="list">{links.map(([k, v]) => <li><a href={v} target="_blank" rel="noopener nofollow ugc">{RELEASE_LINK_LABEL[k]} ↗</a></li>)}</ul>
+          </section>
+        )}
+        {r.genres.length + r.moods.length > 0 && (
+          <section class="rp__sec"><h2 class="t-meta">Sound</h2><ul class="rp__tags" role="list">{[...r.genres, ...r.moods].map((g) => <li>{g}</li>)}</ul></section>
+        )}
+        {!r.released && r.releaseDate && <section class="rp__sec"><h2 class="t-meta">Release date</h2><p>{formatDate(r.releaseDate)}</p></section>}
+        <section class="rp__sec"><p class="dim" style="font-size:13px;line-height:1.55">Linked names are confirmed by the people credited. Others are listed by {r.ownerName}.</p></section>
+      </aside>
+    </div>
+  </article>
+</BaseLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-answer]').forEach((b) => b.addEventListener('click', async () => {
+    const host = b.closest<HTMLElement>('[data-ids]')!;
+    host.querySelectorAll('button').forEach((x) => (x.disabled = true));
+    for (const id of host.dataset.ids!.split(',')) {
+      const r = await fetch(`/api/credits/${id}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: b.dataset.answer }) });
+      if (!r.ok) { alert((await r.json().catch(() => ({}))).error ?? 'Something went wrong.'); break; }
+    }
+    location.reload();
+  }));
+</script>

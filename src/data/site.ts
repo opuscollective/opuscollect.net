@@ -11,11 +11,12 @@ export const SITE = {
 
 /**
  * Main navigation: only what works today, so nothing in the header is a dead end.
- * Charts, Network and Music join the header as each one ships (their pages already exist and say so).
+ * Charts and Network join the header as each one ships (their pages already exist and say so).
  */
 export const NAV = [
   { label: 'Discover', href: '/world', icon: 'globe', blurb: 'People by specialty and city, on the map or as a list' },
   { label: 'Studios', href: '/world?type=studio', icon: 'mic', blurb: 'Commercial and home studios you can book' },
+  { label: 'Music', href: '/music', icon: 'disc', blurb: 'Build releases, credit your team and find people for a song' },
   { label: 'Verified', href: '/verified', icon: 'shield', blurb: 'What Opus Verified means and how to earn it' },
   { label: 'Community', href: '/community', icon: 'users', blurb: 'Opus Collective, events and the Discord' },
 ] as const;
@@ -23,6 +24,7 @@ export const NAV = [
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
 export const ACCOUNT_MENU = [
   { label: 'Your profile', href: '/account/profile' },
+  { label: 'Your music', href: '/music' },
   { label: 'Connections', href: '/account/connections' },
   { label: 'Bookings', href: '/account/bookings' },
   { label: 'Business dashboard', href: '/business' },
@@ -48,6 +50,7 @@ export const FOOTER_NAV = [
     links: [
       { label: 'Opus World', href: '/world' },
       { label: 'Studios', href: '/world?type=studio' },
+      { label: 'Music', href: '/music' },
       { label: 'Opus Charts', href: '/charts' },
       { label: 'Opus Verified', href: '/verified' },
       { label: 'Trusted services', href: '/services' },

@@ -148,10 +148,11 @@ export async function deleteAccount(env: Env, user: SessionUser, body: { passwor
   if (body.confirm !== 'DELETE') throw new HttpError(400, 'Type DELETE to confirm.', 'confirm');
   const media = await db.prepare('SELECT photo_key, cover_key FROM profiles WHERE owner_user_id = ?').bind(user.id).all<{ photo_key: string | null; cover_key: string | null }>();
   const gallery = await db.prepare('SELECT g.key FROM profile_gallery g JOIN profiles p ON p.id = g.profile_id WHERE p.owner_user_id = ?').bind(user.id).all<{ key: string }>();
-  const keys = [...media.results.flatMap((r) => [r.photo_key, r.cover_key]), ...gallery.results.map((g) => g.key)].filter((k): k is string => !!k);
+  const covers = await db.prepare('SELECT cover_key FROM releases WHERE owner_user_id = ? AND cover_key IS NOT NULL').bind(user.id).all<{ cover_key: string }>();
+  const keys = [...media.results.flatMap((r) => [r.photo_key, r.cover_key]), ...gallery.results.map((g) => g.key), ...covers.results.map((c) => c.cover_key)].filter((k): k is string => !!k);
   if (keys.length) await env.MEDIA.delete(keys);
   await db.batch([
-    db.prepare('DELETE FROM users WHERE id = ?').bind(user.id), // cascades to sessions, tokens, profiles, connections, blocks
+    db.prepare('DELETE FROM users WHERE id = ?').bind(user.id), // cascades to sessions, tokens, profiles, connections, blocks, releases
     db.prepare('INSERT INTO audit_log (id, user_id, action, created_at) VALUES (?, NULL, ?, ?)').bind(randomId(), 'account.deleted', now()),
   ]);
 }
