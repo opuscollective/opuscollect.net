@@ -1,10 +1,17 @@
 ---
-import Button from '../ui/Button.astro';
 import { SITE } from '@/data/site';
 import { CITIES } from '@/data/cities';
 
 // Fallback links when WebGL is unavailable. Plain city names only; live counts come from /api/world.
 const topCities = CITIES.slice(0, 8);
+
+// Starting points. Each one opens a real, working view of Opus World.
+const STARTS = [
+  { label: 'Find a producer', href: '/world?specialty=producer' },
+  { label: 'Book a studio', href: '/world?type=studio' },
+  { label: 'Find a mixing engineer', href: '/world?specialty=mixing-engineer' },
+  { label: 'Explore the map', href: '/world' },
+];
 ---
 <section class="hero tone-dark" aria-labelledby="hero-title">
   <div class="hero__globe" data-hero-globe>
@@ -28,18 +35,21 @@ const topCities = CITIES.slice(0, 8);
       Discover the artists, producers, engineers, studios, and organizations shaping what’s next.
     </p>
 
-    <form class="hsearch hero-in" style="--i:5" action="/world" method="get" role="search" data-hero-search autocomplete="off">
-      <label for="hero-city" class="sr-only">Search a city</label>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/></svg>
-      <input id="hero-city" name="city" type="text" placeholder="Search a city: Atlanta, London, Lagos…" list="hero-cities" />
-      <datalist id="hero-cities">{CITIES.map((c) => <option value={c.name}>{c.countryName}</option>)}</datalist>
-      <button type="submit">Go</button>
-    </form>
-    <p class="hsearch__result t-meta" data-hero-result aria-live="polite"></p>
-
-    <div class="hero__ctas hero-in" style="--i:6">
-      <Button href="/world" size="lg" arrow="right">Explore the World</Button>
-      <Button href="/sign-up" variant="secondary" size="lg">Join Opus</Button>
+    <div class="opus-entry hero-in" style="--i:5">
+      <p class="opus-entry__kicker t-meta">Your vision starts here</p>
+      <form class="opus-entry__form" action="/world" method="get" role="search" data-hero-search autocomplete="off">
+        <label for="opus-q" class="opus-entry__q">What are you trying to accomplish?</label>
+        <div class="hsearch">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/></svg>
+          <input id="opus-q" name="q" type="text" placeholder="A producer in Atlanta, a studio in London…" aria-describedby="opus-note" />
+          <button type="submit">Go</button>
+        </div>
+      </form>
+      <p class="hsearch__result t-meta" data-hero-result aria-live="polite"></p>
+      <ul class="opus-entry__chips" role="list" aria-label="Start with">
+        {STARTS.map((c) => <li><a href={c.href}>{c.label}</a></li>)}
+      </ul>
+      <p id="opus-note" class="opus-entry__note">Opus, the guide, is in development. Until it’s ready, this searches Opus World by keyword or city.</p>
     </div>
 
     <dl class="hero__stats hero-in" style="--i:7" aria-label="Opus World statistics" data-hero-stats hidden>
@@ -118,11 +128,11 @@ const topCities = CITIES.slice(0, 8);
     io.observe(host);
   }
 
-  // City search: rotate the globe to the city, then offer to open it in Opus World.
+  // A city name on its own rotates the globe to it, then offers to open it in Opus World.
   form?.addEventListener('submit', (e) => {
-    const q = (form.elements.namedItem('city') as HTMLInputElement).value;
+    const q = (form.elements.namedItem('q') as HTMLInputElement).value.trim();
     const c = findCity(q);
-    if (!c) return; // Let the form submit to /world, which shows a helpful empty state.
+    if (!c) return; // Not just a city name: submit to /world as a keyword search (honest empty state if nothing matches).
     e.preventDefault();
     if (api) api.flyTo(c.lat, c.lng);
     if (result) {
@@ -171,16 +181,24 @@ const topCities = CITIES.slice(0, 8);
   .hero__line > span { display: inline-block; }
   .hero__lead { max-width: 440px; font-size: var(--t-lead); line-height: 1.5; color: var(--c-fg-subtle); }
 
-  .hsearch { display: flex; align-items: center; gap: 12px; width: min(100%, 460px); height: 56px; padding: 0 6px 0 18px;
+  .opus-entry { display: flex; flex-direction: column; gap: 12px; width: min(100%, 520px); margin-top: 8px; padding-top: 24px; border-top: 1px solid var(--c-line); }
+  .opus-entry__kicker { color: var(--accent); }
+  .opus-entry__form { display: flex; flex-direction: column; gap: 14px; }
+  .opus-entry__q { font-size: clamp(1.375rem, 1.1rem + 1vw, 1.875rem); line-height: 1.15; letter-spacing: -0.035em; font-weight: 500; color: var(--text); }
+  .opus-entry__chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; }
+  .opus-entry__chips a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); font-size: 13px; color: var(--text-2); background: color-mix(in srgb, var(--surface) 55%, transparent); transition: color var(--dur-fast), border-color var(--dur-fast); }
+  .opus-entry__chips a:hover { color: var(--text); border-color: var(--text-3); }
+  .opus-entry__note { font-size: 12px; line-height: 1.5; color: var(--text-3); max-width: 46ch; }
+  .hsearch { display: flex; align-items: center; gap: 12px; width: 100%; height: 56px; padding: 0 6px 0 18px;
     background: color-mix(in srgb, var(--surface) 80%, transparent); border: 1px solid var(--c-ink-600); border-radius: var(--r-md); backdrop-filter: blur(12px); color: var(--c-fg-faint);
     transition: border-color var(--dur) var(--ease); }
   .hsearch:focus-within { border-color: var(--c-accent); }
   .hsearch input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--c-white); font-size: 16px; }
   .hsearch input::placeholder { color: var(--text-3); }
   .hsearch button { height: 44px; padding: 0 18px; border: 0; border-radius: var(--r-sm); background: var(--c-white); color: var(--c-black); font-weight: 500; }
-  .hsearch__result { min-height: 14px; margin-top: -12px; color: var(--c-accent); }
+  .hsearch__result:empty { display: none; }
+  .hsearch__result { margin-top: -4px; color: var(--c-accent); }
   .hsearch__result :global(a:hover) { text-decoration: underline; }
-  .hero__ctas { display: flex; flex-wrap: wrap; gap: 12px; }
 
   .hero__stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 32px; margin: 16px 0 0; padding-top: 20px; border-top: 1px solid var(--c-line); }
   .hero__stats div { display: flex; flex-direction: column-reverse; }

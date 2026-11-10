@@ -1,7 +1,7 @@
 export const SITE = {
   name: 'Opus Collective',
   /** The platform's product name, used in page titles and the app. The organization name stays in the footer, About and legal pages. */
-  product: 'Opus World',
+  product: 'Opus',
   url: 'https://opuscollect.net',
   motto: 'The Future. The Legacy. The Sound.',
   description:

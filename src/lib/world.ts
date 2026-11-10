@@ -3,6 +3,7 @@ import { ORG_CATEGORY_LABEL, hasPoint, type Listing, type ListingKind } from '@/
 import { SPECIALTIES, allSpecialties, type Specialty } from '@/data/specialties';
 import { esc } from './html';
 import { imageHtml } from './media';
+import { keywordTokens, matchesKeywords } from './keywords';
 
 export interface WorldFilters {
   kinds: ListingKind[]; // empty = all
@@ -24,12 +25,11 @@ export function matches(l: Listing, f: WorldFilters): boolean {
   if (f.genre && (l.kind !== 'musician' || !l.genres.includes(f.genre))) return false;
   if (f.openToCollab && (l.kind !== 'musician' || !l.openToCollab)) return false;
   if (f.studioType && (l.kind !== 'studio' || l.studioType !== f.studioType)) return false;
-  const q = f.text.trim().toLowerCase();
-  if (q) {
+  const words = keywordTokens(f.text);
+  if (words.length) {
     const hay = [l.name, l.slug, l.location.city, l.metro?.name ?? '', l.location.region ?? '', l.location.country, kindLabel(l), ...(l.kind === 'musician' ? [...l.genres, ...allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s].label)] : l.services)]
-      .join(' ')
-      .toLowerCase();
-    if (!hay.includes(q)) return false;
+      .join(' ');
+    if (!matchesKeywords(hay, words)) return false;
   }
   return true;
 }
