@@ -12,7 +12,8 @@ const SECTIONS: Record<string, string[]> = {
   '/world': isStudios ? ['/m/'] : ['/world', '/m/'],
   '/world?type=studio': isStudios ? ['/world', '/studios/'] : ['/studios/'],
   '/verified': ['/verified'],
-  '/collective': ['/collective', '/community', '/about', '/events', '/releases'],
+  '/releases': ['/releases', '/music'],
+  '/collective': ['/collective', '/community', '/about', '/events'],
 };
 const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/'));
 ---
@@ -25,7 +26,7 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
   document.addEventListener('DOMContentLoaded', function () {
     if (location.pathname.replace(/\/$/, '') !== '/world') return;
     var studios = new URLSearchParams(location.search).get('type') === 'studio';
-    document.querySelectorAll('.hdr__nav a, .mmenu__list a').forEach(function (a) {
+    document.querySelectorAll('.hdr__item > a, .mmenu__list a').forEach(function (a) {
       var h = a.getAttribute('href');
       if (h === '/world') studios ? a.removeAttribute('aria-current') : a.setAttribute('aria-current', 'page');
       if (h === '/world?type=studio') studios ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
@@ -40,8 +41,26 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
 
     <nav class="hdr__nav" aria-label="Main">
       <ul role="list">
-        {NAV.map((item) => (
-          <li><a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}</a></li>
+        {NAV.map((item, i) => (
+          <li class="hdr__item" data-mega-item>
+            <a href={item.href} aria-current={current(item.href) ? 'page' : undefined} aria-describedby={`mega-${i}-lead`}>{item.label}</a>
+            <div class="mega" id={`mega-${i}`}>
+              <div class="container mega__inner">
+                <div class="mega__lead">
+                  <p class="mega__name">{item.label}{item.soon && <span class="mega__soon">Coming soon</span>}</p>
+                  <p class="mega__desc" id={`mega-${i}-lead`}>{item.lead}</p>
+                </div>
+                {item.groups.map((g, gi) => (
+                  <div class:list={['mega__group', { 'mega__group--main': gi === 0 }]}>
+                    <p class="t-meta mega__title">{g.title}</p>
+                    <ul role="list">
+                      {g.links.map((l) => <li><a href={l.href} tabindex="-1">{l.label}{l.soon && <span class="mega__soon">Soon</span>}</a></li>)}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </li>
         ))}
       </ul>
     </nav>
@@ -126,6 +145,17 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
     window.matchMedia('(min-width: 961px)').addEventListener('change', (e) => { if (e.matches) set(false); });
   }
 
+  // Mega panels: keyboard focus opens the panel and makes its links tabbable; Escape closes it.
+  document.querySelectorAll<HTMLElement>('[data-mega-item]').forEach((li) => {
+    const links = li.querySelectorAll<HTMLAnchorElement>('.mega a');
+    const set = (on: boolean) => { li.classList.toggle('is-open', on); links.forEach((a) => (a.tabIndex = on ? 0 : -1)); };
+    let hold = false;
+    li.addEventListener('focusin', () => { if (!hold) set(true); });
+    li.addEventListener('focusout', (e) => { if (!li.contains(e.relatedTarget as Node)) set(false); });
+    li.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hold = true; set(false); li.querySelector<HTMLAnchorElement>(':scope > a')?.focus(); hold = false; } });
+    li.addEventListener('mouseleave', () => { if (!li.contains(document.activeElement)) set(false); });
+  });
+
   // Account menu (signed in)
   const acctBtn = document.querySelector<HTMLButtonElement>('[data-acct-toggle]');
   const acctMenu = document.querySelector<HTMLElement>('[data-acct-menu]');
@@ -160,12 +190,29 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
   .hdr__brand { display: inline-flex; align-items: center; gap: 12px; flex-shrink: 0; }
   .hdr__brand img { height: 22px; width: auto; }
 
-  .hdr__nav ul { display: flex; gap: clamp(20px, 2.6vw, 40px); margin: 0; }
-  .hdr__nav a { position: relative; display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; color: var(--text-2); transition: color var(--dur-fast); }
-  .hdr__nav a::after { content: ''; position: absolute; left: 0; right: 0; bottom: 10px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform var(--dur) var(--ease); }
-  .hdr__nav a:hover, .hdr__nav a[aria-current] { color: var(--text); }
-  .hdr__nav a:hover::after, .hdr__nav a[aria-current]::after { transform: scaleX(1); transform-origin: left; }
-  .hdr__nav a[aria-current]::after { background: var(--accent); }
+  .hdr__nav > ul { display: flex; gap: clamp(18px, 2.2vw, 36px); margin: 0; }
+  .hdr__item > a { position: relative; display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; color: var(--text-2); transition: color var(--dur-fast); }
+  .hdr__item > a::after { content: ''; position: absolute; left: 0; right: 0; bottom: 10px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform var(--dur) var(--ease); }
+  .hdr__item > a:hover, .hdr__item > a[aria-current] { color: var(--text); }
+  .hdr__item > a:hover::after, .hdr__item > a[aria-current]::after { transform: scaleX(1); transform-origin: left; }
+  .hdr__item > a[aria-current]::after { background: var(--accent); }
+
+  /* Mega panels: open on hover (after a short pause, so passing over the bar doesn't flash them) and on keyboard focus. */
+  .mega { position: absolute; left: 0; right: 0; top: 100%; z-index: -1; padding-block: 36px 48px;
+    background: var(--bg); border-bottom: 1px solid var(--line-faint); box-shadow: 0 24px 48px -32px rgba(0, 0, 0, 0.35);
+    opacity: 0; visibility: hidden; transform: translateY(-6px); pointer-events: none;
+    transition: opacity .22s var(--ease), transform .22s var(--ease), visibility 0s linear .22s; }
+  .hdr__item:hover .mega, .hdr__item.is-open .mega { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: .12s, .12s, 0s; }
+  .hdr:has(.hdr__item:hover), .hdr:has(.hdr__item.is-open) { background: var(--bg); border-color: var(--line-faint); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .mega__inner { display: grid; grid-template-columns: minmax(220px, 1.1fr) repeat(3, minmax(0, 1fr)); gap: 32px clamp(32px, 4vw, 72px); }
+  .mega__name { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; color: var(--text); }
+  .mega__desc { margin-top: 8px; max-width: 26ch; font-size: 15px; line-height: 1.5; color: var(--text-3); }
+  .mega__title { color: var(--text-3); margin-bottom: 12px; }
+  .mega__group ul { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+  .mega__group a { display: inline-flex; align-items: center; gap: 10px; min-height: 34px; font-size: 15px; color: var(--text-2); }
+  .mega__group--main a { min-height: 40px; font-size: 22px; font-weight: 500; letter-spacing: -0.03em; color: var(--text); }
+  .mega__group a:hover { color: var(--accent); }
+  .mega__soon { padding: 3px 7px; border: 1px solid var(--line); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
 
   .hdr__actions { display: flex; align-items: center; gap: 16px; }
   .hdr__signin { font-size: 14px; color: var(--text-2); min-height: 44px; display: inline-flex; align-items: center; }

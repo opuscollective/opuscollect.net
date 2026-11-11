@@ -61,9 +61,12 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   controls.enableDamping = true;
   controls.minDistance = 140;
   controls.maxDistance = 520;
-  // Phones and small tablets: the globe sits in its own square below the Opus entry; fill it with the whole sphere.
-  const narrow = () => el.clientWidth < 600;
-  globe.pointOfView({ lat: 28, lng: -40, altitude: narrow() ? 1.95 : 2.1 }, 0);
+  // The globe fills the hero behind the headline. Pull the camera back on tall, narrow screens so the sphere fits the width.
+  const home = () => {
+    const w = el.clientWidth, h = el.clientHeight || 1;
+    return w / h < 0.8 ? 2.5 : w / h < 1.2 ? 2.2 : 1.6;
+  };
+  globe.pointOfView({ lat: 28, lng: -40, altitude: home() }, 0);
 
   // OrbitControls sets touch-action:none on the canvas, which traps the page scroll on phones.
   // Let the browser keep vertical swipes (page scroll) and pinch; sideways drags still turn the globe.
@@ -83,10 +86,22 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   // Stop auto-rotation once the user takes control.
   el.addEventListener('pointerdown', () => (controls.autoRotate = false), { once: true });
 
+  const ms = (n: number) => (reduce ? 0 : n);
   return {
     flyTo(lat: number, lng: number) {
       controls.autoRotate = false;
-      globe.pointOfView({ lat, lng, altitude: 0.9 }, reduce ? 0 : 1600);
+      globe.pointOfView({ lat, lng, altitude: 0.9 }, ms(1600));
+    },
+    /** Move in toward a place (or the current view) for the directory panel. */
+    dive(lat?: number, lng?: number) {
+      controls.autoRotate = false;
+      const pov = globe.pointOfView();
+      globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: lat == null ? 0.75 : 0.45 }, ms(1700));
+    },
+    /** Back out to the resting view. */
+    rise() {
+      globe.pointOfView({ ...globe.pointOfView(), altitude: home() }, ms(1200));
+      controls.autoRotate = !reduce;
     },
   };
 }

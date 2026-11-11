@@ -1,0 +1,54 @@
+---
+/**
+ * Opus Releases on the homepage: real covers from the Opus Collective catalog and community spotlights.
+ * Release planning on Opus (projects, credits, checklists) is in development at /music and says so.
+ */
+import Icon from '../ui/Icon.astro';
+const COVERS = [
+  { title: 'Amazing', by: 'Bogo · OC 001', src: '/images/amazing-cover.jpg' },
+  { title: 'Scenic', by: 'Bogo · OC 002', src: '/images/scenic-cover.jpg' },
+  { title: 'But I want you to know me', by: 'Estephanie', src: '/images/releases/but-i-want-you-to-know-me.jpg' },
+  { title: 'luciaism', by: 'NUGGET!', src: '/images/releases/luciaism.jpg' },
+  { title: 'Eternal Dream', by: 'Natalie Chludz', src: '/images/releases/eternal-dream.jpg' },
+];
+---
+<section class="section rel" aria-labelledby="rel-title">
+  <div class="container">
+    <div class="rel__top">
+      <h2 id="rel-title" class="t-h1" data-reveal>Opus Releases.</h2>
+      <a class="rel__link" href="/releases" data-reveal>Explore releases <Icon name="arrow-right" size={16} /></a>
+    </div>
+    <ul class="rel__row" role="list">
+      {COVERS.map((c, i) => (
+        <li data-reveal style={`--d:${i * 0.05}s`}>
+          <a href="/releases">
+            <span class="rel__img"><img src={c.src} alt={`${c.title} cover`} loading="lazy" decoding="async" /></span>
+            <span class="rel__title">{c.title}</span>
+            <span class="rel__by">{c.by}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+    <p class="rel__note" data-reveal>Planning your own release on Opus is <a href="/music">coming soon</a>.</p>
+  </div>
+</section>
+
+<style>
+  .rel__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px 32px; }
+  .rel__link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 16px; font-weight: 500; border-bottom: 1px solid currentColor; }
+  .rel__link:hover { opacity: 0.7; }
+  .rel__row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin: clamp(28px, 3.5vw, 48px) 0 0; padding: 0; list-style: none; }
+  .rel__row a { display: flex; flex-direction: column; gap: 4px; }
+  .rel__img { display: block; aspect-ratio: 1; margin-bottom: 10px; border-radius: var(--r-md); overflow: hidden; background: var(--surface); }
+  .rel__img img { width: 100%; height: 100%; object-fit: cover; transition: transform 1.2s var(--ease); }
+  .rel__row a:hover img { transform: scale(1.04); }
+  .rel__title { font-size: 16px; font-weight: 500; letter-spacing: -0.02em; }
+  .rel__by { font-size: 14px; color: var(--text-3); }
+  .rel__note { margin-top: 28px; font-size: 14px; color: var(--text-3); }
+  .rel__note a { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+  @media (max-width: 760px) {
+    .rel__row { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 62%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; gap: 12px; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); }
+    .rel__row::-webkit-scrollbar { display: none; }
+    .rel__row li { scroll-snap-align: start; }
+  }
+</style>

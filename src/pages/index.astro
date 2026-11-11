@@ -2,6 +2,7 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Hero from '@/components/home/Hero.astro';
 import Explore from '@/components/home/Explore.astro';
+import ReleasesPreview from '@/components/home/ReleasesPreview.astro';
 import VerifiedIntro from '@/components/home/VerifiedIntro.astro';
 import CollectiveFeature from '@/components/home/CollectiveFeature.astro';
 import JoinCTA from '@/components/home/JoinCTA.astro';
@@ -21,6 +22,7 @@ const jsonLd = {
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <Hero />
   <Explore />
+  <ReleasesPreview />
   <VerifiedIntro />
   <CollectiveFeature />
   <JoinCTA />

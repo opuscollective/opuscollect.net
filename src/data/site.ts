@@ -9,16 +9,84 @@ export const SITE = {
   location: 'Birmingham, AL',
 };
 
+export interface NavLink { label: string; href: string; soon?: boolean; external?: boolean }
+export interface NavItem { label: string; href: string; lead: string; groups: { title: string; links: NavLink[] }[]; soon?: boolean }
+
 /**
- * Main navigation: only what works today, so nothing in the header is a dead end.
- * Charts, Network and Music join the header as each one ships (their pages already exist and say so).
+ * Main navigation: every product area, Apple-style. Hovering an item on desktop opens a panel with its parts.
+ * Areas still in development say "Coming soon" in their panel and open a page that says so.
  */
-export const NAV = [
-  { label: 'Discover', href: '/world', icon: 'globe', blurb: 'People by specialty and city, on the map or as a list' },
-  { label: 'Studios', href: '/world?type=studio', icon: 'mic', blurb: 'Commercial and home studios you can book' },
-  { label: 'Verified', href: '/verified', icon: 'shield', blurb: 'What Opus Verified means and how to earn it' },
-  { label: 'Collective', href: '/collective', icon: 'users', blurb: 'Opus Collective: the people, programs and gatherings' },
-] as const;
+export const NAV: NavItem[] = [
+  {
+    label: 'Opus World', href: '/world', lead: 'The people and places behind the music, on one map.',
+    groups: [
+      { title: 'Explore', links: [
+        { label: 'Musicians', href: '/world?type=musician' },
+        { label: 'Studios', href: '/world?type=studio' },
+        { label: 'Organizations', href: '/world?type=organization' },
+        { label: 'Open the map', href: '/world' },
+      ] },
+      { title: 'Cities', links: [
+        { label: 'Birmingham', href: '/world?city=Birmingham' },
+        { label: 'Atlanta', href: '/world?city=Atlanta' },
+        { label: 'Los Angeles', href: '/world?city=Los%20Angeles' },
+        { label: 'London', href: '/world?city=London' },
+      ] },
+    ],
+  },
+  {
+    label: 'Studios', href: '/world?type=studio', lead: 'Find a room and request a session.',
+    groups: [
+      { title: 'Book', links: [
+        { label: 'All studios', href: '/world?type=studio' },
+        { label: 'Commercial studios', href: '/world?type=studio&studio=commercial' },
+        { label: 'Home studios', href: '/world?type=studio&studio=home' },
+        { label: 'Remote sessions', href: '/world?type=studio&studio=remote' },
+      ] },
+      { title: 'Studio owners', links: [
+        { label: 'List your studio', href: '/business' },
+      ] },
+    ],
+  },
+  {
+    label: 'Verified', href: '/verified', lead: 'Recognition that is earned, never bought.',
+    groups: [
+      { title: 'Opus Verified', links: [
+        { label: 'How it works', href: '/verified' },
+        { label: 'Verified members', href: '/world?verified=1' },
+      ] },
+    ],
+  },
+  {
+    label: 'Charts', href: '/charts', lead: 'Rising artists, city by city. No pay-to-rank.', soon: true,
+    groups: [
+      { title: 'Opus Charts', links: [
+        { label: 'About Opus Charts', href: '/charts', soon: true },
+      ] },
+    ],
+  },
+  {
+    label: 'Releases', href: '/releases', lead: 'Hear the catalog. Plan your next release.',
+    groups: [
+      { title: 'Listen', links: [
+        { label: 'The Opus Collective catalog', href: '/releases' },
+      ] },
+      { title: 'Make', links: [
+        { label: 'Plan a release', href: '/music', soon: true },
+      ] },
+    ],
+  },
+  {
+    label: 'Collective', href: '/collective', lead: 'The people and the culture around Opus.',
+    groups: [
+      { title: 'Opus Collective', links: [
+        { label: 'About the Collective', href: '/collective' },
+        { label: 'Community programs', href: '/community' },
+        { label: 'Events', href: '/events' },
+      ] },
+    ],
+  },
+];
 
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
 export const ACCOUNT_MENU = [
