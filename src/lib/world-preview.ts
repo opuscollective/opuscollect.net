@@ -61,8 +61,10 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
       const t = `<b>${esc(c.title)}</b><small>${esc([c.role, c.artist, c.year].filter(Boolean).join(' · '))}</small>`;
       return `<li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<span>${t}</span>`}</li>`;
     }).join('');
+    const rel = (d.releases ?? []).map((r) => `<li><a href="${esc(r.url)}"><b>${esc(r.title)}</b><small>${esc(r.meta)}</small></a></li>`).join('');
     const links = d.links.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}${EXT}</a></li>`).join('');
     body = section('About', bio)
+      + section('Releases', rel ? `<ul class="pv__list">${rel}</ul>` : '')
       + section('Featured music', featured ? `<ul class="pv__list pv__list--media">${featured}</ul>` : '')
       + section('Selected credits', credits ? `<ul class="pv__list">${credits}</ul>` : '')
       + section('Highlights', d.achievements.length ? `<ul class="pv__bullets">${d.achievements.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : '')

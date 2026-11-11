@@ -2,10 +2,13 @@ import type { APIRoute } from 'astro';
 
 export const prerender = false;
 
-/** Serves profile images from R2. Keys are random and only profile images (p/...) are served. */
+/**
+ * Serves public images from R2. Keys are random. Only profile images (p/{profile}/photo|cover|gallery-…)
+ * and release artwork (r/{release}/cover-…) are served; anything else (e.g. verification evidence) is not.
+ */
 export const GET: APIRoute = async ({ params, locals, request }) => {
   const key = params.key ?? '';
-  if (!/^p\/[\w-]+\/(photo|cover)-[\w-]+\.(jpg|webp)$/.test(key)) return new Response('Not found', { status: 404 });
+  if (!/^(p\/[\w-]+\/(photo|cover|gallery)|r\/[\w-]+\/cover)-[\w-]+\.(jpg|webp)$/.test(key)) return new Response('Not found', { status: 404 });
   const obj = await locals.runtime.env.MEDIA.get(key, { onlyIf: request.headers as unknown as import('@cloudflare/workers-types').Headers });
   if (!obj) return new Response('Not found', { status: 404 });
   const headers = new Headers();

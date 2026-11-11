@@ -4,11 +4,10 @@
  * Each step saves on its own, so people can stop at any point and pick up later.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import ReleaseForm from '@/components/account/ReleaseForm.astro';
 import { SPECIALTIES } from '@/data/specialties';
 import { PLACES, placeLabel } from '@/data/places';
 import { getMyProfile, missingForPublish } from '@/server/profiles';
-import { listReleases } from '@/server/releases';
+import { listMyReleases } from '@/server/releases';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -16,10 +15,9 @@ const user = Astro.locals.user;
 if (!user) return Astro.redirect('/sign-up?next=/start');
 const db = Astro.locals.runtime.env.DB;
 const profile = await getMyProfile(db, user.id);
-const releases = profile ? await listReleases(db, profile.id, { max: 1 }).catch(() => []) : [];
+const releases = profile ? await listMyReleases(db, user.id).catch(() => []) : [];
 const step = !profile ? 1 : Astro.url.searchParams.has('done') || releases.length ? 3 : 2;
 const missing = profile ? missingForPublish(profile, user.emailVerified) : [];
-const defaultRole = profile?.primarySpecialty ? SPECIALTIES[profile.primarySpecialty]?.label ?? '' : '';
 
 const metros = PLACES.filter((p) => p.kind === 'metro').sort((a, b) => a.countryName.localeCompare(b.countryName) || a.name.localeCompare(b.name));
 const localitiesOf = (id: string) => PLACES.filter((p) => p.kind === 'locality' && p.metroId === id).sort((a, b) => a.name.localeCompare(b.name));
@@ -66,7 +64,14 @@ const STEPS = ['You', 'Your first release', 'Done'];
         <>
           <h1 class="app__title">What are you working on?</h1>
           <p class="app__lead">Start a release you’re making, or add one that’s already out. It builds your resume on Opus, and you decide whether it shows on your profile.</p>
-          <div style="margin-top:28px"><ReleaseForm submitLabel="Add release" defaultRole={defaultRole} /></div>
+          <form class="form" data-first-release novalidate style="margin-top:28px">
+            <label class="field"><span>Title</span><input class="input" name="title" maxlength="120" placeholder="A working title is fine" /></label>
+            <div class="st__pick">
+              <button type="submit" class="st__opt" value="new"><b>I’m working on it</b><small>Start a release. Add tracks, credit your team, and find people for it.</small></button>
+              <button type="submit" class="st__opt" value="past"><b>It’s already out</b><small>Add it to your record so it shows on your profile.</small></button>
+            </div>
+            <p class="dim" data-status role="alert"></p>
+          </form>
           <p class="app__alt"><a href="/start?done=1">Skip for now</a></p>
         </>
       )}
@@ -83,7 +88,7 @@ const STEPS = ['You', 'Your first release', 'Done'];
           </p>
           <div class="st__next">
             {profile.status !== 'published' && <a class="btn-app btn-app--block" href="/account/profile">Finish your profile</a>}
-            <a class="btn-app btn-app--ghost btn-app--block" href="/account/releases?new=1">Start or add another release</a>
+            <a class="btn-app btn-app--ghost btn-app--block" href="/music">Your releases</a>
             <a class="btn-app btn-app--ghost btn-app--block" href={`/m/${profile.handle}`}>See your profile</a>
           </div>
         </>
@@ -94,11 +99,21 @@ const STEPS = ['You', 'Your first release', 'Done'];
 
 <script>
   import { bindForm } from '@/scripts/form';
-  import { bindReleaseForm } from '@/scripts/releases';
   const basics = document.querySelector<HTMLFormElement>('[data-basics]');
   if (basics) bindForm(basics, { url: '/api/profile', busyLabel: 'Saving…', onSuccess: () => { location.href = '/start'; } });
-  const rel = document.querySelector<HTMLFormElement>('[data-release-form]');
-  if (rel) bindReleaseForm(rel, () => { location.href = '/start?done=1'; }).fill(null);
+  // Step 2 creates the release in Opus Music, then opens its builder.
+  const first = document.querySelector<HTMLFormElement>('[data-first-release]');
+  first?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+    const msg = first.querySelector<HTMLElement>('[data-status]')!;
+    first.querySelectorAll('button').forEach((b) => (b.disabled = true)); msg.textContent = '';
+    const title = (first.elements.namedItem('title') as HTMLInputElement).value;
+    const r = await fetch('/api/releases', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title, past: btn?.value === 'past' }) });
+    const d = (await r.json().catch(() => ({}))) as { id?: string; error?: string };
+    if (r.ok && d.id) location.href = `/music/${d.id}`;
+    else { first.querySelectorAll('button').forEach((b) => (b.disabled = false)); msg.textContent = d.error ?? 'Something went wrong. Please try again.'; }
+  });
 </script>
 
 <style>
@@ -109,5 +124,12 @@ const STEPS = ['You', 'Your first release', 'Done'];
   .st__steps .is-now { color: var(--text); }
   .st__steps .is-now span { background: var(--text); color: var(--bg); border-color: var(--text); }
   .st__steps .is-done span { background: var(--surface); }
+  .st__pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .st__opt { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 18px; text-align: left; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--text); cursor: pointer; transition: border-color var(--dur) var(--ease); }
+  .st__opt:hover { border-color: var(--text); }
+  .st__opt b { font-weight: 500; font-size: 16px; }
+  .st__opt small { font-size: 13px; line-height: 1.45; color: var(--text-3); }
+  .st__opt:disabled { opacity: 0.6; cursor: wait; }
+  @media (max-width: 560px) { .st__pick { grid-template-columns: 1fr; } }
   .st__next { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
 </style>

@@ -5,6 +5,8 @@
  * Never selects private fields (studio address, email, owner).
  */
 import type { Listing } from '@/types/directory';
+import { profileReleases } from './releases';
+import { RELEASE_KINDS } from '@/data/music';
 import { LINK_KEYS, listGallery, mediaUrl, type Credit, type PortfolioItem } from './profiles';
 import { publicMusicians, publicStudios } from './directory';
 import { money } from '@/lib/booking-time';
@@ -22,6 +24,8 @@ export interface ProfileDetail {
   /** Featured music: portfolio items, then streaming links. */
   featured: { title: string; url: string; platform: string }[];
   credits: Credit[];
+  /** Published releases from Opus Music: ones they own or hold a confirmed credit on. */
+  releases: { title: string; meta: string; url: string; upcoming: boolean }[];
   achievements: string[];
   services: PreviewService[];
   equipment: string[];
@@ -48,10 +52,10 @@ const platformOf = (url: string) => {
   } catch { return ''; }
 };
 
-interface DetailRow { bio: string; cover_key: string | null; links: string; credits: string; achievements: string; portfolio: string }
+interface DetailRow { owner_user_id: string; bio: string; cover_key: string | null; links: string; credits: string; achievements: string; portfolio: string }
 
 async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | null> {
-  const r = await db.prepare("SELECT bio, cover_key, links, credits, achievements, portfolio FROM profiles WHERE id = ? AND status = 'published'").bind(l.id).first<DetailRow>();
+  const r = await db.prepare("SELECT owner_user_id, bio, cover_key, links, credits, achievements, portfolio FROM profiles WHERE id = ? AND status = 'published'").bind(l.id).first<DetailRow>();
   if (!r) return null;
   const rawLinks = parse<Record<string, unknown>>(r.links, {});
   const links: PreviewLink[] = LINK_KEYS.map((k) => ({ key: k, label: LINK_LABEL[k]!, url: safeUrl(rawLinks[k]) })).filter((x) => x.url);
@@ -63,6 +67,12 @@ async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | n
   const credits = parse<Credit[]>(r.credits, []).slice(0, 5).map((c) => ({ ...c, url: safeUrl(c.url) }));
   const base = {
     bio: r.bio, cover: mediaUrl(r.cover_key) ?? undefined, gallery: [] as string[], links, featured, credits,
+    releases: l.kind === 'musician'
+      ? (await profileReleases(db, r.owner_user_id).catch(() => [])).slice(0, 6).map((x) => ({
+          title: x.title, url: '/r/' + x.id, upcoming: !x.released,
+          meta: [x.artist && !x.own ? x.artist : '', x.roles.join(', '), RELEASE_KINDS[x.kind], x.released ? x.releaseDate?.slice(0, 4) ?? '' : 'Coming'].filter(Boolean).join(' · '),
+        }))
+      : [],
     achievements: parse<string[]>(r.achievements, []).filter((a) => typeof a === 'string').slice(0, 4),
     services: [] as PreviewService[], equipment: [] as string[], projects: [] as string[],
   };
@@ -101,7 +111,7 @@ function sampleDetail(l: Listing): ProfileDetail {
   const n = l.id.replace(/\D/g, '');
   const base = {
     bio, links: [], featured: [], gallery: [] as string[], services: [] as PreviewService[], equipment: [] as string[], projects: [] as string[],
-    achievements: [] as string[], credits: [] as Credit[], isSample: true,
+    achievements: [] as string[], credits: [] as Credit[], releases: [] as ProfileDetail['releases'], isSample: true,
   };
   if (l.kind === 'musician') {
     return {

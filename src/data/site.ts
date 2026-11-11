@@ -72,8 +72,8 @@ export const NAV: NavItem[] = [
         { label: 'The Opus Collective catalog', href: '/releases' },
       ] },
       { title: 'Make', links: [
-        { label: 'Start a release', href: '/account/releases?new=1' },
-        { label: 'Your releases', href: '/account/releases' },
+        { label: 'Start a release', href: '/music' },
+        { label: 'Add past releases', href: '/music' },
       ] },
     ],
   },
@@ -92,7 +92,7 @@ export const NAV: NavItem[] = [
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
 export const ACCOUNT_MENU = [
   { label: 'Your profile', href: '/account/profile' },
-  { label: 'Releases', href: '/account/releases' },
+  { label: 'Your music', href: '/music' },
   { label: 'Connections', href: '/account/connections' },
   { label: 'Bookings', href: '/account/bookings' },
   { label: 'Business dashboard', href: '/business' },
