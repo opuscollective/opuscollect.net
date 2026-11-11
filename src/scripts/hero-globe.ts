@@ -87,21 +87,30 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   el.addEventListener('pointerdown', () => (controls.autoRotate = false), { once: true });
 
   const ms = (n: number) => (reduce ? 0 : n);
+  /** Stop turning: auto-rotation off and no leftover spin from damping, so the camera lands where it's sent. */
+  const hold = () => {
+    controls.autoRotate = false;
+    const c = controls as unknown as { _sphericalDelta?: { set(a: number, b: number, c: number): void }; sphericalDelta?: { set(a: number, b: number, c: number): void } };
+    (c._sphericalDelta ?? c.sphericalDelta)?.set(0, 0, 0);
+  };
   return {
     flyTo(lat: number, lng: number) {
-      controls.autoRotate = false;
+      hold();
       globe.pointOfView({ lat, lng, altitude: 0.9 }, ms(1600));
     },
-    /** Move in toward a place (or the current view) for the directory panel. */
-    dive(lat?: number, lng?: number) {
-      controls.autoRotate = false;
+    /** Move in toward a place (or the current view) for the directory panel. close: right down to city level. */
+    dive(lat?: number, lng?: number, close = lat != null) {
+      hold();
+      // Inside the world the globe is the whole screen, so pinch zoom no longer fights the page scroll.
+      if (touch) { controls.enableZoom = true; globe.renderer().domElement.style.touchAction = 'none'; }
       const pov = globe.pointOfView();
-      globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: lat == null ? 0.75 : 0.45 }, ms(1700));
+      globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: close ? 0.42 : 0.9 }, ms(1700));
     },
     /** Back out to the resting view. */
     rise() {
       globe.pointOfView({ ...globe.pointOfView(), altitude: home() }, ms(1200));
       controls.autoRotate = !reduce;
+      if (touch) { controls.enableZoom = false; globe.renderer().domElement.style.touchAction = 'pan-y'; }
     },
   };
 }

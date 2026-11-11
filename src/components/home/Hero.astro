@@ -1,6 +1,8 @@
 ---
 import { CITIES, citySlug } from '@/data/cities';
 import Icon from '../ui/Icon.astro';
+import { SPECIALTIES } from '@/data/specialties';
+import { GENRES } from '@/data/genres';
 
 // Fallback links when WebGL is unavailable. Plain city names only; live counts come from /api/world.
 const topCities = CITIES.slice(0, 8);
@@ -36,23 +38,61 @@ const topCities = CITIES.slice(0, 8);
     </nav>
   </div>
 
-  <!-- The directory panel, after the camera moves into the globe. -->
+  <!-- Shown while the browser asks for the visitor's location. -->
+  <p class="dv-locate" data-locate hidden aria-live="polite"><span class="dv-locate__dot" aria-hidden="true"></span><span data-locate-text>Finding where you are…</span></p>
+
+  <!-- The directory panel, on the left, after the camera moves into the globe. -->
   <div class="dv" data-dive hidden role="dialog" aria-modal="false" aria-labelledby="dv-title">
     <div class="dv__panel">
       <div class="dv__head">
-        <h2 id="dv-title" class="sr-only">Opus World results</h2>
+        <h2 id="dv-title" class="sr-only">Opus World directory</h2>
         <form class="dv__search" role="search" data-dive-form autocomplete="off">
           <Icon name="search" size={18} />
           <label for="dv-q" class="sr-only">Search Opus World</label>
-          <input id="dv-q" type="search" placeholder="Search people, studios or cities" data-dive-q />
+          <input id="dv-q" type="search" placeholder="Search a city, a name or a specialty" data-dive-q />
         </form>
         <button type="button" class="dv__close" data-dive-close aria-label="Close and return to the globe"><Icon name="close" size={20} /></button>
       </div>
-      <div class="dv__tabs" role="radiogroup" aria-label="Show">
-        <button type="button" role="radio" aria-checked="true" data-kind="">All</button>
-        <button type="button" role="radio" aria-checked="false" data-kind="musician">Musicians</button>
-        <button type="button" role="radio" aria-checked="false" data-kind="studio">Studios</button>
-        <button type="button" role="radio" aria-checked="false" data-kind="organization">Organizations</button>
+      <div class="dv__place">
+        <p class="dv__here" data-dive-here></p>
+        <button type="button" class="dv__me" data-dive-me><Icon name="pin" size={14} /> <span>Near me</span></button>
+      </div>
+      <div class="dv__row">
+        <div class="dv__tabs" role="radiogroup" aria-label="Show">
+          <button type="button" role="radio" aria-checked="true" data-kind="">All</button>
+          <button type="button" role="radio" aria-checked="false" data-kind="musician">Musicians</button>
+          <button type="button" role="radio" aria-checked="false" data-kind="studio">Studios</button>
+          <button type="button" role="radio" aria-checked="false" data-kind="organization">Orgs</button>
+        </div>
+        <button type="button" class="dv__fbtn" data-dive-ftoggle aria-expanded="false" aria-controls="dv-filters">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+          <span>Filters</span><b data-dive-fcount hidden></b>
+        </button>
+      </div>
+      <div class="dv__filters" id="dv-filters" data-dive-filters hidden>
+        <label class="dv__field" data-only="musician"><span>Specialty</span>
+          <select data-f="specialty">
+            <option value="">Any specialty</option>
+            {Object.entries(SPECIALTIES).map(([k, d]) => <option value={k}>{d.plural}</option>)}
+          </select>
+        </label>
+        <label class="dv__field" data-only="musician"><span>Genre</span>
+          <select data-f="genre">
+            <option value="">Any genre</option>
+            {GENRES.map((g) => <option value={g}>{g}</option>)}
+          </select>
+        </label>
+        <label class="dv__field" data-only="studio" hidden><span>Studio type</span>
+          <select data-f="studioType">
+            <option value="">Any studio</option>
+            <option value="commercial">Recording studios</option>
+            <option value="home">Home studios</option>
+            <option value="remote">Remote services</option>
+          </select>
+        </label>
+        <label class="dv__switch"><input type="checkbox" role="switch" data-f="verifiedOnly" /><span>Opus Verified only</span></label>
+        <label class="dv__switch" data-only="musician"><input type="checkbox" role="switch" data-f="openToCollab" /><span>Open to collaborate</span></label>
+        <button type="button" class="dv__reset" data-dive-reset>Reset filters</button>
       </div>
       <p class="dv__count t-meta" data-dive-count aria-live="polite"></p>
       <ul class="dv__list" role="list" data-dive-list></ul>
@@ -66,6 +106,8 @@ const topCities = CITIES.slice(0, 8);
   import type { ListingKind } from '@/types/directory';
   type CityPoint = { city: string; country: string; lat: number; lng: number; count: number };
   type DiveQuery = import('@/scripts/hero-dive').DiveQuery;
+  type DiveFilters = import('@/scripts/hero-dive').DiveFilters;
+  type Near = { lat: number; lng: number };
 
   const hero = document.querySelector<HTMLElement>('[data-hero]')!;
   const host = hero.querySelector<HTMLElement>('[data-hero-globe]')!;
@@ -75,11 +117,24 @@ const topCities = CITIES.slice(0, 8);
   const dq = dive.querySelector<HTMLInputElement>('[data-dive-q]')!;
   const list = dive.querySelector<HTMLElement>('[data-dive-list]')!;
   const count = dive.querySelector<HTMLElement>('[data-dive-count]')!;
+  const here = dive.querySelector<HTMLElement>('[data-dive-here]')!;
+  const meBtn = dive.querySelector<HTMLButtonElement>('[data-dive-me]')!;
   const all = dive.querySelector<HTMLAnchorElement>('[data-dive-all]')!;
   const tabs = [...dive.querySelectorAll<HTMLButtonElement>('[data-kind]')];
+  const fPanel = dive.querySelector<HTMLElement>('[data-dive-filters]')!;
+  const fToggle = dive.querySelector<HTMLButtonElement>('[data-dive-ftoggle]')!;
+  const fCount = dive.querySelector<HTMLElement>('[data-dive-fcount]')!;
+  const fInputs = [...fPanel.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-f]')];
+  const locate = hero.querySelector<HTMLElement>('[data-locate]')!;
+  const locateText = locate.querySelector<HTMLElement>('[data-locate-text]')!;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let api: { flyTo: (lat: number, lng: number) => void; dive: (lat?: number, lng?: number) => void; rise: () => void } | null = null;
+  let api: { flyTo: (lat: number, lng: number) => void; dive: (lat?: number, lng?: number, close?: boolean) => void; rise: () => void } | null = null;
   let q: DiveQuery = { text: '', kind: '' };
+  /** The visitor's position, kept in this page only. Never sent to Opus or stored. */
+  let me: Near | null = null;
+  let meCity: { city: import('@/data/cities').City; km: number } | undefined;
+  /** The visitor said no to location (or the browser has none). */
+  let locOff = false;
 
   const hasWebGL = () => {
     try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; }
@@ -102,10 +157,20 @@ const topCities = CITIES.slice(0, 8);
     try {
       const { mountHeroGlobe } = await import('@/scripts/hero-globe');
       api = await mountHeroGlobe(host, points, {
-        onSelect: (p) => { const c = findCity(p.city); open({ text: p.city, kind: '', city: c, plain: !!c }); },
+        onSelect: (p) => {
+          const c = findCity(p.city);
+          const next: DiveQuery = { text: p.city, kind: q.kind, city: c, plain: !!c, filters: q.filters };
+          if (hero.classList.contains('is-diving')) { q = next; dq.value = q.text; api?.dive(c?.lat ?? p.lat, c?.lng ?? p.lng, true); render(); }
+          else open(next);
+        },
       });
       host.classList.add('is-ready');
       host.querySelector('[data-globe-loading]')?.remove();
+      // The visitor opened the world before the globe finished loading: catch the camera up.
+      if (hero.classList.contains('is-diving')) {
+        const t = me && (!q.city || q.city === meCity?.city) ? me : q.city;
+        api.dive(t?.lat, t?.lng, !!t);
+      }
     } catch (err) {
       console.error('Globe failed to load', err);
       fail();
@@ -114,45 +179,140 @@ const topCities = CITIES.slice(0, 8);
   const idle = (window as any).requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200));
   idle(boot);
 
-  // ---------- The dive: words move past the camera, the globe comes closer, the panel opens ----------
+  // ---------- Words → query ----------
   const parse = (text: string, kind: ListingKind | '' = ''): DiveQuery => {
     const t = text.trim();
     const exact = t ? findCity(t) : undefined;
     const plain = !!exact && exact.name.toLowerCase().startsWith(t.split(',')[0]!.trim().toLowerCase());
     const named = exact ?? CITIES.find((c) => new RegExp(`\\b${c.name}\\b`, 'i').test(t));
-    return { text: t, kind, city: named, plain };
+    return { text: t, kind, city: named, plain, filters: q.filters };
   };
 
+  // ---------- Filters (the same ones as the Opus World directory) ----------
+  function readFilters(): DiveFilters {
+    const f: Record<string, string | boolean> = {};
+    for (const el of fInputs) {
+      const k = el.dataset.f!;
+      if (el instanceof HTMLInputElement && el.type === 'checkbox') { if (el.checked) f[k] = true; }
+      else if (el.value && !el.closest<HTMLElement>('[data-only]')?.hidden) f[k] = el.value;
+    }
+    return f as DiveFilters;
+  }
+  function syncFilterFields() {
+    fPanel.querySelectorAll<HTMLElement>('[data-only]').forEach((el) => {
+      el.hidden = !!q.kind && el.dataset.only !== q.kind || (!q.kind && el.dataset.only === 'studio');
+    });
+  }
+  const onFilters = () => { q = { ...q, filters: readFilters() }; render(); };
+  fInputs.forEach((el) => el.addEventListener('change', onFilters));
+  fToggle.addEventListener('click', () => {
+    const open = fPanel.hidden;
+    fPanel.hidden = !open;
+    fToggle.setAttribute('aria-expanded', String(open));
+  });
+  dive.querySelector('[data-dive-reset]')?.addEventListener('click', () => {
+    fInputs.forEach((el) => { if (el instanceof HTMLInputElement) el.checked = false; else el.value = ''; });
+    onFilters();
+  });
+
+  // ---------- Results ----------
   async function render() {
     const mod = await import('@/scripts/hero-dive');
     mod.ensureImageFallbacks(dive);
-    all.href = mod.worldHref(q);
+    // The visitor's own position only sorts the list when no other place is in the words.
+    const near = me && (!q.city || q.city === meCity?.city) ? me : undefined;
+    const query: DiveQuery = { ...q, near };
+    all.href = mod.worldHref(near && meCity ? { ...q, city: meCity.city, plain: true } : q);
     tabs.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.kind === q.kind)));
+    syncFilterFields();
+    const nf = Object.keys(q.filters ?? {}).length;
+    fCount.hidden = !nf; fCount.textContent = String(nf);
+    here.textContent = near && meCity
+      ? (meCity.km < mod.NEAR_KM ? `Near you · ${meCity.city.name}` : 'Near you')
+      : q.city ? q.city.name : q.text ? `“${q.text}”` : 'Everywhere';
+    meBtn.hidden = !!near;
     count.textContent = 'Loading…';
     try {
-      const results = mod.filter(await mod.loadListings(), q);
-      const where = q.plain && q.city ? ` in ${q.city.name}` : '';
-      count.textContent = results.length ? `${results.length} result${results.length === 1 ? '' : 's'}${where}` : `Nothing matches yet${where}.`;
-      list.innerHTML = results.slice(0, 24).map((l) => mod.rowHtml(l, mod.worldHref(q, l.id))).join('');
+      const results = mod.filter(await mod.loadListings(), query);
+      if (near) {
+        const n = mod.nearCount(results, near);
+        count.textContent = n
+          ? `${n} within about 100 miles`
+          : results.length ? 'No one on Opus near you yet. Here’s who’s closest.' : 'Nothing matches yet.';
+      } else {
+        const where = q.plain && q.city ? ` in ${q.city.name}` : '';
+        count.textContent = locOff && !q.text
+          ? 'Location is off, so this is everyone. Search a city to look around.'
+          : results.length ? `${results.length} result${results.length === 1 ? '' : 's'}${where}` : `Nothing matches yet${where}.`;
+      }
+      list.innerHTML = results.slice(0, 30).map((l) => mod.rowHtml(l, mod.worldHref(q, l.id), near)).join('');
+      list.scrollTop = 0;
     } catch {
       count.textContent = 'Couldn’t load results.';
       list.innerHTML = '';
     }
   }
 
-  function open(next: DiveQuery) {
-    q = next;
-    dq.value = q.text;
-    if (scrollY > 0) scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
-    hero.classList.add('is-diving');
-    api?.dive(q.city?.lat, q.city?.lng);
-    render();
+  // ---------- Location: ask the browser, then fly to where the visitor is ----------
+  function askLocation(): Promise<Near | null> {
+    if (!('geolocation' in navigator)) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: false, timeout: 12000, maximumAge: 10 * 60 * 1000 },
+      );
+    });
+  }
+  async function findMe(): Promise<boolean> {
+    locateText.textContent = 'Finding where you are…';
+    locate.hidden = false;
+    requestAnimationFrame(() => locate.classList.add('is-on'));
+    const pos = await askLocation();
+    if (pos) {
+      const mod = await import('@/scripts/hero-dive');
+      me = pos;
+      meCity = mod.nearestCity(CITIES, pos);
+      api?.dive(pos.lat, pos.lng, true);
+    }
+    locate.classList.remove('is-on');
+    setTimeout(() => { locate.hidden = true; }, 250);
+    return !!pos;
+  }
+
+  // ---------- The dive: words move past the camera, the globe comes closer, the panel opens ----------
+  function showPanel(delay: number) {
     const show = () => {
       dive.hidden = false;
       requestAnimationFrame(() => dive.classList.add('is-open'));
       if (!matchMedia('(pointer: coarse)').matches) dq.focus({ preventScroll: true });
     };
-    setTimeout(show, api && !reduce ? 750 : 0);
+    setTimeout(show, api && !reduce ? delay : 0);
+  }
+  function enter() {
+    if (scrollY > 0) scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+    hero.classList.add('is-diving');
+  }
+
+  function open(next: DiveQuery) {
+    q = next;
+    dq.value = q.text;
+    enter();
+    api?.dive(q.city?.lat, q.city?.lng, !!q.city);
+    render();
+    showPanel(750);
+  }
+
+  /** "Open Opus World": zoom in, ask where the visitor is, fly there, then open the directory. */
+  async function openWorld() {
+    q = { text: '', kind: q.kind, filters: q.filters };
+    dq.value = '';
+    enter();
+    api?.dive();
+    const found = me ? (api?.dive(me.lat, me.lng, true), true) : await findMe();
+    locOff = !found;
+    render();
+    showPanel(found ? 900 : 300);
   }
 
   function close() {
@@ -169,18 +329,36 @@ const topCities = CITIES.slice(0, 8);
   });
   hero.querySelector('[data-hero-open]')?.addEventListener('click', (e) => {
     e.preventDefault();
-    open(parse(''));
+    openWorld();
+  });
+  meBtn.addEventListener('click', async () => {
+    const found = me ? (api?.dive(me.lat, me.lng, true), true) : await findMe();
+    if (found) { locOff = false; q = { text: '', kind: q.kind, filters: q.filters }; dq.value = ''; render(); }
+    else count.textContent = 'Your browser didn’t share your location. You can turn it on in the site settings.';
   });
   dive.querySelector('[data-dive-form]')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const next = parse(dq.value, q.kind);
-    if (next.city && next.city !== q.city) api?.dive(next.city.lat, next.city.lng);
+    if (next.city && next.city !== q.city) api?.dive(next.city.lat, next.city.lng, true);
     q = next;
     render();
   });
   let typing: ReturnType<typeof setTimeout>;
-  dq.addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(() => { q = parse(dq.value, q.kind); render(); }, 180); });
-  tabs.forEach((b) => b.addEventListener('click', () => { q = { ...q, kind: (b.dataset.kind ?? '') as ListingKind | '' }; render(); }));
+  dq.addEventListener('input', () => {
+    clearTimeout(typing);
+    typing = setTimeout(() => {
+      const next = parse(dq.value, q.kind);
+      if (next.plain && next.city && next.city !== q.city) api?.dive(next.city.lat, next.city.lng, true);
+      q = next;
+      render();
+    }, 220);
+  });
+  tabs.forEach((b) => b.addEventListener('click', () => {
+    q = { ...q, kind: (b.dataset.kind ?? '') as ListingKind | '' };
+    syncFilterFields();
+    q.filters = readFilters();
+    render();
+  }));
   dive.querySelector('[data-dive-close]')?.addEventListener('click', close);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && hero.classList.contains('is-diving')) close(); });
 </script>
@@ -232,13 +410,27 @@ const topCities = CITIES.slice(0, 8);
   .hero.is-diving .hero__stage > * { pointer-events: none; }
   .hero.is-diving .hero__veil { opacity: 0.35; }
 
-  /* ---------- Directory panel ---------- */
-  .dv { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; padding: 96px var(--gutter) 40px; pointer-events: none; }
-  .dv__panel { pointer-events: auto; display: flex; flex-direction: column; width: min(640px, 100%); max-height: min(640px, 100%);
-    background: color-mix(in srgb, var(--bg) 82%, transparent); border: 1px solid var(--line); border-radius: 22px;
+  /* ---------- Finding the visitor ---------- */
+  .dv-locate { position: absolute; left: 50%; bottom: 14%; z-index: 4; display: inline-flex; align-items: center; gap: 10px; margin: 0; padding: 12px 18px;
+    transform: translate(-50%, 8px); opacity: 0; transition: opacity .3s var(--ease), transform .3s var(--ease);
+    background: color-mix(in srgb, var(--bg) 80%, transparent); border: 1px solid var(--line); border-radius: var(--r-pill);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); font-size: 14px; color: var(--text); white-space: nowrap; }
+  .dv-locate.is-on { opacity: 1; transform: translate(-50%, 0); }
+  .dv-locate__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: ping 1.4s ease-out infinite; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+
+  /* ---------- Directory panel: a column on the left, the globe stays live on the right ---------- */
+  .dv { position: absolute; inset: 0; z-index: 3; display: flex; align-items: stretch; justify-content: flex-start; padding: 84px var(--gutter) 24px; pointer-events: none; }
+  .dv__panel { pointer-events: auto; display: flex; flex-direction: column; width: min(420px, 100%); max-height: 100%;
+    background: color-mix(in srgb, var(--bg) 84%, transparent); border: 1px solid var(--line); border-radius: 22px;
     backdrop-filter: blur(22px) saturate(1.2); -webkit-backdrop-filter: blur(22px) saturate(1.2); box-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.8);
-    opacity: 0; transform: translateY(16px) scale(0.97); transition: opacity .45s var(--ease), transform .55s var(--ease); }
+    opacity: 0; transform: translateX(-24px); transition: opacity .45s var(--ease), transform .55s var(--ease); }
   .dv.is-open .dv__panel { opacity: 1; transform: none; }
+  /* Move the globe right so the place in focus sits in the open space beside the panel. */
+  .hero__globe { transition: opacity 1.4s var(--ease), transform 1.2s var(--ease); }
+  @media (min-width: 900px) { .hero.is-diving .hero__globe { transform: translateX(min(220px, 16vw)); } }
+  /* On phones the panel is a sheet at the bottom, so lift the place into the open space above it. */
+  @media (max-width: 760px) { .hero.is-diving .hero__globe { transform: translateY(-22%); } }
   .dv__head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 0 12px; }
   .dv__search { flex: 1; display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 16px; border-radius: 14px; background: var(--surface); color: var(--text-3); }
   .dv__search:focus-within { box-shadow: inset 0 0 0 1px var(--accent); }
@@ -246,10 +438,27 @@ const topCities = CITIES.slice(0, 8);
   .dv__search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--text); font-size: 16px; }
   .dv__close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: none; color: var(--text-2); }
   .dv__close:hover { background: var(--surface); color: var(--text); }
-  .dv__tabs { display: flex; gap: 4px; padding: 12px 12px 4px; overflow-x: auto; scrollbar-width: none; }
-  .dv__tabs button { flex-shrink: 0; height: 34px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: none; color: var(--text-2); font-size: 14px; }
+  .dv__place { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px 2px; }
+  .dv__here { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -0.03em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dv__me { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: none; color: var(--text-2); font-size: 13px; }
+  .dv__me:hover { color: var(--text); border-color: var(--text-3); }
+  .dv__row { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; }
+  .dv__tabs { flex: 1; min-width: 0; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .dv__fbtn { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; height: 34px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: none; color: var(--text-2); font-size: 14px; }
+  .dv__fbtn[aria-expanded='true'], .dv__fbtn:hover { color: var(--text); border-color: var(--text-3); }
+  .dv__fbtn b { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--text); color: var(--bg); font-size: 11px; }
+  .dv__fbtn b[hidden] { display: none; }
+  .dv__filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin: 8px 12px 4px; padding: 14px; border-radius: 14px; background: var(--surface); }
+  .dv__filters[hidden] { display: none; }
+  .dv__field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-3); }
+  .dv__field[hidden], .dv__switch[hidden] { display: none; }
+  .dv__field select { height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); font-size: 14px; }
+  .dv__switch { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-2); }
+  .dv__switch input { width: 18px; height: 18px; accent-color: var(--c-accent); }
+  .dv__reset { grid-column: 1 / -1; justify-self: start; padding: 4px 0; border: 0; background: none; color: var(--text-3); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+  .dv__tabs button { flex-shrink: 0; height: 34px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: none; color: var(--text-2); font-size: 14px; }
   .dv__tabs button[aria-checked='true'] { background: var(--text); color: var(--bg); }
-  .dv__count { padding: 8px 24px 6px; color: var(--text-3); }
+  .dv__count { padding: 8px 20px 6px; color: var(--text-3); }
   .dv__list { flex: 1; min-height: 120px; margin: 0; padding: 0 8px; overflow-y: auto; list-style: none; scrollbar-width: thin; }
   .dv__list :global(.dv__row) { display: flex; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 12px; }
   .dv__list :global(.dv__row:hover) { background: var(--surface); }
@@ -280,8 +489,9 @@ const topCities = CITIES.slice(0, 8);
     .hero__title { font-size: clamp(2.5rem, 11vw, 3.5rem); }
     .hsearch { height: 54px; padding-left: 16px; }
     .hsearch button { height: 42px; padding: 0 18px; }
-    .dv { padding: 76px 10px 10px; align-items: end; }
-    .dv__panel { max-height: 74%; border-radius: 20px; }
+    .dv { padding: 76px 10px 10px; align-items: flex-end; }
+    .dv__panel { width: 100%; max-height: 62%; border-radius: 20px; transform: translateY(24px); }
+    .dv-locate { bottom: auto; top: 40%; }
   }
   @media (prefers-reduced-motion: reduce) {
     .hero__stage, .dv__panel { transition: none; }
