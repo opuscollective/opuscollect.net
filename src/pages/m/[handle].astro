@@ -6,7 +6,6 @@ import { SPECIALTIES, allSpecialties } from '@/data/specialties';
 import { PLACE_BY_ID, visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
 import { relationship } from '@/server/connections';
-import { listReleases, KIND_LABEL, dateLabel, type Release } from '@/server/releases';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -28,11 +27,6 @@ const metroPlace = p.placeId ? PLACE_BY_ID.get(PLACE_BY_ID.get(p.placeId)?.metro
 const worldCity = p.locationVisibility === 'city' || p.locationVisibility === 'metro' ? metroPlace?.name : undefined;
 const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
 const rel = viewer ? await relationship(db, viewer.id, ownerId) : null;
-// Only releases the member chose to show. Self-reported, and labeled that way.
-const releases = await listReleases(db, p.id, { publicOnly: true, max: 40 }).catch(() => [] as Release[]);
-const working = releases.filter((r) => r.stage === 'in_progress');
-const released = releases.filter((r) => r.stage === 'released');
-const relMeta = (r: Release) => [KIND_LABEL[r.kind], r.artist, r.role, r.stage === 'released' ? dateLabel(r.releaseDate) : dateLabel(r.releaseDate) && `Target ${dateLabel(r.releaseDate)}`].filter(Boolean).join(' · ');
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
 const links = Object.entries(p.links).filter(([, v]) => !!v);
 const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${where ? ` · ${where}` : ''} on Opus.`;
@@ -93,34 +87,6 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
       <div class="mp__grid">
         <div class="mp__main">
           {p.bio && <section class="mp__sec"><h2 class="t-meta">About</h2><p class="mp__bio">{p.bio}</p></section>}
-          {working.length > 0 && (
-            <section class="mp__sec"><h2 class="t-meta">Working on</h2>
-              <ul class="mp__credits mp__wip" role="list">
-                {working.map((r) => (
-                  <li>
-                    <span class="mp__ct">{r.link ? <a href={r.link} target="_blank" rel="noopener nofollow ugc">{r.title}</a> : r.title}{r.notes && <small class="mp__rnote">{r.notes}</small>}</span>
-                    <span class="dim">{relMeta(r)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {released.length > 0 && (
-            <section class="mp__sec"><h2 class="t-meta">Releases</h2>
-              <ul class="mp__credits" role="list">
-                {released.map((r) => (
-                  <li>
-                    <span class="mp__ct">{r.link ? <a href={r.link} target="_blank" rel="noopener nofollow ugc">{r.title}</a> : r.title}</span>
-                    <span class="dim">{relMeta(r)}</span>
-                  </li>
-                ))}
-              </ul>
-              <p class="mp__note">Added by the member.</p>
-            </section>
-          )}
-          {isOwner && (
-            <p class="mp__note"><a class="link" href="/account/releases?new=1">Start or add a release</a></p>
-          )}
           {p.credits.length > 0 && (
             <section class="mp__sec"><h2 class="t-meta">Credits</h2>
               <ul class="mp__credits" role="list">
@@ -193,7 +159,6 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__sec h2 { color: var(--c-fg-faint); margin-bottom: 14px; }
   .mp__bio { white-space: pre-line; font-size: 17px; line-height: 1.65; color: var(--c-fg-muted); max-width: 64ch; }
   .mp__credits li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 14px 0; border-bottom: 1px solid var(--c-line); font-size: 15px; }
-  .mp__rnote { display: block; margin-top: 4px; font-size: 14px; color: var(--text-3); }
   .mp__credits li:first-child { border-top: 1px solid var(--c-line); }
   .mp__credits a, .mp__links a { color: var(--text); }
   .mp__credits a:hover, .mp__links a:hover { color: var(--c-accent-strong); }
