@@ -47,11 +47,19 @@ const pending = await db
             </>
           ) : (
             <>
-              <p class="dim">You haven’t set up your profile yet. It takes about three minutes.</p>
-              <div class="row" style="margin-top:16px"><a class="btn-app" href="/account/profile">Create your profile</a></div>
+              <p class="dim">You haven’t set up your profile yet. It takes about a minute.</p>
+              <div class="row" style="margin-top:16px"><a class="btn-app" href="/start">Set up your profile</a></div>
             </>
           )}
         </div>
+
+        {profile && (
+          <div class="panel">
+            <h2>Releases</h2>
+            <p class="dim">Start a release, add past work, and choose what shows on your profile.</p>
+            <div class="row" style="margin-top:16px"><a class="btn-app btn-app--ghost" href="/account/releases">Manage releases</a></div>
+          </div>
+        )}
 
         <div class="panel">
           <h2>Connections</h2>

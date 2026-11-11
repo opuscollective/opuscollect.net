@@ -61,9 +61,17 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
       const t = `<b>${esc(c.title)}</b><small>${esc([c.role, c.artist, c.year].filter(Boolean).join(' · '))}</small>`;
       return `<li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<span>${t}</span>`}</li>`;
     }).join('');
+    const rel = (stage: 'in_progress' | 'released') => (d.releases ?? []).filter((r) => r.stage === stage).map((r) => {
+      const t = `<b>${esc(r.title)}</b><small>${esc(r.meta)}</small>`;
+      return `<li>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<span>${t}</span>`}</li>`;
+    }).join('');
+    const wip = rel('in_progress');
+    const out = rel('released');
     const links = d.links.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}${EXT}</a></li>`).join('');
     body = section('About', bio)
+      + section('Working on', wip ? `<ul class="pv__list">${wip}</ul>` : '')
       + section('Featured music', featured ? `<ul class="pv__list pv__list--media">${featured}</ul>` : '')
+      + section('Releases', out ? `<ul class="pv__list">${out}</ul>` : '')
       + section('Selected credits', credits ? `<ul class="pv__list">${credits}</ul>` : '')
       + section('Highlights', d.achievements.length ? `<ul class="pv__bullets">${d.achievements.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : '')
       + section('Elsewhere', links ? `<ul class="pv__links">${links}</ul>` : '');

@@ -5,6 +5,7 @@
  * Never selects private fields (studio address, email, owner).
  */
 import type { Listing } from '@/types/directory';
+import { listReleases, KIND_LABEL, dateLabel } from './releases';
 import { LINK_KEYS, listGallery, mediaUrl, type Credit, type PortfolioItem } from './profiles';
 import { publicMusicians, publicStudios } from './directory';
 import { money } from '@/lib/booking-time';
@@ -22,6 +23,8 @@ export interface ProfileDetail {
   /** Featured music: portfolio items, then streaming links. */
   featured: { title: string; url: string; platform: string }[];
   credits: Credit[];
+  /** Releases the member chose to show: what they're working on and what's out. Self-reported. */
+  releases: { title: string; meta: string; url: string; stage: 'in_progress' | 'released' }[];
   achievements: string[];
   services: PreviewService[];
   equipment: string[];
@@ -63,6 +66,12 @@ async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | n
   const credits = parse<Credit[]>(r.credits, []).slice(0, 5).map((c) => ({ ...c, url: safeUrl(c.url) }));
   const base = {
     bio: r.bio, cover: mediaUrl(r.cover_key) ?? undefined, gallery: [] as string[], links, featured, credits,
+    releases: l.kind === 'musician'
+      ? (await listReleases(db, l.id, { publicOnly: true, max: 6 }).catch(() => [])).map((x) => ({
+          title: x.title, url: x.link, stage: x.stage,
+          meta: [KIND_LABEL[x.kind], x.role, x.stage === 'released' ? dateLabel(x.releaseDate) : dateLabel(x.releaseDate) && 'Target ' + dateLabel(x.releaseDate)].filter(Boolean).join(' · '),
+        }))
+      : [],
     achievements: parse<string[]>(r.achievements, []).filter((a) => typeof a === 'string').slice(0, 4),
     services: [] as PreviewService[], equipment: [] as string[], projects: [] as string[],
   };
@@ -101,11 +110,14 @@ function sampleDetail(l: Listing): ProfileDetail {
   const n = l.id.replace(/\D/g, '');
   const base = {
     bio, links: [], featured: [], gallery: [] as string[], services: [] as PreviewService[], equipment: [] as string[], projects: [] as string[],
-    achievements: [] as string[], credits: [] as Credit[], isSample: true,
+    achievements: [] as string[], credits: [] as Credit[], releases: [] as ProfileDetail['releases'], isSample: true,
   };
   if (l.kind === 'musician') {
     return {
       ...base,
+      releases: [
+        { title: 'Sample Project ' + n, meta: 'EP · Target 2027', url: '', stage: 'in_progress' as const },
+      ],
       credits: [
         { title: 'Sample Track ' + n + 'A', role: 'Sample credit', artist: 'Sample Artist', year: '2025', url: '' },
         { title: 'Sample Track ' + n + 'B', role: 'Sample credit', artist: 'Sample Artist', year: '2024', url: '' },
