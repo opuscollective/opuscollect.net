@@ -1,5 +1,5 @@
 ---
-import { CITIES } from '@/data/cities';
+import { CITIES, citySlug } from '@/data/cities';
 import Icon from '../ui/Icon.astro';
 
 // Fallback links when WebGL is unavailable. Plain city names only; live counts come from /api/world.
@@ -32,7 +32,7 @@ const topCities = CITIES.slice(0, 8);
 
     <!-- Accessible fallback, shown when WebGL is not available -->
     <nav class="hero__fallback" data-globe-fallback hidden aria-label="Browse by city">
-      <ul role="list">{topCities.map((c) => <li><a href={`/world?city=${encodeURIComponent(c.name)}`}>{c.name}</a></li>)}</ul>
+      <ul role="list">{topCities.map((c) => <li><a href={`/world/${citySlug(c.name)}`}>{c.name}</a></li>)}</ul>
     </nav>
   </div>
 

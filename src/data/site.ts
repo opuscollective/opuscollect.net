@@ -21,27 +21,27 @@ export const NAV: NavItem[] = [
     label: 'Opus World', href: '/world', lead: 'The people and places behind the music, on one map.',
     groups: [
       { title: 'Explore', links: [
-        { label: 'Musicians', href: '/world?type=musician' },
-        { label: 'Studios', href: '/world?type=studio' },
-        { label: 'Organizations', href: '/world?type=organization' },
+        { label: 'Musicians', href: '/musicians' },
+        { label: 'Studios', href: '/studios' },
+        { label: 'Organizations', href: '/organizations' },
         { label: 'Open the map', href: '/world' },
       ] },
       { title: 'Cities', links: [
-        { label: 'Birmingham', href: '/world?city=Birmingham' },
-        { label: 'Atlanta', href: '/world?city=Atlanta' },
-        { label: 'Los Angeles', href: '/world?city=Los%20Angeles' },
-        { label: 'London', href: '/world?city=London' },
+        { label: 'Birmingham', href: '/world/birmingham' },
+        { label: 'Atlanta', href: '/world/atlanta' },
+        { label: 'Los Angeles', href: '/world/los-angeles' },
+        { label: 'London', href: '/world/london' },
       ] },
     ],
   },
   {
-    label: 'Studios', href: '/world?type=studio', lead: 'Find a room and request a session.',
+    label: 'Studios', href: '/studios', lead: 'Find a room and request a session.',
     groups: [
       { title: 'Book', links: [
-        { label: 'All studios', href: '/world?type=studio' },
-        { label: 'Commercial studios', href: '/world?type=studio&studio=commercial' },
-        { label: 'Home studios', href: '/world?type=studio&studio=home' },
-        { label: 'Remote sessions', href: '/world?type=studio&studio=remote' },
+        { label: 'All studios', href: '/studios' },
+        { label: 'Commercial studios', href: '/studios?studio=commercial' },
+        { label: 'Home studios', href: '/studios?studio=home' },
+        { label: 'Remote sessions', href: '/studios?studio=remote' },
       ] },
       { title: 'Studio owners', links: [
         { label: 'List your studio', href: '/business' },

@@ -6,7 +6,7 @@
 import type { Listing, ListingKind } from '@/types/directory';
 import { matches, metaText, placeText, mainImage, badgeHtml, initials, esc, type WorldFilters } from '@/lib/world';
 import { imageHtml, installImageFallbacks } from '@/lib/media';
-import type { City } from '@/data/cities';
+import { citySlug, type City } from '@/data/cities';
 
 let cache: Promise<Listing[]> | null = null;
 export const loadListings = () =>
@@ -27,12 +27,13 @@ export function filter(all: Listing[], q: DiveQuery): Listing[] {
 
 export function worldHref(q: DiveQuery, id?: string): string {
   const u = new URLSearchParams();
-  if (q.plain && q.city) u.set('city', q.city.name);
+  const path = { '': '/world', musician: '/musicians', studio: '/studios', organization: '/organizations' }[q.kind];
+  let base: string = path;
+  if (q.plain && q.city) { if (q.kind) u.set('city', q.city.name); else base = `/world/${citySlug(q.city.name)}`; }
   else if (q.text.trim()) u.set('q', q.text.trim());
-  if (q.kind) u.set('type', q.kind);
   if (id) u.set('p', id);
   const s = u.toString();
-  return '/world' + (s ? `?${s}` : '');
+  return base + (s ? `?${s}` : '');
 }
 
 export function rowHtml(l: Listing, href: string): string {

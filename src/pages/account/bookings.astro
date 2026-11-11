@@ -17,7 +17,7 @@ const rows = await listMyBookings(Astro.locals.runtime.env.DB, user.id);
       <h1 class="app__title">Your bookings</h1>
       <p class="app__lead">Studio requests you’ve made while signed in. Requests made as a guest are in your email.</p>
       <div class="panel" style="margin-top:24px">
-        {rows.length === 0 ? <p class="empty"><b>No bookings yet.</b>Find a studio in <a class="link" href="/world?type=studio">Opus World</a>.</p> : (
+        {rows.length === 0 ? <p class="empty"><b>No bookings yet.</b>Find a studio in <a class="link" href="/studios">Opus World</a>.</p> : (
           <ul class="blist" role="list">{rows.map((b) => (
             <li class="bitem">
               <div><p class="bitem__when"><a class="link" href={`/bookings/${b.id}`}>{b.service_name}</a> · {b.studio_name}</p>

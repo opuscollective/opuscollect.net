@@ -5,14 +5,14 @@
  */
 import Icon from '../ui/Icon.astro';
 const ROUTES = [
-  { label: 'Musicians', sub: 'Artists, producers, engineers, songwriters', href: '/world?type=musician' },
-  { label: 'Services', sub: 'Studios and the people who run them', href: '/world?type=studio' },
-  { label: 'Organizations', sub: 'Labels, management, collectives', href: '/world?type=organization' },
+  { label: 'Musicians', sub: 'Artists, producers, engineers, songwriters', href: '/musicians' },
+  { label: 'Services', sub: 'Studios and the people who run them', href: '/studios' },
+  { label: 'Organizations', sub: 'Labels, management, collectives', href: '/organizations' },
 ];
 ---
 <section class="section explore" aria-labelledby="explore-title">
   <div class="container explore__grid">
-    <a class="explore__photo tone-dark" href="/world?type=studio" tabindex="-1" aria-hidden="true" data-reveal>
+    <a class="explore__photo tone-dark" href="/studios" tabindex="-1" aria-hidden="true" data-reveal>
       <img src="/images/studio-control-room.jpg" alt="" loading="lazy" decoding="async" width="2000" height="1334" />
     </a>
     <div class="explore__body">

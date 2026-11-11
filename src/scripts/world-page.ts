@@ -14,7 +14,7 @@ import type { WorldStats } from '@/lib/world';
 import { placeIndex, suggest, norm, type Place, type Suggestion } from '@/lib/world-search';
 import { previewHtml, previewSkeleton, previewError } from '@/lib/world-preview';
 import { installImageFallbacks } from '@/lib/media';
-import { findCity } from '@/data/cities';
+import { CITIES, citySlug, findCity } from '@/data/cities';
 import { SPECIALTIES, toSpecialty } from '@/data/specialties';
 import { hasPoint, type Listing } from '@/types/directory';
 import type { ProfileDetail } from '@/server/world-detail';
@@ -64,7 +64,9 @@ export function initWorld(root: HTMLElement) {
 
   // ---------- URL state ----------
   const params = new URLSearchParams(location.search);
-  const t = params.get('type');
+  // Clean addresses (/musicians, /studios, /organizations, /world/<city>) preset the kind or the city.
+  if (root.dataset.city && !params.has('city')) params.set('city', root.dataset.city);
+  const t = params.get('type') ?? root.dataset.defaultKind;
   if (t === 'musician' || t === 'studio' || t === 'organization') f.kinds = [t];
   f.text = params.get('q') ?? '';
   f.specialty = toSpecialty(params.get('specialty') ?? params.get('discipline')); // "discipline" kept for old links
@@ -75,11 +77,16 @@ export function initWorld(root: HTMLElement) {
   if (st0 === 'commercial' || st0 === 'home' || st0 === 'remote') f.studioType = st0;
   q.value = f.text;
 
+  const KIND_PATH = { '': '/world', musician: '/musicians', studio: '/studios', organization: '/organizations' } as const;
   function writeUrl() {
     const u = new URL(location.href);
     const set = (k: string, v?: string | null) => (v ? u.searchParams.set(k, v) : u.searchParams.delete(k));
-    set('type', f.kinds[0]); set('q', f.text); set('specialty', f.specialty || ''); set('genre', f.genre); set('studio', f.studioType || '');
-    set('collab', f.openToCollab ? '1' : ''); set('verified', f.verifiedOnly ? '1' : ''); set('city', place?.name); set('p', previewId);
+    // Keep the address short: the kind is the path, and a known city on its own is /world/<city>.
+    const city = place && !f.kinds.length ? CITIES.find((c) => c.name === place!.name) : undefined;
+    u.pathname = city ? `/world/${citySlug(city.name)}` : KIND_PATH[f.kinds[0] ?? ''];
+    u.searchParams.delete('type');
+    set('q', f.text); set('specialty', f.specialty || ''); set('genre', f.genre); set('studio', f.studioType || '');
+    set('collab', f.openToCollab ? '1' : ''); set('verified', f.verifiedOnly ? '1' : ''); set('city', city ? '' : place?.name); set('p', previewId);
     history.replaceState(history.state, '', u);
   }
 

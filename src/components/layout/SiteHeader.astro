@@ -5,12 +5,10 @@ import ThemeSwitch from '../ui/ThemeSwitch.astro';
 interface Props { overlay?: boolean }
 const { overlay = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
-// Which pages light up each nav item. Studio pages belong to Studios; profiles to Discover.
-// /world is prerendered, so the query string isn't known here; a small script below corrects it in the browser.
-const isStudios = !Astro.url.pathname.startsWith('/world') && Astro.url.searchParams.get('type') === 'studio';
+// Which pages light up each nav item. Musician and organization pages and profiles belong to Opus World.
 const SECTIONS: Record<string, string[]> = {
-  '/world': isStudios ? ['/m/'] : ['/world', '/m/'],
-  '/world?type=studio': isStudios ? ['/world', '/studios/'] : ['/studios/'],
+  '/world': ['/world', '/musicians', '/organizations', '/m/'],
+  '/studios': ['/studios'],
   '/verified': ['/verified'],
   '/releases': ['/releases', '/music'],
   '/collective': ['/collective', '/community', '/about', '/events'],
@@ -20,18 +18,6 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
 <script is:inline>
   // Signed-in hint (not a credential): swap Sign in / Join for the account menu.
   if (document.cookie.split('; ').indexOf('opus_in=1') > -1) document.documentElement.classList.add('is-signed-in');
-</script>
-<script is:inline>
-  // On /world, "Studios" is the studio filter of the same page: mark the right nav item.
-  document.addEventListener('DOMContentLoaded', function () {
-    if (location.pathname.replace(/\/$/, '') !== '/world') return;
-    var studios = new URLSearchParams(location.search).get('type') === 'studio';
-    document.querySelectorAll('.hdr__item > a, .mmenu__list a').forEach(function (a) {
-      var h = a.getAttribute('href');
-      if (h === '/world') studios ? a.removeAttribute('aria-current') : a.setAttribute('aria-current', 'page');
-      if (h === '/world?type=studio') studios ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
-    });
-  });
 </script>
 <header class:list={['hdr', { 'hdr--overlay': overlay, 'tone-dark': overlay }]} data-header data-overlay={overlay ? '' : undefined}>
   <div class="container hdr__inner">

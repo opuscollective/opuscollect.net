@@ -1,0 +1,9 @@
+---
+import WorldApp from '@/components/world/WorldApp.astro';
+import { CITIES, citySlug } from '@/data/cities';
+export function getStaticPaths() {
+  return CITIES.map((c) => ({ params: { city: citySlug(c.name) }, props: { name: c.name } }));
+}
+const { name } = Astro.props;
+---
+<WorldApp city={name} title={`${name} on Opus World`} description={`Musicians, studios and music organizations in ${name}, on Opus World.`} />

@@ -1,4 +1,5 @@
 ---
+import { CITIES, citySlug } from '@/data/cities';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import { SPECIALTIES, allSpecialties } from '@/data/specialties';
@@ -123,7 +124,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               <ul class="mp__links" role="list">{links.map(([k, v]) => <li><a href={v} target="_blank" rel="noopener nofollow ugc">{LINK_LABEL[k] ?? k} ↗</a></li>)}</ul>
             </section>
           )}
-          {where && worldCity && <section class="mp__sec"><h2 class="t-meta">Based in</h2><p><a class="link" href={`/world?city=${encodeURIComponent(worldCity)}`}>{where}</a></p></section>}
+          {where && worldCity && <section class="mp__sec"><h2 class="t-meta">Based in</h2><p><a class="link" href={CITIES.some((c) => c.name === worldCity) ? `/world/${citySlug(worldCity)}` : `/world?city=${encodeURIComponent(worldCity)}`}>{where}</a></p></section>}
         </aside>
       </div>
     </div>
