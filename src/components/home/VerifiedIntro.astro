@@ -1,30 +1,21 @@
 ---
-import SectionHeader from '../ui/SectionHeader.astro';
+/** Opus Verified in one statement and one link. The full explanation lives on /verified. */
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
-import Button from '../ui/Button.astro';
+import Icon from '../ui/Icon.astro';
 ---
 <section class="section section--paper vintro on-paper" aria-labelledby="verified-title">
-  <div class="container">
-    <SectionHeader index="02" label="Opus Verified" tag="Recognition" tone="paper" />
-    <div class="vintro__grid">
-      <div class="vintro__statement">
-        <div class="vintro__seal" data-reveal aria-hidden="true"><VerifiedBadge size={52} tone="dark" /></div>
-        <h2 id="verified-title" class="t-display" data-reveal style="--d:.05s">Earned.<br /><span class="vintro__muted">Never bought.</span></h2>
-      </div>
-      <div class="vintro__side" data-reveal style="--d:.1s">
-        <p class="t-lead">Recognition for real, checkable achievements. It can’t be purchased, and no membership grants it.</p>
-        <Button href="/verified" variant="inverse" arrow="right">How verification works</Button>
-      </div>
-    </div>
+  <div class="container vintro__inner">
+    <div class="vintro__seal" data-reveal aria-hidden="true"><VerifiedBadge size={48} tone="dark" /></div>
+    <h2 id="verified-title" class="t-display" data-reveal style="--d:.05s">Earned.<br /><span class="vintro__muted">Never bought.</span></h2>
+    <a class="vintro__link" href="/verified" data-reveal style="--d:.1s">How Opus Verified works <Icon name="arrow-right" size={16} /></a>
   </div>
 </section>
 
 <style>
-  .vintro__grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: end; gap: 32px clamp(48px, 7vw, 128px); margin-top: clamp(32px, 4vw, 56px); }
-  .vintro__statement { display: flex; flex-direction: column; align-items: flex-start; gap: 24px; }
-  .vintro__statement .t-display { font-size: clamp(3rem, 1.4rem + 5.4vw, 6.75rem); }
+  .vintro.section { padding-top: var(--section-y); }
+  .vintro__inner { display: flex; flex-direction: column; align-items: flex-start; gap: clamp(24px, 3vw, 36px); }
+  .vintro .t-display { font-size: clamp(3rem, 1.4rem + 5.4vw, 6.75rem); }
   .vintro__muted { color: var(--c-paper-faint); }
-  .vintro__side { display: flex; flex-direction: column; align-items: flex-start; gap: 24px; }
-  .vintro__side .t-lead { max-width: 420px; }
-  @media (max-width: 860px) { .vintro__grid { grid-template-columns: 1fr; } }
+  .vintro__link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 16px; font-weight: 500; border-bottom: 1px solid currentColor; }
+  .vintro__link:hover { opacity: 0.7; }
 </style>

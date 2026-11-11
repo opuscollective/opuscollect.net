@@ -17,7 +17,7 @@ export const NAV = [
   { label: 'Discover', href: '/world', icon: 'globe', blurb: 'People by specialty and city, on the map or as a list' },
   { label: 'Studios', href: '/world?type=studio', icon: 'mic', blurb: 'Commercial and home studios you can book' },
   { label: 'Verified', href: '/verified', icon: 'shield', blurb: 'What Opus Verified means and how to earn it' },
-  { label: 'Community', href: '/community', icon: 'users', blurb: 'Opus Collective, events and the Discord' },
+  { label: 'Collective', href: '/collective', icon: 'users', blurb: 'Opus Collective: the people, programs and gatherings' },
 ] as const;
 
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
@@ -42,32 +42,11 @@ export const SOCIALS = [
   { label: 'Discord', href: 'https://discord.gg/QudUMNB5yP' },
 ];
 
+/** Footer: one short row. Everything else is reachable from the header or from these pages. */
 export const FOOTER_NAV = [
-  {
-    title: 'Opus',
-    links: [
-      { label: 'Opus World', href: '/world' },
-      { label: 'Studios', href: '/world?type=studio' },
-      { label: 'Opus Charts', href: '/charts' },
-      { label: 'Opus Verified', href: '/verified' },
-      { label: 'Trusted services', href: '/services' },
-    ],
-  },
-  {
-    title: 'Opus Collective',
-    links: [
-      { label: 'About', href: '/about' },
-      { label: 'Events', href: '/events' },
-      { label: 'Releases', href: '/releases' },
-      { label: 'Community', href: '/community' },
-    ],
-  },
-  {
-    title: 'Membership',
-    links: [
-      { label: 'Join Opus', href: '/sign-up' },
-      { label: 'Sign in', href: '/sign-in' },
-      { label: 'Business dashboard', href: '/business' },
-    ],
-  },
+  { label: 'Opus World', href: '/world' },
+  { label: 'Opus Verified', href: '/verified' },
+  { label: 'Opus Collective', href: '/collective' },
+  { label: 'Events', href: '/events' },
+  { label: 'About', href: '/about' },
 ];

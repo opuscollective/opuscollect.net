@@ -12,7 +12,7 @@ const SECTIONS: Record<string, string[]> = {
   '/world': isStudios ? ['/m/'] : ['/world', '/m/'],
   '/world?type=studio': isStudios ? ['/world', '/studios/'] : ['/studios/'],
   '/verified': ['/verified'],
-  '/community': ['/community', '/about', '/events', '/releases'],
+  '/collective': ['/collective', '/community', '/about', '/events', '/releases'],
 };
 const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/'));
 ---
