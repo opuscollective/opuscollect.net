@@ -6,7 +6,7 @@ import { fail, json } from '@/server/util';
 export const prerender = false;
 
 /**
- * GET /api/world            → all public listings + stats (Opus World)
+ * GET /api/world            → all public listings + stats (World)
  * GET /api/world?summary=1  → city totals + stats only (homepage globe)
  * Counts come from real published profiles. Sample listings appear only on preview builds.
  */

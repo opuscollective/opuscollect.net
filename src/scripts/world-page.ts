@@ -1,5 +1,5 @@
 /**
- * Opus World page controller.
+ * World page controller.
  *
  * One state, three views. Search text, filters, category, the searched city and the selected
  * profile live here, so switching between Map, Split and List never resets anything.
@@ -282,7 +282,7 @@ export function initWorld(root: HTMLElement) {
     if (loadError) {
       results.innerHTML = ''; results.hidden = true;
       count.textContent = '';
-      showEmpty('We couldn’t load Opus World.', 'Check your connection and try again.', [{ label: 'Try again', primary: true, run: () => { loaded = false; loadError = false; count.textContent = 'Loading Opus World…'; empty.hidden = true; load(); } }]);
+      showEmpty('We couldn’t load World.', 'Check your connection and try again.', [{ label: 'Try again', primary: true, run: () => { loaded = false; loadError = false; count.textContent = 'Loading World…'; empty.hidden = true; load(); } }]);
       return;
     }
     const ls = visible();
@@ -302,7 +302,7 @@ export function initWorld(root: HTMLElement) {
     $('[data-results-toggle]').hidden = !ls.length;
 
     if (ALL.length === 0) {
-      showEmpty('Opus World is just opening.', 'Members appear here as soon as they publish a profile.', [{ label: 'Create your profile', primary: true, run: () => (location.href = '/sign-up') }]);
+      showEmpty('World is just opening.', 'Members appear here as soon as they publish a profile.', [{ label: 'Create your profile', primary: true, run: () => (location.href = '/sign-up') }]);
     } else if (!ls.length) {
       const anywhere = matching();
       const filtered = filterCount() > 0 || !!f.text || f.kinds.length > 0;
@@ -314,7 +314,7 @@ export function initWorld(root: HTMLElement) {
           ...(filtered ? [{ label: 'Clear filters', run: resetAll }] : []),
         ]);
       } else {
-        showEmpty('No matches.', f.text ? `Nothing on Opus World matches “${f.text}” yet.` : 'Try fewer filters.', [
+        showEmpty('No matches.', f.text ? `Nothing in World matches “${f.text}” yet.` : 'Try fewer filters.', [
           { label: 'Clear filters', primary: true, run: resetAll },
         ]);
       }
@@ -695,7 +695,7 @@ export function initWorld(root: HTMLElement) {
       $('[data-sample-note]').hidden = !d.includesSample;
       loadError = false;
     } catch (err) {
-      console.error('Could not load Opus World', err);
+      console.error('Could not load World', err);
       loadError = true;
     }
     loaded = true;

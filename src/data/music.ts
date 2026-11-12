@@ -8,7 +8,7 @@ export const RELEASE_KINDS = { single: 'Single', ep: 'EP', album: 'Album', mixta
 export type ReleaseKind = keyof typeof RELEASE_KINDS;
 
 /**
- * Credit roles. `finds` is the specialty to search Opus World for when a release needs this role,
+ * Credit roles. `finds` is the specialty to search World for when a release needs this role,
  * so "I need a mixing engineer" searches Mixing Engineers.
  */
 export const CREDIT_ROLES = {

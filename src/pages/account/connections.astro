@@ -37,7 +37,7 @@ const when = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'sh
 
       <div class="panel">
         <h2>Connected <span class="dim">({connected.length})</span></h2>
-        {connected.length === 0 ? <p class="dim">No connections yet. Find people in <a class="link" href="/musicians?collab=1">Opus World</a>.</p> : (
+        {connected.length === 0 ? <p class="dim">No connections yet. Find people in <a class="link" href="/musicians?collab=1">World</a>.</p> : (
           <ul class="cx" role="list">{connected.map((c) => (
             <li class="cx__item" data-id={c.id}>
               <a class="cx__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>

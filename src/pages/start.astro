@@ -1,6 +1,6 @@
 ---
 /**
- * Quick setup after joining: (1) name, role and city, (2) start or add a release, (3) what's left to appear in Opus World.
+ * Quick setup after joining: (1) name, role and city, (2) start or add a release, (3) what's left to appear in World.
  * Each step saves on its own, so people can stop at any point and pick up later.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
@@ -81,10 +81,10 @@ const STEPS = ['You', 'Your first release', 'Done'];
           <h1 class="app__title">You’re on Opus.</h1>
           <p class="app__lead">
             {profile.status === 'published'
-              ? 'Your profile is live in Opus World.'
+              ? 'Your profile is live in World.'
               : missing.length
-                ? `To appear in Opus World, add: ${missing.join(', ').toLowerCase()}.`
-                : 'Everything’s ready. Publish your profile to appear in Opus World.'}
+                ? `To appear in World, add: ${missing.join(', ').toLowerCase()}.`
+                : 'Everything’s ready. Publish your profile to appear in World.'}
           </p>
           <div class="st__next">
             {profile.status !== 'published' && <a class="btn-app btn-app--block" href="/account/profile">Finish your profile</a>}

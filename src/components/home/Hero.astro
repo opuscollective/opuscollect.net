@@ -29,7 +29,14 @@ const topCities = CITIES.slice(0, 8);
           <button type="submit">Go</button>
         </div>
       </form>
-      <a class="opus-entry__open" href="/world" data-hero-open>Open Opus World <Icon name="arrow-right" size={16} /></a>
+      <!-- Ways in without typing. Each goes to a real page; Charts is still in development and says so. -->
+      <ul class="opus-quick" role="list" aria-label="Shortcuts">
+        <li><a href="/musicians">Find People</a></li>
+        <li><a href="/studios">Find Studios</a></li>
+        <li><a href="/charts">Explore Charts <span class="opus-quick__soon">Soon</span></a></li>
+        <li><a href="/music">My Releases</a></li>
+      </ul>
+      <a class="opus-entry__open" href="/world" data-hero-open>Open World <Icon name="arrow-right" size={16} /></a>
     </div>
 
     <!-- Accessible fallback, shown when WebGL is not available -->
@@ -45,10 +52,10 @@ const topCities = CITIES.slice(0, 8);
   <div class="dv" data-dive hidden role="dialog" aria-modal="false" aria-labelledby="dv-title">
     <div class="dv__panel">
       <div class="dv__head">
-        <h2 id="dv-title" class="sr-only">Opus World directory</h2>
+        <h2 id="dv-title" class="sr-only">World directory</h2>
         <form class="dv__search" role="search" data-dive-form autocomplete="off">
           <Icon name="search" size={18} />
-          <label for="dv-q" class="sr-only">Search Opus World</label>
+          <label for="dv-q" class="sr-only">Search World</label>
           <input id="dv-q" type="search" placeholder="Search a city, a name or a specialty" data-dive-q />
         </form>
         <button type="button" class="dv__close" data-dive-close aria-label="Close and return to the globe"><Icon name="close" size={20} /></button>
@@ -96,7 +103,7 @@ const topCities = CITIES.slice(0, 8);
       </div>
       <p class="dv__count t-meta" data-dive-count aria-live="polite"></p>
       <ul class="dv__list" role="list" data-dive-list></ul>
-      <a class="dv__all" href="/world" data-dive-all>Open in Opus World <Icon name="arrow-right" size={16} /></a>
+      <a class="dv__all" href="/world" data-dive-all>Open in World <Icon name="arrow-right" size={16} /></a>
     </div>
   </div>
 </section>
@@ -188,7 +195,7 @@ const topCities = CITIES.slice(0, 8);
     return { text: t, kind, city: named, plain, filters: q.filters };
   };
 
-  // ---------- Filters (the same ones as the Opus World directory) ----------
+  // ---------- Filters (the same ones as the World directory) ----------
   function readFilters(): DiveFilters {
     const f: Record<string, string | boolean> = {};
     for (const el of fInputs) {
@@ -303,7 +310,7 @@ const topCities = CITIES.slice(0, 8);
     showPanel(750);
   }
 
-  /** "Open Opus World": zoom in, ask where the visitor is, fly there, then open the directory. */
+  /** "Open World": zoom in, ask where the visitor is, fly there, then open the directory. */
   async function openWorld() {
     q = { text: '', kind: q.kind, filters: q.filters };
     dq.value = '';
@@ -371,7 +378,7 @@ const topCities = CITIES.slice(0, 8);
   }
   /* The globe fills the hero, behind the words. */
   .hero__globe { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 1.4s var(--ease); }
-  /* Only inside Opus World can you turn and zoom the globe; on the homepage it just spins. */
+  /* Only inside World can you turn and zoom the globe; on the homepage it just spins. */
   .hero.is-diving .hero__globe { cursor: grab; }
   .hero.is-diving .hero__globe:active { cursor: grabbing; }
   .hero__globe :global(canvas) { outline: none; }
@@ -401,6 +408,14 @@ const topCities = CITIES.slice(0, 8);
   .hsearch input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--c-white); font-size: 16px; }
   .hsearch input::placeholder { color: var(--text-3); }
   .hsearch button { height: 46px; padding: 0 22px; border: 0; border-radius: var(--r-pill); background: var(--c-white); color: var(--c-black); font-weight: 500; }
+  .opus-quick { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 2px 0 0; padding: 0; list-style: none; }
+  .opus-quick a { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--surface) 55%, transparent); border: 1px solid var(--line); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--text-2); white-space: nowrap;
+    transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+  .opus-quick a:hover { color: var(--text); border-color: var(--line-strong); background: color-mix(in srgb, var(--surface) 80%, transparent); }
+  .opus-quick a:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+  .opus-quick__soon { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
   .opus-entry__open { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 2px; font-size: 15px; font-weight: 500; color: var(--text); border-bottom: 1px solid var(--line-strong); }
   .opus-entry__open:hover { border-color: currentColor; }
 
@@ -423,7 +438,7 @@ const topCities = CITIES.slice(0, 8);
 
   /* ---------- Directory panel ----------
      The same left-hand column as /world: same width, surface, search, categories and Filters button,
-     so Opus World looks the same wherever you enter it. The globe stays live on the right. */
+     so World looks the same wherever you enter it. The globe stays live on the right. */
   .dv { --panel-w: clamp(380px, 35vw, 560px); position: absolute; top: 72px; left: 0; bottom: 0; z-index: 3; display: flex; width: var(--panel-w); pointer-events: none; }
   .dv__panel { pointer-events: auto; display: flex; flex-direction: column; width: 100%; min-height: 0;
     background: var(--c-surface-1); border-right: 1px solid var(--c-hairline); border-top: 1px solid var(--c-hairline);
@@ -497,6 +512,8 @@ const topCities = CITIES.slice(0, 8);
     .hero__title { font-size: clamp(2.5rem, 11vw, 3.5rem); }
     .hsearch { height: 54px; padding-left: 16px; }
     .hsearch button { height: 42px; padding: 0 18px; }
+    .opus-quick { gap: 6px; max-width: 360px; }
+    .opus-quick a { height: 36px; padding: 0 14px; font-size: 13px; }
     .dv { top: auto; left: 10px; right: 10px; bottom: 10px; width: auto; height: 62%; }
     .dv__panel { border: 1px solid var(--c-hairline); border-radius: 20px; transform: translateY(24px); }
     .dv-locate { bottom: auto; top: 40%; }

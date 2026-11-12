@@ -9,11 +9,11 @@ import '@/styles/world.css';
 
 const FILTER_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
 
-/** One Opus World app behind every clean address: /world, /musicians, /studios, /organizations and /world/<city>. */
+/** One World app behind every clean address: /world, /musicians, /studios, /organizations and /world/<city>. */
 interface Props { kind?: ListingKind | ''; city?: string; title?: string; description?: string }
 const {
   kind = '', city,
-  title = 'Opus World',
+  title = 'World',
   description = 'Explore independent musicians, recording studios and music organizations on an interactive map of the world.',
 } = Astro.props;
 ---
@@ -108,7 +108,7 @@ const {
       </div>
 
       <div class="wp__bar">
-        <p class="wp__count" data-count aria-live="polite">Loading Opus World…</p>
+        <p class="wp__count" data-count aria-live="polite">Loading World…</p>
         <button type="button" class="wp__listbtn" data-results-toggle aria-controls="world-results" aria-expanded="false" hidden>Show list</button>
         <ViewSwitcher />
       </div>

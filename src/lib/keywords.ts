@@ -1,5 +1,5 @@
 /**
- * Keyword search for Opus World: every meaningful word must appear somewhere in a listing.
+ * Keyword search for World: every meaningful word must appear somewhere in a listing.
  * Filler and goal words ("find", "for my next single") are ignored, so a sentence typed into
  * the homepage box still searches on its real terms ("producer atlanta").
  * Plain string matching only. The Opus guide (structured intents) replaces this for sentences later.

@@ -13,15 +13,16 @@ export interface NavLink { label: string; href: string; soon?: boolean; external
 export interface NavItem { label: string; href: string; lead: string; groups: { title: string; links: NavLink[] }[]; soon?: boolean }
 
 /**
- * Main navigation: every product area, Apple-style. Hovering an item on desktop opens a panel with its parts.
+ * Main navigation: five product areas, Apple-style. Hovering an item on desktop opens a panel with its parts.
+ * Studios live under World, releases under Music, and Opus Verified is a trust feature inside World.
  * Areas still in development say "Coming soon" in their panel and open a page that says so.
  */
 export const NAV: NavItem[] = [
   {
-    label: 'Opus World', href: '/world', lead: 'The people and places behind the music, on one map.',
+    label: 'World', href: '/world', lead: 'The people, studios and places behind the music, on one map.',
     groups: [
       { title: 'Explore', links: [
-        { label: 'Musicians', href: '/musicians' },
+        { label: 'People', href: '/musicians' },
         { label: 'Studios', href: '/studios' },
         { label: 'Organizations', href: '/organizations' },
         { label: 'Open the map', href: '/world' },
@@ -32,28 +33,23 @@ export const NAV: NavItem[] = [
         { label: 'Los Angeles', href: '/world/los-angeles' },
         { label: 'London', href: '/world/london' },
       ] },
-    ],
-  },
-  {
-    label: 'Studios', href: '/studios', lead: 'Find a room and request a session.',
-    groups: [
-      { title: 'Book', links: [
-        { label: 'All studios', href: '/studios' },
-        { label: 'Commercial studios', href: '/studios?studio=commercial' },
-        { label: 'Home studios', href: '/studios?studio=home' },
-        { label: 'Remote sessions', href: '/studios?studio=remote' },
-      ] },
-      { title: 'Studio owners', links: [
+      { title: 'Trust', links: [
+        { label: 'Opus Verified', href: '/verified' },
+        { label: 'Verified members', href: '/world?verified=1' },
         { label: 'List your studio', href: '/business' },
       ] },
     ],
   },
   {
-    label: 'Verified', href: '/verified', lead: 'Recognition that is earned, never bought.',
+    label: 'Music', href: '/music', lead: 'Start a release, credit the people you made it with, and hear the catalog.',
     groups: [
-      { title: 'Opus Verified', links: [
-        { label: 'How it works', href: '/verified' },
-        { label: 'Verified members', href: '/world?verified=1' },
+      { title: 'Your music', links: [
+        { label: 'My releases', href: '/music' },
+        { label: 'Start a release', href: '/music' },
+        { label: 'Add past releases', href: '/music' },
+      ] },
+      { title: 'Listen', links: [
+        { label: 'Releases', href: '/releases' },
       ] },
     ],
   },
@@ -61,19 +57,17 @@ export const NAV: NavItem[] = [
     label: 'Charts', href: '/charts', lead: 'Rising artists, city by city. No pay-to-rank.', soon: true,
     groups: [
       { title: 'Opus Charts', links: [
-        { label: 'About Opus Charts', href: '/charts', soon: true },
+        { label: 'About Charts', href: '/charts', soon: true },
       ] },
     ],
   },
   {
-    label: 'Releases', href: '/releases', lead: 'Hear the catalog. Start your next release.',
+    label: 'Network', href: '/network', lead: 'Your connections, inquiries and collaborations.', soon: true,
     groups: [
-      { title: 'Listen', links: [
-        { label: 'The Opus Collective catalog', href: '/releases' },
-      ] },
-      { title: 'Make', links: [
-        { label: 'Start a release', href: '/music' },
-        { label: 'Add past releases', href: '/music' },
+      { title: 'Network', links: [
+        { label: 'Connections', href: '/account/connections' },
+        { label: 'Bookings', href: '/account/bookings' },
+        { label: 'Messages and inquiries', href: '/network', soon: true },
       ] },
     ],
   },
@@ -114,7 +108,7 @@ export const SOCIALS = [
 
 /** Footer: one short row. Everything else is reachable from the header or from these pages. */
 export const FOOTER_NAV = [
-  { label: 'Opus World', href: '/world' },
+  { label: 'World', href: '/world' },
   { label: 'Opus Verified', href: '/verified' },
   { label: 'Opus Collective', href: '/collective' },
   { label: 'Events', href: '/events' },

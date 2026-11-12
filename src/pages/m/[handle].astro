@@ -18,14 +18,14 @@ const db = Astro.locals.runtime.env.DB;
 const found = await getPublicProfile(db, handle, viewer?.id ?? null);
 if (!found) {
   Astro.response.status = 404;
-  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Profile not found · Opus Collective</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:var(--text);font-family:system-ui,sans-serif;text-align:center"><div><p style="color:var(--text-3);letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This profile isn’t available.</h1><p style="color:#a39da5">It may be unpublished or the address may have changed.</p><p><a href="/world" style="color:var(--text)">Explore Opus World</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Profile not found · Opus Collective</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:var(--text);font-family:system-ui,sans-serif;text-align:center"><div><p style="color:var(--text-3);letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This profile isn’t available.</h1><p style="color:#a39da5">It may be unpublished or the address may have changed.</p><p><a href="/world" style="color:var(--text)">Explore World</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }
 const { profile: p, isOwner, ownerId } = found;
 if (p.handle !== handle) return Astro.redirect(`/m/${p.handle}`, 301);
 
 // Honour the member's location choice (city, metro area, state/country, or hidden).
 const where = visibleLabel(p.placeId, p.locationVisibility);
-// Links to the metro area on Opus World, unless the member shows only a region or nothing.
+// Links to the metro area on World, unless the member shows only a region or nothing.
 const metroPlace = p.placeId ? PLACE_BY_ID.get(PLACE_BY_ID.get(p.placeId)?.metroId ?? '') : undefined;
 const worldCity = p.locationVisibility === 'city' || p.locationVisibility === 'metro' ? metroPlace?.name : undefined;
 const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
@@ -201,7 +201,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   const form = document.querySelector<HTMLFormElement>('[data-connect]');
   const open = document.querySelector<HTMLButtonElement>('[data-connect-open]');
   open?.addEventListener('click', () => { if (form) { form.hidden = false; form.querySelector('textarea')?.focus(); } });
-  // Arriving from an Opus World preview's Connect button opens the introduction form directly.
+  // Arriving from an World preview's Connect button opens the introduction form directly.
   if (new URLSearchParams(location.search).get('connect') === '1' && open && form) { form.hidden = false; form.scrollIntoView({ block: 'center' }); form.querySelector('textarea')?.focus({ preventScroll: true }); }
   document.querySelector('[data-connect-cancel]')?.addEventListener('click', () => { if (form) form.hidden = true; });
   if (form) bindForm(form, { url: '/api/connections', busyLabel: 'Sending…', onSuccess: () => location.reload() });

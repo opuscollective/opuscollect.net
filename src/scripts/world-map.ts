@@ -1,5 +1,5 @@
 /**
- * Opus World map (MapLibre GL JS 5).
+ * World map (MapLibre GL JS 5).
  * One canvas does both jobs: a 3D globe when zoomed out, and a flat street-level
  * map when zoomed into a city. The globe-to-map transition is built into MapLibre's
  * globe projection, so there is no hand-off between two libraries.

@@ -28,12 +28,12 @@ const pageUrl = studio ? `${Astro.url.origin}/studios/${studio.handle}` : '';
 const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project');
 ---
 {!user || !studio ? (
-  <BaseLayout title="Opus Business" description="Booking pages, requests and client management for recording studios, on Opus World.">
+  <BaseLayout title="Opus Business" description="Booking pages, requests and client management for recording studios, on Opus.">
     <section class="app">
       <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
         <p class="t-meta app__kicker">Opus Business</p>
         <h1 class="app__title">Run your studio’s bookings on Opus.</h1>
-        <p class="app__lead">A booking page you can share anywhere, services and prices, opening hours, and requests you accept or decline. Your studio also appears in Opus World, where artists search by city. Home studio addresses stay private.</p>
+        <p class="app__lead">A booking page you can share anywhere, services and prices, opening hours, and requests you accept or decline. Your studio also appears in World, where artists search by city. Home studio addresses stay private.</p>
         <ul class="steps" role="list" style="margin-top:28px">
           <li><a href="#start"><i>1</i>Create your studio profile</a></li>
           <li><a href="#start"><i>2</i>Add services, prices and weekly hours</a></li>

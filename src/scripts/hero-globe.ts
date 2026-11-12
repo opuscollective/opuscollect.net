@@ -69,7 +69,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   globe.pointOfView({ lat: 28, lng: -40, altitude: home() }, 0);
 
   // At rest the globe is scenery: it spins on its own and ignores the mouse, wheel and touch, so scrolling
-  // the homepage never grabs it. It becomes interactive only inside Opus World (after dive()).
+  // the homepage never grabs it. It becomes interactive only inside World (after dive()).
   const canvas = globe.renderer().domElement;
   // Input is blocked with pointer-events rather than controls.enabled: the renderer only runs the controls'
   // update (which keeps the camera aimed at the globe and drives auto-rotation) while they are enabled.

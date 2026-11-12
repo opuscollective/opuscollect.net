@@ -1,5 +1,5 @@
 /**
- * Universal search for Opus World: one box for people, studios, cities, specialties and genres.
+ * Universal search for World: one box for people, studios, cities, specialties and genres.
  * Pure functions (no DOM), shared by the page script and tests.
  */
 import { SPECIALTIES, allSpecialties, type Specialty } from '@/data/specialties';

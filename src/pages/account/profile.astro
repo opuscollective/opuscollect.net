@@ -28,7 +28,7 @@ const linkFields = [
     <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
       <p class="t-meta app__kicker">{p ? 'Your profile' : 'Step 1 of 1'}</p>
       <h1 class="app__title">{p ? 'Edit your profile' : 'What’s your specialty?'}</h1>
-      <p class="app__lead">{p ? 'Changes save as a draft until you publish. Published profiles appear in Opus World at city level only.' : 'Set up your professional profile. You can save a draft and finish later. Nothing is public until you publish.'}</p>
+      <p class="app__lead">{p ? 'Changes save as a draft until you publish. Published profiles appear in World at city level only.' : 'Set up your professional profile. You can save a draft and finish later. Nothing is public until you publish.'}</p>
 
       {welcome && !user.emailVerified && <p class="notice" style="margin-top:20px">Welcome to Opus. We sent a confirmation link to <b>{user.email}</b>. You can build your profile now and publish once your email is confirmed.</p>}
 
@@ -112,7 +112,7 @@ const linkFields = [
               <small><span data-bio-count>{p?.bio.length ?? 0}</span> / 1200</small>
             </label>
             <label class="check"><input type="checkbox" name="openToCollab" checked={p ? p.openToCollab : true} /> <span><b style="color:var(--text);font-weight:500">Open to collaboration.</b> Members can send you connection requests with a project idea.</span></label>
-            <label class="check"><input type="checkbox" name="showOnMap" checked={p ? p.showOnMap : true} /> <span><b style="color:var(--text);font-weight:500">Show me on the Opus World map.</b> Your pin sits at your city or area, never your address. Turn this off to appear in list results only.</span></label>
+            <label class="check"><input type="checkbox" name="showOnMap" checked={p ? p.showOnMap : true} /> <span><b style="color:var(--text);font-weight:500">Show me on the World map.</b> Your pin sits at your city or area, never your address. Turn this off to appear in list results only.</span></label>
           </div>
         </div>
 

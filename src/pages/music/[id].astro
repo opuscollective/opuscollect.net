@@ -1,6 +1,6 @@
 ---
 /**
- * Release builder: details, sound (genres + moods), tracks, credits linked to Opus World,
+ * Release builder: details, sound (genres + moods), tracks, credits linked to World,
  * and "find people for this song" ranked by how well their sound matches.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
@@ -110,7 +110,7 @@ const hasVibe = r.genres.length > 0 || r.moods.length > 0;
       <!-- Credits -->
       <div class="panel" id="credits">
         <h2>Credits</h2>
-        <p class="dim">Search Opus World to credit someone. They get a request, and the credit links to their profile once they confirm. For people who aren’t on Opus yet, type their name.</p>
+        <p class="dim">Search World to credit someone. They get a request, and the credit links to their profile once they confirm. For people who aren’t on Opus yet, type their name.</p>
         {groups.map((g) => (
           <div class="mb-group" style="margin-top:18px">
             {(r.tracks.length > 0) && <h3>{g.label}</h3>}
@@ -136,7 +136,7 @@ const hasVibe = r.genres.length > 0 || r.moods.length > 0;
           </div>
           <div class="field mb-picker">
             <span>Person</span>
-            <input class="input" name="name" maxlength="80" autocomplete="off" placeholder="Search Opus World, or type a name" data-person />
+            <input class="input" name="name" maxlength="80" autocomplete="off" placeholder="Search World, or type a name" data-person />
             <div class="mb-picked" data-picked hidden><b data-picked-name></b><button type="button" class="mb-x" data-unpick aria-label="Choose someone else">×</button></div>
             <div class="mb-suggest" data-suggest role="listbox"></div>
             <small data-person-hint>Pick someone from the list to link their profile. Anything else is added as a plain name.</small>
@@ -150,7 +150,7 @@ const hasVibe = r.genres.length > 0 || r.moods.length > 0;
       <!-- Find people -->
       <div class="panel" id="find">
         <h2>Find people for this song</h2>
-        <p class="dim">Opus World members ranked by how well their sound fits this release: their genres, plus the moods of releases they’re confirmed on.</p>
+        <p class="dim">World members ranked by how well their sound fits this release: their genres, plus the moods of releases they’re confirmed on.</p>
         {!hasVibe && <p class="notice notice--warn" style="margin-top:14px">Pick genres and moods under <b>Sound</b> and save. That’s what matching uses.</p>}
         <form class="form" data-find novalidate style="margin-top:18px">
           <div class="grid-2">
@@ -360,7 +360,7 @@ const hasVibe = r.genres.length > 0 || r.moods.length > 0;
     const v = values(fform);
     const role = String(v.role || '');
     const params = new URLSearchParams({ q: String(v.q || ''), open: v.open ? '1' : '0', ...(role ? { role } : {}) });
-    findStatus.textContent = 'Searching Opus World…'; peopleHost.innerHTML = '';
+    findStatus.textContent = 'Searching World…'; peopleHost.innerHTML = '';
     const r = await api(`/talent?${params}`);
     const d = (await r.json().catch(() => ({}))) as { people?: Person[]; error?: string };
     if (!r.ok) { findStatus.textContent = d.error ?? 'Something went wrong.'; return; }

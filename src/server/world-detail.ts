@@ -1,5 +1,5 @@
 /**
- * Profile previews for Opus World: everything the expanded card shows, for one listing.
+ * Profile previews for World: everything the expanded card shows, for one listing.
  * The listing itself (name, location, verification) comes from the same privacy-enforcing
  * queries as /api/world, so a preview can never reveal more than the directory does.
  * Never selects private fields (studio address, email, owner).

@@ -65,6 +65,6 @@ export const resetPasswordMail = (to: string, url: string): Mail => ({
 });
 
 /** A plain notification with one button (bookings, requests). */
-export const noticeMail = (to: string, subject: string, heading: string, body: string, label: string, url: string, footnote = 'You’re receiving this because of activity on Opus World.'): Mail => ({
+export const noticeMail = (to: string, subject: string, heading: string, body: string, label: string, url: string, footnote = 'You’re receiving this because of activity on Opus.'): Mail => ({
   to, subject, heading, body, action: { label, url }, footnote,
 });

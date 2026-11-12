@@ -10,7 +10,7 @@ interface Props {
   image?: string;
   overlayHeader?: boolean;
   noindex?: boolean;
-  /** App-style pages (Opus World) skip the footer so the map can fill the screen. */
+  /** App-style pages (World) skip the footer so the map can fill the screen. */
   hideFooter?: boolean;
 }
 const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false } = Astro.props;

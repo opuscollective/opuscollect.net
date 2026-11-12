@@ -1,6 +1,6 @@
 /**
  * Homepage directory panel: after the camera moves into the globe, a centered panel lists real
- * Opus World results for the visitor's words (sample listings only on preview builds, labeled).
+ * World results for the visitor's words (sample listings only on preview builds, labeled).
  * The full experience stays on /world; every result and the footer link go there.
  */
 import { hasPoint, type Listing, type ListingKind } from '@/types/directory';
@@ -17,7 +17,7 @@ export const loadListings = () =>
 
 const inCity = (l: Listing, c: City) => (l.metro?.name ?? l.location.city) === c.name || l.location.city === c.name;
 
-/** The same filters as the Opus World directory, minus the map-only ones. */
+/** The same filters as the World directory, minus the map-only ones. */
 export type DiveFilters = Pick<WorldFilters, 'specialty' | 'genre' | 'studioType' | 'openToCollab' | 'verifiedOnly'>;
 
 /**

@@ -5,12 +5,12 @@ import ThemeSwitch from '../ui/ThemeSwitch.astro';
 interface Props { overlay?: boolean }
 const { overlay = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
-// Which pages light up each nav item. Musician and organization pages and profiles belong to Opus World.
+// Which pages light up each nav item. People, studios, organizations, profiles and Verified belong to World.
 const SECTIONS: Record<string, string[]> = {
-  '/world': ['/world', '/musicians', '/organizations', '/m/'],
-  '/studios': ['/studios'],
-  '/verified': ['/verified'],
-  '/releases': ['/releases', '/music'],
+  '/world': ['/world', '/musicians', '/organizations', '/studios', '/m/', '/verified'],
+  '/music': ['/music', '/releases', '/r/'],
+  '/charts': ['/charts'],
+  '/network': ['/network', '/account/connections', '/account/bookings'],
   '/collective': ['/collective', '/community', '/about', '/events'],
 };
 const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/'));

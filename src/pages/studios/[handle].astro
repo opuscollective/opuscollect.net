@@ -20,7 +20,7 @@ const canBook = live && !isOwner && services.length > 0;
 const len = (m: number) => (m % 60 ? (Math.floor(m / 60) ? Math.floor(m / 60) + ' h ' : '') + (m % 60) + ' min' : m / 60 + ' h');
 const BADGE: Record<string, string> = { identity: 'Identity Verified', studio: 'Opus Studio Verified' };
 const source = Astro.url.searchParams.get('from') === 'world' ? 'directory' : 'link';
-const description = `${studio.name}: ${STUDIO_TYPES[studio.studioType].label.toLowerCase()}${place ? ` in ${place.name}` : ''}. Request a session on Opus World.`;
+const description = `${studio.name}: ${STUDIO_TYPES[studio.studioType].label.toLowerCase()}${place ? ` in ${place.name}` : ''}. Request a session on Opus.`;
 ---
 <BaseLayout title={studio.name} description={description} noindex={!live} image={studio.photoKey ? mediaUrl(studio.photoKey) ?? undefined : undefined}>
   <div class="sp-cover" style={studio.coverKey ? `background-image:url(${mediaUrl(studio.coverKey)})` : ''}></div>
