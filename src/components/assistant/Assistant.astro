@@ -1,0 +1,204 @@
+---
+/**
+ * Opus, the guide. A small launcher on every page; a panel on desktop and a bottom sheet on phones.
+ * Requests are understood by the structured intent system in src/lib/assistant.ts and only ever
+ * lead to whitelisted pages and World filters. Optional: nothing on Opus needs it.
+ */
+import Icon from '../ui/Icon.astro';
+---
+<button type="button" class="oa-launch" data-oa-launch aria-haspopup="dialog" aria-controls="opus-guide" aria-expanded="false">
+  <img class="logo" src="/images/oc-logo.png" alt="" width="20" height="13" />
+  <span class="oa-launch__label">Ask Opus</span>
+</button>
+
+<div class="oa-scrim" data-oa-scrim hidden></div>
+<section class="oa" id="opus-guide" data-oa role="dialog" aria-modal="false" aria-labelledby="oa-title" aria-describedby="oa-role" hidden>
+  <header class="oa__head">
+    <span class="oa__grab" aria-hidden="true"></span>
+    <div>
+      <h2 id="oa-title" class="oa__name">Opus</h2>
+      <p id="oa-role" class="oa__role">Your guide to the music world.</p>
+    </div>
+    <button type="button" class="oa__close" data-oa-close aria-label="Close Opus"><Icon name="close" size={18} /></button>
+  </header>
+
+  <div class="oa__log" data-oa-log aria-live="polite" aria-relevant="additions"></div>
+  <ul class="oa__chips" role="list" aria-label="Suggestions" data-oa-chips></ul>
+
+  <form class="oa__form" data-oa-form autocomplete="off">
+    <label for="oa-input" class="sr-only">Ask Opus</label>
+    <input id="oa-input" type="text" placeholder="Ask Opus…" maxlength="200" enterkeyhint="send" data-oa-input />
+    <button type="submit" class="oa__send" aria-label="Send"><Icon name="arrow-right" size={16} /></button>
+  </form>
+</section>
+
+<script>
+  import { respond, welcome, suggestionsFor, actionHref, type Reply } from '@/lib/assistant';
+
+  const launch = document.querySelector<HTMLButtonElement>('[data-oa-launch]')!;
+  const panel = document.querySelector<HTMLElement>('[data-oa]')!;
+  const scrim = document.querySelector<HTMLElement>('[data-oa-scrim]')!;
+  const log = panel.querySelector<HTMLElement>('[data-oa-log]')!;
+  const chips = panel.querySelector<HTMLElement>('[data-oa-chips]')!;
+  const form = panel.querySelector<HTMLFormElement>('[data-oa-form]')!;
+  const input = panel.querySelector<HTMLInputElement>('[data-oa-input]')!;
+  const phone = matchMedia('(max-width: 760px)');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let opener: HTMLElement | null = null;
+  let started = false;
+
+  const ctx = () => ({ path: location.pathname, signedIn: document.documentElement.classList.contains('is-signed-in') });
+
+  function bubble(text: string, who: 'opus' | 'you') {
+    const p = document.createElement('p');
+    p.className = `oa__msg oa__msg--${who}`;
+    p.textContent = text;
+    log.append(p);
+    log.scrollTop = log.scrollHeight;
+    return p;
+  }
+  function setChips(list: string[]) {
+    chips.replaceChildren(...list.map((s) => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = s;
+      b.addEventListener('click', () => ask(s));
+      li.append(b);
+      return li;
+    }));
+  }
+
+  /** Perform or offer a reply's action. Navigation only ever goes through actionHref. */
+  function show(r: Reply) {
+    const p = bubble(r.text, 'opus');
+    if (r.action && r.offer) {
+      const a = document.createElement('a');
+      a.className = 'oa__offer';
+      a.href = actionHref(r.action);
+      a.textContent = r.offer;
+      p.after(a);
+    } else if (r.action) {
+      const href = actionHref(r.action);
+      const here = location.pathname + location.search;
+      if (href === here) { bubble('You’re already here.', 'opus'); return; }
+      setTimeout(() => { close(false); location.assign(href); }, reduce ? 0 : 350);
+    }
+    setChips(r.suggestions ?? []);
+  }
+
+  function ask(text: string) {
+    const t = text.trim();
+    if (!t) return;
+    bubble(t, 'you');
+    show(respond(t, ctx()));
+    input.value = '';
+  }
+
+  function open(from?: HTMLElement | null) {
+    opener = from ?? (document.activeElement as HTMLElement | null);
+    if (!started) { bubble(welcome(), 'opus'); setChips(suggestionsFor(location.pathname)); started = true; }
+    panel.hidden = false;
+    scrim.hidden = !phone.matches;
+    panel.setAttribute('aria-modal', String(phone.matches));
+    launch.setAttribute('aria-expanded', 'true');
+    document.documentElement.classList.add('oa-open');
+    requestAnimationFrame(() => panel.classList.add('is-open'));
+    // On phones, focusing the field would raise the keyboard over the suggestions; focus the panel instead.
+    (phone.matches ? panel.querySelector<HTMLElement>('[data-oa-close]') : input)?.focus();
+  }
+  function close(restore = true) {
+    panel.classList.remove('is-open');
+    launch.setAttribute('aria-expanded', 'false');
+    document.documentElement.classList.remove('oa-open');
+    scrim.hidden = true;
+    setTimeout(() => { if (!panel.classList.contains('is-open')) panel.hidden = true; }, reduce ? 0 : 220);
+    if (restore) (opener ?? launch).focus();
+  }
+
+  launch.addEventListener('click', () => (panel.hidden ? open(launch) : close()));
+  panel.querySelector('[data-oa-close]')!.addEventListener('click', () => close());
+  scrim.addEventListener('click', () => close());
+  form.addEventListener('submit', (e) => { e.preventDefault(); ask(input.value); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) { e.stopPropagation(); close(); } });
+  // Keep Tab inside the sheet on phones, where it covers the page.
+  panel.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' || !phone.matches) return;
+    const f = [...panel.querySelectorAll<HTMLElement>('button, a[href], input')].filter((el) => el.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+  // Other parts of the page can open the guide: <button data-opus-ask>.
+  document.addEventListener('click', (e) => {
+    const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-opus-ask]');
+    if (t) { e.preventDefault(); open(t); }
+  });
+</script>
+
+<style>
+  /* Launcher: small and quiet, bottom-right, clear of the phone's home indicator. */
+  .oa-launch { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 45;
+    display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill);
+    background: var(--glass-header); color: var(--text); backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.45); font-size: 14px; font-weight: 500;
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+  .oa-launch:hover { border-color: var(--text-3); }
+  .oa-launch:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  .oa-launch img { width: 20px; height: auto; }
+  :global(.oa-open) .oa-launch { opacity: 0; pointer-events: none; transform: translateY(6px); }
+  /* Step aside where something else owns the bottom of the screen. */
+  :global(body:has(.hero.is-diving)) .oa-launch { opacity: 0; pointer-events: none; }
+
+  /* Panel: compact, bottom-right on desktop. */
+  .oa { position: fixed; z-index: 70; right: max(16px, env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; width: min(380px, calc(100vw - 32px)); max-height: min(560px, calc(100svh - 120px));
+    background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.55);
+    opacity: 0; transform: translateY(10px); transition: opacity .2s var(--ease), transform .22s var(--ease); }
+  .oa.is-open { opacity: 1; transform: none; }
+  .oa__head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 14px 12px 18px; border-bottom: 1px solid var(--line-faint); }
+  .oa__grab { display: none; }
+  .oa__name { margin: 0; font-size: 17px; font-weight: 500; letter-spacing: -0.02em; }
+  .oa__role { margin: 2px 0 0; font-size: 13px; color: var(--text-3); }
+  .oa__close { display: grid; place-items: center; width: 36px; height: 36px; margin: -4px -2px 0 0; border: 0; border-radius: 50%; background: none; color: var(--text-2); }
+  .oa__close:hover { background: var(--surface-hover); color: var(--text); }
+
+  .oa__log { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 16px 18px 8px; overscroll-behavior: contain; }
+  .oa__log :global(.oa__msg) { max-width: 88%; margin: 0; padding: 10px 13px; border-radius: 14px; font-size: 14px; line-height: 1.45; }
+  .oa__log :global(.oa__msg--opus) { align-self: flex-start; background: var(--surface-sunken, var(--bg)); border: 1px solid var(--line-faint); border-bottom-left-radius: 4px; }
+  .oa__log :global(.oa__msg--you) { align-self: flex-end; background: var(--text); color: var(--bg); border-bottom-right-radius: 4px; }
+  .oa__log :global(.oa__offer) { align-self: flex-start; display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); font-size: 13px; font-weight: 500; }
+  .oa__log :global(.oa__offer:hover) { border-color: var(--text-3); }
+
+  .oa__chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 4px 18px 12px; list-style: none; }
+  .oa__chips:empty { display: none; }
+  .oa__chips :global(button) { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: none; color: var(--text-2); font-size: 13px; text-align: left; }
+  .oa__chips :global(button:hover) { color: var(--text); border-color: var(--line-strong); }
+
+  .oa__form { display: flex; align-items: center; gap: 8px; margin: 0 12px 12px; padding: 4px 4px 4px 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--bg); }
+  .oa__form:focus-within { border-color: var(--c-accent); }
+  .oa__form input { flex: 1; min-width: 0; height: 36px; border: 0; outline: 0; background: none; color: var(--text); font-size: 16px; }
+  .oa__form input::placeholder { color: var(--text-3); }
+  .oa__send { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--text); color: var(--bg); }
+  .oa :global(:focus-visible) { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+  .oa-scrim { position: fixed; inset: 0; z-index: 69; background: rgba(0, 0, 0, 0.4); }
+
+  @media (max-width: 760px) {
+    /* A round button on phones, label for screen readers only. */
+    .oa-launch { width: 48px; height: 48px; padding: 0; justify-content: center; }
+    .oa-launch__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    /* In World the map's sheet owns the bottom: sit just above it, and step aside when it opens. */
+    :global(body:has([data-world])) .oa-launch { bottom: calc(152px + 14px + env(safe-area-inset-bottom)); }
+    :global(body:has([data-sheet='half'], [data-sheet='full'])) .oa-launch { opacity: 0; pointer-events: none; }
+    /* Room at the end of every page so the launcher never sits on the last links. */
+    :global(body) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+    :global(body:has([data-world])) { padding-bottom: 0; }
+    /* Bottom sheet. */
+    .oa { left: 0; right: 0; bottom: 0; width: auto; max-height: min(78svh, 620px); border-radius: 20px 20px 0 0; border-bottom: 0;
+      padding-bottom: env(safe-area-inset-bottom); transform: translateY(24px); }
+    .oa__head { padding-top: 22px; }
+    .oa__grab { display: block; position: absolute; top: 8px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--line-strong); }
+  }
+  @media (prefers-reduced-motion: reduce) { .oa, .oa-launch { transition: none; } }
+</style>

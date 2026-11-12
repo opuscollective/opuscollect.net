@@ -3,6 +3,7 @@ import '@/styles/global.css';
 import SiteHeader from '@/components/layout/SiteHeader.astro';
 import SiteFooter from '@/components/layout/SiteFooter.astro';
 import { SITE } from '@/data/site';
+import Assistant from '@/components/assistant/Assistant.astro';
 
 interface Props {
   title?: string;
@@ -12,8 +13,10 @@ interface Props {
   noindex?: boolean;
   /** App-style pages (World) skip the footer so the map can fill the screen. */
   hideFooter?: boolean;
+  /** Show the Opus guide launcher (on by default). */
+  assistant?: boolean;
 }
-const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false } = Astro.props;
+const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false, assistant = true } = Astro.props;
 const fullTitle = title ? `${title} · ${SITE.product}` : `${SITE.product} · The professional network for independent music`;
 const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogImage = new URL(image, SITE.url).href;
@@ -61,6 +64,7 @@ const ogImage = new URL(image, SITE.url).href;
     <SiteHeader overlay={overlayHeader} />
     <main id="main"><slot /></main>
     {!hideFooter && <SiteFooter />}
+    {assistant && <Assistant />}
     <script>
       // Reveal-on-scroll. Content is visible without JS and with reduced motion.
       const els = document.querySelectorAll('[data-reveal]');

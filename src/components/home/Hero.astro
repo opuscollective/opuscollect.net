@@ -36,7 +36,9 @@ const topCities = CITIES.slice(0, 8);
         <li><a href="/charts">Explore Charts <span class="opus-quick__soon">Soon</span></a></li>
         <li><a href="/music">My Releases</a></li>
       </ul>
-      <a class="opus-entry__open" href="/world" data-hero-open>Open World <Icon name="arrow-right" size={16} /></a>
+      <a class="opus-entry__open" href="/world" data-hero-open><span class="hero__desk">Open World</span><span class="hero__phone">Explore the World</span> <Icon name="arrow-right" size={16} /></a>
+      <!-- Phones: a quiet way into the Opus guide, in place of the search box. -->
+      <button type="button" class="opus-entry__ask" data-opus-ask>Ask Opus</button>
     </div>
 
     <!-- Accessible fallback, shown when WebGL is not available -->
@@ -328,7 +330,8 @@ const topCities = CITIES.slice(0, 8);
     hero.classList.remove('is-diving');
     api?.rise();
     setTimeout(() => { dive.hidden = true; }, reduce ? 0 : 300);
-    input.focus({ preventScroll: true });
+    // Phones have no search box in the hero: return focus to the way in instead.
+    (input.offsetParent ? input : hero.querySelector<HTMLElement>('[data-hero-open]'))?.focus({ preventScroll: true });
   }
 
   form.addEventListener('submit', (e) => {
@@ -513,14 +516,24 @@ const topCities = CITIES.slice(0, 8);
   :global(.gl-tip) { padding: 8px 10px; background: var(--glass); border: 1px solid var(--line-strong); border-radius: 6px; font: 13px var(--font-sans); color: var(--text); display: flex; flex-direction: column; gap: 2px; }
   :global(.gl-tip span) { color: var(--text-3); font-size: 12px; }
 
+  .hero__phone, .opus-entry__ask { display: none; }
+  /* Phones: discovery first. Headline and line at the top, the globe in the middle, one way in at the bottom.
+     The search box and shortcuts are desktop only; search lives in World and in the Opus guide. */
   @media (max-width: 760px) {
-    .hero { min-height: max(100svh, 620px); padding: 88px 0 48px; }
-    .hero__stage { gap: 28px; }
-    .hero__title { font-size: clamp(2.5rem, 11vw, 3.5rem); }
-    .hsearch { height: 54px; padding-left: 16px; }
-    .hsearch button { height: 42px; padding: 0 18px; }
-    .opus-quick { gap: 6px; max-width: 360px; }
-    .opus-quick a { height: 36px; padding: 0 14px; font-size: 13px; }
+    .hero { flex-direction: column; align-items: stretch; min-height: max(calc(100svh - 48px), 560px); padding: 92px 0 calc(28px + env(safe-area-inset-bottom)); }
+    .hero__stage { flex: 1; gap: 14px; justify-content: flex-start; }
+    .hero__title { font-size: clamp(2.05rem, 9vw, 2.75rem); line-height: 1; }
+    .opus-entry { display: contents; }
+    .opus-entry__form, .opus-quick { display: none; }
+    .opus-entry__kicker { margin: 0; font-size: 11px; }
+    .opus-entry__open { margin-top: auto; justify-content: center; min-height: 48px; padding: 0 24px; border: 0; border-radius: var(--r-pill); background: var(--c-white); color: var(--c-black); }
+    .opus-entry__open:hover { border: 0; }
+    .hero__desk { display: none; }
+    .hero__phone { display: inline; }
+    .opus-entry__ask { display: inline-flex; align-items: center; min-height: 44px; margin-top: -4px; padding: 0 12px; border: 0; background: none; color: var(--text-2); font-size: 14px; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; }
+    .opus-entry__ask:hover { color: var(--text); }
+    /* Softer veil: the words sit above and below the globe now, not over its middle. */
+    .hero__veil { background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent) 0%, transparent 28%, transparent 70%, color-mix(in srgb, var(--bg) 85%, transparent) 100%); }
     .dv { top: auto; left: 10px; right: 10px; bottom: 10px; width: auto; height: 62%; }
     .dv__panel { border: 1px solid var(--c-hairline); border-radius: 20px; transform: translateY(24px); }
     .dv-locate { bottom: auto; top: 40%; }
