@@ -1,8 +1,8 @@
 ---
 /**
  * The Opus products on the homepage. Each card: a name, one value statement, one action, and a
- * look at the real product. Composition follows purpose: World is the wide lead card, Studios/Music
- * and Charts/Collective sit in mirrored asymmetric pairs, and Opus Verified is a slim band.
+ * look at the real product. World is the full-width lead card, Studios/Music/Charts/Collective are
+ * four equal squares (2x2), and Opus Verified is a slim band.
  * Only real destinations; Charts is in development and says so.
  */
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
@@ -36,54 +36,56 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
       </div>
     </article>
 
-    <!-- Studios: the room itself. -->
-    <article class="card card--studios tone-dark card--narrow" aria-labelledby="pt-studios" data-reveal>
+    <!-- Four equal squares. Same size, padding, heading and action position; each keeps its own look. -->
+    <article class="card sq sq--studios tone-dark" aria-labelledby="pt-studios" data-reveal>
       <img class="card__photo" src="/images/studio-control-room.jpg" alt="" loading="lazy" decoding="async" width="2000" height="1334" />
-      <div class="card__text">
+      <div class="sq__text">
         <h2 class="card__name" id="pt-studios">Studios</h2>
         <p class="card__line">Recording rooms, engineers and studio services near you.</p>
         <a class="card__go" href="/studios">Find a Studio <Icon name="arrow-right" size={16} /></a>
       </div>
     </article>
 
-    <!-- Music: what a release on Opus looks like. -->
-    <article class="card card--music card--wide" aria-labelledby="pt-music" data-reveal>
-      <div class="card__text">
+    <article class="card sq sq--music" aria-labelledby="pt-music" data-reveal>
+      <div class="sq__text">
         <h2 class="card__name" id="pt-music">Music</h2>
         <p class="card__line">Your releases, your credits, your record of work.</p>
         <a class="card__go" href="/music">Explore Music <Icon name="arrow-right" size={16} /></a>
       </div>
-      <div class="relp" aria-label="How a release looks on Opus (example)">
-        <span class="relp__tag">Example</span>
-        <div class="relp__head">
-          <img src="/images/scenic-cover.jpg" alt="" loading="lazy" decoding="async" />
-          <div><p class="relp__title">Scenic</p><p class="relp__meta">Bogo · Opus Collective</p></div>
+      <div class="sq__vis">
+        <div class="relp" aria-label="How a release looks on Opus (example)">
+          <span class="relp__tag">Example</span>
+          <div class="relp__head">
+            <img src="/images/scenic-cover.jpg" alt="" loading="lazy" decoding="async" />
+            <div><p class="relp__title">Scenic</p><p class="relp__meta">Bogo · Opus Collective</p></div>
+          </div>
+          <ul class="relp__credits" role="list">
+            <li><span>Artist</span><b>Bogo</b><em class="is-ok">Confirmed</em></li>
+            <li><span>Producer</span><b class="is-open">Credit someone from World</b></li>
+            <li><span>Mix engineer</span><b class="is-open">Credit someone from World</b></li>
+          </ul>
+          <p class="relp__foot"><span class="relp__dot"></span>Shows on your profile once published</p>
         </div>
-        <ul class="relp__credits" role="list">
-          <li><span>Artist</span><b>Bogo</b><em class="is-ok">Confirmed</em></li>
-          <li><span>Producer</span><b class="is-open">Credit someone from World</b></li>
-          <li><span>Mix engineer</span><b class="is-open">Credit someone from World</b></li>
-        </ul>
-        <p class="relp__foot"><span class="relp__dot"></span>Shows on your profile once published</p>
       </div>
     </article>
 
     <!-- Charts: honest coming soon. Cities only, no ranks or numbers. -->
-    <article class="card card--charts card--wide" aria-labelledby="pt-charts" data-reveal>
-      <div class="card__text">
+    <article class="card sq sq--charts" aria-labelledby="pt-charts" data-reveal>
+      <div class="sq__text">
         <h2 class="card__name" id="pt-charts">Charts <span class="card__soon">Coming soon</span></h2>
         <p class="card__line">Every city has a sound.</p>
-        <a class="card__go card__go--quiet" href="/charts">See what’s coming <Icon name="arrow-right" size={16} /></a>
+        <a class="card__go" href="/charts">See what’s coming <Icon name="arrow-right" size={16} /></a>
       </div>
-      <ul class="cities" role="list" aria-label="Charts will cover cities like these">
-        {CITIES.map((c) => <li>{c}</li>)}
-      </ul>
+      <div class="sq__vis">
+        <ul class="cities" role="list" aria-label="Charts will cover cities like these">
+          {CITIES.map((c) => <li>{c}</li>)}
+        </ul>
+      </div>
     </article>
 
-    <!-- Collective: the people and the room. -->
-    <article class="card card--collective tone-dark card--narrow" aria-labelledby="pt-collective" data-reveal>
+    <article class="card sq sq--collective tone-dark" aria-labelledby="pt-collective" data-reveal>
       <img class="card__photo" src="/images/scenic-room.jpg" alt="" loading="lazy" decoding="async" width="1600" height="2400" />
-      <div class="card__text">
+      <div class="sq__text">
         <h2 class="card__name" id="pt-collective">Collective</h2>
         <p class="card__line">Beyond the platform.</p>
         <a class="card__go" href="/collective">Explore the Collective <Icon name="arrow-right" size={16} /></a>
@@ -95,7 +97,7 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
       <VerifiedBadge size={36} tone="dark" />
       <div class="vband__text">
         <h2 id="pt-verified">Opus Verified. <span>Earned. Never bought.</span></h2>
-        <p>Recognition for real, reviewed work. Paying for Opus never earns or changes it.</p>
+        <p>Recognizes real professional credibility and reviewed accomplishments. Paying for Opus never earns or changes it.</p>
       </div>
       <a class="vband__go" href="/verified">Learn about verification <Icon name="arrow-right" size={16} /></a>
     </aside>
@@ -161,10 +163,8 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
 
   .card { position: relative; isolation: isolate; overflow: hidden; display: flex; border-radius: 20px; min-height: clamp(380px, 48vh, 480px); }
   .card--world { grid-column: 1 / -1; background: #0d0d0f; border: 1px solid #1f2024; }
-  .card--narrow { grid-column: span 5; }
-  .card--wide { grid-column: span 7; }
-  .card--music, .card--charts { background: var(--surface); border: 1px solid var(--line); color: var(--text); }
-  .card--charts { background: var(--c-paper); color: var(--c-paper-ink); border-color: var(--c-paper-line); }
+  .sq--music { background: var(--surface); border: 1px solid var(--line); color: var(--text); }
+  .sq--charts { background: var(--c-paper); color: var(--c-paper-ink); border: 1px solid var(--c-paper-line); }
 
   .card__text { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: clamp(28px, 3.4vw, 44px); }
   .card__name { display: inline-flex; align-items: center; gap: 12px; margin: 0; font-size: clamp(1.9rem, 1.2rem + 1.9vw, 2.75rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1; }
@@ -172,16 +172,23 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
   .card__soon { padding: 4px 9px; border: 1px solid currentColor; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
   .card__go { display: inline-flex; align-items: center; gap: 8px; height: 42px; margin-top: 10px; padding: 0 18px; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; transition: gap var(--dur) var(--ease), opacity var(--dur) var(--ease); }
   .card__go:hover { gap: 12px; }
-  .card--charts .card__go { background: var(--c-paper-ink); color: var(--c-paper); }
-  .card__go--quiet { background: none !important; color: inherit !important; padding: 0; height: 40px; border-bottom: 1px solid currentColor; border-radius: 0; }
+  .sq--charts .card__go { background: var(--c-paper-ink); color: var(--c-paper); }
   .card__go:focus-visible, .vband__go:focus-visible, .dirp__row:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
   .tone-dark .card__go { background: var(--text); color: #0d0d0f; }
 
-  /* Photo cards: text over the picture, bottom-left. */
+  /* ---------- The four squares ----------
+     Same box, padding, heading size and action spot (bottom-left) on all four.
+     The product's own visual fills the space above the text. */
+  .sq { --pad: clamp(28px, 2.8vw, 44px); grid-column: span 6; aspect-ratio: 1 / 1; min-height: 0; flex-direction: column; justify-content: flex-end; }
+  .sq__text { position: relative; z-index: 2; order: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 var(--pad) var(--pad); }
+  .sq__text .card__line { min-height: 2.6em; }
+  .sq__vis { order: 1; flex: 1; min-height: 0; display: flex; padding: var(--pad) var(--pad) 8px; }
+
+  /* Photo squares: text over the picture. */
   .card__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
-  .card--studios, .card--collective { align-items: flex-end; color: var(--text); }
-  .card--studios::after, .card--collective::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, rgba(8, 8, 10, 0.9) 0%, rgba(8, 8, 10, 0.35) 55%, rgba(8, 8, 10, 0.05) 100%); }
-  .card--collective .card__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
+  .sq--studios, .sq--collective { color: var(--text); }
+  .sq--studios::after, .sq--collective::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, rgba(8, 8, 10, 0.9) 0%, rgba(8, 8, 10, 0.35) 55%, rgba(8, 8, 10, 0.05) 100%); }
+  .sq--collective .card__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
 
   /* ---------- World ---------- */
   .card--world { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; color: var(--text);
@@ -213,8 +220,8 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
   .dirp__note { margin: 0 10px; font-size: 12px; color: var(--text-3); }
 
   /* ---------- Music ---------- */
-  .card--music { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: center; }
-  .relp { position: relative; margin: 24px 28px 24px 0; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); }
+  .sq--music .sq__vis { align-items: center; justify-content: center; }
+  .relp { position: relative; width: 100%; max-width: 460px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); }
   .relp__tag { position: absolute; top: 12px; right: 12px; padding: 2px 7px; border: 1px dashed var(--line-strong); border-radius: 4px; font-size: 10px; color: var(--text-3); }
   .relp__head { display: flex; align-items: center; gap: 14px; }
   .relp__head img { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; }
@@ -231,8 +238,7 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
   .relp__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
   /* ---------- Charts ---------- */
-  .card--charts { justify-content: space-between; }
-  .cities { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin: 0; padding: clamp(28px, 3.4vw, 44px); list-style: none;
+  .cities { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; width: 100%; margin: 0; padding: 0; list-style: none; overflow: hidden;
     font-size: clamp(1.4rem, 0.9rem + 1.7vw, 2.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.08; text-align: right; }
   .cities li:nth-child(1) { opacity: 0.9; } .cities li:nth-child(2) { opacity: 0.68; } .cities li:nth-child(3) { opacity: 0.48; }
   .cities li:nth-child(4) { opacity: 0.32; } .cities li:nth-child(5) { opacity: 0.2; } .cities li:nth-child(6) { opacity: 0.11; }
@@ -247,19 +253,38 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
   .vband__go { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; min-height: 44px; font-size: 15px; font-weight: 500; border-bottom: 1px solid currentColor; }
   .vband__go:hover { opacity: 0.7; }
 
+  /* Smaller desktops: same squares, a tighter release preview so it never gets cramped. */
+  @media (max-width: 1200px) {
+    .relp { padding: 14px; }
+    .relp__head img { width: 52px; height: 52px; }
+    .relp__credits { margin: 12px 0 8px; }
+    .relp__credits li { min-height: 38px; grid-template-columns: 84px minmax(0, 1fr) auto; }
+  }
+  @media (max-width: 1080px) {
+    .relp__foot { display: none; }
+    .cities { font-size: clamp(1.2rem, 0.8rem + 1.4vw, 1.8rem); }
+  }
+  /* World stacks; the squares stay a 2x2 grid while they still have room. */
   @media (max-width: 980px) {
-    .card--narrow, .card--wide { grid-column: 1 / -1; }
     .card--world { grid-template-columns: minmax(0, 1fr); }
     .dirp { margin: 0 16px 16px; }
-    .card--music { grid-template-columns: minmax(0, 1fr); }
-    .relp { margin: 0 16px 16px; }
+  }
+  /* Below this a square is too small to read: one column, height follows content. */
+  @media (max-width: 1000px) {
+    .sq { grid-column: 1 / -1; aspect-ratio: auto; }
+    .sq--studios, .sq--collective { min-height: 440px; }
+    .sq--music .sq__vis { padding-bottom: 24px; }
+    .relp__foot { display: flex; }
+    .sq--charts .sq__vis { padding-bottom: 20px; }
+    .cities { align-items: flex-start; text-align: left; font-size: 1.7rem; }
+    .sq__text .card__line { min-height: 0; }
   }
   @media (max-width: 760px) {
     .pt { padding-inline: 10px; }
     .pt__grid { gap: 10px; }
-    .card { min-height: 360px; border-radius: 16px; }
-    .card--charts { flex-direction: column; }
-    .cities { align-items: flex-start; text-align: left; padding-top: 0; }
+    .card { border-radius: 16px; }
+    .card--world { min-height: 0; }
+    .sq--studios, .sq--collective { min-height: 400px; }
     .vband { flex-wrap: wrap; }
     .vband__go { width: 100%; }
   }
