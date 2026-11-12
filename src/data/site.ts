@@ -54,6 +54,20 @@ export const NAV: NavItem[] = [
     ],
   },
   {
+    label: 'Future', href: '/future', lead: 'What’s coming: your sessions, planned releases and Collective events.',
+    groups: [
+      { title: 'Your timeline', links: [
+        { label: 'Everything coming up', href: '/future' },
+        { label: 'Studio sessions', href: '/future?show=session' },
+        { label: 'Planned releases', href: '/future?show=release' },
+      ] },
+      { title: 'Collective', links: [
+        { label: 'Events', href: '/future?show=event' },
+        { label: 'The Opus Summit', href: '/events#summit' },
+      ] },
+    ],
+  },
+  {
     label: 'Charts', href: '/charts', lead: 'Rising artists, city by city. No pay-to-rank.', soon: true,
     groups: [
       { title: 'Opus Charts', links: [

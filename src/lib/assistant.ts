@@ -41,6 +41,7 @@ export const PAGES = {
   signup: '/sign-up',
   about: '/about',
   events: '/events',
+  future: '/future',
 } as const;
 export type PageKey = keyof typeof PAGES;
 
@@ -129,7 +130,8 @@ export function suggestionsFor(path: string): string[] {
   if (/^\/studios(\/|$)/.test(path)) return ['Recording studios in Nashville', 'Home studios', 'List my studio', 'How does booking work?'];
   if (/^\/(music|releases|start|r)(\/|$)/.test(path)) return ['Start a release', 'Show my releases', 'How do credits work?', 'Find a mixing engineer'];
   if (/^\/verified(\/|$)/.test(path)) return ['How do I get verified?', 'Show verified members', 'Find producers in Birmingham'];
-  if (/^\/account(\/|$)/.test(path)) return ['Take me to my profile', 'My connections', 'My bookings', 'Show my releases'];
+  if (/^\/account(\/|$)/.test(path)) return ['Take me to my profile', 'What’s coming up?', 'My connections', 'Show my releases'];
+  if (/^\/future(\/|$)/.test(path)) return ['Book a studio session', 'Start a release', 'Show Collective events'];
   return ['Find producers in Birmingham', 'Explore recording studios', 'Discover musicians', 'How does Opus work?'];
 }
 
@@ -176,6 +178,11 @@ export function respond(input: string, ctx: AssistantContext): Reply {
   }
   if (has(t, 'pay', 'payment', 'payments', 'invoice', 'distribute', 'distribution', 'upload to spotify', 'royalt(?:y|ies)')) {
     return { text: 'Opus does not handle payments or distribution yet. Music keeps your releases and credits in one place.', action: { type: 'page', page: 'music' }, offer: 'Open Music' };
+  }
+
+  // ----- Future: what's coming -----
+  if (has(t, 'future', 'timeline', 'coming up', 'upcoming', 'whats next', 'next session', 'my schedule', 'schedule', 'calendar', 'my sessions?')) {
+    return { text: 'Opening Future: your sessions, planned releases and events.', action: { type: 'page', page: 'future' } };
   }
 
   // ----- Your own things (sign-in aware) -----
