@@ -68,13 +68,15 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   };
   globe.pointOfView({ lat: 28, lng: -40, altitude: home() }, 0);
 
-  // OrbitControls sets touch-action:none on the canvas, which traps the page scroll on phones.
-  // Let the browser keep vertical swipes (page scroll) and pinch; sideways drags still turn the globe.
-  const touch = matchMedia('(pointer: coarse)').matches;
-  if (touch) {
-    controls.enableZoom = false;
-    globe.renderer().domElement.style.touchAction = 'pan-y';
-  }
+  // At rest the globe is scenery: it spins on its own and ignores the mouse, wheel and touch, so scrolling
+  // the homepage never grabs it. It becomes interactive only inside Opus World (after dive()).
+  const canvas = globe.renderer().domElement;
+  const interactive = (on: boolean) => {
+    controls.enabled = on;
+    el.style.pointerEvents = on ? 'auto' : 'none';
+    canvas.style.touchAction = on ? 'none' : 'auto';
+  };
+  interactive(false);
 
   const resize = () => globe.width(el.clientWidth).height(el.clientHeight);
   resize();
@@ -83,8 +85,6 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   // Pause rendering when the hero is off screen to save battery.
   new IntersectionObserver(([e]) => (e?.isIntersecting ? globe.resumeAnimation() : globe.pauseAnimation())).observe(el);
 
-  // Stop auto-rotation once the user takes control.
-  el.addEventListener('pointerdown', () => (controls.autoRotate = false), { once: true });
 
   const ms = (n: number) => (reduce ? 0 : n);
   /** Stop turning: auto-rotation off and no leftover spin from damping, so the camera lands where it's sent. */
@@ -101,8 +101,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     /** Move in toward a place (or the current view) for the directory panel. close: right down to city level. */
     dive(lat?: number, lng?: number, close = lat != null) {
       hold();
-      // Inside the world the globe is the whole screen, so pinch zoom no longer fights the page scroll.
-      if (touch) { controls.enableZoom = true; globe.renderer().domElement.style.touchAction = 'none'; }
+      interactive(true);
       const pov = globe.pointOfView();
       globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: close ? 0.42 : 0.9 }, ms(1700));
     },
@@ -110,7 +109,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     rise() {
       globe.pointOfView({ ...globe.pointOfView(), altitude: home() }, ms(1200));
       controls.autoRotate = !reduce;
-      if (touch) { controls.enableZoom = false; globe.renderer().domElement.style.touchAction = 'pan-y'; }
+      interactive(false);
     },
   };
 }
