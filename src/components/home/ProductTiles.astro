@@ -101,9 +101,9 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
 
 <style>
   .pt { padding: 16px var(--gutter) clamp(40px, 6vw, 72px); background: var(--bg); }
-  .pt__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 1480px; margin-inline: auto; }
+  .pt__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; max-width: 1040px; margin-inline: auto; }
 
-  .card { --pad: clamp(36px, 4vw, 60px); position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center; border-radius: 20px; }
+  .card { --pad: clamp(30px, 3vw, 42px); position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center; border-radius: 20px; }
 
   /* Centered text block, the same in every card. */
   .ctext { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: var(--pad) 24px 0; text-align: center; }
@@ -116,9 +116,9 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
   .card__go:focus-visible, .vband__go:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
 
   /* ---------- World ---------- */
-  .world { grid-column: 1 / -1; height: clamp(560px, 48vw, 740px); background: radial-gradient(70% 60% at 50% 100%, rgba(169, 199, 236, 0.08), transparent 70%), #0d0d0f; border: 1px solid #1f2024; color: var(--text); }
+  .world { grid-column: 1 / -1; height: clamp(440px, 34vw, 490px); background: radial-gradient(70% 60% at 50% 100%, rgba(169, 199, 236, 0.08), transparent 70%), #0d0d0f; border: 1px solid #1f2024; color: var(--text); }
   /* Far wider than it can show: only the top of the sphere is inside the card. */
-  .world__globe { position: absolute; z-index: 1; left: 50%; top: clamp(226px, 16.5vw, 250px); width: clamp(760px, 94%, 1400px); max-width: none; height: auto; transform: translateX(-50%);
+  .world__globe { position: absolute; z-index: 1; left: 50%; top: clamp(196px, 14vw, 206px); width: clamp(720px, 96%, 1000px); max-width: none; height: auto; transform: translateX(-50%);
     fill: none; stroke: rgba(214, 228, 245, 0.22); stroke-width: 1; overflow: visible; }
   .world__globe * { vector-effect: non-scaling-stroke; }
   .world__sphere { fill: #121317; stroke: rgba(214, 228, 245, 0.32); }
@@ -126,7 +126,7 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
 
   /* ---------- The four squares ---------- */
   .sq { aspect-ratio: 1 / 1; container-type: inline-size; }
-  .sq__vis { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; padding: 28px var(--pad) var(--pad); }
+  .sq__vis { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; padding: 20px var(--pad) var(--pad); }
 
   /* Photo squares: the picture fills the card, darkened at the top behind the text. */
   .card__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
@@ -136,14 +136,14 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
 
   /* Music */
   .sq--music { background: var(--surface); border: 1px solid var(--line); color: var(--text); }
-  .relp { position: relative; width: 100%; max-width: 440px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); text-align: left; }
+  .relp { position: relative; width: 100%; max-width: 400px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); text-align: left; }
   .relp__tag { position: absolute; top: 12px; right: 12px; padding: 2px 7px; border: 1px dashed var(--line-strong); border-radius: 4px; font-size: 10px; color: var(--text-3); }
   .relp__head { display: flex; align-items: center; gap: 14px; }
-  .relp__head img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
+  .relp__head img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
   .relp__title { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
   .relp__meta { margin: 2px 0 0; font-size: 13px; color: var(--text-3); }
-  .relp__credits { display: flex; flex-direction: column; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
-  .relp__credits li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 42px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .relp__credits { display: flex; flex-direction: column; margin: 10px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .relp__credits li { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 36px; border-bottom: 1px solid var(--line); font-size: 13px; }
   .relp__credits li:last-child { border-bottom: 0; }
   .relp__credits span { color: var(--text-3); }
   .relp__credits b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -155,11 +155,11 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
   .sq--charts .card__go { background: var(--c-paper-ink); color: var(--c-paper); }
   .sq--charts .sq__vis { align-items: flex-start; overflow: hidden; }
   .cities { display: flex; flex-direction: column; align-items: center; margin: 0; padding: 0; list-style: none; text-align: center;
-    font-size: clamp(1.5rem, 5.6cqw, 2.6rem); font-weight: 500; letter-spacing: -0.04em; line-height: 1.12; }
+    font-size: clamp(1.4rem, 5.6cqw, 2.2rem); font-weight: 500; letter-spacing: -0.04em; line-height: 1.12; }
   .cities li { opacity: var(--o); }
 
   /* ---------- Verified strip ---------- */
-  .vband { grid-column: 1 / -1; display: flex; align-items: center; gap: clamp(16px, 2.4vw, 28px); padding: clamp(22px, 2.6vw, 30px) clamp(24px, 3.4vw, 44px);
+  .vband { grid-column: 1 / -1; display: flex; align-items: center; gap: clamp(16px, 2.4vw, 28px); padding: clamp(18px, 2vw, 22px) clamp(22px, 3vw, 36px);
     border: 1px solid var(--c-paper-line); border-radius: 20px; background: var(--c-paper); color: var(--c-paper-ink); }
   .vband__text { flex: 1; min-width: 0; }
   .vband h2 { margin: 0; font-size: clamp(1.25rem, 1rem + 0.8vw, 1.6rem); font-weight: 500; letter-spacing: -0.03em; }
@@ -185,30 +185,21 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
     .sq--music:hover .relp { transform: translateY(-4px); box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.35); }
   }
 
-  /* Smaller desktops: same squares, a tighter release preview. */
-  @media (max-width: 1240px) {
-    .sq { --pad: 32px; }
-    .sq__vis { padding-top: 20px; }
-    .relp { padding: 14px; }
-    .relp__head img { width: 48px; height: 48px; }
-    .relp__credits { margin-top: 10px; }
-    .relp__credits li { min-height: 36px; grid-template-columns: 84px minmax(0, 1fr) auto; }
-  }
   /* Below this a square is too small to read: one column, heights follow content. */
   @media (max-width: 1000px) {
     .pt__grid { grid-template-columns: minmax(0, 1fr); }
     .sq { aspect-ratio: auto; }
-    .sq--studios, .sq--collective { min-height: 460px; }
+    .sq--studios, .sq--collective { min-height: 420px; }
     .sq__vis { padding: 28px var(--pad) var(--pad); }
     .cities { font-size: clamp(1.6rem, 6.4cqw, 2.4rem); }
   }
   @media (max-width: 760px) {
     .pt { padding-inline: 10px; }
-    .pt__grid { gap: 10px; }
+    .pt__grid { gap: 12px; }
     .card { border-radius: 16px; }
-    .world { height: 500px; }
+    .world { height: 430px; }
     /* Still oversized on phones: wider than the screen, cropped on both sides and the bottom. */
-    .world__globe { top: 196px; width: 170%; }
+    .world__globe { top: 176px; width: 170%; }
     .sq--studios, .sq--collective { min-height: 420px; }
     .vband { flex-wrap: wrap; }
     .vband__go { width: 100%; }

@@ -110,8 +110,11 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
   const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
   const menu = document.querySelector<HTMLElement>('[data-menu]');
   const overlay = header?.hasAttribute('data-overlay') ?? false;
-  // On the homepage the header floats over the dark globe hero, so it stays dark until it turns solid.
-  const tone = () => header?.classList.toggle('tone-dark', overlay && !header.classList.contains('is-solid') && !header.classList.contains('is-open'));
+  // On the homepage the header floats over the dark globe hero. It stays dark (clear, then dark glass)
+  // for as long as the hero is behind it, and only takes the page's own colour once the hero has scrolled away.
+  const hero = overlay ? document.querySelector<HTMLElement>('.hero') : null;
+  const overHero = () => !!hero && hero.getBoundingClientRect().bottom > (header?.offsetHeight ?? 72);
+  const tone = () => header?.classList.toggle('tone-dark', overlay && overHero() && !header.classList.contains('is-open'));
   if (header) {
     const onScroll = () => { header.classList.toggle('is-solid', window.scrollY > 24); tone(); };
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -169,11 +172,16 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
   }
   .hdr--overlay { position: fixed; inset: 0 0 auto; background: transparent; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
   .hdr--overlay.is-solid, .hdr.is-open { background: var(--glass-header); border-color: var(--line-faint); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); }
+  /* Still over the dark hero: dark glass, never a light bar across the globe. */
+  .hdr--overlay.is-solid.tone-dark { background: rgba(13, 13, 15, 0.55); border-color: rgba(255, 255, 255, 0.06); }
 
   /* backdrop-filter makes the header the containing block for the fixed menu, so drop it while open */
   .hdr.is-open { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .hdr__inner { display: flex; align-items: center; justify-content: space-between; gap: 32px; height: 72px; }
-  .hdr__brand { display: inline-flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  /* Three zones: logo | links | account. The equal outer columns keep the links centred on the viewport. */
+  .hdr__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 32px; height: 72px; }
+  .hdr__brand { display: inline-flex; align-items: center; gap: 12px; flex-shrink: 0; justify-self: start; grid-column: 1; }
+  .hdr__nav { grid-column: 2; }
+  .hdr__actions { grid-column: 3; justify-self: end; }
   .hdr__brand img { height: 22px; width: auto; }
 
   /* Each nav item fills the bar's full height, so the pointer never leaves it on the way down into its panel. */
