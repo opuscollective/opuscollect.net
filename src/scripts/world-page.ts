@@ -84,7 +84,7 @@ export function initWorld(root: HTMLElement) {
     // Keep the address short: the kind is the path, and a known city on its own is /world/<city>.
     const city = place && !f.kinds.length ? CITIES.find((c) => c.name === place!.name) : undefined;
     u.pathname = city ? `/world/${citySlug(city.name)}` : KIND_PATH[f.kinds[0] ?? ''];
-    u.searchParams.delete('type');
+    u.searchParams.delete('type'); u.searchParams.delete('view');
     set('q', f.text); set('specialty', f.specialty || ''); set('genre', f.genre); set('studio', f.studioType || '');
     set('collab', f.openToCollab ? '1' : ''); set('verified', f.verifiedOnly ? '1' : ''); set('city', city ? '' : place?.name); set('p', previewId);
     history.replaceState(history.state, '', u);
@@ -95,7 +95,9 @@ export function initWorld(root: HTMLElement) {
   const device = () => (mobile.matches ? 'mobile' : 'desktop');
   /** Phones have Map and List only; a saved Split means Map there. */
   const fit = (v: View | undefined): View => (mobile.matches ? (v === 'list' ? 'list' : v ? 'map' : 'list') : v ?? 'split');
-  let view: View = fit(readPref()[device()]);
+  // ?view=map|split|list (used by "Explore the World" on the homepage) wins over the saved choice for this visit.
+  const askedView = new URLSearchParams(location.search).get('view');
+  let view: View = fit((['map', 'split', 'list'] as const).find((v) => v === askedView) ?? readPref()[device()]);
 
   function setView(v: View, save = true) {
     v = fit(v);

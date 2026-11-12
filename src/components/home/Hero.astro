@@ -338,10 +338,22 @@ const topCities = CITIES.slice(0, 8);
     e.preventDefault();
     open(parse(input.value));
   });
-  hero.querySelector('[data-hero-open]')?.addEventListener('click', (e) => {
+  hero.querySelector<HTMLAnchorElement>('[data-hero-open]')?.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
+    // Phones go straight into the full World map; the camera dives in first so it feels like one move.
+    if (matchMedia('(max-width: 760px)').matches) {
+      const go = () => { location.href = '/world?view=map'; };
+      if (reduce || !api) return go();
+      hero.classList.add('is-diving', 'is-leaving');
+      api.dive();
+      setTimeout(go, 650);
+      return;
+    }
     openWorld('');
   });
+  // Coming back with the back button restores this page from cache: undo the dive.
+  addEventListener('pageshow', (e) => { if (e.persisted && hero.classList.contains('is-leaving')) { hero.classList.remove('is-diving', 'is-leaving'); api?.rise(); } });
   // Without the globe (no WebGL) these stay plain links to /musicians and /studios.
   hero.querySelectorAll<HTMLAnchorElement>('[data-hero-kind]').forEach((a) => a.addEventListener('click', (e) => {
     if (!api || e.metaKey || e.ctrlKey || e.shiftKey) return;
@@ -526,11 +538,12 @@ const topCities = CITIES.slice(0, 8);
     .opus-entry { display: contents; }
     .opus-entry__form, .opus-quick { display: none; }
     .opus-entry__kicker { margin: 0; font-size: 11px; }
+    /* The way in sits in the middle of the open space below the words, not at the very bottom. */
     .opus-entry__open { margin-top: auto; justify-content: center; min-height: 48px; padding: 0 24px; border: 0; border-radius: var(--r-pill); background: var(--c-white); color: var(--c-black); }
     .opus-entry__open:hover { border: 0; }
     .hero__desk { display: none; }
     .hero__phone { display: inline; }
-    .opus-entry__ask { display: inline-flex; align-items: center; min-height: 44px; margin-top: -4px; padding: 0 12px; border: 0; background: none; color: var(--text-2); font-size: 14px; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; }
+    .opus-entry__ask { display: inline-flex; align-items: center; min-height: 44px; margin-top: -4px; margin-bottom: auto; padding: 0 12px; border: 0; background: none; color: var(--text-2); font-size: 14px; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; }
     .opus-entry__ask:hover { color: var(--text); }
     /* Softer veil: the words sit above and below the globe now, not over its middle. */
     .hero__veil { background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent) 0%, transparent 28%, transparent 70%, color-mix(in srgb, var(--bg) 85%, transparent) 100%); }

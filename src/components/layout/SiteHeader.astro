@@ -199,7 +199,7 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
   .mega { position: absolute; left: 0; right: 0; top: 100%; z-index: -1; padding-block: 36px 48px;
     background: var(--bg); border-bottom: 1px solid var(--line-faint); box-shadow: 0 24px 48px -32px rgba(0, 0, 0, 0.35);
     opacity: 0; visibility: hidden; transform: translateY(-6px); pointer-events: none;
-    transition: opacity .22s var(--ease), transform .22s var(--ease), visibility 0s linear .22s; }
+    transition: opacity .38s var(--ease), transform .45s var(--ease-glide), visibility 0s linear .38s; }
   .hdr__item:hover .mega, .hdr__item.is-open .mega { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: .12s, .12s, 0s; }
   .hdr:has(.hdr__item:hover), .hdr:has(.hdr__item.is-open) { background: var(--bg); border-color: var(--line-faint); backdrop-filter: none; -webkit-backdrop-filter: none; }
   .mega__inner { display: grid; grid-template-columns: minmax(220px, 1.1fr) repeat(3, minmax(0, 1fr)); gap: 32px clamp(32px, 4vw, 72px); }
@@ -241,7 +241,7 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
   .mmenu nav { display: flex; flex-direction: column; min-height: 100%; padding-block: 20px 40px; gap: 20px; }
   .mmenu__actions { margin-top: auto; }
   .mmenu__list { display: flex; flex-direction: column; margin: 0; }
-  .mmenu__list li { border-bottom: 1px solid var(--line-faint); opacity: 0; transform: translateY(12px); transition: opacity .5s var(--ease), transform .5s var(--ease); transition-delay: calc(var(--i) * 50ms + 60ms); }
+  .mmenu__list li { border-bottom: 1px solid var(--line-faint); opacity: 0; transform: translateY(12px); transition: opacity .7s var(--ease), transform .8s var(--ease-glide); transition-delay: calc(var(--i) * 60ms + 80ms); }
   .is-open .mmenu__list li { opacity: 1; transform: none; }
   /* Large editorial type, as in the original menu. */
   .mmenu__list a { display: block; padding: 14px 0; font-size: clamp(30px, 8.5vw, 42px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; }

@@ -154,7 +154,7 @@ import Icon from '../ui/Icon.astro';
   .oa { position: fixed; z-index: 70; right: max(16px, env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom));
     display: flex; flex-direction: column; width: min(380px, calc(100vw - 32px)); max-height: min(560px, calc(100svh - 120px));
     background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.55);
-    opacity: 0; transform: translateY(10px); transition: opacity .2s var(--ease), transform .22s var(--ease); }
+    opacity: 0; transform: translateY(10px); transition: opacity .4s var(--ease), transform .5s var(--ease-glide); }
   .oa.is-open { opacity: 1; transform: none; }
   .oa__head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 14px 12px 18px; border-bottom: 1px solid var(--line-faint); }
   .oa__grab { display: none; }
@@ -188,8 +188,8 @@ import Icon from '../ui/Icon.astro';
     /* A round button on phones, label for screen readers only. */
     .oa-launch { width: 48px; height: 48px; padding: 0; justify-content: center; }
     .oa-launch__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    /* In World the map's sheet owns the bottom: sit just above it, and step aside when it opens. */
-    :global(body:has([data-world])) .oa-launch { bottom: calc(152px + 14px + env(safe-area-inset-bottom)); }
+    /* In World the sheet and the map zoom buttons own the bottom right: sit above them, and step aside when the sheet opens. */
+    :global(body:has([data-world])) .oa-launch { bottom: calc(152px + 96px + env(safe-area-inset-bottom)); }
     :global(body:has([data-sheet='half'], [data-sheet='full'])) .oa-launch { opacity: 0; pointer-events: none; }
     /* Room at the end of every page so the launcher never sits on the last links. */
     :global(body) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }

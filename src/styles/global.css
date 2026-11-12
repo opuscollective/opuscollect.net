@@ -71,14 +71,38 @@ button { cursor: pointer; }
 
 /* ---------- Reveal on scroll (enhancement only) ---------- */
 .js [data-reveal] {
-  opacity: 0; transform: translateY(24px);
-  transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+  opacity: 0; transform: translateY(28px); filter: blur(6px);
+  transition: opacity var(--dur-slow) var(--ease), transform 1.3s var(--ease-glide), filter var(--dur-slow) var(--ease);
   transition-delay: var(--d, 0s);
 }
-.js [data-reveal].is-in { opacity: 1; transform: none; }
+.js [data-reveal].is-in { opacity: 1; transform: none; filter: none; }
+
+/* ---------- Moving between pages ----------
+   Browsers that support cross-document view transitions fade one page into the next; the header
+   and the Opus launcher stay put. Others simply navigate as before. */
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: vt-out .32s var(--ease) both; }
+::view-transition-new(root) { animation: vt-in .6s var(--ease-glide) both; }
+@keyframes vt-out { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(10px); } }
+.hdr { view-transition-name: site-header; }
+/* The header doesn't fade or ghost between pages: it simply stays. */
+::view-transition-group(site-header) { animation: none; }
+::view-transition-old(site-header) { display: none; }
+::view-transition-new(site-header) { animation: none; }
+.oa-launch { view-transition-name: opus-launch; }
+
+/* ---------- Opening a page: its content settles in, in order ---------- */
+.js main > .app .app__wrap > * { animation: page-in .9s var(--ease-glide) both; }
+.js main > .app .app__wrap > :nth-child(2) { animation-delay: 60ms; }
+.js main > .app .app__wrap > :nth-child(3) { animation-delay: 120ms; }
+.js main > .app .app__wrap > :nth-child(4) { animation-delay: 180ms; }
+.js main > .app .app__wrap > :nth-child(n+5) { animation-delay: 240ms; }
+@keyframes page-in { from { opacity: 0; transform: translateY(14px); } }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-  .js [data-reveal] { opacity: 1; transform: none; }
+  .js [data-reveal] { opacity: 1; transform: none; filter: none; }
+  @view-transition { navigation: none; }
 }
