@@ -1,114 +1,266 @@
 ---
 /**
- * Everything Opus does, on the homepage, as tiles: two to a row on desktop, one on phones.
- * Each tile has one button to jump in and one to explore further. Only real destinations;
- * areas still in development say "Coming soon".
+ * The Opus products on the homepage. Each card: a name, one value statement, one action, and a
+ * look at the real product. Composition follows purpose: World is the wide lead card, Studios/Music
+ * and Charts/Collective sit in mirrored asymmetric pairs, and Opus Verified is a slim band.
+ * Only real destinations; Charts is in development and says so.
  */
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
+import Icon from '../ui/Icon.astro';
 
-interface Tile {
-  id: string; name: string; line: string; tone: 'dark' | 'light' | 'paper'; soon?: boolean;
-  go: { label: string; href: string }; more: { label: string; href: string };
-}
-const TILES: Tile[] = [
-  { id: 'world', name: 'World', line: 'The people behind the music, city by city.', tone: 'dark',
-    go: { label: 'Open World', href: '/world' }, more: { label: 'Find people', href: '/musicians' } },
-  { id: 'studios', name: 'Studios', line: 'Find a room. Request a session.', tone: 'dark',
-    go: { label: 'Find a studio', href: '/studios' }, more: { label: 'List your studio', href: '/business' } },
-  { id: 'music', name: 'Music', line: 'Start a release. Credit everyone who made it.', tone: 'light',
-    go: { label: 'Start a release', href: '/music' }, more: { label: 'Hear the catalog', href: '/releases' } },
-  { id: 'charts', name: 'Charts', line: 'Rising artists, city by city. No pay-to-rank.', tone: 'paper', soon: true,
-    go: { label: 'See what’s coming', href: '/charts' }, more: { label: 'Find artists now', href: '/musicians' } },
-  { id: 'verified', name: 'Opus Verified', line: 'Earned. Never bought.', tone: 'paper',
-    go: { label: 'How it works', href: '/verified' }, more: { label: 'Verified members', href: '/world?verified=1' } },
-  { id: 'collective', name: 'Collective', line: 'Beyond the platform.', tone: 'dark',
-    go: { label: 'Explore the Collective', href: '/collective' }, more: { label: 'Events', href: '/events' } },
-];
-const COVERS = ['/images/amazing-cover.jpg', '/images/releases/luciaism.jpg', '/images/scenic-cover.jpg'];
 const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
+const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
 ---
-<section class="tiles" aria-label="What you can do on Opus">
-  <div class="tiles__grid">
-    {TILES.map((t) => (
-      <article class:list={['tile', `tile--${t.id}`, `tile--${t.tone}`, { 'tone-dark': t.tone === 'dark' }]} aria-labelledby={`tile-${t.id}`} data-reveal>
-        <div class="tile__text">
-          <h2 class="tile__name" id={`tile-${t.id}`}>{t.name}{t.soon && <span class="tile__soon">Coming soon</span>}</h2>
-          <p class="tile__line">{t.line}</p>
-          <div class="tile__actions">
-            <a class="tile__btn tile__btn--go" href={t.go.href}>{t.go.label}</a>
-            <a class="tile__btn" href={t.more.href}>{t.more.label}</a>
-          </div>
+<section class="pt" aria-label="What you can do on Opus">
+  <div class="pt__grid">
+
+    <!-- World: the lead card, with a live look at the directory. -->
+    <article class="card card--world tone-dark" aria-labelledby="pt-world" data-reveal>
+      <div class="card__text">
+        <h2 class="card__name" id="pt-world">World</h2>
+        <p class="card__line">Discover your people. Anywhere.</p>
+        <ol class="journey" aria-label="How World works">
+          {STEPS.map((s, i) => <li><span>{String(i + 1).padStart(2, '0')}</span>{s}</li>)}
+        </ol>
+        <a class="card__go" href="/world">Explore World <Icon name="arrow-right" size={16} /></a>
+      </div>
+      <div class="dirp" aria-label="People on World right now">
+        <div class="dirp__bar">
+          <Icon name="search" size={15} />
+          <span>Producers, engineers, vocalists… by city</span>
         </div>
-        <div class="tile__media" aria-hidden="true">
-          {t.id === 'world' && (
-            <svg class="tile__globe" viewBox="0 0 400 400">
-              <circle cx="200" cy="200" r="180" />
-              <ellipse cx="200" cy="200" rx="60" ry="180" /><ellipse cx="200" cy="200" rx="120" ry="180" />
-              <ellipse cx="200" cy="200" rx="180" ry="60" /><ellipse cx="200" cy="200" rx="180" ry="120" />
-              <line x1="20" y1="200" x2="380" y2="200" /><line x1="200" y1="20" x2="200" y2="380" />
-              <g class="tile__dots"><circle cx="150" cy="168" r="5" /><circle cx="176" cy="176" r="4" /><circle cx="236" cy="134" r="4" /><circle cx="262" cy="248" r="4" /><circle cx="118" cy="222" r="3.5" /></g>
-            </svg>
-          )}
-          {t.id === 'studios' && <img src="/images/studio-control-room.jpg" alt="" loading="lazy" decoding="async" width="2000" height="1334" />}
-          {t.id === 'music' && (
-            <div class="tile__covers">{COVERS.map((c) => <img src={c} alt="" loading="lazy" decoding="async" />)}</div>
-          )}
-          {t.id === 'charts' && <ul class="tile__cities" role="list">{CITIES.map((c) => <li>{c}</li>)}</ul>}
-          {t.id === 'verified' && <VerifiedBadge size={140} tone="dark" />}
-          {t.id === 'collective' && <img src="/images/scenic-room.jpg" alt="" loading="lazy" decoding="async" width="1600" height="2400" />}
+        <ul class="dirp__list" role="list" data-dirp>
+          {[0, 1, 2, 3].map(() => <li class="dirp__skel" aria-hidden="true"><span></span><span></span></li>)}
+        </ul>
+        <p class="dirp__note" data-dirp-note hidden></p>
+      </div>
+    </article>
+
+    <!-- Studios: the room itself. -->
+    <article class="card card--studios tone-dark card--narrow" aria-labelledby="pt-studios" data-reveal>
+      <img class="card__photo" src="/images/studio-control-room.jpg" alt="" loading="lazy" decoding="async" width="2000" height="1334" />
+      <div class="card__text">
+        <h2 class="card__name" id="pt-studios">Studios</h2>
+        <p class="card__line">Recording rooms, engineers and studio services near you.</p>
+        <a class="card__go" href="/studios">Find a Studio <Icon name="arrow-right" size={16} /></a>
+      </div>
+    </article>
+
+    <!-- Music: what a release on Opus looks like. -->
+    <article class="card card--music card--wide" aria-labelledby="pt-music" data-reveal>
+      <div class="card__text">
+        <h2 class="card__name" id="pt-music">Music</h2>
+        <p class="card__line">Your releases, your credits, your record of work.</p>
+        <a class="card__go" href="/music">Explore Music <Icon name="arrow-right" size={16} /></a>
+      </div>
+      <div class="relp" aria-label="How a release looks on Opus (example)">
+        <span class="relp__tag">Example</span>
+        <div class="relp__head">
+          <img src="/images/scenic-cover.jpg" alt="" loading="lazy" decoding="async" />
+          <div><p class="relp__title">Scenic</p><p class="relp__meta">Bogo · Opus Collective</p></div>
         </div>
-      </article>
-    ))}
+        <ul class="relp__credits" role="list">
+          <li><span>Artist</span><b>Bogo</b><em class="is-ok">Confirmed</em></li>
+          <li><span>Producer</span><b class="is-open">Credit someone from World</b></li>
+          <li><span>Mix engineer</span><b class="is-open">Credit someone from World</b></li>
+        </ul>
+        <p class="relp__foot"><span class="relp__dot"></span>Shows on your profile once published</p>
+      </div>
+    </article>
+
+    <!-- Charts: honest coming soon. Cities only, no ranks or numbers. -->
+    <article class="card card--charts card--wide" aria-labelledby="pt-charts" data-reveal>
+      <div class="card__text">
+        <h2 class="card__name" id="pt-charts">Charts <span class="card__soon">Coming soon</span></h2>
+        <p class="card__line">Every city has a sound.</p>
+        <a class="card__go card__go--quiet" href="/charts">See what’s coming <Icon name="arrow-right" size={16} /></a>
+      </div>
+      <ul class="cities" role="list" aria-label="Charts will cover cities like these">
+        {CITIES.map((c) => <li>{c}</li>)}
+      </ul>
+    </article>
+
+    <!-- Collective: the people and the room. -->
+    <article class="card card--collective tone-dark card--narrow" aria-labelledby="pt-collective" data-reveal>
+      <img class="card__photo" src="/images/scenic-room.jpg" alt="" loading="lazy" decoding="async" width="1600" height="2400" />
+      <div class="card__text">
+        <h2 class="card__name" id="pt-collective">Collective</h2>
+        <p class="card__line">Beyond the platform.</p>
+        <a class="card__go" href="/collective">Explore the Collective <Icon name="arrow-right" size={16} /></a>
+      </div>
+    </article>
+
+    <!-- Opus Verified: a quiet band, not a product card. -->
+    <aside class="vband" aria-labelledby="pt-verified" data-reveal>
+      <VerifiedBadge size={36} tone="dark" />
+      <div class="vband__text">
+        <h2 id="pt-verified">Opus Verified. <span>Earned. Never bought.</span></h2>
+        <p>Recognition for real, reviewed work. Paying for Opus never earns or changes it.</p>
+      </div>
+      <a class="vband__go" href="/verified">Learn about verification <Icon name="arrow-right" size={16} /></a>
+    </aside>
   </div>
 </section>
 
+<script>
+  // A real look at World: a few people and studios from the live directory (preview builds label samples).
+  import { badgeHtml, metaText, placeText, initials, esc, mainImage } from '@/lib/world';
+  import { imageHtml, installImageFallbacks } from '@/lib/media';
+  import type { Listing } from '@/types/directory';
+
+  const list = document.querySelector<HTMLElement>('[data-dirp]');
+  const note = document.querySelector<HTMLElement>('[data-dirp-note]');
+
+  function pick(all: Listing[]): Listing[] {
+    // One of each kind of professional first, so the preview shows the range of people on Opus.
+    const seen = new Set<string>(); const out: Listing[] = [];
+    for (const l of all) {
+      const key = l.kind === 'musician' ? l.primarySpecialty : l.kind;
+      if (seen.has(key)) continue;
+      seen.add(key); out.push(l);
+      if (out.length === 4) break;
+    }
+    return out;
+  }
+
+  async function load() {
+    if (!list) return;
+    try {
+      const { loadListings } = await import('@/scripts/hero-dive');
+      const rows = pick(await loadListings());
+      if (!rows.length) {
+        list.innerHTML = '';
+        if (note) { note.hidden = false; note.textContent = 'World is just opening. Members appear here as soon as they publish a profile.'; }
+        return;
+      }
+      list.innerHTML = rows.map((l) => {
+        const img = imageHtml({ src: mainImage(l), seed: l.id, kind: l.kind, ratio: 'square', label: l.isSample ? undefined : initials(l.name) });
+        const sample = l.isSample ? '<span class="dirp__sample">Sample</span>' : '';
+        return '<li><a class="dirp__row" href="/world?p=' + encodeURIComponent(l.id) + '">' + img
+          + '<span class="dirp__txt"><span class="dirp__name">' + esc(l.name) + badgeHtml(l) + sample + '</span>'
+          + '<span class="dirp__meta">' + esc(metaText(l)) + ' · ' + esc(placeText(l)) + '</span></span>'
+          + '<span class="dirp__act">View</span></a></li>';
+      }).join('');
+      installImageFallbacks(list);
+      if (note && rows.some((l) => l.isSample)) { note.hidden = false; note.textContent = 'Preview build: listings marked Sample are not real members.'; }
+    } catch {
+      list.innerHTML = '';
+      if (note) { note.hidden = false; note.textContent = 'Open World to browse the directory.'; }
+    }
+  }
+  // Load when the card comes near the screen, not on page load.
+  if (list) {
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); load(); } }, { rootMargin: '400px' });
+    io.observe(list);
+  }
+</script>
+
 <style>
-  .tiles { padding: 12px; background: var(--bg); }
-  .tiles__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .tile { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center;
-    min-height: clamp(520px, 72vh, 700px); padding: clamp(40px, 5vw, 60px) 24px 0; text-align: center; border-radius: 4px; }
-  .tile--dark { background: #0d0d0f; color: var(--text); }
-  .tile--light { background: var(--surface); color: var(--text); }
-  .tile--paper { background: var(--c-paper); color: var(--c-paper-ink); }
+  .pt { padding: 16px var(--gutter) clamp(40px, 6vw, 72px); background: var(--bg); }
+  .pt__grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; max-width: 1480px; margin-inline: auto; }
 
-  .tile__text { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .tile__name { display: inline-flex; align-items: center; gap: 12px; font-size: clamp(2rem, 1.3rem + 2vw, 3rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.05; }
-  .tile__soon { padding: 4px 9px; border: 1px solid currentColor; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
-  .tile__line { margin: 0; max-width: 30ch; font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.3rem); letter-spacing: -0.02em; opacity: 0.8; }
-  .tile__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
-  .tile__btn { display: inline-flex; align-items: center; height: 38px; padding: 0 18px; border-radius: var(--r-pill); border: 1px solid currentColor; font-size: 14px; font-weight: 500; white-space: nowrap; transition: opacity var(--dur) var(--ease), background var(--dur) var(--ease); }
-  .tile__btn:hover { opacity: 0.75; }
-  /* The filled button's label takes the tile's background colour. */
-  .tile--dark .tile__btn--go { background: var(--text); color: #0d0d0f; border-color: var(--text); }
-  .tile--light .tile__btn--go { background: var(--text); color: var(--surface); border-color: var(--text); }
-  .tile--paper .tile__btn--go { background: var(--c-paper-ink); color: var(--c-paper); border-color: var(--c-paper-ink); }
-  .tile__btn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  .card { position: relative; isolation: isolate; overflow: hidden; display: flex; border-radius: 20px; min-height: clamp(380px, 48vh, 480px); }
+  .card--world { grid-column: 1 / -1; background: #0d0d0f; border: 1px solid #1f2024; }
+  .card--narrow { grid-column: span 5; }
+  .card--wide { grid-column: span 7; }
+  .card--music, .card--charts { background: var(--surface); border: 1px solid var(--line); color: var(--text); }
+  .card--charts { background: var(--c-paper); color: var(--c-paper-ink); border-color: var(--c-paper-line); }
 
-  .tile__media { position: relative; flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-top: 28px; }
-  .tile--studios .tile__media, .tile--collective .tile__media { position: absolute; inset: 0; margin: 0; z-index: -1; }
-  .tile--studios img, .tile--collective img { width: 100%; height: 100%; object-fit: cover; }
-  .tile--studios .tile__media::after, .tile--collective .tile__media::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,8,10,.86) 0%, rgba(8,8,10,.45) 42%, rgba(8,8,10,.1) 100%); }
-  .tile--collective img { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
+  .card__text { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: clamp(28px, 3.4vw, 44px); }
+  .card__name { display: inline-flex; align-items: center; gap: 12px; margin: 0; font-size: clamp(1.9rem, 1.2rem + 1.9vw, 2.75rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1; }
+  .card__line { margin: 0; max-width: 26ch; font-size: clamp(1.05rem, 0.95rem + 0.35vw, 1.25rem); letter-spacing: -0.02em; line-height: 1.3; opacity: 0.78; }
+  .card__soon { padding: 4px 9px; border: 1px solid currentColor; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+  .card__go { display: inline-flex; align-items: center; gap: 8px; height: 42px; margin-top: 10px; padding: 0 18px; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; transition: gap var(--dur) var(--ease), opacity var(--dur) var(--ease); }
+  .card__go:hover { gap: 12px; }
+  .card--charts .card__go { background: var(--c-paper-ink); color: var(--c-paper); }
+  .card__go--quiet { background: none !important; color: inherit !important; padding: 0; height: 40px; border-bottom: 1px solid currentColor; border-radius: 0; }
+  .card__go:focus-visible, .vband__go:focus-visible, .dirp__row:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  .tone-dark .card__go { background: var(--text); color: #0d0d0f; }
 
-  .tile__globe { width: min(88%, 420px); margin-bottom: -22%; fill: none; stroke: rgba(214, 228, 245, 0.22); stroke-width: 1; }
-  .tile__globe > circle:first-child { fill: #121317; stroke: rgba(214, 228, 245, 0.3); }
-  .tile__dots circle { fill: #d6e4f5; stroke: none; }
+  /* Photo cards: text over the picture, bottom-left. */
+  .card__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
+  .card--studios, .card--collective { align-items: flex-end; color: var(--text); }
+  .card--studios::after, .card--collective::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, rgba(8, 8, 10, 0.9) 0%, rgba(8, 8, 10, 0.35) 55%, rgba(8, 8, 10, 0.05) 100%); }
+  .card--collective .card__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
 
-  .tile__covers { position: relative; width: min(80%, 420px); aspect-ratio: 1.6; margin-bottom: 40px; }
-  .tile__covers img { position: absolute; bottom: 0; width: 56%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; box-shadow: 0 24px 50px -20px rgba(0,0,0,.45); }
-  .tile__covers img:nth-child(1) { left: 0; transform: rotate(-6deg); }
-  .tile__covers img:nth-child(2) { left: 22%; z-index: 2; bottom: 6%; }
-  .tile__covers img:nth-child(3) { right: 0; transform: rotate(6deg); }
+  /* ---------- World ---------- */
+  .card--world { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; color: var(--text);
+    background: radial-gradient(120% 90% at 100% 0%, rgba(169, 199, 236, 0.10), transparent 60%), #0d0d0f; }
+  .journey { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 2px; padding: 0; list-style: none; font-size: 14px; color: var(--text-2); }
+  .journey li { display: inline-flex; align-items: baseline; gap: 8px; }
+  .journey span { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+  .dirp { align-self: stretch; display: flex; flex-direction: column; gap: 8px; margin: clamp(20px, 3vw, 36px) clamp(20px, 3vw, 36px) clamp(20px, 3vw, 36px) 0; padding: 14px;
+    border: 1px solid #23252a; border-radius: 16px; background: rgba(22, 23, 27, 0.8); }
+  .dirp__bar { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-radius: 12px; background: #1b1c20; color: var(--text-3); font-size: 14px; }
+  .dirp__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+  .dirp__list :global(.dirp__row) { display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 12px; }
+  .dirp__list :global(.dirp__row:hover) { background: #1b1c20; }
+  .dirp__list :global(.im) { position: relative; flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #1b1c20; }
+  .dirp__list :global(.im img) { width: 100%; height: 100%; object-fit: cover; }
+  .dirp__list :global(.im__label) { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--text-3); }
+  .dirp__list :global(.dirp__txt) { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .dirp__list :global(.dirp__name) { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 500; color: var(--text); }
+  .dirp__list :global(.dirp__meta) { font-size: 13px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dirp__list :global(.dirp__sample) { padding: 1px 6px; border: 1px dashed var(--line-strong); border-radius: 4px; font-size: 10px; color: var(--text-3); }
+  .dirp__list :global(.dirp__act) { flex-shrink: 0; padding: 6px 12px; border: 1px solid #2c2e34; border-radius: var(--r-pill); font-size: 12px; color: var(--text-2); }
+  .dirp__list :global(.vb) { display: inline-flex; width: 14px; height: 14px; }
+  .dirp__list :global(.vb svg) { width: 100%; height: 100%; }
+  .dirp__list :global(.vb .s) { fill: var(--c-accent); }
+  .dirp__list :global(.vb .c) { fill: none; stroke: var(--c-accent-ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .dirp__skel { display: flex; align-items: center; gap: 14px; height: 68px; padding: 10px; }
+  .dirp__skel span:first-child { width: 48px; height: 48px; border-radius: 50%; background: #1b1c20; }
+  .dirp__skel span:last-child { width: 45%; height: 12px; border-radius: 6px; background: #1b1c20; }
+  .dirp__note { margin: 0 10px; font-size: 12px; color: var(--text-3); }
 
-  .tile__cities { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0 0 40px; padding: 0; list-style: none; font-size: clamp(1.6rem, 1rem + 2vw, 2.6rem); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; }
-  .tile__cities li:nth-child(1) { opacity: .9; } .tile__cities li:nth-child(2) { opacity: .7; } .tile__cities li:nth-child(3) { opacity: .5; }
-  .tile__cities li:nth-child(4) { opacity: .35; } .tile__cities li:nth-child(5) { opacity: .22; } .tile__cities li:nth-child(6) { opacity: .12; }
+  /* ---------- Music ---------- */
+  .card--music { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: center; }
+  .relp { position: relative; margin: 24px 28px 24px 0; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); }
+  .relp__tag { position: absolute; top: 12px; right: 12px; padding: 2px 7px; border: 1px dashed var(--line-strong); border-radius: 4px; font-size: 10px; color: var(--text-3); }
+  .relp__head { display: flex; align-items: center; gap: 14px; }
+  .relp__head img { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; }
+  .relp__title { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
+  .relp__meta { margin: 2px 0 0; font-size: 13px; color: var(--text-3); }
+  .relp__credits { display: flex; flex-direction: column; margin: 16px 0 12px; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .relp__credits li { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 44px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .relp__credits span { color: var(--text-3); }
+  .relp__credits b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .relp__credits b.is-open { font-weight: 400; color: var(--accent); }
+  .relp__credits em { font-style: normal; font-size: 11px; padding: 2px 8px; border-radius: var(--r-pill); }
+  .relp__credits em.is-ok { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+  .relp__foot { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; color: var(--text-3); }
+  .relp__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
-  .tile--verified .tile__media { align-items: center; margin-bottom: 40px; }
+  /* ---------- Charts ---------- */
+  .card--charts { justify-content: space-between; }
+  .cities { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; margin: 0; padding: clamp(28px, 3.4vw, 44px); list-style: none;
+    font-size: clamp(1.4rem, 0.9rem + 1.7vw, 2.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.08; text-align: right; }
+  .cities li:nth-child(1) { opacity: 0.9; } .cities li:nth-child(2) { opacity: 0.68; } .cities li:nth-child(3) { opacity: 0.48; }
+  .cities li:nth-child(4) { opacity: 0.32; } .cities li:nth-child(5) { opacity: 0.2; } .cities li:nth-child(6) { opacity: 0.11; }
 
+  /* ---------- Verified band ---------- */
+  .vband { grid-column: 1 / -1; display: flex; align-items: center; gap: clamp(16px, 2.4vw, 28px); padding: clamp(22px, 2.6vw, 30px) clamp(24px, 3.4vw, 44px);
+    border: 1px solid var(--c-paper-line); border-radius: 20px; background: var(--c-paper); color: var(--c-paper-ink); }
+  .vband__text { flex: 1; min-width: 0; }
+  .vband h2 { margin: 0; font-size: clamp(1.25rem, 1rem + 0.8vw, 1.6rem); font-weight: 500; letter-spacing: -0.03em; }
+  .vband h2 span { color: var(--c-paper-muted); }
+  .vband p { margin: 4px 0 0; font-size: 14px; color: var(--c-paper-muted); }
+  .vband__go { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; min-height: 44px; font-size: 15px; font-weight: 500; border-bottom: 1px solid currentColor; }
+  .vband__go:hover { opacity: 0.7; }
+
+  @media (max-width: 980px) {
+    .card--narrow, .card--wide { grid-column: 1 / -1; }
+    .card--world { grid-template-columns: minmax(0, 1fr); }
+    .dirp { margin: 0 16px 16px; }
+    .card--music { grid-template-columns: minmax(0, 1fr); }
+    .relp { margin: 0 16px 16px; }
+  }
   @media (max-width: 760px) {
-    .tiles { padding: 8px; }
-    .tiles__grid { grid-template-columns: 1fr; gap: 8px; }
-    .tile { min-height: 480px; padding-top: 44px; }
+    .pt { padding-inline: 10px; }
+    .pt__grid { gap: 10px; }
+    .card { min-height: 360px; border-radius: 16px; }
+    .card--charts { flex-direction: column; }
+    .cities { align-items: flex-start; text-align: left; padding-top: 0; }
+    .vband { flex-wrap: wrap; }
+    .vband__go { width: 100%; }
   }
 </style>
