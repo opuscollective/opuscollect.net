@@ -1,56 +1,51 @@
 ---
 /**
- * The Opus products on the homepage. Each card: a name, one value statement, one action, and a
- * look at the real product. World is the full-width lead card, Studios/Music/Charts/Collective are
- * four equal squares (2x2), and Opus Verified is a slim band.
- * Only real destinations; Charts is in development and says so.
+ * The Opus products on the homepage. One full-width World card with an oversized wireframe globe
+ * that the card crops, four equal centered squares (Studios, Music / Charts, Collective), and a
+ * slim Opus Verified strip. Each card: a name, one line, one action. Only real destinations;
+ * Charts is in development and says so.
  */
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
 import Icon from '../ui/Icon.astro';
 
 const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
-const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
-const OPACITY = [0.9, 0.68, 0.48, 0.32, 0.2, 0.11];
+const OPACITY = [0.9, 0.7, 0.5, 0.35, 0.22, 0.12];
+// Wireframe globe markers (viewBox units). Decorative, not real member locations.
+const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 98, 1.2], [292, 108, 1.3], [206, 128, 1.9], [104, 150, 1.1], [326, 146, 1.2], [158, 168, 1.6], [262, 190, 1.2], [118, 222, 1.1], [236, 240, 1.3]];
 ---
 <section class="pt" aria-label="What you can do on Opus">
   <div class="pt__grid">
 
-    <!-- World: the lead card, with a live look at the directory. -->
-    <article class="card card--world tone-dark" aria-labelledby="pt-world" data-reveal>
-      <div class="card__text">
+    <!-- World: the flagship. The globe is bigger than the card; the card shows only its top. -->
+    <article class="card world tone-dark" aria-labelledby="pt-world" data-reveal>
+      <div class="ctext">
         <h2 class="card__name" id="pt-world">World</h2>
-        <p class="card__line">Discover your people. Anywhere.</p>
-        <ol class="journey" aria-label="How World works">
-          {STEPS.map((s, i) => <li><span>{String(i + 1).padStart(2, '0')}</span>{s}</li>)}
-        </ol>
-        <a class="card__go" href="/world">Explore World <Icon name="arrow-right" size={16} /></a>
+        <p class="card__line">Make connections around the world.</p>
+        <a class="card__go" href="/world">Make Connections <Icon name="arrow-right" size={16} /></a>
       </div>
-      <div class="dirp" aria-label="People on World right now">
-        <div class="dirp__bar">
-          <Icon name="search" size={15} />
-          <span>Producers, engineers, vocalists… by city</span>
-        </div>
-        <ul class="dirp__list" role="list" data-dirp>
-          {[0, 1, 2, 3].map(() => <li class="dirp__skel" aria-hidden="true"><span></span><span></span></li>)}
-        </ul>
-        <p class="dirp__note" data-dirp-note hidden></p>
-      </div>
+      <svg class="world__globe" viewBox="0 0 400 400" aria-hidden="true" focusable="false">
+        <circle class="world__sphere" cx="200" cy="200" r="180" />
+        <ellipse cx="200" cy="200" rx="60" ry="180" /><ellipse cx="200" cy="200" rx="120" ry="180" />
+        <ellipse cx="200" cy="200" rx="180" ry="60" /><ellipse cx="200" cy="200" rx="180" ry="120" />
+        <line x1="20" y1="200" x2="380" y2="200" /><line x1="200" y1="20" x2="200" y2="380" />
+        <g class="world__dots">{DOTS.map(([x, y, r]) => <circle cx={x} cy={y} r={r} />)}</g>
+      </svg>
     </article>
 
-    <!-- Four equal squares. Same size, padding, heading and action position; each keeps its own look. -->
+    <!-- Four equal squares: centered name, line and action on top, the product's visual below or behind. -->
     <article class="card sq sq--studios tone-dark" aria-labelledby="pt-studios" data-reveal>
       <img class="card__photo" src="/images/studio-control-room.jpg" alt="" loading="lazy" decoding="async" width="2000" height="1334" />
-      <div class="sq__text">
+      <div class="ctext">
         <h2 class="card__name" id="pt-studios">Studios</h2>
-        <p class="card__line">Recording rooms, engineers and studio services near you.</p>
+        <p class="card__line">Find your next session.</p>
         <a class="card__go" href="/studios">Find a Studio <Icon name="arrow-right" size={16} /></a>
       </div>
     </article>
 
     <article class="card sq sq--music" aria-labelledby="pt-music" data-reveal style="--d:0.08s">
-      <div class="sq__text">
+      <div class="ctext">
         <h2 class="card__name" id="pt-music">Music</h2>
-        <p class="card__line">Your releases, your credits, your record of work.</p>
+        <p class="card__line">Your releases. Your credits.</p>
         <a class="card__go" href="/music">Explore Music <Icon name="arrow-right" size={16} /></a>
       </div>
       <div class="sq__vis">
@@ -65,14 +60,13 @@ const OPACITY = [0.9, 0.68, 0.48, 0.32, 0.2, 0.11];
             <li style="--i:1"><span>Producer</span><b class="is-open">Credit someone from World</b></li>
             <li style="--i:2"><span>Mix engineer</span><b class="is-open">Credit someone from World</b></li>
           </ul>
-          <p class="relp__foot"><span class="relp__dot"></span>Shows on your profile once published</p>
         </div>
       </div>
     </article>
 
-    <!-- Charts: honest coming soon. Cities only, no ranks or numbers. -->
+    <!-- Charts: honest coming soon. A decorative list of cities, not rankings. -->
     <article class="card sq sq--charts" aria-labelledby="pt-charts" data-reveal>
-      <div class="sq__text">
+      <div class="ctext">
         <h2 class="card__name" id="pt-charts">Charts <span class="card__soon">Coming soon</span></h2>
         <p class="card__line">Every city has a sound.</p>
         <a class="card__go" href="/charts">See what’s coming <Icon name="arrow-right" size={16} /></a>
@@ -86,14 +80,14 @@ const OPACITY = [0.9, 0.68, 0.48, 0.32, 0.2, 0.11];
 
     <article class="card sq sq--collective tone-dark" aria-labelledby="pt-collective" data-reveal style="--d:0.08s">
       <img class="card__photo" src="/images/scenic-room.jpg" alt="" loading="lazy" decoding="async" width="1600" height="2400" />
-      <div class="sq__text">
+      <div class="ctext">
         <h2 class="card__name" id="pt-collective">Collective</h2>
         <p class="card__line">Beyond the platform.</p>
         <a class="card__go" href="/collective">Explore the Collective <Icon name="arrow-right" size={16} /></a>
       </div>
     </article>
 
-    <!-- Opus Verified: a quiet band, not a product card. -->
+    <!-- Opus Verified: a quiet strip, not a product card. -->
     <aside class="vband" aria-labelledby="pt-verified" data-reveal>
       <VerifiedBadge size={36} tone="dark" />
       <div class="vband__text">
@@ -105,145 +99,66 @@ const OPACITY = [0.9, 0.68, 0.48, 0.32, 0.2, 0.11];
   </div>
 </section>
 
-<script>
-  // A real look at World: a few people and studios from the live directory (preview builds label samples).
-  import { badgeHtml, metaText, placeText, initials, esc, mainImage } from '@/lib/world';
-  import { imageHtml, installImageFallbacks } from '@/lib/media';
-  import type { Listing } from '@/types/directory';
-
-  const list = document.querySelector<HTMLElement>('[data-dirp]');
-  const note = document.querySelector<HTMLElement>('[data-dirp-note]');
-
-  function pick(all: Listing[]): Listing[] {
-    // One of each kind of professional first, so the preview shows the range of people on Opus.
-    const seen = new Set<string>(); const out: Listing[] = [];
-    for (const l of all) {
-      const key = l.kind === 'musician' ? l.primarySpecialty : l.kind;
-      if (seen.has(key)) continue;
-      seen.add(key); out.push(l);
-      if (out.length === 4) break;
-    }
-    return out;
-  }
-
-  async function load() {
-    if (!list) return;
-    try {
-      const { loadListings } = await import('@/scripts/hero-dive');
-      const rows = pick(await loadListings());
-      if (!rows.length) {
-        list.innerHTML = '';
-        if (note) { note.hidden = false; note.textContent = 'World is just opening. Members appear here as soon as they publish a profile.'; }
-        return;
-      }
-      list.innerHTML = rows.map((l, i) => {
-        const img = imageHtml({ src: mainImage(l), seed: l.id, kind: l.kind, ratio: 'square', label: l.isSample ? undefined : initials(l.name) });
-        const sample = l.isSample ? '<span class="dirp__sample">Sample</span>' : '';
-        return '<li class="dirp__in" style="--i:' + i + '"><a class="dirp__row" href="/world?p=' + encodeURIComponent(l.id) + '">' + img
-          + '<span class="dirp__txt"><span class="dirp__name">' + esc(l.name) + badgeHtml(l) + sample + '</span>'
-          + '<span class="dirp__meta">' + esc(metaText(l)) + ' · ' + esc(placeText(l)) + '</span></span>'
-          + '<span class="dirp__act">View</span></a></li>';
-      }).join('');
-      installImageFallbacks(list);
-      if (note && rows.some((l) => l.isSample)) { note.hidden = false; note.textContent = 'Preview build: listings marked Sample are not real members.'; }
-    } catch {
-      list.innerHTML = '';
-      if (note) { note.hidden = false; note.textContent = 'Open World to browse the directory.'; }
-    }
-  }
-  // Load when the card comes near the screen, not on page load.
-  if (list) {
-    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); load(); } }, { rootMargin: '400px' });
-    io.observe(list);
-  }
-</script>
-
 <style>
   .pt { padding: 16px var(--gutter) clamp(40px, 6vw, 72px); background: var(--bg); }
-  .pt__grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; max-width: 1480px; margin-inline: auto; }
+  .pt__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 1480px; margin-inline: auto; }
 
-  .card { position: relative; isolation: isolate; overflow: hidden; display: flex; border-radius: 20px; min-height: clamp(380px, 48vh, 480px); }
-  .card--world { grid-column: 1 / -1; background: #0d0d0f; border: 1px solid #1f2024; }
-  .sq--music { background: var(--surface); border: 1px solid var(--line); color: var(--text); }
-  .sq--charts { background: var(--c-paper); color: var(--c-paper-ink); border: 1px solid var(--c-paper-line); }
+  .card { --pad: clamp(36px, 4vw, 60px); position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center; border-radius: 20px; }
 
-  .card__text { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: clamp(28px, 3.4vw, 44px); }
-  .card__name { display: inline-flex; align-items: center; gap: 12px; margin: 0; font-size: clamp(1.9rem, 1.2rem + 1.9vw, 2.75rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1; }
-  .card__line { margin: 0; max-width: 26ch; font-size: clamp(1.05rem, 0.95rem + 0.35vw, 1.25rem); letter-spacing: -0.02em; line-height: 1.3; opacity: 0.78; }
+  /* Centered text block, the same in every card. */
+  .ctext { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: var(--pad) 24px 0; text-align: center; }
+  .card__name { display: inline-flex; align-items: center; gap: 12px; margin: 0; font-size: clamp(2rem, 1.3rem + 2vw, 3rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.05; }
+  .card__line { margin: 0; max-width: 30ch; font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.3rem); letter-spacing: -0.02em; line-height: 1.3; opacity: 0.8; }
   .card__soon { padding: 4px 9px; border: 1px solid currentColor; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
-  .card__go { display: inline-flex; align-items: center; gap: 8px; height: 42px; margin-top: 10px; padding: 0 18px; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; transition: gap var(--dur) var(--ease), opacity var(--dur) var(--ease); }
+  .card__go { display: inline-flex; align-items: center; gap: 8px; height: 42px; margin-top: 10px; padding: 0 20px; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; white-space: nowrap; transition: gap var(--dur) var(--ease); }
   .card__go:hover { gap: 12px; }
-  .sq--charts .card__go { background: var(--c-paper-ink); color: var(--c-paper); }
-  .card__go:focus-visible, .vband__go:focus-visible, .dirp__row:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
   .tone-dark .card__go { background: var(--text); color: #0d0d0f; }
-
-  /* ---------- The four squares ----------
-     Same box, padding, heading size and action spot (bottom-left) on all four.
-     The product's own visual fills the space above the text. */
-  .sq { --pad: clamp(28px, 2.8vw, 44px); grid-column: span 6; aspect-ratio: 1 / 1; min-height: 0; flex-direction: column; justify-content: flex-end; }
-  .sq__text { position: relative; z-index: 2; order: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 var(--pad) var(--pad); }
-  .sq__text .card__line { min-height: 2.6em; }
-  .sq__vis { order: 1; flex: 1; min-height: 0; display: flex; padding: var(--pad) var(--pad) 8px; }
-
-  /* Photo squares: text over the picture. */
-  .card__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
-  .sq--studios, .sq--collective { color: var(--text); }
-  .sq--studios::after, .sq--collective::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, rgba(8, 8, 10, 0.9) 0%, rgba(8, 8, 10, 0.35) 55%, rgba(8, 8, 10, 0.05) 100%); }
-  .sq--collective .card__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
+  .card__go:focus-visible, .vband__go:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
 
   /* ---------- World ---------- */
-  .card--world { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; color: var(--text);
-    background: radial-gradient(120% 90% at 100% 0%, rgba(169, 199, 236, 0.10), transparent 60%), #0d0d0f; }
-  .journey { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 2px; padding: 0; list-style: none; font-size: 14px; color: var(--text-2); }
-  .journey li { display: inline-flex; align-items: baseline; gap: 8px; }
-  .journey span { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
-  .dirp { align-self: stretch; display: flex; flex-direction: column; gap: 8px; margin: clamp(20px, 3vw, 36px) clamp(20px, 3vw, 36px) clamp(20px, 3vw, 36px) 0; padding: 14px;
-    border: 1px solid #23252a; border-radius: 16px; background: rgba(22, 23, 27, 0.8); }
-  .dirp__bar { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-radius: 12px; background: #1b1c20; color: var(--text-3); font-size: 14px; }
-  .dirp__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-  .dirp__list :global(.dirp__row) { display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 12px; }
-  .dirp__list :global(.dirp__row:hover) { background: #1b1c20; }
-  .dirp__list :global(.im) { position: relative; flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #1b1c20; }
-  .dirp__list :global(.im img) { width: 100%; height: 100%; object-fit: cover; }
-  .dirp__list :global(.im__label) { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--text-3); }
-  .dirp__list :global(.dirp__txt) { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .dirp__list :global(.dirp__name) { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 500; color: var(--text); }
-  .dirp__list :global(.dirp__meta) { font-size: 13px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .dirp__list :global(.dirp__sample) { padding: 1px 6px; border: 1px dashed var(--line-strong); border-radius: 4px; font-size: 10px; color: var(--text-3); }
-  .dirp__list :global(.dirp__act) { flex-shrink: 0; padding: 6px 12px; border: 1px solid #2c2e34; border-radius: var(--r-pill); font-size: 12px; color: var(--text-2); }
-  .dirp__list :global(.vb) { display: inline-flex; width: 14px; height: 14px; }
-  .dirp__list :global(.vb svg) { width: 100%; height: 100%; }
-  .dirp__list :global(.vb .s) { fill: var(--c-accent); }
-  .dirp__list :global(.vb .c) { fill: none; stroke: var(--c-accent-ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-  .dirp__skel { display: flex; align-items: center; gap: 14px; height: 68px; padding: 10px; }
-  .dirp__skel span:first-child { width: 48px; height: 48px; border-radius: 50%; background: #1b1c20; }
-  .dirp__skel span:last-child { width: 45%; height: 12px; border-radius: 6px; background: #1b1c20; }
-  .dirp__note { margin: 0 10px; font-size: 12px; color: var(--text-3); }
+  .world { grid-column: 1 / -1; height: clamp(560px, 48vw, 740px); background: radial-gradient(70% 60% at 50% 100%, rgba(169, 199, 236, 0.08), transparent 70%), #0d0d0f; border: 1px solid #1f2024; color: var(--text); }
+  /* Far wider than it can show: only the top of the sphere is inside the card. */
+  .world__globe { position: absolute; z-index: 1; left: 50%; top: clamp(226px, 16.5vw, 250px); width: clamp(760px, 94%, 1400px); max-width: none; height: auto; transform: translateX(-50%);
+    fill: none; stroke: rgba(214, 228, 245, 0.22); stroke-width: 1; overflow: visible; }
+  .world__globe * { vector-effect: non-scaling-stroke; }
+  .world__sphere { fill: #121317; stroke: rgba(214, 228, 245, 0.32); }
+  .world__dots circle { fill: #d6e4f5; stroke: none; }
 
-  /* ---------- Music ---------- */
-  .sq--music .sq__vis { align-items: center; justify-content: center; }
-  .relp { position: relative; width: 100%; max-width: 460px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); }
+  /* ---------- The four squares ---------- */
+  .sq { aspect-ratio: 1 / 1; container-type: inline-size; }
+  .sq__vis { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; padding: 28px var(--pad) var(--pad); }
+
+  /* Photo squares: the picture fills the card, darkened at the top behind the text. */
+  .card__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
+  .sq--studios, .sq--collective { background: #0d0d0f; color: var(--text); }
+  .sq--studios::after, .sq--collective::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8, 8, 10, 0.86) 0%, rgba(8, 8, 10, 0.45) 42%, rgba(8, 8, 10, 0.1) 100%); }
+  .sq--collective .card__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
+
+  /* Music */
+  .sq--music { background: var(--surface); border: 1px solid var(--line); color: var(--text); }
+  .relp { position: relative; width: 100%; max-width: 440px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); text-align: left; }
   .relp__tag { position: absolute; top: 12px; right: 12px; padding: 2px 7px; border: 1px dashed var(--line-strong); border-radius: 4px; font-size: 10px; color: var(--text-3); }
   .relp__head { display: flex; align-items: center; gap: 14px; }
-  .relp__head img { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; }
+  .relp__head img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
   .relp__title { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
   .relp__meta { margin: 2px 0 0; font-size: 13px; color: var(--text-3); }
-  .relp__credits { display: flex; flex-direction: column; margin: 16px 0 12px; padding: 0; list-style: none; border-top: 1px solid var(--line); }
-  .relp__credits li { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 44px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .relp__credits { display: flex; flex-direction: column; margin: 14px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .relp__credits li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 42px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .relp__credits li:last-child { border-bottom: 0; }
   .relp__credits span { color: var(--text-3); }
   .relp__credits b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .relp__credits b.is-open { font-weight: 400; color: var(--accent); }
-  .relp__credits em { font-style: normal; font-size: 11px; padding: 2px 8px; border-radius: var(--r-pill); }
-  .relp__credits em.is-ok { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
-  .relp__foot { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; color: var(--text-3); }
-  .relp__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .relp__credits em { font-style: normal; font-size: 11px; padding: 2px 8px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 
-  /* ---------- Charts ---------- */
-  .cities { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; width: 100%; margin: 0; padding: 0; list-style: none; overflow: hidden;
-    font-size: clamp(1.4rem, 0.9rem + 1.7vw, 2.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.08; text-align: right; }
+  /* Charts: centered city names fading from dark to light. Sized to the card. */
+  .sq--charts { background: var(--c-paper); color: var(--c-paper-ink); border: 1px solid var(--c-paper-line); }
+  .sq--charts .card__go { background: var(--c-paper-ink); color: var(--c-paper); }
+  .sq--charts .sq__vis { align-items: flex-start; overflow: hidden; }
+  .cities { display: flex; flex-direction: column; align-items: center; margin: 0; padding: 0; list-style: none; text-align: center;
+    font-size: clamp(1.5rem, 5.6cqw, 2.6rem); font-weight: 500; letter-spacing: -0.04em; line-height: 1.12; }
   .cities li { opacity: var(--o); }
 
-  /* ---------- Verified band ---------- */
+  /* ---------- Verified strip ---------- */
   .vband { grid-column: 1 / -1; display: flex; align-items: center; gap: clamp(16px, 2.4vw, 28px); padding: clamp(22px, 2.6vw, 30px) clamp(24px, 3.4vw, 44px);
     border: 1px solid var(--c-paper-line); border-radius: 20px; background: var(--c-paper); color: var(--c-paper-ink); }
   .vband__text { flex: 1; min-width: 0; }
@@ -254,66 +169,47 @@ const OPACITY = [0.9, 0.68, 0.48, 0.32, 0.2, 0.11];
   .vband__go:hover { opacity: 0.7; }
 
   /* ---------- Motion ----------
-     Quiet and specific to each product. Content is fully visible without JS, and the global
-     reduced-motion rule in global.css turns every transition and animation here off. */
-  /* Photos settle into place as the card arrives, and lean in slightly on hover. */
+     Quiet, one idea per card. Content is fully visible without JS, and the global
+     reduced-motion rule in global.css turns all of it off. */
+  :global(.js) .world__globe { transform: translate(-50%, 40px); transition: transform 1.6s var(--ease); }
+  :global(.js) .world.is-in .world__globe { transform: translateX(-50%); }
   :global(.js) .sq .card__photo { transform: scale(1.08); transition: transform 1.6s var(--ease); }
   :global(.js) .sq.is-in .card__photo { transform: scale(1); }
-  @media (hover: hover) {
-    :global(.js) .sq.is-in:hover .card__photo { transform: scale(1.04); transition-duration: 1.2s; }
-  }
-  /* Music: the credits fill in one by one, then the artist confirms. Hover lifts the release. */
   :global(.js) .sq--music .relp__credits li { opacity: 0; transform: translateX(-10px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); transition-delay: calc(0.35s + var(--i) * 0.14s); }
   :global(.js) .sq--music.is-in .relp__credits li { opacity: 1; transform: none; }
-  :global(.js) .sq--music .relp__credits em { opacity: 0; transform: scale(0.85); transition: opacity 0.5s var(--ease) 0.9s, transform 0.5s var(--ease) 0.9s; }
-  :global(.js) .sq--music.is-in .relp__credits em { opacity: 1; transform: none; }
-  .relp { transition: transform 0.5s var(--ease), box-shadow 0.5s var(--ease); }
-  @media (hover: hover) {
-    .sq--music:hover .relp { transform: translateY(-4px); box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.35); }
-  }
-  /* Charts: the cities fade in down the list; on hover a light passes through them. */
   :global(.js) .sq--charts .cities li { opacity: 0; transform: translateY(8px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); transition-delay: calc(0.25s + var(--i) * 0.09s); }
   :global(.js) .sq--charts.is-in .cities li { opacity: var(--o); transform: none; }
-  @keyframes pt-wave { 0%, 100% { opacity: var(--o); } 40% { opacity: 1; } }
+  .relp { transition: transform 0.5s var(--ease), box-shadow 0.5s var(--ease); }
   @media (hover: hover) {
-    .sq--charts:hover .cities li { animation: pt-wave 2.4s var(--ease) infinite; animation-delay: calc(var(--i) * 0.16s); }
+    :global(.js) .sq.is-in:hover .card__photo { transform: scale(1.04); transition-duration: 1.2s; }
+    .sq--music:hover .relp { transform: translateY(-4px); box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.35); }
   }
-  /* World: directory rows arrive one after another once they load. */
-  @keyframes pt-row { from { opacity: 0; transform: translateY(8px); } }
-  .dirp__list :global(.dirp__in) { animation: pt-row 0.6s var(--ease) both; animation-delay: calc(var(--i) * 0.08s); }
 
-  /* Smaller desktops: same squares, a tighter release preview so it never gets cramped. */
-  @media (max-width: 1200px) {
+  /* Smaller desktops: same squares, a tighter release preview. */
+  @media (max-width: 1240px) {
+    .sq { --pad: 32px; }
+    .sq__vis { padding-top: 20px; }
     .relp { padding: 14px; }
-    .relp__head img { width: 52px; height: 52px; }
-    .relp__credits { margin: 12px 0 8px; }
-    .relp__credits li { min-height: 38px; grid-template-columns: 84px minmax(0, 1fr) auto; }
+    .relp__head img { width: 48px; height: 48px; }
+    .relp__credits { margin-top: 10px; }
+    .relp__credits li { min-height: 36px; grid-template-columns: 84px minmax(0, 1fr) auto; }
   }
-  @media (max-width: 1080px) {
-    .relp__foot { display: none; }
-    .cities { font-size: clamp(1.2rem, 0.8rem + 1.4vw, 1.8rem); }
-  }
-  /* World stacks; the squares stay a 2x2 grid while they still have room. */
-  @media (max-width: 980px) {
-    .card--world { grid-template-columns: minmax(0, 1fr); }
-    .dirp { margin: 0 16px 16px; }
-  }
-  /* Below this a square is too small to read: one column, height follows content. */
+  /* Below this a square is too small to read: one column, heights follow content. */
   @media (max-width: 1000px) {
-    .sq { grid-column: 1 / -1; aspect-ratio: auto; }
-    .sq--studios, .sq--collective { min-height: 440px; }
-    .sq--music .sq__vis { padding-bottom: 24px; }
-    .relp__foot { display: flex; }
-    .sq--charts .sq__vis { padding-bottom: 20px; }
-    .cities { align-items: flex-start; text-align: left; font-size: 1.7rem; }
-    .sq__text .card__line { min-height: 0; }
+    .pt__grid { grid-template-columns: minmax(0, 1fr); }
+    .sq { aspect-ratio: auto; }
+    .sq--studios, .sq--collective { min-height: 460px; }
+    .sq__vis { padding: 28px var(--pad) var(--pad); }
+    .cities { font-size: clamp(1.6rem, 6.4cqw, 2.4rem); }
   }
   @media (max-width: 760px) {
     .pt { padding-inline: 10px; }
     .pt__grid { gap: 10px; }
     .card { border-radius: 16px; }
-    .card--world { min-height: 0; }
-    .sq--studios, .sq--collective { min-height: 400px; }
+    .world { height: 500px; }
+    /* Still oversized on phones: wider than the screen, cropped on both sides and the bottom. */
+    .world__globe { top: 196px; width: 170%; }
+    .sq--studios, .sq--collective { min-height: 420px; }
     .vband { flex-wrap: wrap; }
     .vband__go { width: 100%; }
   }
