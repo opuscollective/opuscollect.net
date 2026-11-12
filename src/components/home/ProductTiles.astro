@@ -10,6 +10,7 @@ import Icon from '../ui/Icon.astro';
 
 const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
 const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
+const OPACITY = [0.9, 0.68, 0.48, 0.32, 0.2, 0.11];
 ---
 <section class="pt" aria-label="What you can do on Opus">
   <div class="pt__grid">
@@ -46,7 +47,7 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
       </div>
     </article>
 
-    <article class="card sq sq--music" aria-labelledby="pt-music" data-reveal>
+    <article class="card sq sq--music" aria-labelledby="pt-music" data-reveal style="--d:0.08s">
       <div class="sq__text">
         <h2 class="card__name" id="pt-music">Music</h2>
         <p class="card__line">Your releases, your credits, your record of work.</p>
@@ -60,9 +61,9 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
             <div><p class="relp__title">Scenic</p><p class="relp__meta">Bogo · Opus Collective</p></div>
           </div>
           <ul class="relp__credits" role="list">
-            <li><span>Artist</span><b>Bogo</b><em class="is-ok">Confirmed</em></li>
-            <li><span>Producer</span><b class="is-open">Credit someone from World</b></li>
-            <li><span>Mix engineer</span><b class="is-open">Credit someone from World</b></li>
+            <li style="--i:0"><span>Artist</span><b>Bogo</b><em class="is-ok">Confirmed</em></li>
+            <li style="--i:1"><span>Producer</span><b class="is-open">Credit someone from World</b></li>
+            <li style="--i:2"><span>Mix engineer</span><b class="is-open">Credit someone from World</b></li>
           </ul>
           <p class="relp__foot"><span class="relp__dot"></span>Shows on your profile once published</p>
         </div>
@@ -78,12 +79,12 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
       </div>
       <div class="sq__vis">
         <ul class="cities" role="list" aria-label="Charts will cover cities like these">
-          {CITIES.map((c) => <li>{c}</li>)}
+          {CITIES.map((c, i) => <li style={`--i:${i};--o:${OPACITY[i]}`}>{c}</li>)}
         </ul>
       </div>
     </article>
 
-    <article class="card sq sq--collective tone-dark" aria-labelledby="pt-collective" data-reveal>
+    <article class="card sq sq--collective tone-dark" aria-labelledby="pt-collective" data-reveal style="--d:0.08s">
       <img class="card__photo" src="/images/scenic-room.jpg" alt="" loading="lazy" decoding="async" width="1600" height="2400" />
       <div class="sq__text">
         <h2 class="card__name" id="pt-collective">Collective</h2>
@@ -135,10 +136,10 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
         if (note) { note.hidden = false; note.textContent = 'World is just opening. Members appear here as soon as they publish a profile.'; }
         return;
       }
-      list.innerHTML = rows.map((l) => {
+      list.innerHTML = rows.map((l, i) => {
         const img = imageHtml({ src: mainImage(l), seed: l.id, kind: l.kind, ratio: 'square', label: l.isSample ? undefined : initials(l.name) });
         const sample = l.isSample ? '<span class="dirp__sample">Sample</span>' : '';
-        return '<li><a class="dirp__row" href="/world?p=' + encodeURIComponent(l.id) + '">' + img
+        return '<li class="dirp__in" style="--i:' + i + '"><a class="dirp__row" href="/world?p=' + encodeURIComponent(l.id) + '">' + img
           + '<span class="dirp__txt"><span class="dirp__name">' + esc(l.name) + badgeHtml(l) + sample + '</span>'
           + '<span class="dirp__meta">' + esc(metaText(l)) + ' · ' + esc(placeText(l)) + '</span></span>'
           + '<span class="dirp__act">View</span></a></li>';
@@ -240,8 +241,7 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
   /* ---------- Charts ---------- */
   .cities { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; width: 100%; margin: 0; padding: 0; list-style: none; overflow: hidden;
     font-size: clamp(1.4rem, 0.9rem + 1.7vw, 2.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.08; text-align: right; }
-  .cities li:nth-child(1) { opacity: 0.9; } .cities li:nth-child(2) { opacity: 0.68; } .cities li:nth-child(3) { opacity: 0.48; }
-  .cities li:nth-child(4) { opacity: 0.32; } .cities li:nth-child(5) { opacity: 0.2; } .cities li:nth-child(6) { opacity: 0.11; }
+  .cities li { opacity: var(--o); }
 
   /* ---------- Verified band ---------- */
   .vband { grid-column: 1 / -1; display: flex; align-items: center; gap: clamp(16px, 2.4vw, 28px); padding: clamp(22px, 2.6vw, 30px) clamp(24px, 3.4vw, 44px);
@@ -252,6 +252,35 @@ const STEPS = ['Discover', 'See their work', 'Connect', 'Collaborate'];
   .vband p { margin: 4px 0 0; font-size: 14px; color: var(--c-paper-muted); }
   .vband__go { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; min-height: 44px; font-size: 15px; font-weight: 500; border-bottom: 1px solid currentColor; }
   .vband__go:hover { opacity: 0.7; }
+
+  /* ---------- Motion ----------
+     Quiet and specific to each product. Content is fully visible without JS, and the global
+     reduced-motion rule in global.css turns every transition and animation here off. */
+  /* Photos settle into place as the card arrives, and lean in slightly on hover. */
+  :global(.js) .sq .card__photo { transform: scale(1.08); transition: transform 1.6s var(--ease); }
+  :global(.js) .sq.is-in .card__photo { transform: scale(1); }
+  @media (hover: hover) {
+    :global(.js) .sq.is-in:hover .card__photo { transform: scale(1.04); transition-duration: 1.2s; }
+  }
+  /* Music: the credits fill in one by one, then the artist confirms. Hover lifts the release. */
+  :global(.js) .sq--music .relp__credits li { opacity: 0; transform: translateX(-10px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); transition-delay: calc(0.35s + var(--i) * 0.14s); }
+  :global(.js) .sq--music.is-in .relp__credits li { opacity: 1; transform: none; }
+  :global(.js) .sq--music .relp__credits em { opacity: 0; transform: scale(0.85); transition: opacity 0.5s var(--ease) 0.9s, transform 0.5s var(--ease) 0.9s; }
+  :global(.js) .sq--music.is-in .relp__credits em { opacity: 1; transform: none; }
+  .relp { transition: transform 0.5s var(--ease), box-shadow 0.5s var(--ease); }
+  @media (hover: hover) {
+    .sq--music:hover .relp { transform: translateY(-4px); box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.35); }
+  }
+  /* Charts: the cities fade in down the list; on hover a light passes through them. */
+  :global(.js) .sq--charts .cities li { opacity: 0; transform: translateY(8px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); transition-delay: calc(0.25s + var(--i) * 0.09s); }
+  :global(.js) .sq--charts.is-in .cities li { opacity: var(--o); transform: none; }
+  @keyframes pt-wave { 0%, 100% { opacity: var(--o); } 40% { opacity: 1; } }
+  @media (hover: hover) {
+    .sq--charts:hover .cities li { animation: pt-wave 2.4s var(--ease) infinite; animation-delay: calc(var(--i) * 0.16s); }
+  }
+  /* World: directory rows arrive one after another once they load. */
+  @keyframes pt-row { from { opacity: 0; transform: translateY(8px); } }
+  .dirp__list :global(.dirp__in) { animation: pt-row 0.6s var(--ease) both; animation-delay: calc(var(--i) * 0.08s); }
 
   /* Smaller desktops: same squares, a tighter release preview so it never gets cramped. */
   @media (max-width: 1200px) {
