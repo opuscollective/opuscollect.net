@@ -1,0 +1,114 @@
+---
+/**
+ * Everything Opus does, on the homepage, as tiles: two to a row on desktop, one on phones.
+ * Each tile has one button to jump in and one to explore further. Only real destinations;
+ * areas still in development say "Coming soon".
+ */
+import VerifiedBadge from '../ui/VerifiedBadge.astro';
+
+interface Tile {
+  id: string; name: string; line: string; tone: 'dark' | 'light' | 'paper'; soon?: boolean;
+  go: { label: string; href: string }; more: { label: string; href: string };
+}
+const TILES: Tile[] = [
+  { id: 'world', name: 'World', line: 'The people behind the music, city by city.', tone: 'dark',
+    go: { label: 'Open World', href: '/world' }, more: { label: 'Find people', href: '/musicians' } },
+  { id: 'studios', name: 'Studios', line: 'Find a room. Request a session.', tone: 'dark',
+    go: { label: 'Find a studio', href: '/studios' }, more: { label: 'List your studio', href: '/business' } },
+  { id: 'music', name: 'Music', line: 'Start a release. Credit everyone who made it.', tone: 'light',
+    go: { label: 'Start a release', href: '/music' }, more: { label: 'Hear the catalog', href: '/releases' } },
+  { id: 'charts', name: 'Charts', line: 'Rising artists, city by city. No pay-to-rank.', tone: 'paper', soon: true,
+    go: { label: 'See what’s coming', href: '/charts' }, more: { label: 'Find artists now', href: '/musicians' } },
+  { id: 'verified', name: 'Opus Verified', line: 'Earned. Never bought.', tone: 'paper',
+    go: { label: 'How it works', href: '/verified' }, more: { label: 'Verified members', href: '/world?verified=1' } },
+  { id: 'collective', name: 'Collective', line: 'Beyond the platform.', tone: 'dark',
+    go: { label: 'Explore the Collective', href: '/collective' }, more: { label: 'Events', href: '/events' } },
+];
+const COVERS = ['/images/amazing-cover.jpg', '/images/releases/luciaism.jpg', '/images/scenic-cover.jpg'];
+const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
+---
+<section class="tiles" aria-label="What you can do on Opus">
+  <div class="tiles__grid">
+    {TILES.map((t) => (
+      <article class:list={['tile', `tile--${t.id}`, `tile--${t.tone}`, { 'tone-dark': t.tone === 'dark' }]} aria-labelledby={`tile-${t.id}`} data-reveal>
+        <div class="tile__text">
+          <h2 class="tile__name" id={`tile-${t.id}`}>{t.name}{t.soon && <span class="tile__soon">Coming soon</span>}</h2>
+          <p class="tile__line">{t.line}</p>
+          <div class="tile__actions">
+            <a class="tile__btn tile__btn--go" href={t.go.href}>{t.go.label}</a>
+            <a class="tile__btn" href={t.more.href}>{t.more.label}</a>
+          </div>
+        </div>
+        <div class="tile__media" aria-hidden="true">
+          {t.id === 'world' && (
+            <svg class="tile__globe" viewBox="0 0 400 400">
+              <circle cx="200" cy="200" r="180" />
+              <ellipse cx="200" cy="200" rx="60" ry="180" /><ellipse cx="200" cy="200" rx="120" ry="180" />
+              <ellipse cx="200" cy="200" rx="180" ry="60" /><ellipse cx="200" cy="200" rx="180" ry="120" />
+              <line x1="20" y1="200" x2="380" y2="200" /><line x1="200" y1="20" x2="200" y2="380" />
+              <g class="tile__dots"><circle cx="150" cy="168" r="5" /><circle cx="176" cy="176" r="4" /><circle cx="236" cy="134" r="4" /><circle cx="262" cy="248" r="4" /><circle cx="118" cy="222" r="3.5" /></g>
+            </svg>
+          )}
+          {t.id === 'studios' && <img src="/images/studio-control-room.jpg" alt="" loading="lazy" decoding="async" width="2000" height="1334" />}
+          {t.id === 'music' && (
+            <div class="tile__covers">{COVERS.map((c) => <img src={c} alt="" loading="lazy" decoding="async" />)}</div>
+          )}
+          {t.id === 'charts' && <ul class="tile__cities" role="list">{CITIES.map((c) => <li>{c}</li>)}</ul>}
+          {t.id === 'verified' && <VerifiedBadge size={140} tone="dark" />}
+          {t.id === 'collective' && <img src="/images/scenic-room.jpg" alt="" loading="lazy" decoding="async" width="1600" height="2400" />}
+        </div>
+      </article>
+    ))}
+  </div>
+</section>
+
+<style>
+  .tiles { padding: 12px; background: var(--bg); }
+  .tiles__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .tile { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+    min-height: clamp(520px, 72vh, 700px); padding: clamp(40px, 5vw, 60px) 24px 0; text-align: center; border-radius: 4px; }
+  .tile--dark { background: #0d0d0f; color: var(--text); }
+  .tile--light { background: var(--surface); color: var(--text); }
+  .tile--paper { background: var(--c-paper); color: var(--c-paper-ink); }
+
+  .tile__text { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .tile__name { display: inline-flex; align-items: center; gap: 12px; font-size: clamp(2rem, 1.3rem + 2vw, 3rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.05; }
+  .tile__soon { padding: 4px 9px; border: 1px solid currentColor; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+  .tile__line { margin: 0; max-width: 30ch; font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.3rem); letter-spacing: -0.02em; opacity: 0.8; }
+  .tile__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
+  .tile__btn { display: inline-flex; align-items: center; height: 38px; padding: 0 18px; border-radius: var(--r-pill); border: 1px solid currentColor; font-size: 14px; font-weight: 500; white-space: nowrap; transition: opacity var(--dur) var(--ease), background var(--dur) var(--ease); }
+  .tile__btn:hover { opacity: 0.75; }
+  /* The filled button's label takes the tile's background colour. */
+  .tile--dark .tile__btn--go { background: var(--text); color: #0d0d0f; border-color: var(--text); }
+  .tile--light .tile__btn--go { background: var(--text); color: var(--surface); border-color: var(--text); }
+  .tile--paper .tile__btn--go { background: var(--c-paper-ink); color: var(--c-paper); border-color: var(--c-paper-ink); }
+  .tile__btn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+
+  .tile__media { position: relative; flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-top: 28px; }
+  .tile--studios .tile__media, .tile--collective .tile__media { position: absolute; inset: 0; margin: 0; z-index: -1; }
+  .tile--studios img, .tile--collective img { width: 100%; height: 100%; object-fit: cover; }
+  .tile--studios .tile__media::after, .tile--collective .tile__media::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,8,10,.86) 0%, rgba(8,8,10,.45) 42%, rgba(8,8,10,.1) 100%); }
+  .tile--collective img { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
+
+  .tile__globe { width: min(88%, 420px); margin-bottom: -22%; fill: none; stroke: rgba(214, 228, 245, 0.22); stroke-width: 1; }
+  .tile__globe > circle:first-child { fill: #121317; stroke: rgba(214, 228, 245, 0.3); }
+  .tile__dots circle { fill: #d6e4f5; stroke: none; }
+
+  .tile__covers { position: relative; width: min(80%, 420px); aspect-ratio: 1.6; margin-bottom: 40px; }
+  .tile__covers img { position: absolute; bottom: 0; width: 56%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; box-shadow: 0 24px 50px -20px rgba(0,0,0,.45); }
+  .tile__covers img:nth-child(1) { left: 0; transform: rotate(-6deg); }
+  .tile__covers img:nth-child(2) { left: 22%; z-index: 2; bottom: 6%; }
+  .tile__covers img:nth-child(3) { right: 0; transform: rotate(6deg); }
+
+  .tile__cities { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0 0 40px; padding: 0; list-style: none; font-size: clamp(1.6rem, 1rem + 2vw, 2.6rem); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; }
+  .tile__cities li:nth-child(1) { opacity: .9; } .tile__cities li:nth-child(2) { opacity: .7; } .tile__cities li:nth-child(3) { opacity: .5; }
+  .tile__cities li:nth-child(4) { opacity: .35; } .tile__cities li:nth-child(5) { opacity: .22; } .tile__cities li:nth-child(6) { opacity: .12; }
+
+  .tile--verified .tile__media { align-items: center; margin-bottom: 40px; }
+
+  @media (max-width: 760px) {
+    .tiles { padding: 8px; }
+    .tiles__grid { grid-template-columns: 1fr; gap: 8px; }
+    .tile { min-height: 480px; padding-top: 44px; }
+  }
+</style>
