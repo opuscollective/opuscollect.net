@@ -429,12 +429,12 @@ export function initWorld(root: HTMLElement) {
 
   // A place: the globe turns to the city, marks it, and results follow the map. In List view the
   // same choice filters to members near the city, and the map picks it up when you switch back.
-  function goPlace(p: { name: string; lat: number; lng: number }) {
+  function goPlace(p: { name: string; lat: number; lng: number }, openSheet = true) {
     place = p; inView = true;
     if (map) { map.setPlace(p); map.flyToCity(p.lat, p.lng); }
     else camera = { center: [p.lng, p.lat], zoom: 10.2 };
     changed();
-    if (mobile.matches && view === 'map') setSheet('half');
+    if (openSheet && mobile.matches && view === 'map') setSheet('half');
   }
 
   // ---------- Selection and previews (card ↔ marker ↔ preview) ----------
@@ -660,7 +660,8 @@ export function initWorld(root: HTMLElement) {
         if (qc && !place) {
           params.delete('city');
           const p = PLACES.find((x) => norm(x.name) === norm(qc)) ?? findCity(qc);
-          if (p) goPlace({ name: p.name, lat: p.lat, lng: p.lng });
+          // Arriving from "Explore the World" (?view=map): the map stays full screen over the city.
+          if (p) goPlace({ name: p.name, lat: p.lat, lng: p.lng }, askedView !== 'map');
         } else if (place && !camera) map.flyToCity(place.lat, place.lng);
       } catch (err) {
         console.error('Map failed to load', err);

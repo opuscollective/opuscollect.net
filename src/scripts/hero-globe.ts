@@ -115,10 +115,18 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
       globe.ringsData([...cityRings, { lat, lng, me: true }]);
       globe.pointOfView({ lat, lng, altitude: 0.3 }, ms(2200));
     },
+    /** No location: pull back a little and let the whole world turn. */
+    spin() {
+      interactive(false);
+      globe.pointOfView({ ...globe.pointOfView(), altitude: Math.max(1.4, home() * 0.75) }, ms(1400));
+      controls.autoRotate = !reduce;
+      controls.autoRotateSpeed = 1.1;
+    },
     /** Back out to the resting view. */
     rise() {
       globe.pointOfView({ ...globe.pointOfView(), altitude: home() }, ms(1200));
       controls.autoRotate = !reduce;
+      controls.autoRotateSpeed = 0.35;
       interactive(false);
     },
   };

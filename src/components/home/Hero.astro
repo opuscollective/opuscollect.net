@@ -111,7 +111,7 @@ const topCities = CITIES.slice(0, 8);
 </section>
 
 <script>
-  import { CITIES, findCity } from '@/data/cities';
+  import { CITIES, findCity, citySlug } from '@/data/cities';
   import type { ListingKind } from '@/types/directory';
   type CityPoint = { city: string; country: string; lat: number; lng: number; count: number };
   type DiveQuery = import('@/scripts/hero-dive').DiveQuery;
@@ -137,7 +137,7 @@ const topCities = CITIES.slice(0, 8);
   const locate = hero.querySelector<HTMLElement>('[data-locate]')!;
   const locateText = locate.querySelector<HTMLElement>('[data-locate-text]')!;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let api: { flyTo: (lat: number, lng: number) => void; dive: (lat?: number, lng?: number, close?: boolean) => void; here: (lat: number, lng: number) => void; rise: () => void } | null = null;
+  let api: { spin: () => void; flyTo: (lat: number, lng: number) => void; dive: (lat?: number, lng?: number, close?: boolean) => void; here: (lat: number, lng: number) => void; rise: () => void } | null = null;
   let q: DiveQuery = { text: '', kind: '' };
   /** The visitor's position, kept in this page only. Never sent to Opus or stored. */
   let me: Near | null = null;
@@ -285,7 +285,7 @@ const topCities = CITIES.slice(0, 8);
       api?.here(pos.lat, pos.lng);
     }
     locate.classList.remove('is-on');
-    setTimeout(() => { locate.hidden = true; }, 250);
+    setTimeout(() => { if (!locate.classList.contains('is-on')) locate.hidden = true; }, 250);
     return !!pos;
   }
 
@@ -341,19 +341,45 @@ const topCities = CITIES.slice(0, 8);
   hero.querySelector<HTMLAnchorElement>('[data-hero-open]')?.addEventListener('click', (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
-    // Phones go straight into the full World map; the camera dives in first so it feels like one move.
-    if (matchMedia('(max-width: 760px)').matches) {
-      const go = () => { location.href = '/world?view=map'; };
-      if (reduce || !api) return go();
-      hero.classList.add('is-diving', 'is-leaving');
-      api.dive();
-      setTimeout(go, 650);
-      return;
-    }
+    // Phones: the camera dives into this globe, asks where you are, flies to your part of the world,
+    // then hands over to the full World map at that spot. Without location, the whole world keeps turning.
+    if (matchMedia('(max-width: 760px)').matches) { exploreFromHere(); return; }
     openWorld('');
   });
+  let exploring = false;
+  async function exploreFromHere() {
+    if (exploring) return;
+    exploring = true;
+    const go = (href: string) => { location.href = href; };
+    if (!api) return go('/world?view=map');
+    hero.classList.add('is-diving', 'is-leaving');
+    api.dive();
+    const found = me ? (api.here(me.lat, me.lng), true) : await findMe();
+    if (found && meCity) {
+      // Let the camera arrive over the visitor's area before World opens there.
+      const near = meCity.km < 300;
+      showLocate(near ? `Taking you to ${meCity.city.name}` : 'Taking you to World');
+      setTimeout(() => go(near ? `/world/${citySlug(meCity!.city.name)}?view=map` : '/world?view=map'), reduce ? 0 : 1900);
+    } else {
+      api.spin();
+      showLocate('Opening the whole world');
+      setTimeout(() => go('/world?view=map'), reduce ? 0 : 1500);
+    }
+  }
+  function showLocate(text: string) {
+    locateText.textContent = text;
+    locate.hidden = false;
+    requestAnimationFrame(() => locate.classList.add('is-on'));
+  }
+
   // Coming back with the back button restores this page from cache: undo the dive.
-  addEventListener('pageshow', (e) => { if (e.persisted && hero.classList.contains('is-leaving')) { hero.classList.remove('is-diving', 'is-leaving'); api?.rise(); } });
+  addEventListener('pageshow', (e) => {
+    if (!e.persisted || !hero.classList.contains('is-leaving')) return;
+    exploring = false;
+    hero.classList.remove('is-diving', 'is-leaving');
+    locate.classList.remove('is-on'); locate.hidden = true;
+    api?.rise();
+  });
   // Without the globe (no WebGL) these stay plain links to /musicians and /studios.
   hero.querySelectorAll<HTMLAnchorElement>('[data-hero-kind]').forEach((a) => a.addEventListener('click', (e) => {
     if (!api || e.metaKey || e.ctrlKey || e.shiftKey) return;
@@ -470,7 +496,13 @@ const topCities = CITIES.slice(0, 8);
   .hero__globe { transition: opacity 1.4s var(--ease), transform 1.2s var(--ease); }
   @media (min-width: 761px) { .hero.is-diving .hero__globe { transform: translateX(calc(clamp(380px, 35vw, 560px) / 2)); } }
   /* On phones the panel is a sheet at the bottom, so lift the place into the open space above it. */
-  @media (max-width: 760px) { .hero.is-diving .hero__globe { transform: translateY(-22%); } }
+  @media (max-width: 760px) {
+    /* At rest the globe sits low, under the words and buttons. */
+    .hero__globe { transform: translateY(var(--globe-drop, 22%)); }
+    .hero.is-diving .hero__globe { transform: translateY(-22%); }
+    /* Exploring from here: the globe rises to the middle of the screen as the camera dives in. */
+    .hero.is-leaving .hero__globe { transform: none; transition: opacity 1.4s var(--ease), transform 1.4s var(--ease-glide); }
+  }
 
   .dv__head { display: flex; align-items: center; gap: 8px; padding: 18px 18px 0; }
   .dv__search { flex: 1; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-radius: 14px; background: var(--c-surface-2); color: var(--c-fg-faint);
@@ -538,12 +570,12 @@ const topCities = CITIES.slice(0, 8);
     .opus-entry { display: contents; }
     .opus-entry__form, .opus-quick { display: none; }
     .opus-entry__kicker { margin: 0; font-size: 11px; }
-    /* The way in sits in the middle of the open space below the words, not at the very bottom. */
-    .opus-entry__open { margin-top: auto; justify-content: center; min-height: 48px; padding: 0 24px; border: 0; border-radius: var(--r-pill); background: var(--c-white); color: var(--c-black); }
+    /* The way in sits right under the words; the globe fills the space below. */
+    .opus-entry__open { margin-top: 18px; justify-content: center; min-height: 48px; padding: 0 24px; border: 0; border-radius: var(--r-pill); background: var(--c-white); color: var(--c-black); }
     .opus-entry__open:hover { border: 0; }
     .hero__desk { display: none; }
     .hero__phone { display: inline; }
-    .opus-entry__ask { display: inline-flex; align-items: center; min-height: 44px; margin-top: -4px; margin-bottom: auto; padding: 0 12px; border: 0; background: none; color: var(--text-2); font-size: 14px; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; }
+    .opus-entry__ask { display: inline-flex; align-items: center; min-height: 44px; margin-top: -4px; padding: 0 12px; border: 0; background: none; color: var(--text-2); font-size: 14px; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; }
     .opus-entry__ask:hover { color: var(--text); }
     /* Softer veil: the words sit above and below the globe now, not over its middle. */
     .hero__veil { background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent) 0%, transparent 28%, transparent 70%, color-mix(in srgb, var(--bg) 85%, transparent) 100%); }
