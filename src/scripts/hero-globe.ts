@@ -14,6 +14,8 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   ]);
   const countries = feature(topo, topo.objects.countries as GeometryCollection).features;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  type Ring = { lat: number; lng: number; me?: boolean };
+  const cityRings: Ring[] = points.filter((p) => p.count >= 5);
 
   const globe = new Globe(el, { animateIn: !reduce, waitForGlobeReady: true })
     .backgroundColor('rgba(0,0,0,0)')
@@ -40,14 +42,14 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
       return `<div class="gl-tip"><b>${p.city}</b><span>${p.count} sample listing${p.count === 1 ? '' : 's'}</span></div>`;
     })
     .onPointClick((d: object) => opts.onSelect(d as CityPoint))
-    // Soft rings around active cities
-    .ringsData(points.filter((p) => p.count >= 5))
+    // Soft rings around active cities; a brighter, tighter pulse marks "you are here" once the visitor shares it.
+    .ringsData(cityRings)
     .ringLat('lat')
     .ringLng('lng')
-    .ringColor(() => (t: number) => `rgba(169, 199, 236,${0.45 * (1 - t)})`)
-    .ringMaxRadius(3)
-    .ringPropagationSpeed(0.8)
-    .ringRepeatPeriod(2200);
+    .ringColor((d: object) => ((d as Ring).me ? (t: number) => `rgba(236, 242, 250,${0.9 * (1 - t)})` : (t: number) => `rgba(169, 199, 236,${0.45 * (1 - t)})`))
+    .ringMaxRadius((d: object) => ((d as Ring).me ? 1.6 : 3))
+    .ringPropagationSpeed((d: object) => ((d as Ring).me ? 0.9 : 0.8))
+    .ringRepeatPeriod((d: object) => ((d as Ring).me ? 1200 : 2200));
 
   // Dark graphite sphere: adjust the default Phong material rather than importing three.js directly.
   const mat = globe.globeMaterial() as unknown as { color: { set(c: string): void }; emissive: { set(c: string): void }; shininess: number };
@@ -59,7 +61,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   controls.autoRotate = !reduce;
   controls.autoRotateSpeed = 0.35;
   controls.enableDamping = true;
-  controls.minDistance = 140;
+  controls.minDistance = 125; // about altitude 0.25: close enough to see a metro area
   controls.maxDistance = 520;
   // The globe fills the hero behind the headline. Pull the camera back on tall, narrow screens so the sphere fits the width.
   const home = () => {
@@ -105,6 +107,13 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
       interactive(true);
       const pov = globe.pointOfView();
       globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: close ? 0.42 : 0.9 }, ms(1700));
+    },
+    /** Fly down to the visitor's own area and mark it. The position stays in the page. */
+    here(lat: number, lng: number) {
+      hold();
+      interactive(true);
+      globe.ringsData([...cityRings, { lat, lng, me: true }]);
+      globe.pointOfView({ lat, lng, altitude: 0.3 }, ms(2200));
     },
     /** Back out to the resting view. */
     rise() {

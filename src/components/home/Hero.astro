@@ -31,8 +31,8 @@ const topCities = CITIES.slice(0, 8);
       </form>
       <!-- Ways in without typing. Each goes to a real page; Charts is still in development and says so. -->
       <ul class="opus-quick" role="list" aria-label="Shortcuts">
-        <li><a href="/musicians">Find People</a></li>
-        <li><a href="/studios">Find Studios</a></li>
+        <li><a href="/musicians" data-hero-kind="musician">Find People</a></li>
+        <li><a href="/studios" data-hero-kind="studio">Find Studios</a></li>
         <li><a href="/charts">Explore Charts <span class="opus-quick__soon">Soon</span></a></li>
         <li><a href="/music">My Releases</a></li>
       </ul>
@@ -135,7 +135,7 @@ const topCities = CITIES.slice(0, 8);
   const locate = hero.querySelector<HTMLElement>('[data-locate]')!;
   const locateText = locate.querySelector<HTMLElement>('[data-locate-text]')!;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let api: { flyTo: (lat: number, lng: number) => void; dive: (lat?: number, lng?: number, close?: boolean) => void; rise: () => void } | null = null;
+  let api: { flyTo: (lat: number, lng: number) => void; dive: (lat?: number, lng?: number, close?: boolean) => void; here: (lat: number, lng: number) => void; rise: () => void } | null = null;
   let q: DiveQuery = { text: '', kind: '' };
   /** The visitor's position, kept in this page only. Never sent to Opus or stored. */
   let me: Near | null = null;
@@ -175,8 +175,8 @@ const topCities = CITIES.slice(0, 8);
       host.querySelector('[data-globe-loading]')?.remove();
       // The visitor opened the world before the globe finished loading: catch the camera up.
       if (hero.classList.contains('is-diving')) {
-        const t = me && (!q.city || q.city === meCity?.city) ? me : q.city;
-        api.dive(t?.lat, t?.lng, !!t);
+        if (me && (!q.city || q.city === meCity?.city)) api.here(me.lat, me.lng);
+        else api.dive(q.city?.lat, q.city?.lng, !!q.city);
       }
     } catch (err) {
       console.error('Globe failed to load', err);
@@ -280,7 +280,7 @@ const topCities = CITIES.slice(0, 8);
       const mod = await import('@/scripts/hero-dive');
       me = pos;
       meCity = mod.nearestCity(CITIES, pos);
-      api?.dive(pos.lat, pos.lng, true);
+      api?.here(pos.lat, pos.lng);
     }
     locate.classList.remove('is-on');
     setTimeout(() => { locate.hidden = true; }, 250);
@@ -311,12 +311,13 @@ const topCities = CITIES.slice(0, 8);
   }
 
   /** "Open World": zoom in, ask where the visitor is, fly there, then open the directory. */
-  async function openWorld() {
-    q = { text: '', kind: q.kind, filters: q.filters };
+  /** "Open World" and the Find People / Find Studios shortcuts: zoom in, ask where the visitor is, fly there, open the directory. */
+  async function openWorld(kind: ListingKind | '' = q.kind) {
+    q = { text: '', kind, filters: q.filters };
     dq.value = '';
     enter();
     api?.dive();
-    const found = me ? (api?.dive(me.lat, me.lng, true), true) : await findMe();
+    const found = me ? (api?.here(me.lat, me.lng), true) : await findMe();
     locOff = !found;
     render();
     showPanel(found ? 900 : 300);
@@ -336,10 +337,16 @@ const topCities = CITIES.slice(0, 8);
   });
   hero.querySelector('[data-hero-open]')?.addEventListener('click', (e) => {
     e.preventDefault();
-    openWorld();
+    openWorld('');
   });
+  // Without the globe (no WebGL) these stay plain links to /musicians and /studios.
+  hero.querySelectorAll<HTMLAnchorElement>('[data-hero-kind]').forEach((a) => a.addEventListener('click', (e) => {
+    if (!api || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    openWorld(a.dataset.heroKind as ListingKind);
+  }));
   meBtn.addEventListener('click', async () => {
-    const found = me ? (api?.dive(me.lat, me.lng, true), true) : await findMe();
+    const found = me ? (api?.here(me.lat, me.lng), true) : await findMe();
     if (found) { locOff = false; q = { text: '', kind: q.kind, filters: q.filters }; dq.value = ''; render(); }
     else count.textContent = 'Your browser didn’t share your location. You can turn it on in the site settings.';
   });
