@@ -29,9 +29,10 @@ const out = releases.filter((r) => r.status === 'published');
 
       {!user ? (
         <div class="panel" style="margin-top:32px">
-          <h2>Sign in to build a release</h2>
-          <p class="dim">Releases live on your Opus profile, so you’ll need an account first.</p>
-          <div class="row" style="margin-top:16px"><a class="btn-app" href="/sign-in?next=/music">Sign in</a><a class="btn-app btn-app--ghost" href="/sign-up?next=/music">Join Opus</a></div>
+          <h2>Build your discography</h2>
+          <p class="dim"><b>Add a Release</b> for something new: the details, the artwork and everyone who worked on it. <b>Add a Past Release</b> for work that’s already out, so it counts on your Opus résumé. Releases live on your profile, so you’ll need an account first.</p>
+          <div class="row" style="margin-top:16px"><a class="btn-app" href="/sign-up?next=/music">Add a Release</a><a class="btn-app btn-app--ghost" href="/sign-up?next=/music">Add a Past Release</a></div>
+          <p class="dim" style="margin-top:12px">Already a member? <a class="link" href="/sign-in?next=/music">Sign in</a></p>
         </div>
       ) : !profile ? (
         <div class="panel" style="margin-top:32px">
@@ -42,8 +43,8 @@ const out = releases.filter((r) => r.status === 'published');
       ) : (
         <>
           <div class="row" style="margin-top:28px">
-            <button class="btn-app" type="button" data-new>New release</button>
-            <button class="btn-app btn-app--ghost" type="button" data-new="past">Add a past release</button>
+            <button class="btn-app" type="button" data-new>Add a Release</button>
+            <button class="btn-app btn-app--ghost" type="button" data-new="past">Add a Past Release</button>
           </div>
           <p class="dim mu-err" data-new-status role="alert"></p>
 
