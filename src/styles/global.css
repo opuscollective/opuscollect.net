@@ -69,13 +69,15 @@ button { cursor: pointer; }
 .dim { color: var(--c-fg-faint); }
 .section--paper .dim { color: var(--c-paper-faint); }
 
-/* ---------- Reveal on scroll (enhancement only) ---------- */
+/* ---------- Reveal on scroll (enhancement only) ----------
+   Content is never hidden: no fade from transparent and no blur, so it is there for full-page captures,
+   the back button and anyone who scrolls fast. Sections only settle up a few pixels as they arrive. */
 .js [data-reveal] {
-  opacity: 0; transform: translateY(28px); filter: blur(6px);
-  transition: opacity var(--dur-slow) var(--ease), transform 1.3s var(--ease-glide), filter var(--dur-slow) var(--ease);
+  transform: translateY(14px);
+  transition: transform 1.1s var(--ease-glide);
   transition-delay: var(--d, 0s);
 }
-.js [data-reveal].is-in { opacity: 1; transform: none; filter: none; }
+.js [data-reveal].is-in { transform: none; }
 
 /* ---------- Moving between pages ----------
    Browsers that support cross-document view transitions fade one page into the next; the header

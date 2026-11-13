@@ -198,6 +198,9 @@ import Icon from '../ui/Icon.astro';
     /* Room at the end of every page so the launcher never sits on the last links. */
     :global(body) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
     :global(body:has([data-world])) { padding-bottom: 0; }
+    /* With the light footer, that room belongs inside the footer, so the page doesn't end on a dark band. */
+    :global(body:has(.ftr--light)) { padding-bottom: 0; }
+    :global(.ftr--light)::after { content: ''; display: block; height: calc(64px + env(safe-area-inset-bottom)); }
     /* Bottom sheet. */
     .oa { left: 0; right: 0; bottom: 0; width: auto; max-height: min(78svh, 620px); border-radius: 20px 20px 0 0; border-bottom: 0;
       padding-bottom: env(safe-area-inset-bottom); transform: translateY(24px); }

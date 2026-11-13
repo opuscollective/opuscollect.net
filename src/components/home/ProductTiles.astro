@@ -1,9 +1,9 @@
 ---
 /**
- * The Opus ecosystem on the homepage: six tiles, two to a row (one on phones).
- *   World | Studios
- *   Music | Charts
- *   Opus Verified | Collective
+ * The Opus ecosystem on the homepage, continuing the hero's dark canvas (World is the hero itself):
+ *   Studios | Music
+ *   Charts  | Collective
+ *   Opus Verified (a slim strip across the bottom)
  * Every tile shares the same geometry: name, one line and its action at the top, the product's visual below.
  * Dark and warm-white surfaces alternate on purpose. Only real destinations; Charts is in development and says so.
  * Covers are real Opus Collective releases. No invented releases, rankings or numbers.
@@ -12,33 +12,11 @@ import VerifiedBadge from '../ui/VerifiedBadge.astro';
 
 const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
 const OPACITY = [0.92, 0.7, 0.5, 0.34, 0.2, 0.1];
-// Wireframe globe markers (viewBox units). Decorative, not real member locations.
-const DOTS: [number, number, number][] = [[150, 168, 5], [176, 176, 4], [236, 134, 4], [262, 248, 4], [118, 222, 3.5], [292, 108, 3], [206, 128, 3.5]];
 ---
-<section class="pt" aria-label="What you can do on Opus">
+<section class="pt tone-dark" aria-label="What you can do on Opus">
   <div class="pt__grid">
 
-    <article class="tile tile--dark tile--world tone-dark" aria-labelledby="pt-world" data-reveal>
-      <div class="tile__text">
-        <h2 class="tile__name" id="pt-world">World</h2>
-        <p class="tile__line">The people behind the music, city by city.</p>
-        <div class="tile__actions">
-          <a class="tile__btn tile__btn--go" href="/world">Open World</a>
-          <a class="tile__btn" href="/musicians">Find People</a>
-        </div>
-      </div>
-      <div class="tile__media" aria-hidden="true">
-        <svg class="tile__globe" viewBox="0 0 400 400" focusable="false">
-          <circle class="tile__sphere" cx="200" cy="200" r="180" />
-          <ellipse cx="200" cy="200" rx="60" ry="180" /><ellipse cx="200" cy="200" rx="120" ry="180" />
-          <ellipse cx="200" cy="200" rx="180" ry="60" /><ellipse cx="200" cy="200" rx="180" ry="120" />
-          <line x1="20" y1="200" x2="380" y2="200" /><line x1="200" y1="20" x2="200" y2="380" />
-          <g class="tile__dots">{DOTS.map(([x, y, r]) => <circle cx={x} cy={y} r={r} />)}</g>
-        </svg>
-      </div>
-    </article>
-
-    <article class="tile tile--dark tile--photo tile--studios tone-dark" aria-labelledby="pt-studios" data-reveal style="--d:0.08s">
+    <article class="tile tile--dark tile--photo tile--studios tone-dark" aria-labelledby="pt-studios" data-reveal>
       <img class="tile__photo" src="/images/studio-control-room-1400.jpg" alt="" loading="lazy" decoding="async" width="1400" height="934" />
       <div class="tile__text">
         <h2 class="tile__name" id="pt-studios">Studios</h2>
@@ -47,7 +25,7 @@ const DOTS: [number, number, number][] = [[150, 168, 5], [176, 176, 4], [236, 13
       </div>
     </article>
 
-    <article class="tile tile--cream tile--music" aria-labelledby="pt-music" data-reveal>
+    <article class="tile tile--cream tile--music" aria-labelledby="pt-music" data-reveal style="--d:0.08s">
       <div class="tile__text">
         <h2 class="tile__name" id="pt-music">Music</h2>
         <p class="tile__line">Your releases. Your credits.</p>
@@ -61,7 +39,7 @@ const DOTS: [number, number, number][] = [[150, 168, 5], [176, 176, 4], [236, 13
       </a>
     </article>
 
-    <article class="tile tile--paper tile--charts" aria-labelledby="pt-charts" data-reveal style="--d:0.08s">
+    <article class="tile tile--paper tile--charts" aria-labelledby="pt-charts" data-reveal>
       <span class="tile__soon">Coming soon</span>
       <div class="tile__text">
         <h2 class="tile__name" id="pt-charts">Charts</h2>
@@ -74,15 +52,6 @@ const DOTS: [number, number, number][] = [[150, 168, 5], [176, 176, 4], [236, 13
       </ul>
     </article>
 
-    <article class="tile tile--cream tile--verified" aria-labelledby="pt-verified" data-reveal>
-      <div class="tile__text">
-        <h2 class="tile__name" id="pt-verified">Opus Verified</h2>
-        <p class="tile__line">Earned. Never bought.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/verified">Learn About Verification</a></div>
-      </div>
-      <div class="tile__media seal" aria-hidden="true"><VerifiedBadge size={148} tone="dark" /></div>
-    </article>
-
     <article class="tile tile--dark tile--photo tile--collective tone-dark" aria-labelledby="pt-collective" data-reveal style="--d:0.08s">
       <img class="tile__photo" src="/images/scenic-room-1200.jpg" alt="" loading="lazy" decoding="async" width="1200" height="1800" />
       <div class="tile__text">
@@ -92,12 +61,22 @@ const DOTS: [number, number, number][] = [[150, 168, 5], [176, 176, 4], [236, 13
       </div>
     </article>
 
+    <article class="vstrip tone-dark" aria-labelledby="pt-verified" data-reveal>
+      <span class="vstrip__seal" aria-hidden="true"><VerifiedBadge size={44} tone="light" /></span>
+      <p class="vstrip__text"><span class="vstrip__name" id="pt-verified">Opus Verified.</span> Earned. Never bought.</p>
+      <a class="tile__btn vstrip__btn" href="/verified">Learn About Verification</a>
+    </article>
+
   </div>
 </section>
 
 <style>
-  /* Same 12px frame as the hero above, so the page reads as one composition. */
-  .pt { padding: 12px; }
+  /* The grid continues the hero's dark canvas: same background, same 12px frame, and on desktop the frame's
+     rounded bottom corners close here, after the last row, so headline, Earth and products read as one piece. */
+  .pt { padding: 4px 12px 12px; background: var(--bg); }
+  @media (min-width: 1000px) {
+    .pt { margin: 0 12px; padding: 4px 12px 12px; border-radius: 0 0 28px 28px; }
+  }
   .pt__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
   .tile { --pad: clamp(40px, 4.4vw, 64px); position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center;
@@ -123,12 +102,6 @@ const DOTS: [number, number, number][] = [[150, 168, 5], [176, 176, 4], [236, 13
 
   .tile__media { position: relative; flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-top: 28px; }
 
-  /* World: the network as a thin-line globe rising out of the card's bottom edge. */
-  .tile__globe { width: min(78cqw, 520px); margin-bottom: -26cqw; fill: none; stroke: rgba(214, 228, 245, 0.22); stroke-width: 1; overflow: visible; }
-  .tile__globe * { vector-effect: non-scaling-stroke; }
-  .tile__sphere { fill: #121317; stroke: rgba(214, 228, 245, 0.32); }
-  .tile__dots circle { fill: #d6e4f5; stroke: none; }
-
   /* Studios and Collective: full-bleed photographs, darkened at the top for the words. */
   .tile__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
   .tile--photo::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8, 8, 10, 0.86) 0%, rgba(8, 8, 10, 0.45) 42%, rgba(8, 8, 10, 0.08) 100%); }
@@ -152,17 +125,19 @@ const DOTS: [number, number, number][] = [[150, 168, 5], [176, 176, 4], [236, 13
     font-size: clamp(1.7rem, 7cqw, 3.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.08; }
   .cities li { opacity: var(--o); }
 
-  /* Opus Verified: one large seal, quiet around it. */
-  .seal { align-items: center; margin-bottom: var(--pad); }
-  .seal :global(svg) { width: clamp(110px, 26cqw, 168px); height: auto; }
+  /* Opus Verified: one slim line across the grid, seal, statement and the way in. */
+  .vstrip { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px 22px; padding: 26px 28px;
+    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 18px; color: #f4f2ee; text-align: center; }
+  .vstrip__seal { display: inline-flex; }
+  .vstrip__text { margin: 0; font-size: clamp(1.15rem, 0.95rem + 0.8vw, 1.75rem); font-weight: 500; letter-spacing: -0.03em; color: rgba(244, 242, 238, 0.72); }
+  .vstrip__name { color: #f4f2ee; }
+  .vstrip__btn { color: #f4f2ee; border-color: rgba(244, 242, 238, 0.32); }
 
   /* Motion: quiet, one idea per tile. Fully visible without JS; global reduced-motion turns it off. */
-  :global(.js) .tile__globe { transform: translateY(40px); transition: transform 1.6s var(--ease); }
-  :global(.js) .tile--world.is-in .tile__globe { transform: none; }
   :global(.js) .tile__photo { transform: scale(1.06); transition: transform 1.6s var(--ease); }
   :global(.js) .tile.is-in .tile__photo { transform: scale(1); }
-  :global(.js) .cities li { opacity: 0; transform: translateY(8px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); transition-delay: calc(0.25s + var(--i) * 0.09s); }
-  :global(.js) .tile--charts.is-in .cities li { opacity: var(--o); transform: none; }
+  :global(.js) .cities li { transform: translateY(6px); transition: transform 0.9s var(--ease); transition-delay: calc(0.2s + var(--i) * 0.07s); }
+  :global(.js) .tile--charts.is-in .cities li { transform: none; }
 
   /* Tablets: one column, heights follow content. */
   @media (max-width: 900px) {
@@ -176,7 +151,7 @@ const DOTS: [number, number, number][] = [[150, 168, 5], [176, 176, 4], [236, 13
     .tile { --pad: 48px; min-height: 520px; border-radius: 0; border-left: 0; border-right: 0; }
     .tile__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); }
     .tile__line { font-size: clamp(1.05rem, 4.6vw, 1.25rem); }
-    .tile__globe { width: 96%; margin-bottom: -34%; }
+    .vstrip { border-radius: 0; border-left: 0; border-right: 0; padding: 28px 20px; }
     .covers img { width: 52cqw; }
   }
 </style>
