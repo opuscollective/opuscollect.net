@@ -100,7 +100,8 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     const l = d as Label;
     const e = document.createElement('div');
     e.className = `gl-label gl-label--${l.kind}`;
-    if (l.kind === 'me') e.innerHTML = '<i></i>';
+    // You are here, the Opus way: the OC mark sending out sound waves.
+    if (l.kind === 'me') e.innerHTML = '<b></b><b></b><b></b><span><img src="/images/oc-logo.png" alt="" /></span>';
     else e.textContent = l.text;
     e.setAttribute('aria-hidden', 'true');
     return e;
