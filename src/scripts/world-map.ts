@@ -15,6 +15,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import { hasPoint, type Listing } from '@/types/directory';
+import { sunAt, sunlight, dayAmount } from '@/lib/sun';
 import { aggregate, levelForZoom, nextZoom, placePoints, type Aggregate, type GeoLevel } from '@/lib/world-geo';
 
 const OFM = 'https://tiles.openfreemap.org';
@@ -39,10 +40,53 @@ function readPalette(): Palette {
   };
 }
 
+/**
+ * The Earth from space, the same picture as the homepage globe: NASA Blue Marble where the sun is up,
+ * city lights where it is night, with the same soft twilight band. Painted once into a canvas in Web Mercator
+ * (the night side is a low-resolution mask, scaled up, so the edge stays soft) and repainted every few minutes.
+ * The imagery is 4096 px around the Earth, so it is shown only while it is sharp (to zoom ~3) and then hands
+ * over to the street map, which is sharp at every zoom.
+ */
+const EARTH_COORDS: [[number, number], [number, number], [number, number], [number, number]] = [[-180, 85.0511], [180, 85.0511], [180, -85.0511], [-180, -85.0511]];
+const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = rej; i.src = src; });
+async function earthCanvas(size: 2048 | 4096) {
+  const [day, night] = await Promise.all([loadImg(`/images/earth/day-mercator-${size}.webp`), loadImg(`/images/earth/night-mercator-${size}.webp`)]);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const paint = () => {
+    const sun = sunAt(new Date());
+    const M = 256;
+    const mask = document.createElement('canvas'); mask.width = mask.height = M;
+    const mctx = mask.getContext('2d')!;
+    const px = mctx.createImageData(M, M);
+    for (let y = 0; y < M; y++) {
+      const lat = (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 0.5)) / M))) * 180) / Math.PI;
+      for (let x = 0; x < M; x++) {
+        const lng = -180 + ((x + 0.5) / M) * 360;
+        px.data[(y * M + x) * 4 + 3] = Math.round((1 - dayAmount(sunlight(lat, lng, sun))) * 255);
+      }
+    }
+    mctx.putImageData(px, 0, 0);
+    // Night lights only where it is night, then laid over the day picture.
+    const nightLayer = document.createElement('canvas'); nightLayer.width = nightLayer.height = size;
+    const nctx = nightLayer.getContext('2d')!;
+    nctx.drawImage(night, 0, 0, size, size);
+    nctx.globalCompositeOperation = 'destination-in';
+    nctx.imageSmoothingQuality = 'high';
+    nctx.drawImage(mask, 0, 0, size, size);
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(day, 0, 0, size, size);
+    ctx.drawImage(nightLayer, 0, 0);
+    nightLayer.width = 0; // free it now
+  };
+  paint();
+  return { canvas, paint };
+}
+
 const sky = (C: Palette) => ({
   'sky-color': C.bg,
-  // A blue halo around the Earth from space, fading out as you come down to a city.
-  'horizon-color': '#4d86d9',
+  // The same thin blue atmosphere as the homepage globe, fading out as you come down to a city.
+  'horizon-color': '#a9c8ff',
   'fog-color': C.bg,
   'sky-horizon-blend': 0.6,
   'horizon-fog-blend': 0.6,
@@ -71,15 +115,11 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
     sky: sky(C),
     sources: {
       countries: { type: 'geojson', data: countries },
-      // The real Earth (NASA Blue Marble, public domain) for the zoomed-out globe, in Web Mercator.
-      earth: { type: 'image', url: '/images/earth/blue-marble-mercator-2048.webp', coordinates: [[-180, 85.0511], [180, 85.0511], [180, -85.0511], [-180, -85.0511]] },
       omt: { type: 'vector', url: `${OFM}/planet`, attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' },
     },
     layers: [
       { id: 'bg', type: 'background', paint: { 'background-color': C.water } },
       { id: 'land', type: 'fill', source: 'countries', paint: { 'fill-color': C.land } },
-      // Blue and green from space, handing over to the quiet street map as you zoom toward a city.
-      { id: 'earth', type: 'raster', source: 'earth', paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 1, 3.6, 1, 5.2, 0], 'raster-fade-duration': 0, 'raster-resampling': 'linear' } },
       // City detail (OpenFreeMap). Fades in as you zoom toward a city.
       { id: 'omt-water', type: 'fill', source: 'omt', 'source-layer': 'water', minzoom: 4, paint: { 'fill-color': C.water } },
       { id: 'omt-park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 8, paint: { 'fill-color': C.park } },
@@ -136,7 +176,10 @@ export async function mountWorldMap(
   cb: MapCallbacks,
   opts: { padBottom?: number; camera?: Camera | null } = {},
 ): Promise<WorldMapApi> {
+  // Phones get the 2048 px Earth: a 4096 px canvas is near the limit some phone browsers allow.
+  const earthP = earthCanvas(el.clientWidth < 700 ? 2048 : 4096).catch((err) => { console.warn('Earth imagery unavailable; showing the plain map.', err); return null; });
   const topo = (await fetch('/data/countries-50m.json').then((r) => r.json())) as Topology;
+  const earth = await earthP;
   const countries = feature(topo, topo.objects.countries as GeometryCollection) as unknown as GeoJSON.FeatureCollection;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const homeZoom = () => (el.clientWidth < 700 ? 0.85 : 1.5);
@@ -189,6 +232,18 @@ export async function mountWorldMap(
   }
 
   await new Promise<void>((res) => map.on('load', () => res()));
+  if (earth) {
+    // The Earth from space, under the street map, handing over to it before the imagery could soften.
+    map.addSource('earth', { type: 'canvas', canvas: earth.canvas, coordinates: EARTH_COORDS, animate: false });
+    map.addLayer({ id: 'earth', type: 'raster', source: 'earth',
+      paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 1, 2.7, 1, 3.5, 0], 'raster-fade-duration': 0, 'raster-resampling': 'linear' } }, 'omt-water');
+  }
+  // Keep the night side where it really is: repaint the Earth every five minutes.
+  const sunTimer = earth ? setInterval(() => {
+    earth.paint();
+    const src = map.getSource('earth') as maplibregl.CanvasSource | undefined;
+    if (src) { src.play(); requestAnimationFrame(() => src.pause()); }
+  }, 5 * 60_000) : 0;
 
   // Groups that would overlap on screen merge into one count (summed), then split as you zoom in.
   map.addSource('listings', {
@@ -335,6 +390,6 @@ export async function mountWorldMap(
     getZoom: () => map.getZoom(),
     getCamera: () => { const c = map.getCenter(); return { center: [c.lng, c.lat], zoom: map.getZoom() }; },
     resize: () => map.resize(),
-    destroy() { window.removeEventListener('opus:theme', onTheme); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
+    destroy() { clearInterval(sunTimer); window.removeEventListener('opus:theme', onTheme); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
   };
 }

@@ -747,12 +747,13 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
       try {
         const { mountWorldMap } = await import('@/scripts/world-map');
         if (view === 'list') return; // switched away while loading
-        // Arriving from "Explore the World" (?view=map) with a city: the homepage globe already flew there,
-        // so World opens right over the city instead of flying in again.
+        // A city in the URL (from the homepage globe, a link or a search): World opens over it at the same
+        // framing the homepage globe stops at, then flies down into the city. Every way in looks the same.
         const qc0 = params.get('city');
-        if (askedView === 'map' && qc0 && !place) {
+        let arrive = false;
+        if (qc0 && !place) {
           const p = PLACES.find((x) => norm(x.name) === norm(qc0)) ?? findCity(qc0);
-          if (p) { place = { name: p.name, lat: p.lat, lng: p.lng }; camera = { center: [p.lng, p.lat], zoom: 10.2 }; params.delete('city'); syncControls(); renderChips(); }
+          if (p) { place = { name: p.name, lat: p.lat, lng: p.lng }; camera = { center: [p.lng, p.lat], zoom: 2.9 }; arrive = true; params.delete('city'); syncControls(); renderChips(); }
         }
         const m = await mountWorldMap(host, matching(), {
           onSelect: (id) => select(id, 'map'),
@@ -770,13 +771,8 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
         if (place) map.setPlace(place);
         if (active) map.setActive(active);
         render(false);
-        const qc = params.get('city');
-        if (qc && !place) {
-          params.delete('city');
-          const p = PLACES.find((x) => norm(x.name) === norm(qc)) ?? findCity(qc);
-          // Arriving from "Explore the World" (?view=map): the map stays full screen over the city.
-          if (p) goPlace({ name: p.name, lat: p.lat, lng: p.lng }, askedView !== 'map');
-        } else if (place && !camera) map.flyToCity(place.lat, place.lng);
+        if (arrive && place) { inView = true; map.flyToCity(place.lat, place.lng); changed(); if (askedView !== 'map' && mobile.matches && view === 'map') setSheet('half'); }
+        else if (place && !camera) map.flyToCity(place.lat, place.lng);
       } catch (err) {
         console.error('Map failed to load', err);
         noMap();

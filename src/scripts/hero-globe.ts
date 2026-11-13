@@ -4,6 +4,7 @@
  */
 import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
+import { sunAt } from '@/lib/sun';
 
 export interface CityPoint { city: string; country: string; lat: number; lng: number; count: number }
 
@@ -123,7 +124,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   globe.pointOfView({ lat: 28, lng: -40, altitude: home() }, 0);
 
   // At rest the globe is scenery: it spins on its own and ignores the mouse, wheel and touch, so scrolling
-  // the homepage never grabs it. It becomes interactive only inside World (after dive()).
+  // the homepage never grabs it. Turning and zooming happen in World.
   const canvas = globe.renderer().domElement;
   // Input is blocked with pointer-events rather than controls.enabled: the renderer only runs the controls'
   // update (which keeps the camera aimed at the globe and drives auto-rotation) while they are enabled.
@@ -148,26 +149,29 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     const c = controls as unknown as { _sphericalDelta?: { set(a: number, b: number, c: number): void }; sphericalDelta?: { set(a: number, b: number, c: number): void } };
     (c._sphericalDelta ?? c.sphericalDelta)?.set(0, 0, 0);
   };
+  /**
+   * The closest the homepage camera comes. The imagery is 4096 px around the Earth, so past this point it
+   * would soften. World takes over from here at the same framing (zoom ~2.9) and its street map stays sharp.
+   */
+  const CLOSEST = 0.9;
   return {
     flyTo(lat: number, lng: number) {
       hold();
-      globe.pointOfView({ lat, lng, altitude: 0.9 }, ms(1600));
+      globe.pointOfView({ lat, lng, altitude: CLOSEST }, ms(1600));
     },
-    /** Move in toward a place (or the current view) for the directory panel. close: right down to city level. */
+    /** Move in toward a place (or the current view), as far as the imagery stays sharp. close: centre on the place. */
     dive(lat?: number, lng?: number, close = lat != null) {
       hold();
       sharpen();
-      interactive(true);
       const pov = globe.pointOfView();
-      globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: close ? 0.42 : 0.9 }, ms(1700));
+      globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: close ? CLOSEST : Math.max(CLOSEST, 1.3) }, ms(1700));
     },
     /** Fly down to the visitor's own area and mark it. The position stays in the page. */
     here(lat: number, lng: number) {
       hold();
-      interactive(true);
       sharpen(); quiet(true);
       globe.htmlElementsData([...LABELS, { lat, lng, text: '', kind: 'me' }]);
-      globe.pointOfView({ lat, lng, altitude: 0.45 }, ms(2200));
+      globe.pointOfView({ lat, lng, altitude: CLOSEST }, ms(2200));
     },
     /** No location: pull back a little and let the whole world turn. */
     spin() {
@@ -185,18 +189,6 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
       interactive(false);
     },
   };
-}
-
-/** Where the sun is overhead right now, as [lng, lat]. Accurate to well under a degree, plenty for a picture. */
-function sunAt(d: Date): [number, number] {
-  const start = Date.UTC(d.getUTCFullYear(), 0, 0);
-  const dayOfYear = (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - start) / 864e5;
-  const decl = -23.44 * Math.cos(((2 * Math.PI) / 365) * (dayOfYear + 10));
-  const g = ((2 * Math.PI) / 365) * (dayOfYear - 81);
-  const eot = 9.87 * Math.sin(2 * g) - 7.53 * Math.cos(g) - 1.5 * Math.sin(g); // minutes
-  const minutes = d.getUTCHours() * 60 + d.getUTCMinutes() + d.getUTCSeconds() / 60;
-  const lng = 180 - (minutes + eot) / 4;
-  return [((lng + 540) % 360) - 180, decl];
 }
 
 const VERT = `
