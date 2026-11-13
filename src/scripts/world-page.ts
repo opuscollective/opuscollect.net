@@ -9,7 +9,8 @@
  *   and remounted at the same camera position when you come back.
  * Profiles open in a preview (panel, drawer or bottom sheet) without leaving the page.
  */
-import { cardHtml, matches, isVerified, esc, type WorldFilters } from '@/lib/world';
+import { cardHtml, tileHtml, matches, isVerified, esc, type WorldFilters } from '@/lib/world';
+import { cityGuide, type Shelf } from '@/lib/world-guide';
 import type { WorldStats } from '@/lib/world';
 import { placeIndex, suggest, norm, type Place, type Suggestion } from '@/lib/world-search';
 import { previewHtml, previewSkeleton, previewError } from '@/lib/world-preview';
@@ -42,6 +43,9 @@ export function initWorld(root: HTMLElement) {
   const pvBody = $('[data-preview-body]');
   const scrim = $('[data-scrim]');
   const host = $('[data-map]');
+  const guide = $('[data-guide]');
+  const cards = $('[data-cards]');
+  const track = $('[data-cards-track]');
   const mobile = matchMedia('(max-width: 860px)');
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
   installImageFallbacks(root);
@@ -61,6 +65,8 @@ export function initWorld(root: HTMLElement) {
   let camera: Camera | null = null;
   let place: { name: string; lat: number; lng: number } | null = null;
   let previewId: string | null = null;
+  /** The visitor asked to see everyone in the place as a plain list instead of the guide. */
+  let guideOff = false;
 
   // ---------- URL state ----------
   const params = new URLSearchParams(location.search);
@@ -208,7 +214,7 @@ export function initWorld(root: HTMLElement) {
   /** Forget the searched city. When it was set, the globe also returns to the whole world so results widen again. */
   function clearPlace() {
     const had = !!place;
-    place = null; map?.setPlace(null);
+    place = null; guideOff = false; map?.setPlace(null);
     if (had && map && map.getZoom() >= 4) map.resetView();
     if (had && !map) camera = null;
   }
@@ -298,6 +304,15 @@ export function initWorld(root: HTMLElement) {
     }
     if (active) results.querySelector(`[data-id="${CSS.escape(active)}"]`)?.classList.add('is-active');
     results.hidden = ls.length === 0;
+    renderCards(ls);
+    if (renderGuide()) {
+      // The guide stands in for the list: no empty state, no plain results underneath.
+      results.hidden = true;
+      count.textContent = '';
+      if (updateMap) map?.setData(matching());
+      writeUrl();
+      return;
+    }
 
     const where = inArea() ? (place ? `near ${place.name}` : 'in this area') : nearPlace() ? `near ${place!.name}` : 'worldwide';
     count.textContent = ALL.length === 0 ? '' : ls.length ? `${ls.length} result${ls.length === 1 ? '' : 's'} ${where}` : '';
@@ -325,6 +340,95 @@ export function initWorld(root: HTMLElement) {
     if (empty.hidden) emptySig = '';
     if (updateMap) map?.setData(matching());
     writeUrl();
+  }
+
+  // ---------- City guide ----------
+  /** A place is chosen and nothing else narrows it: show the place as an editorial guide. */
+  const guideMode = () => !!place && !guideOff && !f.text && !f.kinds.length && filterCount() === 0;
+  let guideSig = '';
+  let guideShelves: Shelf[] = [];
+  function renderGuide(): boolean {
+    if (!guideMode()) { guide.hidden = true; guideSig = ''; return false; }
+    const g = cityGuide(ALL, place!);
+    if (!g.shelves.length) { guide.hidden = true; guideSig = ''; return false; }
+    const sig = `${place!.name}|${g.total}`;
+    if (sig !== guideSig) {
+      guideSig = sig;
+      guideShelves = g.shelves;
+      const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+      const counts = [g.musicians && plural(g.musicians, 'musician', 'musicians'), g.studios && plural(g.studios, 'studio', 'studios'), g.organizations && plural(g.organizations, 'organization', 'organizations')].filter(Boolean).join(' · ');
+      guide.innerHTML = `<header class="wg__head">
+  <p class="wg__kicker">City guide</p>
+  <h2 class="wg__title" id="wg-title">${esc(g.name)}</h2>
+  <p class="wg__counts">${esc(counts)} on Opus</p>
+</header>
+${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-labelledby="wg-s${i}">
+  <div class="wg__shead"><h3 id="wg-s${i}">${esc(sh.title)}</h3>${sh.total > 2 ? `<button type="button" class="wg__all" data-shelf="${i}">See all ${sh.total}</button>` : ''}</div>
+  <div class="wg__track" role="list">${sh.items.map((l) => tileHtml(l, 'portrait')).join('')}</div>
+</section>`).join('')}
+<button type="button" class="wg__everyone" data-guide-list>See everyone in ${esc(g.name)} as a list</button>`;
+      if (!reduceMotion.matches) { guide.classList.remove('is-entering'); void guide.offsetWidth; guide.classList.add('is-entering'); }
+    }
+    guide.hidden = false;
+    return true;
+  }
+  guide.addEventListener('click', (e) => {
+    const t = e.target as Element;
+    const tile = t.closest<HTMLElement>('.wt[data-id]');
+    if (tile) { select(tile.dataset.id!, 'card'); return; }
+    const all = t.closest<HTMLElement>('[data-shelf]');
+    if (all) {
+      const sh = guideShelves[Number(all.dataset.shelf)];
+      if (!sh) return;
+      f.kinds = sh.filter.kind ? [sh.filter.kind] : [];
+      f.specialty = sh.filter.specialty ?? '';
+      f.openToCollab = !!sh.filter.collab;
+      changed();
+      results.scrollIntoView?.({ block: 'start' });
+      return;
+    }
+    if (t.closest('[data-guide-list]')) { guideOff = true; changed(); }
+  });
+
+  // ---------- Cards over the map ----------
+  let cardIds = '';
+  function renderCards(ls: Listing[]) {
+    const show = view === 'map' && !!map && inArea() && ls.length > 0;
+    root.classList.toggle('has-cards', show);
+    cards.hidden = !show;
+    if (!show) { cardIds = ''; return; }
+    const top = ls.filter(hasPoint).slice(0, 24);
+    const ids = top.map((l) => l.id).join(',');
+    if (ids === cardIds) return;
+    cardIds = ids;
+    track.innerHTML = top.map((l) => tileHtml(l, 'wide')).join('');
+    if (!reduceMotion.matches) { cards.classList.remove('is-entering'); void cards.offsetWidth; cards.classList.add('is-entering'); }
+    const keep = active ? track.querySelector<HTMLElement>(`.wt[data-id="${CSS.escape(active)}"]`) : null;
+    track.scrollLeft = keep ? keep.offsetLeft - (track.clientWidth - keep.offsetWidth) / 2 : 0;
+  }
+  /** The card nearest the middle of the strip is the one you're on: its marker lights up and stays in view. */
+  let carT = 0;
+  track.addEventListener('scroll', () => {
+    clearTimeout(carT);
+    carT = window.setTimeout(() => {
+      const mid = track.scrollLeft + track.clientWidth / 2;
+      let best: HTMLElement | null = null, d = Infinity;
+      track.querySelectorAll<HTMLElement>('.wt').forEach((c) => { const x = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid); if (x < d) { d = x; best = c; } });
+      const id = (best as HTMLElement | null)?.dataset.id;
+      if (!id || id === active) return;
+      markActive(id);
+      const l = byId.get(id);
+      if (l && map) map.ensureVisible(l);
+    }, 120);
+  }, { passive: true });
+  track.addEventListener('click', (e) => {
+    const c = (e.target as Element).closest<HTMLElement>('.wt[data-id]');
+    if (c) select(c.dataset.id!, 'card');
+  });
+  function showCard(id: string) {
+    const c = track.querySelector<HTMLElement>(`.wt[data-id="${CSS.escape(id)}"]`);
+    if (!c || cards.hidden) return;
+    track.scrollTo({ left: c.offsetLeft - (track.clientWidth - c.offsetWidth) / 2, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
   }
 
   // ---------- Controls ----------
@@ -430,7 +534,7 @@ export function initWorld(root: HTMLElement) {
   // A place: the globe turns to the city, marks it, and results follow the map. In List view the
   // same choice filters to members near the city, and the map picks it up when you switch back.
   function goPlace(p: { name: string; lat: number; lng: number }, openSheet = true) {
-    place = p; inView = true;
+    place = p; inView = true; guideOff = false;
     if (map) { map.setPlace(p); map.flyToCity(p.lat, p.lng); }
     else camera = { center: [p.lng, p.lat], zoom: 10.2 };
     changed();
@@ -443,13 +547,15 @@ export function initWorld(root: HTMLElement) {
     active = id;
     results.querySelectorAll('.wc.is-active').forEach((x) => x.classList.remove('is-active'));
     if (id) cardOf(id)?.classList.add('is-active');
+    track.querySelectorAll('.wt.is-active').forEach((x) => x.classList.remove('is-active'));
+    if (id) track.querySelector(`.wt[data-id="${CSS.escape(id)}"]`)?.classList.add('is-active');
     map?.setActive(id);
   }
   /** Opening a profile from a card, a marker, or search: highlight both sides, then show the preview. */
   function select(id: string, from: 'card' | 'map' | 'search') {
     markActive(id);
     const l = byId.get(id);
-    if (from === 'map') cardOf(id)?.scrollIntoView({ block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+    if (from === 'map') { cardOf(id)?.scrollIntoView({ block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' }); showCard(id); }
     // Keep the visitor's map position; only pan if the marker is off screen.
     if (from !== 'map' && l && map) { if (from === 'search') map.flyToListing(l); else map.ensureVisible(l); }
     openPreview(id);
@@ -556,6 +662,7 @@ export function initWorld(root: HTMLElement) {
     if (typeof st === 'boolean') st = st ? 'half' : 'peek';
     sheet = st;
     panel.dataset.sheet = st;
+    root.dataset.sheet = st;
     panel.classList.toggle('is-open', st !== 'peek');
     toggle.setAttribute('aria-expanded', String(st !== 'peek'));
     if (sheetActive()) panel.style.setProperty('--sheet-y', `${sheetY(st)}px`);
@@ -640,6 +747,13 @@ export function initWorld(root: HTMLElement) {
       try {
         const { mountWorldMap } = await import('@/scripts/world-map');
         if (view === 'list') return; // switched away while loading
+        // Arriving from "Explore the World" (?view=map) with a city: the homepage globe already flew there,
+        // so World opens right over the city instead of flying in again.
+        const qc0 = params.get('city');
+        if (askedView === 'map' && qc0 && !place) {
+          const p = PLACES.find((x) => norm(x.name) === norm(qc0)) ?? findCity(qc0);
+          if (p) { place = { name: p.name, lat: p.lat, lng: p.lng }; camera = { center: [p.lng, p.lat], zoom: 10.2 }; params.delete('city'); syncControls(); renderChips(); }
+        }
         const m = await mountWorldMap(host, matching(), {
           onSelect: (id) => select(id, 'map'),
           onMove: () => { if (inView) render(false); },

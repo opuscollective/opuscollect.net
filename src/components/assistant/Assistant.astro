@@ -191,6 +191,8 @@ import Icon from '../ui/Icon.astro';
     /* In World the sheet and the map zoom buttons own the bottom right: sit above them, and step aside when the sheet opens. */
     :global(body:has([data-world])) .oa-launch { bottom: calc(152px + 96px + env(safe-area-inset-bottom)); }
     :global(body:has([data-sheet='half'], [data-sheet='full'])) .oa-launch { opacity: 0; pointer-events: none; }
+    /* Cards over the map own the space above the sheet: the launcher moves to the top corner. */
+    :global(body:has(.world.has-cards)) .oa-launch { top: calc(64px + 14px); bottom: auto; }
     /* Room at the end of every page so the launcher never sits on the last links. */
     :global(body) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
     :global(body:has([data-world])) { padding-bottom: 0; }

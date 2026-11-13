@@ -522,3 +522,91 @@
   .pv__btn { min-height: 48px; }
 }
 .wp__results[hidden] { display: none; }
+
+/* ---------- Tiles: the visual cards on the map and in the city guide ---------- */
+.wt { position: relative; flex: 0 0 auto; color: var(--c-text); }
+.wt__hit { all: unset; cursor: pointer; display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt__hit span { overflow: hidden; text-overflow: ellipsis; }
+.wt__hit::after { content: ''; position: absolute; inset: 0; z-index: 2; border-radius: inherit; }
+.wt__hit:focus-visible::after { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+.wt__name { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 0; font-weight: 500; letter-spacing: -0.02em; }
+.wt__name .vb { flex-shrink: 0; width: 15px; height: 15px; }
+.wt__meta { display: flex; align-items: center; gap: 6px; margin: 2px 0 0; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wt__sample { flex-shrink: 0; padding: 0 5px; border: 1px dashed currentColor; border-radius: 4px; font-size: 9.5px; font-weight: 500; opacity: 0.7; }
+.wt__live { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--c-live); }
+.wt__live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.wt .im img { transition: transform 0.9s var(--ease-glide), opacity 0.6s var(--ease); }
+.wt:hover .im img { transform: scale(1.045); }
+
+/* Wide: the image fills the card and the words sit over a soft shade. */
+.wt--wide { width: min(78vw, 300px); height: 148px; border-radius: 18px; overflow: hidden; scroll-snap-align: center;
+  background: var(--surface-sunken); box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--c-hairline-strong);
+  transition: transform 0.5s var(--ease-glide), box-shadow 0.4s var(--ease); }
+.wt--wide .wt__media, .wt--wide .wt__media .im { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; }
+.wt--wide .wt__media::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(8, 8, 10, 0.82) 100%); }
+.wt--wide .wt__body { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; padding: 14px 16px; color: #fff; }
+.wt--wide .wt__name { font-size: 16px; }
+.wt--wide .wt__meta { color: rgba(255, 255, 255, 0.78); }
+.wt--wide .wt__where { margin: 1px 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.58); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wt--wide .im__label { color: rgba(255, 255, 255, 0.5); font-size: 28px; place-items: start end; padding: 14px 16px; }
+.wt--wide.is-active { box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.55), 0 0 0 2px var(--c-accent); }
+
+/* Portrait: image on top, words below, for guide shelves. */
+.wt--portrait { width: 148px; scroll-snap-align: start; }
+.wt--portrait .im { border-radius: 14px; box-shadow: inset 0 0 0 1px var(--c-hairline); }
+.wt--portrait .wt__body { padding: 10px 2px 0; }
+.wt--portrait .wt__name { font-size: 14.5px; }
+.wt--portrait .wt__meta { color: var(--c-fg-faint); }
+.wt--portrait .wt__hit::after { border-radius: 14px; }
+
+/* ---------- Cards over the map ---------- */
+.wcar { grid-column: 2; grid-row: 1; position: absolute; left: 0; right: 0; bottom: 22px; z-index: 2; pointer-events: none;
+  transition: opacity 0.45s var(--ease), transform 0.6s var(--ease-glide); }
+.wcar[hidden] { display: none; }
+.wcar__track { display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
+  padding: 18px max(16px, calc(50% - 150px)) 22px; pointer-events: auto; touch-action: pan-x; }
+.wcar__track::-webkit-scrollbar { display: none; }
+.wcar.is-entering .wt { animation: wt-in 0.8s var(--ease-glide) both; }
+.wcar.is-entering .wt:nth-child(2) { animation-delay: 60ms; }
+.wcar.is-entering .wt:nth-child(3) { animation-delay: 120ms; }
+.wcar.is-entering .wt:nth-child(n+4) { animation-delay: 160ms; }
+@keyframes wt-in { from { opacity: 0; transform: translateY(18px) scale(0.98); } }
+/* Desktop: in Map view the cards replace the list; in Split view the list is already beside the map. */
+.world:not([data-view='map']) .wcar { display: none; }
+.world[data-view='map'][data-results-open] .wcar { opacity: 0; pointer-events: none; }
+
+/* ---------- City guide ---------- */
+.wg { padding: 4px 0 28px; }
+.wg[hidden] { display: none; }
+.wg__head { padding: 14px 18px 4px; }
+.wg__kicker { margin: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.wg__title { margin: 6px 0 0; font-size: clamp(2rem, 1.5rem + 1.6vw, 2.75rem); line-height: 1; letter-spacing: -0.045em; font-weight: 500; color: var(--c-text); }
+.wg__counts { margin: 8px 0 0; font-size: 14px; color: var(--c-fg-faint); }
+.wg__shelf { margin-top: 26px; }
+.wg__shead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 18px; }
+.wg__shead h3 { margin: 0; font-size: 17px; font-weight: 500; letter-spacing: -0.02em; color: var(--c-text); }
+.wg__all { flex-shrink: 0; min-height: 32px; padding: 0; border: 0; background: none; color: var(--c-fg-muted); font-size: 13px; font-weight: 500; cursor: pointer; transition: color var(--dur-fast); }
+.wg__all:hover { color: var(--accent); }
+.wg__track { display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding: 0 18px; scrollbar-width: none; padding: 12px 18px 4px; touch-action: pan-x; }
+.wg__track::-webkit-scrollbar { display: none; }
+.wg__everyone { display: flex; align-items: center; justify-content: center; width: calc(100% - 36px); min-height: 46px; margin: 30px 18px 0; border: 1px solid var(--c-hairline-strong); border-radius: var(--r-pill); background: none; color: var(--c-text); font-size: 14px; font-weight: 500; cursor: pointer; transition: background var(--dur-fast), border-color var(--dur-fast); }
+.wg__everyone:hover { background: var(--c-surface-2); border-color: var(--line-strong); }
+.wg.is-entering .wg__head, .wg.is-entering .wg__shelf { animation: wg-in 0.9s var(--ease-glide) both; animation-delay: calc(var(--i, -1) * 70ms + 70ms); }
+@keyframes wg-in { from { opacity: 0; transform: translateY(14px); } }
+
+@media (max-width: 860px) {
+  .world .wcar { bottom: calc(var(--peek) + 2px); }
+  .world:not([data-view='map']) .wcar { display: none; }
+  /* The sheet coming up takes the cards' place. */
+  .world[data-sheet='half'] .wcar, .world[data-sheet='full'] .wcar { opacity: 0; transform: translateY(24px); pointer-events: none; }
+  .world[data-sheet='half'] .wcar__track, .world[data-sheet='full'] .wcar__track { pointer-events: none; }
+  /* With cards showing, the Map/List pill moves to the top of the map and the zoom buttons sit above the cards. */
+  .world.has-cards .world__mode:not([hidden]) { bottom: auto; top: 14px; }
+  .world.has-cards .maplibregl-ctrl-bottom-right, .world.has-cards .maplibregl-ctrl-bottom-left { bottom: calc(var(--peek) + 196px); }
+  .wt--portrait { width: 136px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wcar.is-entering .wt, .wg.is-entering .wg__head, .wg.is-entering .wg__shelf { animation: none; }
+}
+/* Desktop: keep the cards clear of the Ask Opus button in the corner. */
+@media (min-width: 861px) { .wcar { bottom: 76px; } }

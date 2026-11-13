@@ -32,6 +32,11 @@ const {
       </p>
     </div>
 
+    <!-- Cards over the map: the people in view, one swipe each. The map follows the card you're on. -->
+    <section class="wcar" data-cards hidden aria-label="People and places in view">
+      <div class="wcar__track" data-cards-track role="list"></div>
+    </section>
+
     <aside class="world__panel" data-panel aria-label="Directory">
       <button class="world__grip" type="button" data-sheet-toggle aria-expanded="false" aria-controls="world-results">
         <span class="sr-only">Show or hide results</span><i aria-hidden="true"></i>
@@ -112,6 +117,9 @@ const {
         <button type="button" class="wp__listbtn" data-results-toggle aria-controls="world-results" aria-expanded="false" hidden>Show list</button>
         <ViewSwitcher />
       </div>
+
+      <!-- City guide: shown when a place is chosen and nothing else narrows the results. -->
+      <section class="wg" data-guide hidden aria-labelledby="wg-title"></section>
 
       <div class="wp__results" id="world-results" data-results tabindex="-1">
         {[0, 1, 2, 3, 4, 5].map(() => <div class="wc wc--skeleton" aria-hidden="true"><span></span><span></span><span></span></div>)}

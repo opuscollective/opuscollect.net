@@ -154,3 +154,22 @@ export function cardHtml(l: Listing): string {
   </div>
 </article>`;
 }
+
+/**
+ * Tile: the visual card used by the map carousel ('wide': image fills the card, words over it)
+ * and the city guide shelves ('portrait': image on top, words below). The name is the button.
+ */
+export function tileHtml(l: Listing, variant: 'wide' | 'portrait'): string {
+  const what = kindLabel(l);
+  const media = imageHtml({ src: mainImage(l), seed: l.id, kind: l.kind, ratio: variant === 'wide' ? 'photo' : 'portrait', label: l.isSample ? undefined : initials(l.name) });
+  const sample = l.isSample ? '<span class="wt__sample">Sample</span>' : '';
+  const status = l.kind === 'musician' && l.openToCollab ? '<span class="wt__live">Open to collaborate</span>' : '';
+  return `<article class="wt wt--${variant}" data-id="${esc(l.id)}">
+  <div class="wt__media">${media}</div>
+  <div class="wt__body">
+    <h3 class="wt__name"><button type="button" class="wt__hit" data-open aria-label="${esc(l.name)}, ${esc(what)}, ${esc(placeText(l))}${l.isSample ? ', sample listing' : ''}. Open preview"><span>${esc(l.name)}</span></button>${badgeHtml(l)}</h3>
+    <p class="wt__meta">${esc(what)}${sample}</p>
+    ${variant === 'wide' ? `<p class="wt__where">${esc(placeText(l))}</p>` : status}
+  </div>
+</article>`;
+}
