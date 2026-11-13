@@ -161,6 +161,10 @@ export interface WorldMapApi {
   getZoom(): number;
   getCamera(): Camera;
   resize(): void;
+  /** After the entrance: drop the handoff framing, and either rest or let the globe turn slowly. */
+  release(worldwide: boolean): void;
+  /** Resolves once the map has drawn everything for the current view. */
+  ready(): Promise<void>;
   /** Frees the WebGL context and all markers (List view). */
   destroy(): void;
 }
@@ -176,7 +180,7 @@ export async function mountWorldMap(
   el: HTMLElement,
   initial: Listing[],
   cb: MapCallbacks,
-  opts: { padBottom?: number; camera?: Camera | null } = {},
+  opts: { padBottom?: number; camera?: Camera | null; pad?: { top: number; bottom: number } } = {},
 ): Promise<WorldMapApi> {
   // Phones get the 2048 px Earth: a 4096 px canvas is near the limit some phone browsers allow.
   const earthP = earthCanvas(el.clientWidth < 700 ? 2048 : 4096).catch((err) => { console.warn('Earth imagery unavailable; showing the plain map.', err); return null; });
@@ -202,6 +206,9 @@ export async function mountWorldMap(
   map.touchZoomRotate.disableRotation();
   // On phones the bottom sheet covers the lower edge; centre the globe in the visible area.
   if (opts.padBottom) map.setPadding({ top: 0, left: 0, right: 0, bottom: opts.padBottom });
+  // Coming from the homepage: the globe sits exactly where the homepage camera left it (see world-entry.ts).
+  if (opts.pad) map.setPadding({ top: opts.pad.top, left: 0, right: 0, bottom: (opts.padBottom ?? 0) + opts.pad.bottom });
+  const firstIdle = new Promise<void>((res) => map.once('idle', () => res()));
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
   const onTheme = () => { if (map.isStyleLoaded()) applyPalette(map, readPalette()); else map.once('load', () => applyPalette(map, readPalette())); };
   window.addEventListener('opus:theme', onTheme);
@@ -239,7 +246,7 @@ export async function mountWorldMap(
     // The Earth from space, under the street map, handing over to it before the imagery could soften.
     map.addSource('earth', { type: 'canvas', canvas: earth.canvas, coordinates: EARTH_COORDS, animate: false });
     map.addLayer({ id: 'earth', type: 'raster', source: 'earth',
-      paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 1, 2.7, 1, 3.5, 0], 'raster-fade-duration': 0, 'raster-resampling': 'linear' } }, 'omt-water');
+      paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 1, 3.1, 1, 3.9, 0], 'raster-fade-duration': 0, 'raster-resampling': 'linear' } }, 'omt-water');
   }
   // Keep the night side where it really is: repaint the Earth every five minutes.
   const sunTimer = earth ? setInterval(() => {
@@ -355,7 +362,7 @@ export async function mountWorldMap(
   // Slow idle spin on the globe until the visitor touches the map (first visit only, never when restoring a view).
   let spinning = !reduce && !opts.camera;
   const spin = () => {
-    if (!spinning || map.getZoom() > 2.5) return;
+    if (!spinning || map.getZoom() > 2.6) return;
     const c = map.getCenter();
     map.easeTo({ center: [c.lng + 4, c.lat], duration: 1000, easing: (t) => t });
   };
@@ -393,6 +400,13 @@ export async function mountWorldMap(
     getZoom: () => map.getZoom(),
     getCamera: () => { const c = map.getCenter(); return { center: [c.lng, c.lat], zoom: map.getZoom() }; },
     resize: () => map.resize(),
+    release(worldwide) {
+      const padding = { top: 0, left: 0, right: 0, bottom: opts.padBottom ?? 0 };
+      // Worldwide: settle back to the whole globe and let it turn. Otherwise just drop the handoff framing.
+      map.easeTo({ padding, ...(worldwide ? { zoom: Math.min(map.getZoom(), el.clientWidth < 700 ? 1.3 : Math.max(homeZoom(), 2.3)) } : {}), duration: reduce ? 0 : 1100 });
+      if (worldwide && !reduce) spinning = true; // the moveend handler starts the spin
+    },
+    ready: () => firstIdle,
     destroy() { clearInterval(sunTimer); window.removeEventListener('opus:theme', onTheme); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
   };
 }

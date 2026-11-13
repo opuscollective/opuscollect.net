@@ -20,6 +20,8 @@ import { SPECIALTIES, toSpecialty } from '@/data/specialties';
 import { hasPoint, type Listing } from '@/types/directory';
 import type { ProfileDetail } from '@/server/world-detail';
 import type { Camera, WorldMapApi } from '@/scripts/world-map';
+import { takeHandoff, cameraFor, readFrom, saveFrom, type From } from '@/scripts/world-entry';
+import { nearestCity } from '@/scripts/hero-dive';
 
 type View = 'map' | 'split' | 'list';
 type Sheet = 'peek' | 'half' | 'full';
@@ -90,11 +92,25 @@ export function initWorld(root: HTMLElement) {
     // Keep the address short: the kind is the path, and a known city on its own is /world/<city>.
     const city = place && !f.kinds.length ? CITIES.find((c) => c.name === place!.name) : undefined;
     u.pathname = city ? `/world/${citySlug(city.name)}` : KIND_PATH[f.kinds[0] ?? ''];
-    u.searchParams.delete('type'); u.searchParams.delete('view');
+    u.searchParams.delete('type'); u.searchParams.delete('view'); u.searchParams.delete('enter');
     set('q', f.text); set('specialty', f.specialty || ''); set('genre', f.genre); set('studio', f.studioType || '');
     set('collab', f.openToCollab ? '1' : ''); set('verified', f.verifiedOnly ? '1' : ''); set('city', city ? '' : place?.name); set('p', previewId);
     history.replaceState(history.state, '', u);
   }
+
+  // ---------- Entering World: where are you connecting from? ----------
+  // Explore World on the homepage lands here with ?enter=1 and the homepage camera (see world-entry.ts).
+  const entering = params.get('enter') === '1';
+  params.delete('enter');
+  const handoff = entering ? takeHandoff() : null;
+  let from: From | null = readFrom();
+  // A plain /world visit (nothing asked for in the address) also gets the question the first time.
+  const plain = location.pathname.replace(/\/$/, '') === '/world' && !params.get('city') && !f.text && !f.kinds.length && !params.get('p');
+  const asking = !from && (entering || plain);
+  // Answered before: go straight there, without asking again.
+  if (!asking && from?.mode === 'city' && (entering || plain)) params.set('city', from.name);
+  if (asking) root.dataset.entry = 'ask';
+  else if (handoff) root.dataset.entry = 'arrive';
 
   // ---------- View mode: Map, Split, List ----------
   const readPref = (): Partial<Record<'desktop' | 'mobile', View>> => { try { return JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}'); } catch { return {}; } };
@@ -315,7 +331,7 @@ export function initWorld(root: HTMLElement) {
     }
 
     const where = inArea() ? (place ? `near ${place.name}` : 'in this area') : nearPlace() ? `near ${place!.name}` : 'worldwide';
-    count.textContent = ALL.length === 0 ? '' : ls.length ? `${ls.length} result${ls.length === 1 ? '' : 's'} ${where}` : '';
+    count.textContent = ALL.length === 0 ? '' : ls.length ? `${tally(ls)} ${where}` : '';
     $('[data-results-toggle]').hidden = !ls.length;
 
     if (ALL.length === 0) {
@@ -356,7 +372,7 @@ export function initWorld(root: HTMLElement) {
       guideSig = sig;
       guideShelves = g.shelves;
       const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-      const counts = [g.musicians && plural(g.musicians, 'musician', 'musicians'), g.studios && plural(g.studios, 'studio', 'studios'), g.organizations && plural(g.organizations, 'organization', 'organizations')].filter(Boolean).join(' · ');
+      const counts = [g.musicians && plural(g.musicians, 'professional', 'professionals'), g.studios && plural(g.studios, 'studio', 'studios'), g.organizations && plural(g.organizations, 'organization', 'organizations')].filter(Boolean).join(' · ');
       guide.innerHTML = `<header class="wg__head">
   <p class="wg__kicker">City guide</p>
   <h2 class="wg__title" id="wg-title">${esc(g.name)}</h2>
@@ -731,6 +747,116 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   }
   modeBtn.addEventListener('click', () => setView(view === 'list' ? 'map' : 'list'));
 
+  /** Real counts for what's showing: each professional once (however many specialties), places counted apart. */
+  function tally(ls: Listing[]) {
+    const n = { musician: 0, studio: 0, organization: 0 };
+    for (const l of ls) n[l.kind]++;
+    const plural = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
+    return [n.musician && plural(n.musician, 'professional', 'professionals'), n.studio && plural(n.studio, 'studio', 'studios'),
+      n.organization && plural(n.organization, 'organization', 'organizations')].filter(Boolean).join(' · ');
+  }
+
+  // ---------- The entrance question ----------
+  const whereEl = $('[data-where]');
+  const whereNote = $('[data-where-note]');
+  const whereForm = $<HTMLFormElement>('[data-where-form]');
+  const whereQ = $<HTMLInputElement>('[data-where-q]');
+  const whereList = $<HTMLUListElement>('[data-where-list]');
+  const whereCityBtn = $<HTMLButtonElement>('[data-where-city]');
+  const whereBtns = () => root.querySelectorAll<HTMLButtonElement>('[data-where-opts] button');
+  const whereLabel = () => { $('[data-where-label]').textContent = from?.mode === 'city' ? from.name : 'Worldwide'; };
+  whereLabel();
+
+  function showWhere() {
+    root.dataset.entry = 'ask';
+    whereEl.hidden = false;
+    whereNote.textContent = '';
+    whereForm.hidden = true; whereCityBtn.setAttribute('aria-expanded', 'false');
+    whereQ.value = ''; cityOpts = []; cityAt = -1; whereList.hidden = true; whereList.innerHTML = '';
+    whereBtns().forEach((b) => (b.disabled = false));
+    if (!reduceMotion.matches) { whereEl.classList.remove('is-in'); void whereEl.offsetWidth; }
+    whereEl.classList.add('is-in');
+    if (mobile.matches) setSheet('peek');
+    requestAnimationFrame(() => $<HTMLElement>('#wx-title').focus({ preventScroll: true }));
+  }
+  /** An answer: remember it (a city name or "worldwide", nothing else), then open World there. */
+  function answer(next: From, p?: { name: string; lat: number; lng: number }) {
+    from = next; saveFrom(next); whereLabel();
+    whereEl.classList.remove('is-in');
+    setTimeout(() => { whereEl.hidden = true; }, reduceMotion.matches ? 0 : 380);
+    delete root.dataset.entry;
+    if (next.mode === 'city' && p) { map?.release(false); goPlace(p); }
+    else { map?.release(true); if (place) { clearPlace(); changed(); } }
+    requestAnimationFrame(() => map?.resize());
+  }
+  $('[data-where-open]').addEventListener('click', showWhere);
+  $('[data-where-world]').addEventListener('click', () => answer({ mode: 'world' }));
+  $('[data-where-me]').addEventListener('click', () => {
+    if (!('geolocation' in navigator)) { whereNote.textContent = 'Location isn’t available in this browser. Enter a city or explore worldwide.'; return; }
+    whereNote.textContent = 'Finding where you are…';
+    whereBtns().forEach((b) => (b.disabled = true));
+    // Asked only now, after the tap. The position stays in this page: only the nearest city is kept.
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const near = nearestCity(CITIES, { lat: pos.coords.latitude, lng: pos.coords.longitude });
+        if (near && near.km < 1500) answer({ mode: 'city', name: near.city.name }, near.city);
+        else { whereBtns().forEach((b) => (b.disabled = false)); whereNote.textContent = 'There’s no Opus city near you yet. Enter a city or explore worldwide.'; }
+      },
+      () => { whereBtns().forEach((b) => (b.disabled = false)); whereNote.textContent = 'Location is off. Enter a city or explore worldwide.'; },
+      { enableHighAccuracy: false, timeout: 12000, maximumAge: 10 * 60 * 1000 },
+    );
+  });
+
+  // Enter a city: cities and regions from the gazetteer plus every place Opus members are in.
+  type CityOpt = { name: string; sub: string; lat: number; lng: number };
+  function cityOptions(text: string): CityOpt[] {
+    const t = norm(text);
+    if (!t) return [];
+    const seen = new Set<string>();
+    const out: CityOpt[] = [];
+    const add = (o: CityOpt, hay: string[]) => {
+      if (seen.has(o.name) || !hay.some((h) => norm(h).startsWith(t) || norm(h).includes(` ${t}`))) return;
+      seen.add(o.name); out.push(o);
+    };
+    for (const c of CITIES) add({ name: c.name, sub: [c.region, c.countryName].filter(Boolean).join(', '), lat: c.lat, lng: c.lng }, [c.name, c.region ?? '', c.countryName, ...(c.aliases ?? [])]);
+    for (const p of PLACES) add({ name: p.name, sub: '', lat: p.lat, lng: p.lng }, [p.name]);
+    return out.slice(0, 6);
+  }
+  let cityOpts: CityOpt[] = [];
+  let cityAt = -1;
+  function drawCities() {
+    whereList.innerHTML = cityOpts.map((o, i) => `<li role="option" id="wx-o${i}" data-i="${i}" aria-selected="${i === cityAt}"><b>${esc(o.name)}</b>${o.sub ? `<span>${esc(o.sub)}</span>` : ''}</li>`).join('')
+      || (whereQ.value.trim() ? '<li class="wx__none" role="presentation">No match yet. Try a nearby city, or explore worldwide.</li>' : '');
+    const open = !!whereList.innerHTML;
+    whereList.hidden = !open; whereQ.setAttribute('aria-expanded', String(open && cityOpts.length > 0));
+    if (cityAt >= 0) whereQ.setAttribute('aria-activedescendant', `wx-o${cityAt}`); else whereQ.removeAttribute('aria-activedescendant');
+  }
+  whereCityBtn.addEventListener('click', () => {
+    const open = whereForm.hidden;
+    whereForm.hidden = !open; whereCityBtn.setAttribute('aria-expanded', String(open));
+    if (open) whereQ.focus();
+  });
+  whereQ.addEventListener('input', () => { cityOpts = cityOptions(whereQ.value); cityAt = cityOpts.length ? 0 : -1; drawCities(); });
+  whereQ.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!cityOpts.length) return;
+      cityAt = (cityAt + (e.key === 'ArrowDown' ? 1 : -1) + cityOpts.length) % cityOpts.length; drawCities();
+    } else if (e.key === 'Escape') { whereList.hidden = true; }
+  });
+  const pickCity = (o?: CityOpt) => { if (o) answer({ mode: 'city', name: o.name }, o); };
+  whereForm.addEventListener('submit', (e) => { e.preventDefault(); pickCity(cityOpts[Math.max(0, cityAt)]); });
+  whereList.addEventListener('pointerdown', (e) => e.preventDefault());
+  whereList.addEventListener('click', (e) => { const li = (e.target as Element).closest<HTMLElement>('[data-i]'); if (li) pickCity(cityOpts[Number(li.dataset.i)]); });
+
+  /** The homepage's last frame gives way to the live map once it has drawn the same view. */
+  async function settleHandoff(m: WorldMapApi) {
+    const img = document.querySelector<HTMLImageElement>('[data-handoff]');
+    await Promise.race([m.ready(), new Promise((r) => setTimeout(r, 6000))]);
+    img?.classList.add('is-gone');
+    setTimeout(() => img?.remove(), 900);
+    if (root.dataset.entry === 'arrive') delete root.dataset.entry;
+  }
   // ---------- Map: mounted only when a view shows it ----------
   const hasWebGL = () => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } };
   function noMap() {
@@ -756,6 +882,9 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
           const p = PLACES.find((x) => norm(x.name) === norm(qc0)) ?? findCity(qc0);
           if (p) { place = { name: p.name, lat: p.lat, lng: p.lng }; camera = { center: [p.lng, p.lat], zoom: 2.9 }; arrive = true; params.delete('city'); syncControls(); renderChips(); }
         }
+        // From the homepage: open at exactly the view its camera stopped at, then move on from there.
+        const hand = handoff ? cameraFor(handoff, host, sheetActive() ? peekPx() : 0) : null;
+        if (hand) camera = hand.camera;
         const m = await mountWorldMap(host, matching(), {
           onSelect: (id) => select(id, 'map'),
           onMove: () => { if (inView) render(false); },
@@ -764,7 +893,7 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
             if (view === 'map' && !mobile.matches) { root.setAttribute('data-results-open', ''); syncResultsToggle(); }
             if (sheetActive()) setSheet('half');
           },
-        }, { padBottom: sheetActive() ? peekPx() : 0, camera });
+        }, { padBottom: sheetActive() ? peekPx() : 0, camera, pad: hand?.pad });
         if ((view as View) === 'list') { m.destroy(); return; } // switched to List while the map loaded
         map = m;
         root.classList.add('is-ready');
@@ -772,7 +901,8 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
         if (place) map.setPlace(place);
         if (active) map.setActive(active);
         render(false);
-        if (arrive && place) { inView = true; map.flyToCity(place.lat, place.lng); changed(); if (askedView !== 'map' && mobile.matches && view === 'map') setSheet('half'); }
+        if (hand) await settleHandoff(m);
+        if (arrive && place) { inView = true; if (hand) m.release(false); map.flyToCity(place.lat, place.lng); changed(); if (askedView !== 'map' && mobile.matches && view === 'map') setSheet('half'); }
         else if (place && !camera) map.flyToCity(place.lat, place.lng);
       } catch (err) {
         console.error('Map failed to load', err);
@@ -801,7 +931,7 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
       const s = d.stats;
       const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
       const parts = [
-        s.musicians && plural(s.musicians, 'musician', 'musicians'), s.studios && plural(s.studios, 'studio', 'studios'),
+        s.musicians && plural(s.musicians, 'professional', 'professionals'), s.studios && plural(s.studios, 'studio', 'studios'),
         s.organizations && plural(s.organizations, 'organization', 'organizations'), s.countries && plural(s.countries, 'country', 'countries'),
       ].filter(Boolean);
       $('[data-stats-line]').textContent = parts.join(' · ');
@@ -828,5 +958,6 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   syncControls();
   setView(view, false);
   syncResultsToggle();
+  if (asking) showWhere();
   load().then(() => { if (view !== 'list') boot(); });
 }

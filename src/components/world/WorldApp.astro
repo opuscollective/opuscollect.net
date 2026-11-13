@@ -26,6 +26,22 @@ const {
     <h1 class="sr-only">{title}</h1>
 
     <div class="world__map" data-map aria-label="Interactive map of Opus members. Use the list for keyboard navigation." role="region">
+      <!-- Entering from the homepage: show the homepage's last frame in the same place until the live map has drawn,
+           so the move from one page to the other reads as one. Runs before the first paint. -->
+      <script is:inline>
+        (function () {
+          try {
+            if (new URLSearchParams(location.search).get('enter') !== '1') return;
+            var h = JSON.parse(sessionStorage.getItem('opus.enter') || 'null');
+            var src = sessionStorage.getItem('opus.enter.img');
+            if (!h || !src || Date.now() - h.at > 20000) return;
+            var img = document.createElement('img');
+            img.className = 'world__handoff'; img.alt = ''; img.src = src; img.setAttribute('data-handoff', '');
+            img.style.cssText = 'top:' + h.top + 'px;width:' + h.w + 'px;height:' + h.h + 'px';
+            document.currentScript.parentNode.insertBefore(img, document.currentScript);
+          } catch (e) { /* World opens normally */ }
+        })();
+      </script>
       <div class="world__loading" data-map-loading hidden><span>Loading the world…</span></div>
       <p class="world__nogl" data-map-fallback hidden>
         Your browser can’t show the interactive map, so results are listed only. Everything else works the same.
@@ -35,6 +51,26 @@ const {
     <!-- Cards over the map: the people in view, one swipe each. The map follows the card you're on. -->
     <section class="wcar" data-cards hidden aria-label="People and places in view">
       <div class="wcar__track" data-cards-track role="list"></div>
+    </section>
+
+    <!-- Entrance: one question, three answers. Location is asked for only after "Use my location". -->
+    <section class="wx" data-where hidden aria-labelledby="wx-title">
+      <h2 class="wx__title" id="wx-title" tabindex="-1">Where are you connecting from?</h2>
+      <div class="wx__opts" data-where-opts>
+        <button type="button" class="wx__opt wx__opt--main" data-where-me>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+          Use My Location
+        </button>
+        <button type="button" class="wx__opt" data-where-city aria-expanded="false" aria-controls="wx-form">Enter a City</button>
+        <button type="button" class="wx__opt" data-where-world>Explore Worldwide</button>
+      </div>
+      <form class="wx__form" id="wx-form" data-where-form hidden autocomplete="off">
+        <label for="wx-q" class="sr-only">City or region</label>
+        <input id="wx-q" type="text" placeholder="City or region" role="combobox" aria-expanded="false" aria-controls="wx-list" aria-autocomplete="list" data-where-q />
+        <ul id="wx-list" class="wx__list" role="listbox" aria-label="Cities" data-where-list hidden></ul>
+      </form>
+      <p class="wx__note" data-where-note aria-live="polite"></p>
+      <p class="wx__fine">Only your city is remembered, on this device.</p>
     </section>
 
     <aside class="world__panel" data-panel aria-label="Directory">
@@ -113,6 +149,10 @@ const {
       </div>
 
       <div class="wp__bar">
+        <button type="button" class="wp__where" data-where-open aria-label="Change where you're connecting from">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+          <span data-where-label>Worldwide</span>
+        </button>
         <p class="wp__count" data-count aria-live="polite">Loading World…</p>
         <button type="button" class="wp__listbtn" data-results-toggle aria-controls="world-results" aria-expanded="false" hidden>Show list</button>
         <ViewSwitcher />

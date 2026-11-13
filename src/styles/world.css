@@ -628,3 +628,72 @@
 }
 /* Desktop: keep the cards clear of the Ask Opus button in the corner. */
 @media (min-width: 861px) { .wcar { bottom: 76px; } }
+
+/* ---------- Entering World ---------- */
+/* The homepage's last frame, in the same place on screen, until the live map has drawn the same view. */
+.world__handoff { position: fixed; left: 0; z-index: 1; display: block; max-width: none; object-fit: cover; pointer-events: none;
+  transition: opacity 0.8s var(--ease); }
+.world__handoff.is-gone { opacity: 0; }
+.world:has(.world__handoff) .world__loading { display: none; }
+
+/* While the question is up, or the globe is still arriving, World is just the globe. The directory follows. */
+.world[data-entry] .world__panel, .world[data-entry] .wcar, .world[data-entry] .world__mode,
+.world[data-entry] .maplibregl-ctrl-bottom-right { opacity: 0; pointer-events: none; }
+@media (min-width: 861px) {
+  .world .world__panel, .world .maplibregl-ctrl-bottom-right { transition: opacity 0.6s var(--ease), transform 0.8s var(--ease-glide); }
+  .world[data-entry][data-view='map'] .world__panel { transform: translateX(-16px); }
+}
+
+/* The question: centered over the globe, dark glass, three answers. */
+.wx { position: fixed; z-index: 30; left: 50%; top: 50%; width: min(440px, calc(100vw - 32px)); padding: 30px 28px 22px;
+  transform: translate(-50%, calc(-50% + 14px)); opacity: 0; text-align: center; color: #f4f2ee;
+  background: rgba(14, 14, 17, 0.72); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 22px;
+  backdrop-filter: blur(22px) saturate(1.2); -webkit-backdrop-filter: blur(22px) saturate(1.2); box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.8);
+  transition: opacity 0.5s var(--ease), transform 0.7s var(--ease-glide); }
+.wx[hidden] { display: none; }
+.wx.is-in { opacity: 1; transform: translate(-50%, -50%); transition-delay: 0.25s; }
+.wx__title { margin: 0 0 20px; font-size: clamp(1.45rem, 1.2rem + 0.8vw, 1.85rem); font-weight: 500; letter-spacing: -0.035em; line-height: 1.12; outline: none; }
+.wx__opts { display: flex; flex-direction: column; gap: 8px; }
+.wx__opt { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 50px; padding: 0 20px; border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: #f4f2ee; font-size: 15px; font-weight: 500; cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast), opacity var(--dur-fast); }
+.wx__opt:hover { background: rgba(255, 255, 255, 0.09); border-color: rgba(255, 255, 255, 0.24); }
+.wx__opt:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+.wx__opt--main { background: #f4f2ee; color: #0d0d0f; border-color: transparent; }
+.wx__opt--main:hover { background: #fff; }
+.wx__opt:disabled { opacity: 0.5; cursor: progress; }
+.wx__opt[aria-expanded='true'] { border-color: rgba(255, 255, 255, 0.3); }
+.wx__form { position: relative; margin-top: 10px; }
+.wx__form[hidden] { display: none; }
+.wx__form input { width: 100%; height: 50px; padding: 0 18px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(0, 0, 0, 0.35);
+  color: #f4f2ee; font-size: 16px; outline: none; }
+.wx__form input:focus { border-color: var(--c-accent); }
+.wx__list { margin: 6px 0 0; padding: 4px; list-style: none; text-align: left; border-radius: 14px; background: rgba(20, 20, 24, 0.96); border: 1px solid rgba(255, 255, 255, 0.08); }
+.wx__list[hidden] { display: none; }
+.wx__list li { display: flex; align-items: baseline; gap: 8px; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 15px; }
+.wx__list li span { font-size: 13px; color: rgba(244, 242, 238, 0.55); }
+.wx__list li[aria-selected='true'], .wx__list li:hover { background: rgba(255, 255, 255, 0.08); }
+.wx__list .wx__none { cursor: default; font-size: 13.5px; color: rgba(244, 242, 238, 0.6); }
+.wx__list .wx__none:hover { background: none; }
+.wx__note { min-height: 1.3em; margin: 12px 0 0; font-size: 13.5px; color: rgba(244, 242, 238, 0.78); }
+.wx__fine { margin: 2px 0 0; font-size: 12px; color: rgba(244, 242, 238, 0.45); }
+
+/* Where you're connecting from, in the directory: one tap to change it. */
+.wp__where { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; height: 28px; padding: 0 10px; border: 1px solid var(--c-hairline-strong); border-radius: var(--r-pill);
+  background: none; color: var(--c-fg-muted); font-size: 12.5px; font-weight: 500; cursor: pointer; transition: color var(--dur-fast), border-color var(--dur-fast); }
+.wp__where:hover { color: var(--c-text); border-color: var(--line-strong); }
+.wp__where:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+@media (max-width: 860px) {
+  .wx { top: auto; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translate(-50%, 18px); padding: 26px 20px 18px; border-radius: 24px; }
+  .wx.is-in { transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wx, .wx.is-in, .world__handoff, .world .world__panel { transition: none; }
+}
+
+/* The live count gets its own line so it never truncates; the Opus button keeps the corner, zoom sits above it. */
+.wp__bar { flex-wrap: wrap; row-gap: 8px; }
+.wp__bar .wp__count { order: 9; flex-basis: 100%; white-space: normal; }
+@media (min-width: 861px) { .world .maplibregl-ctrl-bottom-right { bottom: 66px; } }
+.wp__bar .wp__where { margin-right: auto; }

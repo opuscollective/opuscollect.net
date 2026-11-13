@@ -7,6 +7,8 @@ import type { Topology, GeometryCollection } from 'topojson-specification';
 import { sunAt } from '@/lib/sun';
 
 export interface CityPoint { city: string; country: string; lat: number; lng: number; count: number }
+/** Where the homepage camera stopped, handed to World so its map opens at the same view. */
+export interface Handoff { lat: number; lng: number; altitude: number; fov: number; w: number; h: number; top: number; at: number; image?: string }
 
 export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts: { onSelect: (p: CityPoint) => void }) {
   const [{ default: Globe }, THREE, topo] = await Promise.all([
@@ -154,6 +156,23 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
    * would soften. World takes over from here at the same framing (zoom ~2.9) and its street map stays sharp.
    */
   const CLOSEST = 0.9;
+  /** The last frame as a small JPEG on the page's background, so World can show it until its own map has drawn. */
+  const frame = (): string | undefined => {
+    try {
+      const gl = globe.renderer();
+      gl.render(globe.scene(), globe.camera());
+      const src = gl.domElement;
+      const k = Math.min(1, 1600 / src.width);
+      const c = document.createElement('canvas');
+      c.width = Math.round(src.width * k); c.height = Math.round(src.height * k);
+      const g = c.getContext('2d');
+      if (!g) return undefined;
+      g.fillStyle = getComputedStyle(el.closest('section') ?? document.body).backgroundColor || '#111';
+      g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(src, 0, 0, c.width, c.height);
+      return c.toDataURL('image/jpeg', 0.86);
+    } catch { return undefined; }
+  };
   return {
     flyTo(lat: number, lng: number) {
       hold();
@@ -165,6 +184,22 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
       sharpen();
       const pov = globe.pointOfView();
       globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: close ? CLOSEST : Math.max(CLOSEST, 1.3) }, ms(1700));
+    },
+    /**
+     * Explore World: the camera moves in toward whatever part of the Earth faces the viewer. Resolves with exactly where it stopped, so World can open its map at that same view.
+     */
+    approach(): Promise<Handoff> {
+      hold(); sharpen(); quiet(true);
+      const pov = globe.pointOfView();
+      const lat = Math.max(-35, Math.min(55, pov.lat));
+      const dur = ms(1900);
+      // Close enough to feel like arriving, still inside the range where World shows the same lit Earth.
+      globe.pointOfView({ lat, lng: pov.lng, altitude: Math.min(pov.altitude, 1.15) }, dur);
+      return new Promise((res) => setTimeout(() => {
+        const end = globe.pointOfView();
+        const r = el.getBoundingClientRect();
+        res({ lat: end.lat, lng: end.lng, altitude: end.altitude, fov: (globe.camera() as unknown as { fov?: number }).fov ?? 50, w: r.width, h: r.height, top: r.top, at: Date.now(), image: frame() });
+      }, dur + 60));
     },
     /** Fly down to the visitor's own area and mark it. The position stays in the page. */
     here(lat: number, lng: number) {

@@ -150,7 +150,7 @@ import Icon from '../ui/Icon.astro';
   .oa-launch img { width: 20px; height: auto; }
   :global(.oa-open) .oa-launch { opacity: 0; pointer-events: none; transform: translateY(6px); }
   /* Step aside where something else owns the bottom of the screen. */
-  :global(body:has(.hero.is-diving)) .oa-launch { opacity: 0; pointer-events: none; }
+  :global(body:has(.hero.is-diving)) .oa-launch, :global(body:has(.world[data-entry])) .oa-launch { opacity: 0; pointer-events: none; }
 
   /* Panel: compact, bottom-right on desktop. */
   .oa { position: fixed; z-index: 70; right: max(16px, env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom));
