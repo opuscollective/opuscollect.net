@@ -17,25 +17,30 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   type Ring = { lat: number; lng: number; me?: boolean };
   const cityRings: Ring[] = points.filter((p) => p.count >= 5);
 
+  // The real Earth (NASA Blue Marble, public domain): the one full-colour object on the page.
+  // Big screens get the sharper texture; phones the lighter one.
+  const big = Math.max(screen.width, screen.height) * (devicePixelRatio || 1) > 1800 && !matchMedia('(max-width: 760px)').matches;
   const globe = new Globe(el, { animateIn: !reduce, waitForGlobeReady: true })
     .backgroundColor('rgba(0,0,0,0)')
+    .globeImageUrl(big ? '/images/earth/blue-marble-4096.webp' : '/images/earth/blue-marble-2048.webp')
+    .bumpImageUrl('/images/earth/topology-2048.webp')
     .showGlobe(true)
-    .showGraticules(true)
-    .atmosphereColor('#9fb6d4')
-    .atmosphereAltitude(0.12)
-    // Countries: graphite caps, thin gray borders
+    .showGraticules(false)
+    .atmosphereColor('#6fa8ff')
+    .atmosphereAltitude(0.2)
+    // Countries: no fill, just a whisper of a border, so the planet reads as itself.
     .polygonsData(countries)
-    .polygonAltitude(0.004)
-    .polygonCapColor(() => '#17181c')
+    .polygonAltitude(0.002)
+    .polygonCapColor(() => 'rgba(0,0,0,0)')
     .polygonSideColor(() => 'rgba(0,0,0,0)')
-    .polygonStrokeColor(() => 'rgba(210,215,225,0.16)')
+    .polygonStrokeColor(() => 'rgba(255,255,255,0.08)')
     // City markers: icy points sized by listing count
     .pointsData(points)
     .pointLat('lat')
     .pointLng('lng')
     .pointAltitude(0.006)
     .pointRadius((d: object) => 0.22 + Math.min(0.38, Math.sqrt((d as CityPoint).count) * 0.08))
-    .pointColor(() => '#d6e4f5')
+    .pointColor(() => '#ffffff')
     .pointsMerge(false)
     .pointLabel((d: object) => {
       const p = d as CityPoint;
@@ -46,16 +51,16 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     .ringsData(cityRings)
     .ringLat('lat')
     .ringLng('lng')
-    .ringColor((d: object) => ((d as Ring).me ? (t: number) => `rgba(236, 242, 250,${0.9 * (1 - t)})` : (t: number) => `rgba(169, 199, 236,${0.45 * (1 - t)})`))
+    .ringColor((d: object) => ((d as Ring).me ? (t: number) => `rgba(236, 242, 250,${0.9 * (1 - t)})` : (t: number) => `rgba(255, 255, 255,${0.4 * (1 - t)})`))
     .ringMaxRadius((d: object) => ((d as Ring).me ? 1.6 : 3))
     .ringPropagationSpeed((d: object) => ((d as Ring).me ? 0.9 : 0.8))
     .ringRepeatPeriod((d: object) => ((d as Ring).me ? 1200 : 2200));
 
-  // Dark graphite sphere: adjust the default Phong material rather than importing three.js directly.
-  const mat = globe.globeMaterial() as unknown as { color: { set(c: string): void }; emissive: { set(c: string): void }; shininess: number };
-  mat.color.set('#0a0b0d');
-  mat.emissive.set('#050608');
-  mat.shininess = 4;
+  // A little sheen on the oceans and relief on the land; the texture carries the colour.
+  const mat = globe.globeMaterial() as unknown as { bumpScale: number; shininess: number; specular?: { set(c: string): void } };
+  mat.bumpScale = 6;
+  mat.shininess = 14;
+  mat.specular?.set('#2a3a55');
 
   const controls = globe.controls();
   controls.autoRotate = !reduce;

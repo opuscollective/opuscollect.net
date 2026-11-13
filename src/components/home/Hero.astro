@@ -424,6 +424,16 @@ const topCities = CITIES.slice(0, 8);
     min-height: max(100svh, 680px); display: flex; align-items: center; justify-content: center;
     padding-block: 96px 64px; background: var(--bg);
   }
+  /* Faint stars behind the Earth. Three tiled layers at different sizes so no pattern shows. */
+  .hero::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.55;
+    background-image:
+      radial-gradient(1px 1px at 23px 41px, rgba(255,255,255,.8) 50%, transparent 51%),
+      radial-gradient(1px 1px at 157px 97px, rgba(255,255,255,.55) 50%, transparent 51%),
+      radial-gradient(1.4px 1.4px at 91px 173px, rgba(220,232,255,.9) 50%, transparent 51%),
+      radial-gradient(1px 1px at 211px 13px, rgba(255,255,255,.45) 50%, transparent 51%),
+      radial-gradient(1px 1px at 67px 229px, rgba(255,255,255,.6) 50%, transparent 51%),
+      radial-gradient(1.2px 1.2px at 301px 151px, rgba(255,255,255,.7) 50%, transparent 51%);
+    background-size: 240px 260px, 330px 290px, 410px 370px, 270px 310px, 360px 250px, 520px 470px; }
   /* The globe fills the hero, behind the words. */
   .hero__globe { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 1.4s var(--ease); }
   /* Only inside World can you turn and zoom the globe; on the homepage it just spins. */

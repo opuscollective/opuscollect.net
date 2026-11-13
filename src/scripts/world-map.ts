@@ -41,12 +41,13 @@ function readPalette(): Palette {
 
 const sky = (C: Palette) => ({
   'sky-color': C.bg,
-  'horizon-color': C.horizon,
+  // A blue halo around the Earth from space, fading out as you come down to a city.
+  'horizon-color': '#4d86d9',
   'fog-color': C.bg,
   'sky-horizon-blend': 0.6,
   'horizon-fog-blend': 0.6,
   'fog-ground-blend': 0.9,
-  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.35, 4, 0.2, 6, 0] as maplibregl.ExpressionSpecification,
+  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.8, 4, 0.3, 6, 0] as maplibregl.ExpressionSpecification,
 });
 
 /** Repaints an existing map in the current theme, keeping its data, markers and camera. */
@@ -70,11 +71,15 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
     sky: sky(C),
     sources: {
       countries: { type: 'geojson', data: countries },
+      // The real Earth (NASA Blue Marble, public domain) for the zoomed-out globe, in Web Mercator.
+      earth: { type: 'image', url: '/images/earth/blue-marble-mercator-2048.webp', coordinates: [[-180, 85.0511], [180, 85.0511], [180, -85.0511], [-180, -85.0511]] },
       omt: { type: 'vector', url: `${OFM}/planet`, attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' },
     },
     layers: [
       { id: 'bg', type: 'background', paint: { 'background-color': C.water } },
       { id: 'land', type: 'fill', source: 'countries', paint: { 'fill-color': C.land } },
+      // Blue and green from space, handing over to the quiet street map as you zoom toward a city.
+      { id: 'earth', type: 'raster', source: 'earth', paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 1, 3.6, 1, 5.2, 0], 'raster-fade-duration': 0, 'raster-resampling': 'linear' } },
       // City detail (OpenFreeMap). Fades in as you zoom toward a city.
       { id: 'omt-water', type: 'fill', source: 'omt', 'source-layer': 'water', minzoom: 4, paint: { 'fill-color': C.water } },
       { id: 'omt-park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 8, paint: { 'fill-color': C.park } },
@@ -85,7 +90,7 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
       { id: 'omt-road-major', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 5,
         filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
         paint: { 'line-color': C.roadMajor, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 16, 5] } },
-      { id: 'borders', type: 'line', source: 'countries', paint: { 'line-color': C.border, 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.4, 6, 1] } },
+      { id: 'borders', type: 'line', source: 'countries', paint: { 'line-color': C.border, 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.4, 6, 1], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 0, 0.35, 4, 1] } },
       { id: 'omt-place', type: 'symbol', source: 'omt', 'source-layer': 'place', minzoom: 5,
         filter: ['in', ['get', 'class'], ['literal', ['city', 'town', 'suburb', 'neighbourhood']]],
         layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 14, 13], 'text-letter-spacing': 0.04 },
