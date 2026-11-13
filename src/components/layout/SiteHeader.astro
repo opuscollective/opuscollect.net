@@ -79,13 +79,6 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
 
   <div class="mmenu" id="mobile-menu" hidden data-menu>
     <nav class="container" aria-label="Mobile">
-      <form class="mmenu__ask" action="/world" method="get" role="search">
-        <label for="mmenu-q" class="t-meta">What are you trying to accomplish?</label>
-        <div class="mmenu__field">
-          <Icon name="search" size={18} />
-          <input id="mmenu-q" name="q" type="search" placeholder="A producer in Birmingham…" autocomplete="off" />
-        </div>
-      </form>
       <ul role="list" class="mmenu__list">
         {NAV.map((item, i) => (
           <li style={`--i:${i}`}>
@@ -98,9 +91,8 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
           {ACCOUNT_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           <li><button type="button" data-logout>Sign out</button></li>
         </ul>
-        <div class="mmenu__theme"><span class="t-meta">Theme</span><ThemeSwitch variant="segmented" /></div>
-        <a href={ACCOUNT.join.href} class="hdr__join hdr__join--lg" data-auth-out>{ACCOUNT.join.label}</a>
         <a href={ACCOUNT.signIn.href} class="mmenu__signin" data-auth-out>{ACCOUNT.signIn.label}</a>
+        <div class="mmenu__theme"><span class="t-meta">Theme</span><ThemeSwitch variant="segmented" /></div>
       </div>
     </nav>
   </div>
@@ -238,25 +230,21 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
 
   .mmenu { position: fixed; inset: 72px 0 0; background: var(--bg); z-index: var(--z-menu); overflow-y: auto; opacity: 0; transition: opacity var(--dur) var(--ease); }
   .is-open .mmenu { opacity: 1; }
-  .mmenu nav { display: flex; flex-direction: column; min-height: 100%; padding-block: 20px 40px; gap: 20px; }
+  .mmenu nav { display: flex; flex-direction: column; min-height: 100%; padding-block: 28px 36px; padding-inline: max(32px, 8vw); gap: 20px; }
   .mmenu__actions { margin-top: auto; }
   .mmenu__list { display: flex; flex-direction: column; margin: 0; }
-  .mmenu__list li { border-bottom: 1px solid var(--line-faint); opacity: 0; transform: translateY(12px); transition: opacity .7s var(--ease), transform .8s var(--ease-glide); transition-delay: calc(var(--i) * 60ms + 80ms); }
+  .mmenu__list li { opacity: 0; transform: translateY(12px); transition: opacity .7s var(--ease), transform .8s var(--ease-glide); transition-delay: calc(var(--i) * 60ms + 80ms); }
   .is-open .mmenu__list li { opacity: 1; transform: none; }
   /* Large editorial type, as in the original menu. */
-  .mmenu__list a { display: block; padding: 14px 0; font-size: clamp(30px, 8.5vw, 42px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; }
+  /* Like a product index: one big word per line, nothing between them. */
+  .mmenu__list a { display: block; padding: 7px 0; font-size: clamp(28px, 7.6vw, 38px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.12; color: var(--text); transition: color var(--dur-fast); }
+  .mmenu__list a:active { color: var(--text-3); }
   .mmenu__list a[aria-current] { color: var(--accent); }
-  .mmenu__ask { display: flex; flex-direction: column; gap: 10px; }
-  .mmenu__ask label { color: var(--text-3); }
-  .mmenu__field { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text-3); }
-  .mmenu__field:focus-within { border-color: var(--accent); }
-  .mmenu__field input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--text); font-size: 16px; }
   .mmenu__actions { display: flex; flex-direction: column; gap: 12px; }
   .mmenu__acct { margin: 0 0 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
   .mmenu__acct a, .mmenu__acct button { display: flex; align-items: center; min-height: 44px; font-size: 15px; color: var(--text-2); background: none; border: 0; padding: 0; }
   .mmenu__theme { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line-faint); color: var(--text-3); }
-  .hdr__join--lg { justify-content: center; min-height: 56px; font-size: 16px; }
-  .mmenu__signin { display: inline-flex; justify-content: center; align-items: center; min-height: 56px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); font-size: 16px; }
+  .mmenu__signin { display: flex; align-items: center; min-height: 44px; font-size: 17px; color: var(--text-2); }
   :global(.is-signed-in) .mmenu__acct { display: grid !important; }
 
   @media (max-width: 960px) {

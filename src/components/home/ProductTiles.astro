@@ -193,15 +193,24 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
     .sq__vis { padding: 28px var(--pad) var(--pad); }
     .cities { font-size: clamp(1.6rem, 6.4cqw, 2.4rem); }
   }
+  /* Phones: one product per screen-wide block, stacked edge to edge, like a product index.
+     Big centered name, one line, one pill. */
   @media (max-width: 760px) {
-    .pt { padding: 10px 10px 32px; }
-    .pt__grid { gap: 12px; }
-    .card { border-radius: 16px; }
-    .world { height: 430px; }
+    .pt { padding: 0 0 12px; }
+    .pt__grid { gap: 10px; }
+    .card { --pad: 56px; border-radius: 0; border-left: 0; border-right: 0; }
+    .ctext { gap: 8px; padding-inline: 28px; }
+    .card__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); font-weight: 600; letter-spacing: -0.045em; }
+    .card__line { font-size: clamp(1.1rem, 4.8vw, 1.3rem); opacity: 0.85; }
+    .card__go { height: 44px; margin-top: 14px; padding: 0 24px; font-size: 16px; }
+    .world { height: 560px; border: 0; }
     /* Still oversized on phones: wider than the screen, cropped on both sides and the bottom. */
-    .world__globe { top: 176px; width: 170%; }
-    .sq--studios, .sq--collective { min-height: 420px; }
-    .vband { flex-wrap: wrap; }
-    .vband__go { width: 100%; }
+    .world__globe { top: 250px; width: 175%; }
+    .sq { min-height: 540px; }
+    .sq__vis { padding: 36px 24px 48px; }
+    .vband { flex-direction: column; align-items: center; gap: 10px; padding: 48px 28px; border-radius: 0; border-left: 0; border-right: 0; text-align: center; }
+    .vband h2 { font-size: clamp(1.7rem, 7.5vw, 2.1rem); font-weight: 600; }
+    .vband p { font-size: 15px; max-width: 32ch; margin-inline: auto; }
+    .vband__go { min-height: 44px; margin-top: 8px; padding: 0 24px; border: 1px solid currentColor; border-radius: var(--r-pill); }
   }
 </style>
