@@ -425,7 +425,7 @@ const topCities = CITIES.slice(0, 8);
     padding-block: 96px 64px; background: var(--bg);
   }
   /* Faint stars behind the Earth. Three tiled layers at different sizes so no pattern shows. */
-  .hero::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.55;
+  .hero::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.9;
     background-image:
       radial-gradient(1px 1px at 23px 41px, rgba(255,255,255,.8) 50%, transparent 51%),
       radial-gradient(1px 1px at 157px 97px, rgba(255,255,255,.55) 50%, transparent 51%),
@@ -433,7 +433,7 @@ const topCities = CITIES.slice(0, 8);
       radial-gradient(1px 1px at 211px 13px, rgba(255,255,255,.45) 50%, transparent 51%),
       radial-gradient(1px 1px at 67px 229px, rgba(255,255,255,.6) 50%, transparent 51%),
       radial-gradient(1.2px 1.2px at 301px 151px, rgba(255,255,255,.7) 50%, transparent 51%);
-    background-size: 240px 260px, 330px 290px, 410px 370px, 270px 310px, 360px 250px, 520px 470px; }
+    background-size: 140px 160px, 230px 190px, 310px 270px, 170px 210px, 260px 150px, 420px 370px; }
   /* The globe fills the hero, behind the words. */
   .hero__globe { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 1.4s var(--ease); }
   /* Only inside World can you turn and zoom the globe; on the homepage it just spins. */
@@ -567,6 +567,18 @@ const topCities = CITIES.slice(0, 8);
   .js .hero__line .hero-in { transform: translateY(105%); }
   @keyframes hero-in { to { opacity: 1; transform: none; } }
 
+  /* Map-from-space labels on the globe. */
+  :global(.gl-label) { pointer-events: none; transform: translate(-50%, -50%); white-space: nowrap; text-align: center; transition: opacity .4s var(--ease);
+    font-family: var(--font-sans); text-shadow: 0 1px 2px rgba(0,0,0,.8), 0 0 10px rgba(0,0,0,.6); }
+  :global(.gl-label--land) { font-size: 11px; font-weight: 600; letter-spacing: .28em; text-transform: uppercase; color: rgba(255,255,255,.92); }
+  :global(.gl-label--sea) { max-width: 7em; white-space: normal; font-size: 11px; font-style: italic; font-weight: 500; letter-spacing: .06em; line-height: 1.15; color: rgba(150,200,240,.85); }
+  /* You are here: the familiar blue dot with a white ring and a soft pulse. */
+  :global(.gl-label--me i) { display: block; width: 16px; height: 16px; border-radius: 50%; background: #2f7bff; border: 3px solid #fff;
+    box-shadow: 0 1px 6px rgba(0,0,0,.5), 0 0 0 0 rgba(47,123,255,.5); animation: me-pulse 2s ease-out infinite; }
+  @keyframes me-pulse { 100% { box-shadow: 0 1px 6px rgba(0,0,0,.5), 0 0 0 18px rgba(47,123,255,0); } }
+  @media (max-width: 760px) { :global(.gl-label--land), :global(.gl-label--sea) { font-size: 9.5px; } }
+  /* On wide screens the headline sits over the globe: labels appear only once you dive in. */
+  @media (min-width: 761px) { .hero:not(.is-diving) :global(.gl-label--land), .hero:not(.is-diving) :global(.gl-label--sea) { opacity: 0 !important; } }
   :global(.gl-tip) { padding: 8px 10px; background: var(--glass); border: 1px solid var(--line-strong); border-radius: 6px; font: 13px var(--font-sans); color: var(--text); display: flex; flex-direction: column; gap: 2px; }
   :global(.gl-tip span) { color: var(--text-3); font-size: 12px; }
 

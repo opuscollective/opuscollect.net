@@ -8,8 +8,9 @@ import type { Topology, GeometryCollection } from 'topojson-specification';
 export interface CityPoint { city: string; country: string; lat: number; lng: number; count: number }
 
 export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts: { onSelect: (p: CityPoint) => void }) {
-  const [{ default: Globe }, topo] = await Promise.all([
+  const [{ default: Globe }, THREE, topo] = await Promise.all([
     import('globe.gl'),
+    import('three'),
     fetch('/data/countries-110m.json').then((r) => r.json() as Promise<Topology>),
   ]);
   const countries = feature(topo, topo.objects.countries as GeometryCollection).features;
@@ -17,17 +18,31 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   type Ring = { lat: number; lng: number; me?: boolean };
   const cityRings: Ring[] = points.filter((p) => p.count >= 5);
 
-  // The real Earth (NASA Blue Marble, public domain): the one full-colour object on the page.
-  // Big screens get the sharper texture; phones the lighter one.
+  // The real Earth (NASA imagery, public domain), lit by the real sun right now: daylight on one side,
+  // city lights on the other, like looking at it from space. Big screens get sharper textures.
   const big = Math.max(screen.width, screen.height) * (devicePixelRatio || 1) > 1800 && !matchMedia('(max-width: 760px)').matches;
+  const size = big ? 4096 : 2048;
+  const loader = new THREE.TextureLoader();
+  const tex = (url: string) => new Promise<InstanceType<typeof THREE.Texture>>((res, rej) => loader.load(url, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; res(t); }, undefined, rej));
+  const [day, night] = await Promise.all([tex(`/images/earth/blue-marble-${size}.webp`), tex(`/images/earth/night-${size}.webp`)]);
+  const earth = new THREE.ShaderMaterial({
+    uniforms: {
+      dayTexture: { value: day },
+      nightTexture: { value: night },
+      sunPosition: { value: new THREE.Vector2(...sunAt(new Date())) },
+      globeRotation: { value: new THREE.Vector2() },
+    },
+    vertexShader: VERT,
+    fragmentShader: FRAG,
+  });
   const globe = new Globe(el, { animateIn: !reduce, waitForGlobeReady: true })
     .backgroundColor('rgba(0,0,0,0)')
-    .globeImageUrl(big ? '/images/earth/blue-marble-4096.webp' : '/images/earth/blue-marble-2048.webp')
-    .bumpImageUrl('/images/earth/topology-2048.webp')
+    .globeMaterial(earth)
     .showGlobe(true)
     .showGraticules(false)
-    .atmosphereColor('#6fa8ff')
-    .atmosphereAltitude(0.2)
+    .atmosphereColor('#a9c8ff')
+    .atmosphereAltitude(0.13)
+    .onZoom(({ lng, lat }) => earth.uniforms.globeRotation!.value.set(lng, lat))
     // Countries: no fill, just a whisper of a border, so the planet reads as itself.
     .polygonsData(countries)
     .polygonAltitude(0.002)
@@ -56,11 +71,42 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     .ringPropagationSpeed((d: object) => ((d as Ring).me ? 0.9 : 0.8))
     .ringRepeatPeriod((d: object) => ((d as Ring).me ? 1200 : 2200));
 
-  // A little sheen on the oceans and relief on the land; the texture carries the colour.
-  const mat = globe.globeMaterial() as unknown as { bumpScale: number; shininess: number; specular?: { set(c: string): void } };
-  mat.bumpScale = 6;
-  mat.shininess = 14;
-  mat.specular?.set('#2a3a55');
+  // Diving in: swap to the sharp textures once, so the close-up isn't blurry (phones start light).
+  let sharp = big;
+  const sharpen = () => {
+    if (sharp) return;
+    sharp = true;
+    Promise.all([tex('/images/earth/blue-marble-4096.webp'), tex('/images/earth/night-4096.webp')])
+      .then(([d, n]) => { earth.uniforms.dayTexture!.value = d; earth.uniforms.nightTexture!.value = n; })
+      .catch(() => { /* keep the lighter textures */ });
+  };
+  /** Close up, the member dots and rings would be blobs: the World map shows them properly instead. */
+  const quiet = (on: boolean) => { globe.pointsData(on ? [] : points); globe.ringsData(on ? [] : cityRings); };
+
+  // The sun keeps moving while the page is open.
+  setInterval(() => earth.uniforms.sunPosition!.value.set(...sunAt(new Date())), 60_000);
+
+  // Continents and oceans named the way a map from space does: spaced capitals for land, italics for water.
+  type Label = { lat: number; lng: number; text: string; kind: 'land' | 'sea' | 'me' };
+  const LABELS: Label[] = [
+    { lat: 46, lng: -102, text: 'North America', kind: 'land' }, { lat: -14, lng: -60, text: 'South America', kind: 'land' },
+    { lat: 52, lng: 18, text: 'Europe', kind: 'land' }, { lat: 6, lng: 21, text: 'Africa', kind: 'land' },
+    { lat: 47, lng: 92, text: 'Asia', kind: 'land' }, { lat: -24, lng: 134, text: 'Australia', kind: 'land' },
+    { lat: 32, lng: -42, text: 'North Atlantic Ocean', kind: 'sea' }, { lat: -24, lng: -16, text: 'South Atlantic Ocean', kind: 'sea' },
+    { lat: 28, lng: -150, text: 'North Pacific Ocean', kind: 'sea' }, { lat: -28, lng: -118, text: 'South Pacific Ocean', kind: 'sea' },
+    { lat: -22, lng: 78, text: 'Indian Ocean', kind: 'sea' },
+  ];
+  const labelEl = (d: object) => {
+    const l = d as Label;
+    const e = document.createElement('div');
+    e.className = `gl-label gl-label--${l.kind}`;
+    if (l.kind === 'me') e.innerHTML = '<i></i>';
+    else e.textContent = l.text;
+    e.setAttribute('aria-hidden', 'true');
+    return e;
+  };
+  globe.htmlElementsData(LABELS).htmlElement(labelEl).htmlAltitude(0.01)
+    .htmlElementVisibilityModifier((e, visible) => { e.style.opacity = visible ? '' : '0'; });
 
   const controls = globe.controls();
   controls.autoRotate = !reduce;
@@ -109,6 +155,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     /** Move in toward a place (or the current view) for the directory panel. close: right down to city level. */
     dive(lat?: number, lng?: number, close = lat != null) {
       hold();
+      sharpen();
       interactive(true);
       const pov = globe.pointOfView();
       globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: close ? 0.42 : 0.9 }, ms(1700));
@@ -117,8 +164,9 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     here(lat: number, lng: number) {
       hold();
       interactive(true);
-      globe.ringsData([...cityRings, { lat, lng, me: true }]);
-      globe.pointOfView({ lat, lng, altitude: 0.3 }, ms(2200));
+      sharpen(); quiet(true);
+      globe.htmlElementsData([...LABELS, { lat, lng, text: '', kind: 'me' }]);
+      globe.pointOfView({ lat, lng, altitude: 0.45 }, ms(2200));
     },
     /** No location: pull back a little and let the whole world turn. */
     spin() {
@@ -129,6 +177,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     },
     /** Back out to the resting view. */
     rise() {
+      quiet(false);
       globe.pointOfView({ ...globe.pointOfView(), altitude: home() }, ms(1200));
       controls.autoRotate = !reduce;
       controls.autoRotateSpeed = 0.35;
@@ -136,3 +185,56 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     },
   };
 }
+
+/** Where the sun is overhead right now, as [lng, lat]. Accurate to well under a degree, plenty for a picture. */
+function sunAt(d: Date): [number, number] {
+  const start = Date.UTC(d.getUTCFullYear(), 0, 0);
+  const dayOfYear = (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - start) / 864e5;
+  const decl = -23.44 * Math.cos(((2 * Math.PI) / 365) * (dayOfYear + 10));
+  const g = ((2 * Math.PI) / 365) * (dayOfYear - 81);
+  const eot = 9.87 * Math.sin(2 * g) - 7.53 * Math.cos(g) - 1.5 * Math.sin(g); // minutes
+  const minutes = d.getUTCHours() * 60 + d.getUTCMinutes() + d.getUTCSeconds() / 60;
+  const lng = 180 - (minutes + eot) / 4;
+  return [((lng + 540) % 360) - 180, decl];
+}
+
+const VERT = `
+varying vec3 vNormal;
+varying vec2 vUv;
+void main() {
+  vNormal = normalize(normalMatrix * normal);
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+/** Day texture where the sun is up, night lights where it isn't, with a soft twilight band between. */
+const FRAG = `
+#define PI 3.141592653589793
+uniform sampler2D dayTexture;
+uniform sampler2D nightTexture;
+uniform vec2 sunPosition;
+uniform vec2 globeRotation;
+varying vec3 vNormal;
+varying vec2 vUv;
+float toRad(in float a) { return a * PI / 180.0; }
+vec3 polarToCartesian(in vec2 c) {
+  float theta = toRad(90.0 - c.x);
+  float phi = toRad(90.0 - c.y);
+  return vec3(sin(phi) * cos(theta), cos(phi), sin(phi) * sin(theta));
+}
+void main() {
+  float invLon = toRad(globeRotation.x);
+  float invLat = -toRad(globeRotation.y);
+  mat3 rotX = mat3(1, 0, 0, 0, cos(invLat), -sin(invLat), 0, sin(invLat), cos(invLat));
+  mat3 rotY = mat3(cos(invLon), 0, sin(invLon), 0, 1, 0, -sin(invLon), 0, cos(invLon));
+  vec3 sun = rotX * rotY * polarToCartesian(sunPosition);
+  float light = dot(normalize(vNormal), normalize(sun));
+  vec3 dayColor = texture2D(dayTexture, vUv).rgb * (0.82 + 0.28 * clamp(light, 0.0, 1.0));
+  vec3 n = texture2D(nightTexture, vUv).rgb;
+  float lum = dot(n, vec3(0.299, 0.587, 0.114));
+  // Deep navy where it's dark, warm city lights where people are.
+  vec3 nightColor = n * 0.5 + smoothstep(0.28, 0.85, lum) * vec3(1.0, 0.84, 0.55) * 0.95;
+  float blend = smoothstep(-0.12, 0.16, light);
+  gl_FragColor = vec4(mix(nightColor, dayColor, blend), 1.0);
+  #include <colorspace_fragment>
+}`;
