@@ -123,7 +123,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   const home = () => {
     const w = el.clientWidth || 1, h = el.clientHeight || 1;
     const fov = (globe.camera() as unknown as { fov?: number }).fov ?? 50;
-    const r = Math.min(h * 0.46, w * 0.47);
+    const r = Math.min(h * 0.53, w * 0.47);
     const k = h / 2 / Math.tan((fov * Math.PI) / 360) / r;
     return Math.sqrt(k * k + 1) - 1;
   };
