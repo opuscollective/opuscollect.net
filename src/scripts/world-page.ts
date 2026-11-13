@@ -577,8 +577,9 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
     pv.dataset.pv = mobile.matches ? 'sheet' : view === 'list' ? 'drawer' : view === 'map' ? 'card' : 'panel';
     scrim.hidden = !asModal();
     pv.setAttribute('aria-modal', String(asModal()));
-    // In Split view the results underneath stay in place (and keep their scroll), but leave the tab order.
-    panel.toggleAttribute('inert', view === 'split' && !mobile.matches);
+    // In Split view the profile slides out beside the directory: the directory stays usable, so another
+    // card swaps the profile, and the map stays in view on the right.
+    panel.removeAttribute('inert');
     if (asModal()) { panel.setAttribute('inert', ''); host.setAttribute('inert', ''); } else host.removeAttribute('inert');
   }
   async function openPreview(id: string, push = true) {

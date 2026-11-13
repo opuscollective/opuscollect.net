@@ -91,7 +91,7 @@ const sky = (C: Palette) => ({
   'sky-horizon-blend': 0.6,
   'horizon-fog-blend': 0.6,
   'fog-ground-blend': 0.9,
-  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.8, 4, 0.3, 6, 0] as maplibregl.ExpressionSpecification,
+  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 3, 0.6, 5, 0] as maplibregl.ExpressionSpecification,
 });
 
 /** Repaints an existing map in the current theme, keeping its data, markers and camera. */
@@ -111,6 +111,8 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
   return {
     version: 8,
     projection: { type: 'globe' },
+    // Lights the atmosphere around the globe, so it has the same blue rim as the homepage Earth.
+    light: { anchor: 'map', position: [1.5, 90, 80] },
     glyphs: `${OFM}/fonts/{fontstack}/{range}.pbf`,
     sky: sky(C),
     sources: {
@@ -130,7 +132,7 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
       { id: 'omt-road-major', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 5,
         filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
         paint: { 'line-color': C.roadMajor, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 16, 5] } },
-      { id: 'borders', type: 'line', source: 'countries', paint: { 'line-color': C.border, 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.4, 6, 1], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 0, 0.35, 4, 1] } },
+      { id: 'borders', type: 'line', source: 'countries', paint: { 'line-color': C.border, 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.4, 6, 1], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 0, 0.12, 3, 0.2, 4.5, 1] } },
       { id: 'omt-place', type: 'symbol', source: 'omt', 'source-layer': 'place', minzoom: 5,
         filter: ['in', ['get', 'class'], ['literal', ['city', 'town', 'suburb', 'neighbourhood']]],
         layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 14, 13], 'text-letter-spacing': 0.04 },
@@ -182,7 +184,8 @@ export async function mountWorldMap(
   const earth = await earthP;
   const countries = feature(topo, topo.objects.countries as GeometryCollection) as unknown as GeoJSON.FeatureCollection;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const homeZoom = () => (el.clientWidth < 700 ? 0.85 : 1.5);
+  // About as large as the homepage globe, and still within what the 4096 px imagery shows sharply.
+  const homeZoom = () => (el.clientWidth < 700 ? 1 : el.clientWidth > 1400 ? 2.1 : 1.8);
 
   const map = new maplibregl.Map({
     container: el,
