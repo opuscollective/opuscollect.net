@@ -1,8 +1,10 @@
 ---
 import { FOOTER_NAV, SOCIALS, SITE } from '@/data/site';
 const year = new Date().getFullYear();
+/** light: the warm-white editorial footer in either theme (homepage). */
+const { light = false } = Astro.props as { light?: boolean };
 ---
-<footer class="ftr">
+<footer class:list={['ftr', { 'ftr--light tone-light': light }]}>
   <div class="container">
     <div class="ftr__top">
       <div class="ftr__brand">
@@ -28,6 +30,8 @@ const year = new Date().getFullYear();
 </footer>
 
 <style>
+  .ftr--light { background: var(--bg); color: var(--text); border-top: 0; }
+  .ftr--light .ftr__links a:hover, .ftr--light .ftr__legal a:hover { color: var(--text); }
   .ftr { border-top: 1px solid var(--c-line); padding-top: clamp(56px, 7vw, 96px); overflow: hidden; }
   .ftr__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 32px 56px; }
   .ftr__brand { display: flex; flex-direction: column; gap: 14px; }

@@ -13,10 +13,11 @@ interface Props {
   noindex?: boolean;
   /** App-style pages (World) skip the footer so the map can fill the screen. */
   hideFooter?: boolean;
+  lightFooter?: boolean;
   /** Show the Opus guide launcher (on by default). */
   assistant?: boolean;
 }
-const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false, assistant = true } = Astro.props;
+const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false, lightFooter = false, assistant = true } = Astro.props;
 const fullTitle = title ? `${title} · ${SITE.product}` : `${SITE.product} · The professional network for independent music`;
 const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogImage = new URL(image, SITE.url).href;
@@ -63,7 +64,7 @@ const ogImage = new URL(image, SITE.url).href;
     <a class="skip-link" href="#main">Skip to content</a>
     <SiteHeader overlay={overlayHeader} />
     <main id="main"><slot /></main>
-    {!hideFooter && <SiteFooter />}
+    {!hideFooter && <SiteFooter light={lightFooter} />}
     {assistant && <Assistant />}
     <script>
       // Reveal-on-scroll. Content is visible without JS and with reduced motion.

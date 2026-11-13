@@ -14,7 +14,7 @@ const jsonLd = {
   ],
 };
 ---
-<BaseLayout overlayHeader>
+<BaseLayout overlayHeader lightFooter>
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <Hero />
   <ProductTiles />

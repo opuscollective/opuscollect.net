@@ -10,8 +10,9 @@
      whatever the page theme is.
    ========================================================================== */
 
-/* ---------- Light (default) ---------- */
-:root {
+/* ---------- Light (default) ----------
+   .tone-light forces these values on one section (the homepage footer) in either theme. */
+:root, .tone-light {
   color-scheme: light;
 
   --bg: #f2efea;               /* warm off-white, the Opus paper */
@@ -134,7 +135,7 @@
 /* ---------- Older token names, kept so existing styles follow the theme ----------
    Declared on every element that re-themes, so they resolve inside .tone-dark too.
    New code uses the role tokens above. */
-:root, [data-theme], .tone-dark {
+:root, [data-theme], .tone-dark, .tone-light {
   --c-bg: var(--bg);
   --c-fg: var(--text);
   --c-text: var(--text);

@@ -23,7 +23,7 @@ const lum = (hex: string) => {
 };
 const ratio = (a: string, b: string) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 
-const themes = { light: block(':root {'), dark: block("[data-theme='dark'], .tone-dark {") };
+const themes = { light: block(':root, .tone-light {'), dark: block("[data-theme='dark'], .tone-dark {") };
 const TEXT = ['text', 'text-2', 'text-3', 'accent', 'live', 'danger'];
 const SURFACES = ['bg', 'surface', 'surface-sunken', 'surface-raised', 'surface-hover'];
 

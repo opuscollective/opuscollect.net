@@ -1,182 +1,182 @@
 ---
 /**
- * The Opus products on the homepage, under the hero (which is World's entrance, so World has no card of its
- * own here): four equal centered squares (Studios, Music, Charts, Collective) and a slim Opus Verified strip. Dark cards, with warm-white Charts as the one deliberate break.
- * Each card: a name, one line, one action. Only real destinations; Charts is in development and says so.
- * The grid grows with the screen, so it keeps its proportions on very wide displays.
+ * The Opus ecosystem on the homepage: six tiles, two to a row (one on phones).
+ *   World | Studios
+ *   Music | Charts
+ *   Opus Verified | Collective
+ * Every tile shares the same geometry: name, one line and its action at the top, the product's visual below.
+ * Dark and warm-white surfaces alternate on purpose. Only real destinations; Charts is in development and says so.
+ * Covers are real Opus Collective releases. No invented releases, rankings or numbers.
  */
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
-import Icon from '../ui/Icon.astro';
 
 const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
-const OPACITY = [0.9, 0.7, 0.5, 0.35, 0.22, 0.12];
+const OPACITY = [0.92, 0.7, 0.5, 0.34, 0.2, 0.1];
+// Wireframe globe markers (viewBox units). Decorative, not real member locations.
+const DOTS: [number, number, number][] = [[150, 168, 5], [176, 176, 4], [236, 134, 4], [262, 248, 4], [118, 222, 3.5], [292, 108, 3], [206, 128, 3.5]];
 ---
 <section class="pt" aria-label="What you can do on Opus">
   <div class="pt__grid">
 
-    <!-- Four equal squares: centered name, line and action on top, the product's visual below or behind. -->
-    <article class="card sq sq--studios tone-dark" aria-labelledby="pt-studios" data-reveal>
-      <img class="card__photo" src="/images/studio-control-room.jpg" alt="" loading="lazy" decoding="async" width="2000" height="1334" />
-      <div class="ctext">
-        <h2 class="card__name" id="pt-studios">Studios</h2>
-        <p class="card__line">Find your next session.</p>
-        <a class="card__go" href="/studios">Find a Studio <Icon name="arrow-right" size={16} /></a>
+    <article class="tile tile--dark tile--world tone-dark" aria-labelledby="pt-world" data-reveal>
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-world">World</h2>
+        <p class="tile__line">The people behind the music, city by city.</p>
+        <div class="tile__actions">
+          <a class="tile__btn tile__btn--go" href="/world">Open World</a>
+          <a class="tile__btn" href="/musicians">Find People</a>
+        </div>
+      </div>
+      <div class="tile__media" aria-hidden="true">
+        <svg class="tile__globe" viewBox="0 0 400 400" focusable="false">
+          <circle class="tile__sphere" cx="200" cy="200" r="180" />
+          <ellipse cx="200" cy="200" rx="60" ry="180" /><ellipse cx="200" cy="200" rx="120" ry="180" />
+          <ellipse cx="200" cy="200" rx="180" ry="60" /><ellipse cx="200" cy="200" rx="180" ry="120" />
+          <line x1="20" y1="200" x2="380" y2="200" /><line x1="200" y1="20" x2="200" y2="380" />
+          <g class="tile__dots">{DOTS.map(([x, y, r]) => <circle cx={x} cy={y} r={r} />)}</g>
+        </svg>
       </div>
     </article>
 
-    <article class="card sq sq--music tone-dark" aria-labelledby="pt-music" data-reveal style="--d:0.08s">
-      <div class="ctext">
-        <h2 class="card__name" id="pt-music">Music</h2>
-        <p class="card__line">Your releases. Your credits.</p>
-        <a class="card__go" href="/music">Explore Music <Icon name="arrow-right" size={16} /></a>
-      </div>
-      <div class="sq__vis">
-        <!-- Real Opus Collective releases, real artwork. Credits live on the release page, not here. -->
-        <a class="covers" href="/music" tabindex="-1" aria-hidden="true">
-          <img class="covers__back" src="/images/releases/card/amazing-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
-          <img class="covers__front" src="/images/releases/card/scenic-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
-        </a>
-        <p class="covers__cap"><b>Scenic</b> <span>Bogo · OC 002</span></p>
+    <article class="tile tile--dark tile--photo tile--studios tone-dark" aria-labelledby="pt-studios" data-reveal style="--d:0.08s">
+      <img class="tile__photo" src="/images/studio-control-room-1400.jpg" alt="" loading="lazy" decoding="async" width="1400" height="934" />
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-studios">Studios</h2>
+        <p class="tile__line">Find your next session.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/studios">Find a Studio</a></div>
       </div>
     </article>
 
-    <!-- Charts: honest coming soon. A decorative list of cities, not rankings. -->
-    <article class="card sq sq--charts" aria-labelledby="pt-charts" data-reveal>
-      <span class="card__soon">Coming soon</span>
-      <div class="ctext">
-        <h2 class="card__name" id="pt-charts">Charts</h2>
-        <p class="card__line">Every city has a sound.</p>
-        <a class="card__go" href="/charts">See what’s coming <Icon name="arrow-right" size={16} /></a>
+    <article class="tile tile--cream tile--music" aria-labelledby="pt-music" data-reveal>
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-music">Music</h2>
+        <p class="tile__line">Your releases. Your credits.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/music">Explore Music</a></div>
       </div>
-      <div class="sq__vis">
-        <ul class="cities" role="list" aria-label="Charts will cover cities like these">
-          {CITIES.map((c, i) => <li style={`--i:${i};--o:${OPACITY[i]}`}>{c}</li>)}
-        </ul>
+      <!-- Real releases from the Opus Collective catalog: Amazing and Scenic by Bogo, luciaism by NUGGET!. -->
+      <a class="tile__media covers" href="/releases" tabindex="-1" aria-hidden="true">
+        <img class="covers__l" src="/images/releases/card/amazing-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
+        <img class="covers__r" src="/images/releases/card/luciaism-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
+        <img class="covers__c" src="/images/releases/card/scenic-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
+      </a>
+    </article>
+
+    <article class="tile tile--paper tile--charts" aria-labelledby="pt-charts" data-reveal style="--d:0.08s">
+      <span class="tile__soon">Coming soon</span>
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-charts">Charts</h2>
+        <p class="tile__line">Every city has a sound.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/charts">See What’s Coming</a></div>
+      </div>
+      <!-- Decorative city names, not rankings. -->
+      <ul class="tile__media cities" role="list" aria-label="Cities Charts will cover">
+        {CITIES.map((c, i) => <li style={`--o:${OPACITY[i]};--i:${i}`}>{c}</li>)}
+      </ul>
+    </article>
+
+    <article class="tile tile--cream tile--verified" aria-labelledby="pt-verified" data-reveal>
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-verified">Opus Verified</h2>
+        <p class="tile__line">Earned. Never bought.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/verified">Learn About Verification</a></div>
+      </div>
+      <div class="tile__media seal" aria-hidden="true"><VerifiedBadge size={148} tone="dark" /></div>
+    </article>
+
+    <article class="tile tile--dark tile--photo tile--collective tone-dark" aria-labelledby="pt-collective" data-reveal style="--d:0.08s">
+      <img class="tile__photo" src="/images/scenic-room-1200.jpg" alt="" loading="lazy" decoding="async" width="1200" height="1800" />
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-collective">Collective</h2>
+        <p class="tile__line">Beyond the platform.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/collective">Explore the Collective</a></div>
       </div>
     </article>
 
-    <article class="card sq sq--collective tone-dark" aria-labelledby="pt-collective" data-reveal style="--d:0.08s">
-      <img class="card__photo" src="/images/scenic-room.jpg" alt="" loading="lazy" decoding="async" width="1600" height="2400" />
-      <div class="ctext">
-        <h2 class="card__name" id="pt-collective">Collective</h2>
-        <p class="card__line">Beyond the platform.</p>
-        <a class="card__go" href="/collective">Explore the Collective <Icon name="arrow-right" size={16} /></a>
-      </div>
-    </article>
-
-    <!-- Opus Verified: a quiet strip, not a product card. -->
-    <aside class="vband tone-dark" aria-labelledby="pt-verified" data-reveal>
-      <VerifiedBadge size={36} tone="light" />
-      <div class="vband__text">
-        <h2 id="pt-verified">Opus Verified. <span>Earned. Never bought.</span></h2>
-        <p>Recognizes real professional credibility and reviewed accomplishments. Paying for Opus never earns or changes it.</p>
-      </div>
-      <a class="vband__go" href="/verified">Learn about verification <Icon name="arrow-right" size={16} /></a>
-    </aside>
   </div>
 </section>
 
 <style>
-  .pt { padding: 16px var(--gutter) clamp(40px, 6vw, 72px); background: var(--bg); }
-  /* The grid grows with the screen (up to an ultra-wide monitor), so the cards keep their proportions. */
-  .pt__grid { --w: clamp(1040px, 68vw, 2240px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 0.9vw, 22px); max-width: var(--w); margin-inline: auto; }
+  /* Same 12px frame as the hero above, so the page reads as one composition. */
+  .pt { padding: 12px; }
+  .pt__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
-  /* Every card shares one tone, so the grid reads as one piece rather than a checkerboard. */
-  .card { --pad: clamp(30px, 2.6vw, 64px); --tile: #0d0d0f; --tile-line: #1f2024; position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center;
-    border-radius: 20px; background: var(--tile); border: 1px solid var(--tile-line); color: var(--text); }
+  .tile { --pad: clamp(40px, 4.4vw, 64px); position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+    aspect-ratio: 1 / 0.86; min-height: 520px; padding: var(--pad) 24px 0; text-align: center; border-radius: 18px; container-type: inline-size; }
+  .tile--dark { background: #0d0d0f; color: #f4f2ee; border: 1px solid rgba(255, 255, 255, 0.06); }
+  .tile--cream { background: #efe9df; color: #141416; }
+  .tile--paper { background: #f8f6f1; color: #141416; border: 1px solid #e3ddd3; }
 
-  /* Centered text block, the same in every card. */
-  .ctext { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: var(--pad) 24px 0; text-align: center; }
-  .card__name { display: inline-flex; align-items: center; gap: 12px; margin: 0; font-size: clamp(2rem, 1.1rem + 2.1vw, 4.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.05; }
-  .card__line { margin: 0; max-width: 30ch; font-size: clamp(1.05rem, 0.9rem + 0.45vw, 1.75rem); letter-spacing: -0.02em; line-height: 1.3; opacity: 0.8; }
-  /* Coming soon sits in the card's corner, so the name stays centered like every other card. */
-  .card__soon { position: absolute; top: 18px; right: 18px; z-index: 3; padding: 4px 9px; border: 1px solid currentColor; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
-  .card__go { display: inline-flex; align-items: center; gap: 8px; height: clamp(42px, 2.4vw, 52px); margin-top: 10px; padding: 0 clamp(20px, 1.3vw, 26px); border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: clamp(14px, 0.8vw, 16px); font-weight: 500; white-space: nowrap; transition: gap var(--dur) var(--ease); }
-  .card__go:hover { gap: 12px; }
-  .tone-dark .card__go { background: var(--text); color: #0d0d0f; }
-  .card__go:focus-visible, .vband__go:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  .tile__text { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .tile__name { margin: 0; font-size: clamp(2.2rem, 1.4rem + 2.2vw, 3.6rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.02; }
+  .tile__line { margin: 0; max-width: 30ch; font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.35rem); letter-spacing: -0.02em; opacity: 0.78; }
+  .tile__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
+  .tile__btn { display: inline-flex; align-items: center; height: 42px; padding: 0 20px; border-radius: var(--r-pill); border: 1px solid currentColor; font-size: 15px; font-weight: 500; white-space: nowrap;
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+  .tile__btn:hover { opacity: 0.82; }
+  .tile__btn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  /* The filled button takes the opposite of the tile's surface. */
+  .tile--dark .tile__btn--go { background: #f4f2ee; color: #0d0d0f; border-color: #f4f2ee; }
+  .tile--cream .tile__btn--go, .tile--paper .tile__btn--go { background: #141416; color: #f4f2ee; border-color: #141416; }
 
-  /* ---------- The four squares ---------- */
-  .sq { aspect-ratio: 1 / 1; container-type: inline-size; }
-  .sq__vis { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; padding: 20px var(--pad) var(--pad); }
+  .tile__soon { position: absolute; top: 20px; right: 20px; z-index: 3; padding: 4px 10px; border: 1px solid currentColor; border-radius: var(--r-pill);
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; }
 
-  /* Photo squares: the picture fills the card, darkened at the top behind the text. */
-  .card__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
-  .sq--studios::after, .sq--collective::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8, 8, 10, 0.86) 0%, rgba(8, 8, 10, 0.45) 42%, rgba(8, 8, 10, 0.1) 100%); }
-  .sq--collective .card__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
+  .tile__media { position: relative; flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-top: 28px; }
 
-  /* Music */
-  /* Music: the release itself. Scenic in front, Amazing behind it, like records on a shelf. */
-  .sq--music .sq__vis { flex-direction: column; gap: 16px; padding-top: 30px; }
-  .covers { position: relative; display: block; width: clamp(190px, 50cqw, 320px); aspect-ratio: 1; margin-left: 15cqw; }
-  .covers img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
-  .covers__back { transform: translateX(-44%) rotate(-5deg) scale(0.88); outline: 1px solid rgba(255, 255, 255, 0.14); outline-offset: -1px; box-shadow: 0 24px 50px -24px rgba(0, 0, 0, 0.9); }
-  .covers__front { box-shadow: 0 40px 80px -30px rgba(214, 90, 120, 0.45), 0 24px 50px -20px rgba(0, 0, 0, 0.85); }
-  .covers__cap { margin: 0; font-size: 14px; letter-spacing: -0.01em; color: var(--text-2); }
-  .covers__cap b { font-weight: 500; color: var(--text); }
-  .covers__cap span { margin-left: 6px; color: var(--text-3); }
+  /* World: the network as a thin-line globe rising out of the card's bottom edge. */
+  .tile__globe { width: min(78cqw, 520px); margin-bottom: -26cqw; fill: none; stroke: rgba(214, 228, 245, 0.22); stroke-width: 1; overflow: visible; }
+  .tile__globe * { vector-effect: non-scaling-stroke; }
+  .tile__sphere { fill: #121317; stroke: rgba(214, 228, 245, 0.32); }
+  .tile__dots circle { fill: #d6e4f5; stroke: none; }
 
-  /* Charts: centered city names fading from dark to light. Sized to the card. */
-  /* The one warm-white card: a deliberate break in the dark grid. */
-  .sq--charts { --tile: #f7f4ee; --tile-line: #ddd6cc; color: #111111; }
-  .sq--charts .card__go { background: #111111; color: #f2efea; }
-  .sq--charts .card__soon { color: #4a464c; }
-  .sq--charts .sq__vis { align-items: flex-start; overflow: hidden; }
-  .cities { display: flex; flex-direction: column; align-items: center; margin: 0; padding: 0; list-style: none; text-align: center;
-    font-size: clamp(1.6rem, 7.6cqw, 4.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.08; }
+  /* Studios and Collective: full-bleed photographs, darkened at the top for the words. */
+  .tile__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
+  .tile--photo::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8, 8, 10, 0.86) 0%, rgba(8, 8, 10, 0.45) 42%, rgba(8, 8, 10, 0.08) 100%); }
+  .tile--collective .tile__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
+
+  /* Music: three real covers, Scenic in front. */
+  .covers { align-items: center; margin-bottom: var(--pad); }
+  .covers img { position: absolute; top: 50%; left: 50%; width: min(44cqw, 300px); height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 6px;
+    box-shadow: 0 28px 60px -24px rgba(20, 16, 12, 0.55); transition: transform 0.9s var(--ease); }
+  .covers__l { transform: translate(-108%, -46%) rotate(-7deg) scale(0.86); }
+  .covers__r { transform: translate(8%, -46%) rotate(7deg) scale(0.86); }
+  .covers__c { z-index: 2; transform: translate(-50%, -52%); box-shadow: 0 40px 80px -30px rgba(120, 40, 70, 0.5), 0 24px 50px -22px rgba(20, 16, 12, 0.6); }
+  @media (hover: hover) {
+    .tile--music:hover .covers__l { transform: translate(-114%, -46%) rotate(-9deg) scale(0.86); }
+    .tile--music:hover .covers__r { transform: translate(14%, -46%) rotate(9deg) scale(0.86); }
+    .tile--music:hover .covers__c { transform: translate(-50%, -54%); }
+  }
+
+  /* Charts: city names fading out, like a sound trailing off. Not a ranking. */
+  .cities { flex-direction: column; align-items: center; justify-content: center; gap: 0; margin: 0 0 var(--pad); padding: 0; list-style: none;
+    font-size: clamp(1.7rem, 7cqw, 3.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.08; }
   .cities li { opacity: var(--o); }
 
-  /* ---------- Verified strip ---------- */
-  .vband { grid-column: 1 / -1; display: flex; align-items: center; gap: clamp(16px, 2.4vw, 28px); padding: clamp(18px, 2vw, 22px) clamp(22px, 3vw, 36px);
-    border: 1px solid #1f2024; border-radius: 20px; background: #0d0d0f; color: var(--text); }
-  .vband__text { flex: 1; min-width: 0; }
-  .vband h2 { margin: 0; font-size: clamp(1.25rem, 1rem + 0.8vw, 1.6rem); font-weight: 500; letter-spacing: -0.03em; }
-  .vband h2 span { color: var(--text-3); }
-  .vband p { margin: 4px 0 0; font-size: 14px; color: var(--text-2); }
-  .vband__go { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; min-height: 44px; font-size: 15px; font-weight: 500; border-bottom: 1px solid currentColor; }
-  .vband__go:hover { opacity: 0.7; }
+  /* Opus Verified: one large seal, quiet around it. */
+  .seal { align-items: center; margin-bottom: var(--pad); }
+  .seal :global(svg) { width: clamp(110px, 26cqw, 168px); height: auto; }
 
-  /* ---------- Motion ----------
-     Quiet, one idea per card. Content is fully visible without JS, and the global
-     reduced-motion rule in global.css turns all of it off. */
-  :global(.js) .sq .card__photo { transform: scale(1.08); transition: transform 1.6s var(--ease); }
-  :global(.js) .sq.is-in .card__photo { transform: scale(1); }
-  .covers img { transition: transform 0.9s var(--ease); }
-  :global(.js) .sq--music .covers__front { transform: translateY(24px); opacity: 0; transition: transform 1.1s var(--ease), opacity 0.8s var(--ease); }
-  :global(.js) .sq--music .covers__back { transform: rotate(0) scale(0.86); opacity: 0; transition: transform 1.3s var(--ease) 0.25s, opacity 0.8s var(--ease) 0.25s; }
-  :global(.js) .sq--music.is-in .covers__front { transform: none; opacity: 1; }
-  :global(.js) .sq--music.is-in .covers__back { transform: translateX(-44%) rotate(-5deg) scale(0.88); opacity: 1; }
-  :global(.js) .sq--charts .cities li { opacity: 0; transform: translateY(8px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); transition-delay: calc(0.25s + var(--i) * 0.09s); }
-  :global(.js) .sq--charts.is-in .cities li { opacity: var(--o); transform: none; }
-  @media (hover: hover) {
-    :global(.js) .sq.is-in:hover .card__photo { transform: scale(1.04); transition-duration: 1.2s; }
-    :global(.js) .sq--music.is-in:hover .covers__front { transform: translateY(-4px); }
-    :global(.js) .sq--music.is-in:hover .covers__back { transform: translateX(-50%) rotate(-7deg) scale(0.88); }
-  }
+  /* Motion: quiet, one idea per tile. Fully visible without JS; global reduced-motion turns it off. */
+  :global(.js) .tile__globe { transform: translateY(40px); transition: transform 1.6s var(--ease); }
+  :global(.js) .tile--world.is-in .tile__globe { transform: none; }
+  :global(.js) .tile__photo { transform: scale(1.06); transition: transform 1.6s var(--ease); }
+  :global(.js) .tile.is-in .tile__photo { transform: scale(1); }
+  :global(.js) .cities li { opacity: 0; transform: translateY(8px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); transition-delay: calc(0.25s + var(--i) * 0.09s); }
+  :global(.js) .tile--charts.is-in .cities li { opacity: var(--o); transform: none; }
 
-  /* Below this a square is too small to read: one column, heights follow content. */
-  @media (max-width: 1000px) {
+  /* Tablets: one column, heights follow content. */
+  @media (max-width: 900px) {
     .pt__grid { grid-template-columns: minmax(0, 1fr); }
-    .sq { aspect-ratio: auto; }
-    .sq--studios, .sq--collective { min-height: 420px; }
-    .sq__vis { padding: 28px var(--pad) var(--pad); }
-    .cities { font-size: clamp(1.6rem, 6.4cqw, 2.4rem); }
+    .tile { aspect-ratio: auto; min-height: 560px; }
   }
-  /* Phones: one product per screen-wide block, stacked edge to edge, like a product index.
-     Big centered name, one line, one pill. */
+  /* Phones: edge to edge, no outer frame wasting width. */
   @media (max-width: 760px) {
-    .pt { padding: 0 0 12px; }
-    .pt__grid { gap: 10px; }
-    .card { --pad: 56px; border-radius: 0; border-left: 0; border-right: 0; }
-    .ctext { gap: 8px; padding-inline: 28px; }
-    .card__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); font-weight: 600; letter-spacing: -0.045em; }
-    .card__line { font-size: clamp(1.1rem, 4.8vw, 1.3rem); opacity: 0.85; }
-    .card__go { height: 44px; margin-top: 14px; padding: 0 24px; font-size: 16px; }
-    .sq { min-height: 540px; }
-    .sq__vis { padding: 36px 24px 48px; }
-    .vband { flex-direction: column; align-items: center; gap: 10px; padding: 48px 28px; border-radius: 0; border-left: 0; border-right: 0; text-align: center; }
-    .vband h2 { font-size: clamp(1.7rem, 7.5vw, 2.1rem); font-weight: 600; }
-    .vband p { font-size: 15px; max-width: 32ch; margin-inline: auto; }
-    .vband__go { min-height: 44px; margin-top: 8px; padding: 0 24px; border: 1px solid currentColor; border-radius: var(--r-pill); }
+    .pt { padding: 8px 0 0; }
+    .pt__grid { gap: 8px; }
+    .tile { --pad: 48px; min-height: 520px; border-radius: 0; border-left: 0; border-right: 0; }
+    .tile__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); }
+    .tile__line { font-size: clamp(1.05rem, 4.6vw, 1.25rem); }
+    .tile__globe { width: 96%; margin-bottom: -34%; }
+    .covers img { width: 52cqw; }
   }
 </style>
