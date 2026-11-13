@@ -1,35 +1,29 @@
 ---
 /**
- * The Opus products on the homepage. One full-width World card with an oversized wireframe globe
- * that the card crops, four equal centered squares (Studios, Music / Charts, Collective), and a
- * slim Opus Verified strip. Each card: a name, one line, one action. Only real destinations;
- * Charts is in development and says so.
+ * The Opus products on the homepage. One full-width World card with the real Earth rising behind the
+ * words (the same day/night picture as the hero and World), four equal centered squares (Studios, Music,
+ * Charts, Collective) and a slim Opus Verified strip, all in one dark tone so the grid reads as one piece.
+ * Each card: a name, one line, one action. Only real destinations; Charts is in development and says so.
+ * The grid grows with the screen, so it keeps its proportions on very wide displays.
  */
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
 import Icon from '../ui/Icon.astro';
 
 const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
 const OPACITY = [0.9, 0.7, 0.5, 0.35, 0.22, 0.12];
-// Wireframe globe markers (viewBox units). Decorative, not real member locations.
-const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 98, 1.2], [292, 108, 1.3], [206, 128, 1.9], [104, 150, 1.1], [326, 146, 1.2], [158, 168, 1.6], [262, 190, 1.2], [118, 222, 1.1], [236, 240, 1.3]];
 ---
 <section class="pt" aria-label="What you can do on Opus">
   <div class="pt__grid">
 
-    <!-- World: the flagship. The globe is bigger than the card; the card shows only its top. -->
+    <!-- World: the flagship. The Earth is bigger than the card; the card shows only its top, like a horizon. -->
     <article class="card world tone-dark" aria-labelledby="pt-world" data-reveal>
       <div class="ctext">
         <h2 class="card__name" id="pt-world">World</h2>
         <p class="card__line">Make connections around the world.</p>
         <a class="card__go" href="/world">Make Connections <Icon name="arrow-right" size={16} /></a>
       </div>
-      <svg class="world__globe" viewBox="0 0 400 400" aria-hidden="true" focusable="false">
-        <circle class="world__sphere" cx="200" cy="200" r="180" />
-        <ellipse cx="200" cy="200" rx="60" ry="180" /><ellipse cx="200" cy="200" rx="120" ry="180" />
-        <ellipse cx="200" cy="200" rx="180" ry="60" /><ellipse cx="200" cy="200" rx="180" ry="120" />
-        <line x1="20" y1="200" x2="380" y2="200" /><line x1="200" y1="20" x2="200" y2="380" />
-        <g class="world__dots">{DOTS.map(([x, y, r]) => <circle cx={x} cy={y} r={r} />)}</g>
-      </svg>
+      <!-- The real Earth, drawn when the card comes on screen. Without WebGL the card keeps its quiet glow. -->
+      <div class="world__earth" data-card-globe aria-hidden="true"></div>
     </article>
 
     <!-- Four equal squares: centered name, line and action on top, the product's visual below or behind. -->
@@ -42,7 +36,7 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
       </div>
     </article>
 
-    <article class="card sq sq--music" aria-labelledby="pt-music" data-reveal style="--d:0.08s">
+    <article class="card sq sq--music tone-dark" aria-labelledby="pt-music" data-reveal style="--d:0.08s">
       <div class="ctext">
         <h2 class="card__name" id="pt-music">Music</h2>
         <p class="card__line">Your releases. Your credits.</p>
@@ -65,9 +59,10 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
     </article>
 
     <!-- Charts: honest coming soon. A decorative list of cities, not rankings. -->
-    <article class="card sq sq--charts" aria-labelledby="pt-charts" data-reveal>
+    <article class="card sq sq--charts tone-dark" aria-labelledby="pt-charts" data-reveal>
+      <span class="card__soon">Coming soon</span>
       <div class="ctext">
-        <h2 class="card__name" id="pt-charts">Charts <span class="card__soon">Coming soon</span></h2>
+        <h2 class="card__name" id="pt-charts">Charts</h2>
         <p class="card__line">Every city has a sound.</p>
         <a class="card__go" href="/charts">See what’s coming <Icon name="arrow-right" size={16} /></a>
       </div>
@@ -88,8 +83,8 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
     </article>
 
     <!-- Opus Verified: a quiet strip, not a product card. -->
-    <aside class="vband" aria-labelledby="pt-verified" data-reveal>
-      <VerifiedBadge size={36} tone="dark" />
+    <aside class="vband tone-dark" aria-labelledby="pt-verified" data-reveal>
+      <VerifiedBadge size={36} tone="light" />
       <div class="vband__text">
         <h2 id="pt-verified">Opus Verified. <span>Earned. Never bought.</span></h2>
         <p>Recognizes real professional credibility and reviewed accomplishments. Paying for Opus never earns or changes it.</p>
@@ -99,30 +94,47 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
   </div>
 </section>
 
+<script>
+  // Draw the real Earth in the World card once it is close to the screen (and only with WebGL).
+  const host = document.querySelector<HTMLElement>('[data-card-globe]');
+  const gl = () => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } };
+  if (host && gl()) {
+    const io = new IntersectionObserver(async ([e]) => {
+      if (!e?.isIntersecting) return;
+      io.disconnect();
+      try { (await import('@/scripts/card-globe')).mountCardGlobe(host, host.parentElement?.querySelector<HTMLElement>('.ctext')); } catch (err) { console.error('World card globe failed to load', err); }
+    }, { rootMargin: '400px 0px' });
+    io.observe(host);
+  }
+</script>
+
 <style>
   .pt { padding: 16px var(--gutter) clamp(40px, 6vw, 72px); background: var(--bg); }
-  .pt__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; max-width: 1040px; margin-inline: auto; }
+  /* The grid grows with the screen (up to an ultra-wide monitor), so the cards keep their proportions. */
+  .pt__grid { --w: clamp(1040px, 68vw, 2240px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 0.9vw, 22px); max-width: var(--w); margin-inline: auto; }
 
-  .card { --pad: clamp(30px, 3vw, 42px); position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center; border-radius: 20px; }
+  /* Every card shares one tone, so the grid reads as one piece rather than a checkerboard. */
+  .card { --pad: clamp(30px, 2.6vw, 64px); --tile: #0d0d0f; --tile-line: #1f2024; position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+    border-radius: 20px; background: var(--tile); border: 1px solid var(--tile-line); color: var(--text); }
 
   /* Centered text block, the same in every card. */
   .ctext { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: var(--pad) 24px 0; text-align: center; }
-  .card__name { display: inline-flex; align-items: center; gap: 12px; margin: 0; font-size: clamp(2rem, 1.3rem + 2vw, 3rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.05; }
-  .card__line { margin: 0; max-width: 30ch; font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.3rem); letter-spacing: -0.02em; line-height: 1.3; opacity: 0.8; }
-  .card__soon { padding: 4px 9px; border: 1px solid currentColor; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
-  .card__go { display: inline-flex; align-items: center; gap: 8px; height: 42px; margin-top: 10px; padding: 0 20px; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; white-space: nowrap; transition: gap var(--dur) var(--ease); }
+  .card__name { display: inline-flex; align-items: center; gap: 12px; margin: 0; font-size: clamp(2rem, 1.1rem + 2.1vw, 4.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.05; }
+  .card__line { margin: 0; max-width: 30ch; font-size: clamp(1.05rem, 0.9rem + 0.45vw, 1.75rem); letter-spacing: -0.02em; line-height: 1.3; opacity: 0.8; }
+  /* Coming soon sits in the card's corner, so the name stays centered like every other card. */
+  .card__soon { position: absolute; top: 18px; right: 18px; z-index: 3; padding: 4px 9px; border: 1px solid currentColor; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+  .card__go { display: inline-flex; align-items: center; gap: 8px; height: clamp(42px, 2.4vw, 52px); margin-top: 10px; padding: 0 clamp(20px, 1.3vw, 26px); border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: clamp(14px, 0.8vw, 16px); font-weight: 500; white-space: nowrap; transition: gap var(--dur) var(--ease); }
   .card__go:hover { gap: 12px; }
   .tone-dark .card__go { background: var(--text); color: #0d0d0f; }
   .card__go:focus-visible, .vband__go:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
 
   /* ---------- World ---------- */
-  .world { grid-column: 1 / -1; height: clamp(440px, 34vw, 490px); background: radial-gradient(70% 60% at 50% 100%, rgba(169, 199, 236, 0.08), transparent 70%), #0d0d0f; border: 1px solid #1f2024; color: var(--text); }
-  /* Far wider than it can show: only the top of the sphere is inside the card. */
-  .world__globe { position: absolute; z-index: 1; left: 50%; top: clamp(196px, 14vw, 206px); width: clamp(720px, 96%, 1000px); max-width: none; height: auto; transform: translateX(-50%);
-    fill: none; stroke: rgba(214, 228, 245, 0.22); stroke-width: 1; overflow: visible; }
-  .world__globe * { vector-effect: non-scaling-stroke; }
-  .world__sphere { fill: #121317; stroke: rgba(214, 228, 245, 0.32); }
-  .world__dots circle { fill: #d6e4f5; stroke: none; }
+  /* Its height follows the card's width, so on a wide screen the Earth is as grand as on a laptop. */
+  .world { grid-column: 1 / -1; aspect-ratio: 1040 / 470; min-height: 440px;
+    background: radial-gradient(60% 55% at 50% 100%, rgba(169, 199, 236, 0.12), transparent 70%), var(--tile); }
+  .world__earth { position: absolute; inset: 0; z-index: 1; opacity: 0; transition: opacity 1.6s var(--ease); }
+  .world__earth:global(.is-ready) { opacity: 1; }
+  .world__earth :global(canvas) { display: block; width: 100%; height: 100%; }
 
   /* ---------- The four squares ---------- */
   .sq { aspect-ratio: 1 / 1; container-type: inline-size; }
@@ -130,13 +142,11 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
 
   /* Photo squares: the picture fills the card, darkened at the top behind the text. */
   .card__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
-  .sq--studios, .sq--collective { background: #0d0d0f; color: var(--text); }
   .sq--studios::after, .sq--collective::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8, 8, 10, 0.86) 0%, rgba(8, 8, 10, 0.45) 42%, rgba(8, 8, 10, 0.1) 100%); }
   .sq--collective .card__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
 
   /* Music */
-  .sq--music { background: var(--surface); border: 1px solid var(--line); color: var(--text); }
-  .relp { position: relative; width: 100%; max-width: 400px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg); text-align: left; }
+  .relp { position: relative; width: 100%; max-width: clamp(400px, 70cqw, 560px); padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: #141418; text-align: left; }
   .relp__tag { position: absolute; top: 12px; right: 12px; padding: 2px 7px; border: 1px dashed var(--line-strong); border-radius: 4px; font-size: 10px; color: var(--text-3); }
   .relp__head { display: flex; align-items: center; gap: 14px; }
   .relp__head img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
@@ -151,28 +161,26 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
   .relp__credits em { font-style: normal; font-size: 11px; padding: 2px 8px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 
   /* Charts: centered city names fading from dark to light. Sized to the card. */
-  .sq--charts { background: var(--c-paper); color: var(--c-paper-ink); border: 1px solid var(--c-paper-line); }
-  .sq--charts .card__go { background: var(--c-paper-ink); color: var(--c-paper); }
   .sq--charts .sq__vis { align-items: flex-start; overflow: hidden; }
   .cities { display: flex; flex-direction: column; align-items: center; margin: 0; padding: 0; list-style: none; text-align: center;
-    font-size: clamp(1.4rem, 5.6cqw, 2.2rem); font-weight: 500; letter-spacing: -0.04em; line-height: 1.12; }
+    font-size: clamp(1.4rem, 5.6cqw, 3.2rem); font-weight: 500; letter-spacing: -0.04em; line-height: 1.12; }
   .cities li { opacity: var(--o); }
 
   /* ---------- Verified strip ---------- */
   .vband { grid-column: 1 / -1; display: flex; align-items: center; gap: clamp(16px, 2.4vw, 28px); padding: clamp(18px, 2vw, 22px) clamp(22px, 3vw, 36px);
-    border: 1px solid var(--c-paper-line); border-radius: 20px; background: var(--c-paper); color: var(--c-paper-ink); }
+    border: 1px solid #1f2024; border-radius: 20px; background: #0d0d0f; color: var(--text); }
   .vband__text { flex: 1; min-width: 0; }
   .vband h2 { margin: 0; font-size: clamp(1.25rem, 1rem + 0.8vw, 1.6rem); font-weight: 500; letter-spacing: -0.03em; }
-  .vband h2 span { color: var(--c-paper-muted); }
-  .vband p { margin: 4px 0 0; font-size: 14px; color: var(--c-paper-muted); }
+  .vband h2 span { color: var(--text-3); }
+  .vband p { margin: 4px 0 0; font-size: 14px; color: var(--text-2); }
   .vband__go { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; min-height: 44px; font-size: 15px; font-weight: 500; border-bottom: 1px solid currentColor; }
   .vband__go:hover { opacity: 0.7; }
 
   /* ---------- Motion ----------
      Quiet, one idea per card. Content is fully visible without JS, and the global
      reduced-motion rule in global.css turns all of it off. */
-  :global(.js) .world__globe { transform: translate(-50%, 40px); transition: transform 1.6s var(--ease); }
-  :global(.js) .world.is-in .world__globe { transform: translateX(-50%); }
+  :global(.js) .world__earth { transform: translateY(40px); transition: opacity 1.6s var(--ease), transform 1.8s var(--ease); }
+  :global(.js) .world.is-in .world__earth { transform: none; }
   :global(.js) .sq .card__photo { transform: scale(1.08); transition: transform 1.6s var(--ease); }
   :global(.js) .sq.is-in .card__photo { transform: scale(1); }
   :global(.js) .sq--music .relp__credits li { opacity: 0; transform: translateX(-10px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); transition-delay: calc(0.35s + var(--i) * 0.14s); }
@@ -203,9 +211,7 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
     .card__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); font-weight: 600; letter-spacing: -0.045em; }
     .card__line { font-size: clamp(1.1rem, 4.8vw, 1.3rem); opacity: 0.85; }
     .card__go { height: 44px; margin-top: 14px; padding: 0 24px; font-size: 16px; }
-    .world { height: 560px; border: 0; }
-    /* Still oversized on phones: wider than the screen, cropped on both sides and the bottom. */
-    .world__globe { top: 250px; width: 175%; }
+    .world { aspect-ratio: auto; height: 560px; border-left: 0; border-right: 0; }
     .sq { min-height: 540px; }
     .sq__vis { padding: 36px 24px 48px; }
     .vband { flex-direction: column; align-items: center; gap: 10px; padding: 48px 28px; border-radius: 0; border-left: 0; border-right: 0; text-align: center; }
