@@ -364,7 +364,7 @@ export function initWorld(root: HTMLElement) {
 </header>
 ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-labelledby="wg-s${i}">
   <div class="wg__shead"><h3 id="wg-s${i}">${esc(sh.title)}</h3>${sh.total > 2 ? `<button type="button" class="wg__all" data-shelf="${i}">See all ${sh.total}</button>` : ''}</div>
-  <div class="wg__track" role="list">${sh.items.map((l) => tileHtml(l, 'portrait')).join('')}</div>
+  <div class="wg__track" role="list">${sh.items.map((l) => tileHtml(l, 'grid')).join('')}</div>
 </section>`).join('')}
 <button type="button" class="wg__everyone" data-guide-list>See everyone in ${esc(g.name)} as a list</button>`;
       if (!reduceMotion.matches) { guide.classList.remove('is-entering'); void guide.offsetWidth; guide.classList.add('is-entering'); }

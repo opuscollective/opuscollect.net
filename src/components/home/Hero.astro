@@ -13,7 +13,10 @@ const topCities = CITIES.slice(0, 8);
 
   <!-- The globe is the whole statement. One way in: find where you are and open World there. -->
   <div class="container hero__stage" data-hero-stage>
-    <h1 id="hero-title" class="sr-only">Opus: the independent music world, on one globe</h1>
+    <div class="hero__words">
+      <h1 id="hero-title" class="hero__title hero-in" style="--i:0">A world of connections.</h1>
+      <p class="hero__sub hero-in" style="--i:1">The musicians, studios and people making music near you, and everywhere else.</p>
+    </div>
     <a class="hero__go hero-in" style="--i:2" href="/world" data-hero-open>Explore your world <Icon name="arrow-right" size={18} /></a>
 
     <!-- Accessible fallback, shown when WebGL is not available -->
@@ -197,11 +200,15 @@ const topCities = CITIES.slice(0, 8);
   @keyframes breathe { 50% { border-color: var(--line-strong); } }
   /* No words over the globe any more: only a soft fade at the bottom into the page. */
   .hero__veil { position: absolute; inset: 0; z-index: 1; pointer-events: none; transition: opacity 1s var(--ease);
-    background: linear-gradient(0deg, var(--bg) 0%, transparent 18%); }
+    background: linear-gradient(0deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 55%, transparent) 22%, transparent 42%); }
 
   .hero__stage { position: absolute; left: 0; right: 0; bottom: clamp(48px, 10vh, 110px); z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 36px; pointer-events: none;
     transition: transform 0.9s cubic-bezier(.5, 0, .2, 1), opacity 0.7s var(--ease), filter 0.9s var(--ease); }
   .hero__stage > * { pointer-events: auto; }
+  .hero__words { display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 34ch; padding: 0 20px; margin-bottom: -12px; pointer-events: none; }
+  .hero__title { margin: 0; font-size: clamp(2.4rem, 1.4rem + 3.4vw, 4.75rem); line-height: 0.98; letter-spacing: -0.05em; font-weight: 500; color: #f4f2ee; text-wrap: balance;
+    text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55); }
+  .hero__sub { margin: 0; font-size: clamp(1rem, 0.92rem + 0.35vw, 1.2rem); line-height: 1.4; color: rgba(244, 242, 238, 0.72); text-wrap: balance; text-shadow: 0 1px 18px rgba(0, 0, 0, 0.6); }
   /* The one way in: a bright pill low on the globe, like a single control on a product page. */
   .hero__go { display: inline-flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 30px; border-radius: var(--r-pill);
     background: var(--c-white); color: var(--c-black); font-size: 17px; font-weight: 500; letter-spacing: -0.01em;
@@ -252,8 +259,8 @@ const topCities = CITIES.slice(0, 8);
   :global(.gl-label--me b:nth-child(3)) { animation-delay: 1.6s; }
   @keyframes me-wave { from { transform: scale(1); opacity: .9; } to { transform: scale(2.8); opacity: 0; } }
   @media (max-width: 760px) { :global(.gl-label--land), :global(.gl-label--sea) { font-size: 9.5px; } }
-  /* On wide screens the headline sits over the globe: labels appear only once you dive in. */
-  @media (min-width: 761px) { .hero:not(.is-diving) :global(.gl-label--land), .hero:not(.is-diving) :global(.gl-label--sea) { opacity: 0 !important; } }
+  /* The headline sits over the globe: labels appear only once you dive in. */
+  .hero:not(.is-diving) :global(.gl-label--land), .hero:not(.is-diving) :global(.gl-label--sea) { opacity: 0 !important; }
   :global(.gl-tip) { padding: 8px 10px; background: var(--glass); border: 1px solid var(--line-strong); border-radius: 6px; font: 13px var(--font-sans); color: var(--text); display: flex; flex-direction: column; gap: 2px; }
   :global(.gl-tip span) { color: var(--text-3); font-size: 12px; }
 
@@ -261,6 +268,8 @@ const topCities = CITIES.slice(0, 8);
     .hero { min-height: max(calc(100svh - 48px), 560px); }
     .hero__stage { bottom: calc(40px + env(safe-area-inset-bottom)); }
     .hero__go { min-height: 52px; padding: 0 26px; font-size: 16px; }
+    .hero__stage { gap: 28px; }
+    .hero__words { gap: 10px; }
     .hero__veil { background: linear-gradient(180deg, transparent 60%, color-mix(in srgb, var(--bg) 85%, transparent) 100%); }
     .dv-locate { bottom: auto; top: 40%; }
   }
