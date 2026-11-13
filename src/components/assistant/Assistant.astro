@@ -6,9 +6,9 @@
  */
 import Icon from '../ui/Icon.astro';
 ---
-<button type="button" class="oa-launch" data-oa-launch aria-haspopup="dialog" aria-controls="opus-guide" aria-expanded="false">
+<button type="button" class="oa-launch" data-oa-launch aria-haspopup="dialog" aria-controls="opus-guide" aria-expanded="false" aria-label="Opus, your guide">
   <img class="logo" src="/images/oc-logo.png" alt="" width="20" height="13" />
-  <span class="oa-launch__label">Ask Opus</span>
+  <span class="oa-launch__label" aria-hidden="true">Opus</span>
 </button>
 
 <div class="oa-scrim" data-oa-scrim hidden></div>
@@ -137,13 +137,15 @@ import Icon from '../ui/Icon.astro';
 </script>
 
 <style>
-  /* Launcher: small and quiet, bottom-right, clear of the phone's home indicator. */
-  .oa-launch { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 45;
-    display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill);
-    background: var(--glass-header); color: var(--text); backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2);
-    box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.45); font-size: 14px; font-weight: 500;
+  /* Launcher: the Opus mark and name in one dark glass chip, the same on every page and theme,
+     so it reads as part of Opus rather than a widget. Bottom-right, clear of the phone's home indicator. */
+  .oa-launch { position: fixed; right: max(20px, env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 45;
+    display: inline-flex; align-items: center; gap: 9px; height: 42px; padding: 0 16px 0 14px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--r-pill);
+    background: rgba(16, 16, 18, 0.78); color: #f4f2ee; backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.6); font-size: 14px; font-weight: 500; letter-spacing: -0.01em;
     transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), border-color var(--dur) var(--ease); }
-  .oa-launch:hover { border-color: var(--text-3); }
+  .oa-launch:hover { border-color: rgba(255, 255, 255, 0.3); background: rgba(16, 16, 18, 0.9); }
+  .oa-launch .logo { filter: none; }
   .oa-launch:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
   .oa-launch img { width: 20px; height: auto; }
   :global(.oa-open) .oa-launch { opacity: 0; pointer-events: none; transform: translateY(6px); }
