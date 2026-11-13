@@ -16,6 +16,7 @@ import { placeIndex, suggest, norm, type Place, type Suggestion } from '@/lib/wo
 import { previewHtml, previewSkeleton, previewError } from '@/lib/world-preview';
 import { installImageFallbacks } from '@/lib/media';
 import { CITIES, citySlug, findCity } from '@/data/cities';
+import { PLACES as AREAS, PLACE_BY_ID as AREA_BY_ID } from '@/data/places';
 import { SPECIALTIES, toSpecialty } from '@/data/specialties';
 import { hasPoint, type Listing } from '@/types/directory';
 import type { ProfileDetail } from '@/server/world-detail';
@@ -808,7 +809,8 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   });
 
   // Enter a city: cities and regions from the gazetteer plus every place Opus members are in.
-  type CityOpt = { name: string; sub: string; lat: number; lng: number };
+  /** metro: a suburb or neighbouring city belongs to a metro area, and World opens that area (Hoover → Birmingham). */
+  type CityOpt = { name: string; sub: string; lat: number; lng: number; metro?: { name: string; lat: number; lng: number } };
   function cityOptions(text: string): CityOpt[] {
     const t = norm(text);
     if (!t) return [];
@@ -819,6 +821,12 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
       seen.add(o.name); out.push(o);
     };
     for (const c of CITIES) add({ name: c.name, sub: [c.region, c.countryName].filter(Boolean).join(', '), lat: c.lat, lng: c.lng }, [c.name, c.region ?? '', c.countryName, ...(c.aliases ?? [])]);
+    for (const p of AREAS) {
+      if (p.kind !== 'locality') continue;
+      const m = AREA_BY_ID.get(p.metroId);
+      if (!m) continue;
+      add({ name: p.name, sub: `${m.name} area${m.region ? `, ${m.region}` : ''}`, lat: p.lat, lng: p.lng, metro: { name: m.name, lat: m.lat, lng: m.lng } }, [p.name]);
+    }
     for (const p of PLACES) add({ name: p.name, sub: '', lat: p.lat, lng: p.lng }, [p.name]);
     return out.slice(0, 6);
   }
@@ -844,7 +852,7 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
       cityAt = (cityAt + (e.key === 'ArrowDown' ? 1 : -1) + cityOpts.length) % cityOpts.length; drawCities();
     } else if (e.key === 'Escape') { whereList.hidden = true; }
   });
-  const pickCity = (o?: CityOpt) => { if (o) answer({ mode: 'city', name: o.name }, o); };
+  const pickCity = (o?: CityOpt) => { if (o) answer({ mode: 'city', name: o.metro?.name ?? o.name }, o.metro ?? o); };
   whereForm.addEventListener('submit', (e) => { e.preventDefault(); pickCity(cityOpts[Math.max(0, cityAt)]); });
   whereList.addEventListener('pointerdown', (e) => e.preventDefault());
   whereList.addEventListener('click', (e) => { const li = (e.target as Element).closest<HTMLElement>('[data-i]'); if (li) pickCity(cityOpts[Number(li.dataset.i)]); });

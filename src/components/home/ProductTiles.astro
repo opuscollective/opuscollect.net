@@ -1,8 +1,7 @@
 ---
 /**
- * The Opus products on the homepage. One full-width World card with an oversized wireframe globe (the
- * network; the real Earth belongs to the hero), four equal centered squares (Studios, Music, Charts,
- * Collective) and a slim Opus Verified strip. Dark cards, with warm-white Charts as the one deliberate break.
+ * The Opus products on the homepage, under the hero (which is World's entrance, so World has no card of its
+ * own here): four equal centered squares (Studios, Music, Charts, Collective) and a slim Opus Verified strip. Dark cards, with warm-white Charts as the one deliberate break.
  * Each card: a name, one line, one action. Only real destinations; Charts is in development and says so.
  * The grid grows with the screen, so it keeps its proportions on very wide displays.
  */
@@ -11,27 +10,9 @@ import Icon from '../ui/Icon.astro';
 
 const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
 const OPACITY = [0.9, 0.7, 0.5, 0.35, 0.22, 0.12];
-// Wireframe globe markers (viewBox units). Decorative, not real member locations.
-const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 98, 1.2], [292, 108, 1.3], [206, 128, 1.9], [104, 150, 1.1], [326, 146, 1.2], [158, 168, 1.6], [262, 190, 1.2], [118, 222, 1.1], [236, 240, 1.3]];
 ---
 <section class="pt" aria-label="What you can do on Opus">
   <div class="pt__grid">
-
-    <!-- World: the flagship. The globe is bigger than the card; the card shows only its top. -->
-    <article class="card world tone-dark" aria-labelledby="pt-world" data-reveal>
-      <div class="ctext">
-        <h2 class="card__name" id="pt-world">World</h2>
-        <p class="card__line">Make connections around the world.</p>
-        <a class="card__go" href="/world">Make Connections <Icon name="arrow-right" size={16} /></a>
-      </div>
-      <svg class="world__globe" viewBox="0 0 400 400" aria-hidden="true" focusable="false">
-        <circle class="world__sphere" cx="200" cy="200" r="180" />
-        <ellipse cx="200" cy="200" rx="60" ry="180" /><ellipse cx="200" cy="200" rx="120" ry="180" />
-        <ellipse cx="200" cy="200" rx="180" ry="60" /><ellipse cx="200" cy="200" rx="180" ry="120" />
-        <line x1="20" y1="200" x2="380" y2="200" /><line x1="200" y1="20" x2="200" y2="380" />
-        <g class="world__dots">{DOTS.map(([x, y, r]) => <circle cx={x} cy={y} r={r} />)}</g>
-      </svg>
-    </article>
 
     <!-- Four equal squares: centered name, line and action on top, the product's visual below or behind. -->
     <article class="card sq sq--studios tone-dark" aria-labelledby="pt-studios" data-reveal>
@@ -121,17 +102,6 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
   .tone-dark .card__go { background: var(--text); color: #0d0d0f; }
   .card__go:focus-visible, .vband__go:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
 
-  /* ---------- World ---------- */
-  /* Its height follows the card's width, so the globe keeps the same crop on every screen. */
-  .world { grid-column: 1 / -1; aspect-ratio: 1040 / 470; min-height: 440px;
-    background: radial-gradient(60% 55% at 50% 100%, rgba(169, 199, 236, 0.07), transparent 70%), var(--tile); }
-  /* The network as a thin-line globe, far wider than the card can show: only its top is inside. */
-  .world__globe { position: absolute; z-index: 1; left: 50%; top: 45%; width: max(720px, 96%); max-width: none; height: auto; transform: translateX(-50%);
-    fill: none; stroke: rgba(214, 228, 245, 0.2); stroke-width: 1; overflow: visible; }
-  .world__globe * { vector-effect: non-scaling-stroke; }
-  .world__sphere { fill: #111216; stroke: rgba(214, 228, 245, 0.32); }
-  .world__dots circle { fill: #d6e4f5; stroke: none; }
-
   /* ---------- The four squares ---------- */
   .sq { aspect-ratio: 1 / 1; container-type: inline-size; }
   .sq__vis { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; padding: 20px var(--pad) var(--pad); }
@@ -179,8 +149,6 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
   /* ---------- Motion ----------
      Quiet, one idea per card. Content is fully visible without JS, and the global
      reduced-motion rule in global.css turns all of it off. */
-  :global(.js) .world__globe { transform: translate(-50%, 40px); transition: transform 1.6s var(--ease); }
-  :global(.js) .world.is-in .world__globe { transform: translateX(-50%); }
   :global(.js) .sq .card__photo { transform: scale(1.08); transition: transform 1.6s var(--ease); }
   :global(.js) .sq.is-in .card__photo { transform: scale(1); }
   :global(.js) .sq--music .relp__credits li { opacity: 0; transform: translateX(-10px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); transition-delay: calc(0.35s + var(--i) * 0.14s); }
@@ -211,9 +179,6 @@ const DOTS: [number, number, number][] = [[176, 58, 1.3], [246, 72, 1.6], [128, 
     .card__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); font-weight: 600; letter-spacing: -0.045em; }
     .card__line { font-size: clamp(1.1rem, 4.8vw, 1.3rem); opacity: 0.85; }
     .card__go { height: 44px; margin-top: 14px; padding: 0 24px; font-size: 16px; }
-    .world { aspect-ratio: auto; height: 560px; border-left: 0; border-right: 0; }
-    /* Still oversized on phones: wider than the screen, cropped on both sides and the bottom. */
-    .world__globe { top: 250px; width: 175%; }
     .sq { min-height: 540px; }
     .sq__vis { padding: 36px 24px 48px; }
     .vband { flex-direction: column; align-items: center; gap: 10px; padding: 48px 28px; border-radius: 0; border-left: 0; border-right: 0; text-align: center; }

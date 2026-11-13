@@ -54,6 +54,7 @@ const SPECIALTY_CYCLE: Specialty[][] = [
 const LABEL: Record<Specialty, string> = {
   'recording-artist': 'Artist', vocalist: 'Vocalist', songwriter: 'Writer', producer: 'Producer', 'audio-engineer': 'Engineer',
   'mixing-engineer': 'Mixer', 'mastering-engineer': 'Mastering', dj: 'DJ', instrumentalist: 'Player', composer: 'Composer', arranger: 'Arranger',
+  photographer: 'Photographer', videographer: 'Videographer', creative: 'Creative',
 };
 
 const musicians: MusicianListing[] = [];

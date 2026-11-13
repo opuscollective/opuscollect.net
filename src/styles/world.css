@@ -697,3 +697,24 @@
 .wp__bar .wp__count { order: 9; flex-basis: 100%; white-space: normal; }
 @media (min-width: 861px) { .world .maplibregl-ctrl-bottom-right { bottom: 66px; } }
 .wp__bar .wp__where { margin-right: auto; }
+
+/* Entering in Split (desktop, from the homepage): the left column stays the colour of space while the question is
+   up, and the question sits where the homepage's words were. Once answered, the directory takes that place and the
+   globe glides to the middle of the map. */
+@media (min-width: 861px) {
+  .world[data-entry] { background: var(--map-bg); }
+  .world[data-entry] .world__panel { border-color: transparent; }
+  .world[data-entry][data-view='split'] .world__panel { transform: translateX(-24px); }
+  .world[data-view='split'] .wx { left: clamp(24px, 6vw, 160px); width: min(420px, calc(var(--panel-w) - 48px)); transform: translate(0, calc(-50% + 14px)); text-align: left; }
+  .world[data-view='split'] .wx.is-in { transform: translate(0, -50%); }
+  .world[data-view='split'] .wx__opt { justify-content: flex-start; }
+}
+
+/* Phones: the question is a compact sheet at the bottom, so most of the globe stays in view. */
+@media (max-width: 860px) {
+  .wx { width: calc(100vw - 20px); bottom: calc(10px + env(safe-area-inset-bottom)); padding: 18px 16px 12px; border-radius: 22px; text-align: left; }
+  .wx__title { margin-bottom: 12px; font-size: 1.3rem; }
+  .wx__opts { gap: 6px; }
+  .wx__opt { min-height: 46px; font-size: 15px; justify-content: flex-start; padding: 0 16px; }
+  .wx__note { margin-top: 8px; }
+}

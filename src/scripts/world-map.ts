@@ -180,7 +180,7 @@ export async function mountWorldMap(
   el: HTMLElement,
   initial: Listing[],
   cb: MapCallbacks,
-  opts: { padBottom?: number; camera?: Camera | null; pad?: { top: number; bottom: number } } = {},
+  opts: { padBottom?: number; camera?: Camera | null; pad?: { top: number; bottom: number; left?: number; right?: number } } = {},
 ): Promise<WorldMapApi> {
   // Phones get the 2048 px Earth: a 4096 px canvas is near the limit some phone browsers allow.
   const earthP = earthCanvas(el.clientWidth < 700 ? 2048 : 4096).catch((err) => { console.warn('Earth imagery unavailable; showing the plain map.', err); return null; });
@@ -207,7 +207,7 @@ export async function mountWorldMap(
   // On phones the bottom sheet covers the lower edge; centre the globe in the visible area.
   if (opts.padBottom) map.setPadding({ top: 0, left: 0, right: 0, bottom: opts.padBottom });
   // Coming from the homepage: the globe sits exactly where the homepage camera left it (see world-entry.ts).
-  if (opts.pad) map.setPadding({ top: opts.pad.top, left: 0, right: 0, bottom: (opts.padBottom ?? 0) + opts.pad.bottom });
+  if (opts.pad) map.setPadding({ top: opts.pad.top, left: opts.pad.left ?? 0, right: opts.pad.right ?? 0, bottom: (opts.padBottom ?? 0) + opts.pad.bottom });
   const firstIdle = new Promise<void>((res) => map.once('idle', () => res()));
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
   const onTheme = () => { if (map.isStyleLoaded()) applyPalette(map, readPalette()); else map.once('load', () => applyPalette(map, readPalette())); };

@@ -32,9 +32,10 @@ const MAP_FOV = 36.8699;
  *   (h/2) / tan(fov/2) / sqrt(d² - 1) pixels in radius.
  * - MapLibre: the globe's radius is 512·2^zoom / 2π / cos(lat) pixels at the centre, seen from
  *   cameraToCenterDistance + R away. Solving its outline for the same pixels gives R, then the zoom.
- * - The vertical offset between the two pages (the header) becomes map padding.
+ * - Where the homepage globe sat on screen (right of the words; below the header) becomes map padding, so the
+ *   sphere opens at the same spot even though World's map box is a different shape.
  */
-export function cameraFor(h: Handoff, mapEl: HTMLElement, padBottom = 0): { camera: Camera; pad: { top: number; bottom: number } } {
+export function cameraFor(h: Handoff, mapEl: HTMLElement, padBottom = 0): { camera: Camera; pad: { top: number; bottom: number; left: number; right: number } } {
   const rect = mapEl.getBoundingClientRect();
   const H = rect.height || h.h;
   const d = 1 + h.altitude;
@@ -43,7 +44,9 @@ export function cameraFor(h: Handoff, mapEl: HTMLElement, padBottom = 0): { came
   const R = (outline * outline + outline * Math.sqrt(outline * outline + f * f)) / f;
   const zoom = Math.log2((R * Math.cos((h.lat * Math.PI) / 180) * 2 * Math.PI) / 512);
   const shift = 2 * (h.top + h.h / 2 - rect.top) - H + padBottom;
-  return { camera: { center: [h.lng, h.lat], zoom }, pad: { top: Math.max(0, shift), bottom: Math.max(0, -shift) } };
+  const W = rect.width || h.w;
+  const shiftX = 2 * ((h.left ?? 0) + h.w / 2 - rect.left) - W;
+  return { camera: { center: [h.lng, h.lat], zoom }, pad: { top: Math.max(0, shift), bottom: Math.max(0, -shift), left: Math.max(0, shiftX), right: Math.max(0, -shiftX) } };
 }
 
 // ---------- Where the visitor is connecting from ----------

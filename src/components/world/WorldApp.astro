@@ -37,7 +37,7 @@ const {
             if (!h || !src || Date.now() - h.at > 20000) return;
             var img = document.createElement('img');
             img.className = 'world__handoff'; img.alt = ''; img.src = src; img.setAttribute('data-handoff', '');
-            img.style.cssText = 'top:' + h.top + 'px;width:' + h.w + 'px;height:' + h.h + 'px';
+            img.style.cssText = 'top:' + h.top + 'px;left:' + (h.left || 0) + 'px;width:' + h.w + 'px;height:' + h.h + 'px';
             document.currentScript.parentNode.insertBefore(img, document.currentScript);
           } catch (e) { /* World opens normally */ }
         })();
@@ -93,7 +93,7 @@ const {
         <div class="wp__row">
           <div class="wp__kinds" role="radiogroup" aria-label="Category" data-kinds>
             <button type="button" role="radio" aria-checked="true" data-kind="">All</button>
-            <button type="button" role="radio" aria-checked="false" data-kind="musician">Musicians</button>
+            <button type="button" role="radio" aria-checked="false" data-kind="musician">People</button>
             <button type="button" role="radio" aria-checked="false" data-kind="studio">Studios</button>
             <button type="button" role="radio" aria-checked="false" data-kind="organization">Org<span class="wp__long">anization</span>s</button>
           </div>

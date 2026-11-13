@@ -8,7 +8,7 @@ import { sunAt } from '@/lib/sun';
 
 export interface CityPoint { city: string; country: string; lat: number; lng: number; count: number }
 /** Where the homepage camera stopped, handed to World so its map opens at the same view. */
-export interface Handoff { lat: number; lng: number; altitude: number; fov: number; w: number; h: number; top: number; at: number; image?: string }
+export interface Handoff { lat: number; lng: number; altitude: number; fov: number; w: number; h: number; top: number; left: number; at: number; image?: string }
 
 export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts: { onSelect: (p: CityPoint) => void }) {
   const [{ default: Globe }, THREE, topo] = await Promise.all([
@@ -118,10 +118,14 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   controls.enableDamping = true;
   controls.minDistance = 125; // about altitude 0.25: close enough to see a metro area
   controls.maxDistance = 520;
-  // The globe fills the hero behind the headline. Pull the camera back on tall, narrow screens so the sphere fits the width.
+  // The globe sits in its own box beside the words: as large as the box's height allows, but never wider than
+  // the box, so it can be cropped by the screen edge without ever reaching into the text column.
   const home = () => {
-    const w = el.clientWidth, h = el.clientHeight || 1;
-    return w / h < 0.8 ? 2.5 : w / h < 1.2 ? 2.2 : 1.6;
+    const w = el.clientWidth || 1, h = el.clientHeight || 1;
+    const fov = (globe.camera() as unknown as { fov?: number }).fov ?? 50;
+    const r = Math.min(h * 0.46, w * 0.47);
+    const k = h / 2 / Math.tan((fov * Math.PI) / 360) / r;
+    return Math.sqrt(k * k + 1) - 1;
   };
   globe.pointOfView({ lat: 28, lng: -40, altitude: home() }, 0);
 
@@ -136,7 +140,12 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   };
   interactive(false);
 
-  const resize = () => globe.width(el.clientWidth).height(el.clientHeight);
+  // At rest, a new window size gets a new framing; once the camera is moving somewhere, it's left alone.
+  let resting = true;
+  const resize = () => {
+    globe.width(el.clientWidth).height(el.clientHeight);
+    if (resting) globe.pointOfView({ ...globe.pointOfView(), altitude: home() }, 0);
+  };
   resize();
   new ResizeObserver(resize).observe(el);
 
@@ -147,6 +156,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   const ms = (n: number) => (reduce ? 0 : n);
   /** Stop turning: auto-rotation off and no leftover spin from damping, so the camera lands where it's sent. */
   const hold = () => {
+    resting = false;
     controls.autoRotate = false;
     const c = controls as unknown as { _sphericalDelta?: { set(a: number, b: number, c: number): void }; sphericalDelta?: { set(a: number, b: number, c: number): void } };
     (c._sphericalDelta ?? c.sphericalDelta)?.set(0, 0, 0);
@@ -194,11 +204,15 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
       const lat = Math.max(-35, Math.min(55, pov.lat));
       const dur = ms(1900);
       // Close enough to feel like arriving, still inside the range where World shows the same lit Earth.
-      globe.pointOfView({ lat, lng: pov.lng, altitude: Math.min(pov.altitude, 1.15) }, dur);
+      // The globe's box ends where the words begin, so the sphere may not grow wider than the box.
+      const fov = (globe.camera() as unknown as { fov?: number }).fov ?? 50;
+      const k = el.clientHeight / 2 / Math.tan((fov * Math.PI) / 360) / (el.clientWidth * 0.495);
+      const fits = Math.sqrt(k * k + 1) - 1;
+      globe.pointOfView({ lat, lng: pov.lng, altitude: Math.min(pov.altitude, Math.max(1.15, fits)) }, dur);
       return new Promise((res) => setTimeout(() => {
         const end = globe.pointOfView();
         const r = el.getBoundingClientRect();
-        res({ lat: end.lat, lng: end.lng, altitude: end.altitude, fov: (globe.camera() as unknown as { fov?: number }).fov ?? 50, w: r.width, h: r.height, top: r.top, at: Date.now(), image: frame() });
+        res({ lat: end.lat, lng: end.lng, altitude: end.altitude, fov: (globe.camera() as unknown as { fov?: number }).fov ?? 50, w: r.width, h: r.height, top: r.top, left: r.left, at: Date.now(), image: frame() });
       }, dur + 60));
     },
     /** Fly down to the visitor's own area and mark it. The position stays in the page. */
@@ -222,6 +236,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
       controls.autoRotate = !reduce;
       controls.autoRotateSpeed = 0.35;
       interactive(false);
+      resting = true;
     },
   };
 }
