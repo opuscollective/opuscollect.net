@@ -6,7 +6,14 @@ import { sunAt } from '@/lib/sun';
 
 export interface CityPoint { city: string; country: string; lat: number; lng: number; count: number }
 /** Where the homepage camera stopped, handed to World so its map opens at the same view. */
-export interface Handoff { lat: number; lng: number; altitude: number; fov: number; w: number; h: number; top: number; left: number; at: number; image?: string }
+export interface Handoff {
+  lat: number; lng: number; altitude: number; fov: number;
+  /** The camera's frame on screen: the Earth is centred in it and sized to its height. */
+  w: number; h: number; top: number; left: number;
+  /** Where the last frame's picture covered the screen (the canvas), if not the frame itself. */
+  img?: { w: number; h: number; top: number; left: number };
+  at: number; image?: string;
+}
 
 export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts: { onSelect: (p: CityPoint) => void }) {
   const [{ default: Globe }, THREE] = await Promise.all([import('globe.gl'), import('three')]);
@@ -200,6 +207,51 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     (c._sphericalDelta ?? c.sphericalDelta)?.set(0, 0, 0);
   };
   /**
+   * Leaving the homepage, the Earth must not stay inside its box (which ends at the hero's edges), or the
+   * planet gets cut off by straight lines as the camera comes in. So the globe's element becomes a fixed,
+   * full-viewport layer, and the camera's projection is shifted (setViewOffset) so the Earth is drawn exactly
+   * where it was in the box: nothing jumps. That framing then glides to the centre of the screen while the
+   * camera approaches, using the same duration and easing as globe.gl's own camera move.
+   */
+  const cam = globe.camera() as InstanceType<typeof THREE.PerspectiveCamera>;
+  type Rect = { x: number; y: number; w: number; h: number };
+  let view: { from: Rect; to: Rect; t0: number; dur: number } | null = null;
+  const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2); // Cubic.InOut, as globe.gl
+  const scene = globe.scene();
+  scene.onBeforeRender = () => {
+    if (!view) return;
+    const t = view.dur ? Math.min(1, (performance.now() - view.t0) / view.dur) : 1;
+    const e = ease(t), { from: a, to: b } = view;
+    const f = { x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e, w: a.w + (b.w - a.w) * e, h: a.h + (b.h - a.h) * e };
+    const vw = el.clientWidth || 1, vh = el.clientHeight || 1;
+    // The full camera frame is f (in viewport pixels); the canvas shows the viewport's part of it.
+    cam.aspect = f.w / f.h;
+    cam.setViewOffset(f.w, f.h, -f.x, -f.y, vw, vh);
+  };
+  let full = false;
+  /** Lift the globe out of its box into a full-viewport layer, then glide to a centred view over dur ms. Returns the old box. */
+  const unbox = (dur: number): Rect => {
+    const r = el.getBoundingClientRect();
+    const box = { x: r.left, y: r.top, w: r.width, h: r.height };
+    if (full) return box;
+    full = true;
+    el.classList.add('is-full');
+    const vw = el.clientWidth, vh = el.clientHeight;
+    globe.renderer().setSize(vw, vh); // now, so the next frame is already full size
+    globe.width(vw).height(vh);
+    // Same scale as the box (no shrink before the camera moves in), centred on the screen.
+    view = { from: box, to: { x: (vw - box.w) / 2, y: (vh - box.h) / 2, w: box.w, h: box.h }, t0: performance.now(), dur };
+    return box;
+  };
+  /** Back into the box (returning to the page with the back button). */
+  const rebox = () => {
+    if (!full) return;
+    full = false; view = null;
+    el.classList.remove('is-full');
+    cam.clearViewOffset();
+    resize();
+  };
+  /**
    * The closest the homepage camera comes. Past this point the surface imagery
    * would soften. World takes over from here at the same framing (zoom ~2.9) and its street map stays sharp.
    */
@@ -223,12 +275,12 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   };
   return {
     flyTo(lat: number, lng: number) {
-      hold();
+      hold(); unbox(ms(1600));
       globe.pointOfView({ lat, lng, altitude: CLOSEST }, ms(1600));
     },
     /** Move in toward a place (or the current view), as far as the imagery stays sharp. close: centre on the place. */
     dive(lat?: number, lng?: number, close = lat != null) {
-      hold();
+      hold(); unbox(ms(1700));
       sharpen();
       const pov = globe.pointOfView();
       globe.pointOfView({ lat: lat ?? pov.lat, lng: lng ?? pov.lng, altitude: close ? CLOSEST : Math.max(CLOSEST, 1.3) }, ms(1700));
@@ -237,25 +289,26 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
      * Explore World: the camera moves in toward whatever part of the Earth faces the viewer. Resolves with exactly where it stopped, so World can open its map at that same view.
      */
     approach(): Promise<Handoff> {
+      const dur = ms(1900);
       hold(); sharpen(); quiet(true);
+      unbox(dur);
       const pov = globe.pointOfView();
       const lat = Math.max(-35, Math.min(55, pov.lat));
-      const dur = ms(1900);
-      // Close enough to feel like arriving, still inside the range where World shows the same lit Earth.
-      // The globe's box ends where the words begin, so the sphere may not grow wider than the box.
-      const fov = (globe.camera() as unknown as { fov?: number }).fov ?? 50;
-      const k = el.clientHeight / 2 / Math.tan((fov * Math.PI) / 360) / (el.clientWidth * 0.495);
-      const fits = Math.sqrt(k * k + 1) - 1;
-      globe.pointOfView({ lat, lng: pov.lng, altitude: Math.min(pov.altitude, Math.max(1.15, fits)) }, dur);
+      // A real approach: the Earth grows past the edges of the screen, stopping just short of the point where its
+      // imagery would soften (World takes over from there with the same lit Earth). Never pulls back.
+      globe.pointOfView({ lat, lng: pov.lng, altitude: Math.min(pov.altitude, CLOSEST + 0.1) }, dur);
       return new Promise((res) => setTimeout(() => {
         const end = globe.pointOfView();
-        const r = el.getBoundingClientRect();
-        res({ lat: end.lat, lng: end.lng, altitude: end.altitude, fov: (globe.camera() as unknown as { fov?: number }).fov ?? 50, w: r.width, h: r.height, top: r.top, left: r.left, at: Date.now(), image: frame() });
+        // Where the camera's frame ended up on screen: World opens its map with the Earth at this same size and place.
+        const f = view?.to ?? { x: el.getBoundingClientRect().left, y: el.getBoundingClientRect().top, w: el.clientWidth, h: el.clientHeight };
+        const r = { width: f.w, height: f.h, top: f.y, left: f.x };
+        const c = el.getBoundingClientRect();
+        res({ lat: end.lat, lng: end.lng, altitude: end.altitude, fov: (globe.camera() as unknown as { fov?: number }).fov ?? 50, w: r.width, h: r.height, top: r.top, left: r.left, img: { w: c.width, h: c.height, top: c.top, left: c.left }, at: Date.now(), image: frame() });
       }, dur + 60));
     },
     /** Fly down to the visitor's own area and mark it. The position stays in the page. */
     here(lat: number, lng: number) {
-      hold();
+      hold(); unbox(ms(2200));
       sharpen(); quiet(true);
       globe.htmlElementsData([...LABELS, { lat, lng, text: '', kind: 'me' }]);
       globe.pointOfView({ lat, lng, altitude: CLOSEST }, ms(2200));
@@ -269,6 +322,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     },
     /** Back out to the resting view. */
     rise() {
+      rebox();
       quiet(false);
       globe.pointOfView({ ...globe.pointOfView(), altitude: home() }, ms(1200));
       controls.autoRotate = !reduce;

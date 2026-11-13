@@ -37,7 +37,8 @@ const {
             if (!h || !src || Date.now() - h.at > 20000) return;
             var img = document.createElement('img');
             img.className = 'world__handoff'; img.alt = ''; img.src = src; img.setAttribute('data-handoff', '');
-            img.style.cssText = 'top:' + h.top + 'px;left:' + (h.left || 0) + 'px;width:' + h.w + 'px;height:' + h.h + 'px';
+            var at = h.img || h;
+            img.style.cssText = 'top:' + at.top + 'px;left:' + (at.left || 0) + 'px;width:' + at.w + 'px;height:' + at.h + 'px';
             document.currentScript.parentNode.insertBefore(img, document.currentScript);
           } catch (e) { /* World opens normally */ }
         })();
