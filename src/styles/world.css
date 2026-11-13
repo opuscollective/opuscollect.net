@@ -430,19 +430,9 @@
   .world[data-view='list'] .wp__switch { flex: 1 1 220px; }
   .world[data-view='list'] .wp__bar { padding-top: 6px; padding-bottom: 14px; }
   .world[data-view='list'] .wp__results {
-    overflow: visible; display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 32px 22px; padding-bottom: 40px;
+    overflow: visible; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; padding-bottom: 40px;
   }
   .world[data-view='list'] .wp__results[hidden] { display: none; }
-  .world[data-view='list'] .wc { grid-template-columns: 1fr; gap: 12px; padding: 0; background: none; border-radius: 16px; }
-  .world[data-view='list'] .wc::before { display: none; }
-  .world[data-view='list'] .wc__media .im { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 16px; }
-  .world[data-view='list'] .wc:hover .wc__media img { transform: scale(1.035); }
-  .world[data-view='list'] .wc.is-active .wc__media .im { box-shadow: 0 0 0 2px var(--c-accent); }
-  .world[data-view='list'] .wc__body { padding: 0 2px; gap: 4px; }
-  .world[data-view='list'] .wc__name { font-size: 16px; }
-  .world[data-view='list'] .wc__note { -webkit-line-clamp: 2; }
-  .world[data-view='list'] .wc--skeleton { grid-template-columns: 1fr; min-height: 0; }
-  .world[data-view='list'] .wc--skeleton span:first-child { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 16px; }
   .world[data-view='list'] .wp__foot { border-top: 1px solid var(--c-hairline); padding-bottom: 32px; }
   .world[data-view='list'] .world__preview, .world[data-view='list'] .world__scrim { position: fixed; top: 72px; }
 }
@@ -480,7 +470,7 @@
   .world[data-view='list'] .wp__head { padding-top: 14px; }
 
   .wp__head { padding: 0 14px 10px; gap: 10px; }
-  .wp__results { overflow: visible; padding: 0 6px 96px; }
+  .wp__results { overflow: visible; padding: 2px 14px 96px; }
   .wp__bar { padding: 2px 16px 6px; }
   .vs { display: none; }
   .wp__long { display: none; }
@@ -539,7 +529,7 @@
 .wt:hover .im img { transform: scale(1.045); }
 
 /* Wide: the image fills the card and the words sit over a soft shade. */
-.wt--wide { width: min(78vw, 300px); height: 148px; border-radius: 18px; overflow: hidden; scroll-snap-align: center;
+.wt--wide { width: min(78vw, 300px); height: 148px; border-radius: 10px; overflow: hidden; scroll-snap-align: center;
   background: var(--surface-sunken); box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--c-hairline-strong);
   transition: transform 0.5s var(--ease-glide), box-shadow 0.4s var(--ease); }
 .wt--wide .wt__media, .wt--wide .wt__media .im { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; }
@@ -553,11 +543,34 @@
 
 /* Portrait: image on top, words below, for guide shelves. */
 .wt--portrait { width: 148px; scroll-snap-align: start; }
-.wt--portrait .im { border-radius: 14px; box-shadow: inset 0 0 0 1px var(--c-hairline); }
+.wt--portrait .im { border-radius: 10px; box-shadow: inset 0 0 0 1px var(--c-hairline); }
 .wt--portrait .wt__body { padding: 10px 2px 0; }
 .wt--portrait .wt__name { font-size: 14.5px; }
 .wt--portrait .wt__meta { color: var(--c-fg-faint); }
-.wt--portrait .wt__hit::after { border-radius: 14px; }
+.wt--portrait .wt__hit::after { border-radius: 10px; }
+
+/* ---------- Directory: the same visual cards, two to a row ----------
+   Name, what they do and where, over the picture. Nothing else, so the directory stays quiet. */
+.wp__results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; gap: 10px; align-content: start; padding: 4px 18px 20px; }
+.wp__results[hidden] { display: none; }
+/* Square by a spacer, not aspect-ratio: inside the scrolling panel, rows would otherwise shrink to fit. */
+.wt--grid::before { content: ''; display: block; padding-top: 100%; }
+.wt--grid { width: auto; height: auto; scroll-snap-align: none; cursor: pointer; box-shadow: 0 0 0 1px var(--c-hairline-strong); }
+.wt--grid .wt__body { padding: 12px 12px 11px; }
+.wt--grid .wt__name { font-size: 14.5px; }
+.wt--grid .wt__meta { font-size: 12px; }
+.wt--grid .wt__where { font-size: 11.5px; }
+.wt--grid .im__label { font-size: 22px; padding: 12px; }
+.wt--grid:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--line-strong); }
+.wt--grid.is-active { box-shadow: 0 0 0 2px var(--c-accent); }
+.wt--skeleton::before { content: ''; display: block; padding-top: 100%; }
+.wt--skeleton { border-radius: 10px; pointer-events: none;
+  background: linear-gradient(90deg, var(--surface-sunken) 0%, var(--surface-hover) 50%, var(--surface-sunken) 100%); background-size: 200% 100%; animation: wc-shimmer 1.4s ease-in-out infinite; }
+.wp__results.is-entering .wt { animation: wcin 0.5s var(--ease-glide) both; }
+.wp__results.is-entering .wt:nth-child(2) { animation-delay: 0.04s; }
+.wp__results.is-entering .wt:nth-child(3) { animation-delay: 0.08s; }
+.wp__results.is-entering .wt:nth-child(4) { animation-delay: 0.12s; }
+.wp__results.is-entering .wt:nth-child(n + 5) { animation-delay: 0.16s; }
 
 /* ---------- Cards over the map ---------- */
 .wcar { grid-column: 2; grid-row: 1; position: absolute; left: 0; right: 0; bottom: 22px; z-index: 2; pointer-events: none;
@@ -571,9 +584,9 @@
 .wcar.is-entering .wt:nth-child(3) { animation-delay: 120ms; }
 .wcar.is-entering .wt:nth-child(n+4) { animation-delay: 160ms; }
 @keyframes wt-in { from { opacity: 0; transform: translateY(18px) scale(0.98); } }
-/* Desktop: in Map view the cards replace the list; in Split view the list is already beside the map. */
-.world:not([data-view='map']) .wcar { display: none; }
-.world[data-view='map'][data-results-open] .wcar { opacity: 0; pointer-events: none; }
+/* The swipeable cards over the map are for phones. On wider screens the same cards live in the directory
+   on the left, so the map stays clean. */
+@media (min-width: 861px) { .world .wcar { display: none; } }
 
 /* ---------- City guide ---------- */
 .wg { padding: 4px 0 28px; }

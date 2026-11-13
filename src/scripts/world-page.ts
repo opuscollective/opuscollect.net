@@ -9,7 +9,7 @@
  *   and remounted at the same camera position when you come back.
  * Profiles open in a preview (panel, drawer or bottom sheet) without leaving the page.
  */
-import { cardHtml, tileHtml, matches, isVerified, esc, type WorldFilters } from '@/lib/world';
+import { tileHtml, matches, isVerified, esc, type WorldFilters } from '@/lib/world';
 import { cityGuide, type Shelf } from '@/lib/world-guide';
 import type { WorldStats } from '@/lib/world';
 import { placeIndex, suggest, norm, type Place, type Suggestion } from '@/lib/world-search';
@@ -295,8 +295,8 @@ export function initWorld(root: HTMLElement) {
     }
     const ls = visible();
     const ids = ls.map((l) => l.id).join(',');
-    if (ids !== lastIds || !results.firstElementChild || results.querySelector('.wc--skeleton')) {
-      results.innerHTML = ls.map(cardHtml).join('');
+    if (ids !== lastIds || !results.firstElementChild || results.querySelector('.wt--skeleton')) {
+      results.innerHTML = ls.map((l) => tileHtml(l, 'grid')).join('');
       if (animate && !reduceMotion.matches) {
         results.classList.remove('is-entering'); void results.offsetWidth; results.classList.add('is-entering');
       }
@@ -393,7 +393,7 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   // ---------- Cards over the map ----------
   let cardIds = '';
   function renderCards(ls: Listing[]) {
-    const show = view === 'map' && !!map && inArea() && ls.length > 0;
+    const show = mobile.matches && view === 'map' && !!map && inArea() && ls.length > 0;
     root.classList.toggle('has-cards', show);
     cards.hidden = !show;
     if (!show) { cardIds = ''; return; }
@@ -542,10 +542,10 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   }
 
   // ---------- Selection and previews (card ↔ marker ↔ preview) ----------
-  const cardOf = (id: string) => results.querySelector<HTMLElement>(`.wc[data-id="${CSS.escape(id)}"]`);
+  const cardOf = (id: string) => results.querySelector<HTMLElement>(`.wt[data-id="${CSS.escape(id)}"]`);
   function markActive(id: string | null) {
     active = id;
-    results.querySelectorAll('.wc.is-active').forEach((x) => x.classList.remove('is-active'));
+    results.querySelectorAll('.wt.is-active').forEach((x) => x.classList.remove('is-active'));
     if (id) cardOf(id)?.classList.add('is-active');
     track.querySelectorAll('.wt.is-active').forEach((x) => x.classList.remove('is-active'));
     if (id) track.querySelector(`.wt[data-id="${CSS.escape(id)}"]`)?.classList.add('is-active');
@@ -561,12 +561,12 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
     openPreview(id);
   }
   results.addEventListener('click', (e) => {
-    const c = (e.target as Element).closest<HTMLElement>('.wc[data-id]');
+    const c = (e.target as Element).closest<HTMLElement>('.wt[data-id]');
     if (c) select(c.dataset.id!, 'card');
   });
-  results.addEventListener('pointerover', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wc'); map?.setHover(c?.dataset.id ?? null); });
+  results.addEventListener('pointerover', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wt'); map?.setHover(c?.dataset.id ?? null); });
   results.addEventListener('pointerleave', () => map?.setHover(null));
-  results.addEventListener('focusin', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wc'); map?.setHover(c?.dataset.id ?? null); });
+  results.addEventListener('focusin', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wt'); map?.setHover(c?.dataset.id ?? null); });
 
   let pvToken = 0;
   let returnFocus: HTMLElement | null = null;

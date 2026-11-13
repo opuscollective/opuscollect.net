@@ -104,8 +104,6 @@ export const mainImage = (l: Listing) => (l.kind === 'musician' ? l.photo : l.co
 export const PIN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
 const STAR = '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
 
-const tags = (xs: string[], n = 3) => (xs.length ? `<ul class="wc__tags">${xs.slice(0, n).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '');
-
 /** Price line for studios. Real prices come from the studio's services; sample rates say so. */
 export function priceHtml(l: Listing): string {
   if (l.kind !== 'studio') return '';
@@ -117,59 +115,24 @@ export function priceHtml(l: Listing): string {
 export const ratingHtml = (l: Listing) =>
   l.kind === 'studio' && l.rating && l.rating.count > 0 ? `<span class="wc__rating">${STAR}${l.rating.value.toFixed(1)} <span>(${l.rating.count})</span></span>` : '';
 
-/** One short line on what you can do now: collaborate, request a session, or nothing (then omitted). */
-export function statusHtml(l: Listing): string {
-  if (l.kind === 'musician') return l.openToCollab ? '<p class="wc__status is-live">Open to collaborate</p>' : '';
-  if (l.kind === 'studio' && l.acceptsBookingRequests && !l.isSample) return '<p class="wc__status is-live">Taking session requests</p>';
-  return '';
-}
-
-/** What they do, in one line: specialty and genres, studio type, or organization category. */
-export function metaText(l: Listing): string {
-  if (l.kind === 'musician') return [kindLabel(l), l.genres.slice(0, 2).join(', ')].filter(Boolean).join(' · ');
-  return kindLabel(l);
-}
-
 /**
- * DirectoryCard. One markup for every view: Split and Map show it compact (square thumbnail),
- * List view lays the same card out as an editorial tile (4:3 image on top).
- * The name is a real button, stretched over the card, so it works with keyboard and screen readers.
+ * Tile: the visual card, used everywhere a member is shown in World.
+ * 'grid': the directory, two to a row (image fills the card, words over it).
+ * 'wide': the same card in the swipeable row over the map on phones.
+ * 'portrait': city guide shelves (image on top, words below). The name is the button.
  */
-export function cardHtml(l: Listing): string {
-  const sample = l.isSample ? '<span class="wc__sample">Sample</span>' : '';
-  const what = metaText(l);
-  const media = imageHtml({ src: mainImage(l), seed: l.id, kind: l.kind, ratio: 'photo', label: l.isSample ? undefined : initials(l.name) });
-  let extra = '';
-  if (l.kind === 'musician') extra = l.highlight ? `<p class="wc__note">${esc(l.highlight)}</p>` : '';
-  if (l.kind === 'studio') extra = `<div class="wc__row">${priceHtml(l)}${ratingHtml(l)}</div>${tags(l.services)}`;
-  if (l.kind === 'organization') extra = `${l.summary ? `<p class="wc__note">${esc(l.summary)}</p>` : ''}${tags(l.services)}`;
-  return `<article class="wc wc--${l.kind}" data-id="${esc(l.id)}">
-  <div class="wc__media">${media}</div>
-  <div class="wc__body">
-    <div class="wc__top"><h3 class="wc__name"><button type="button" class="wc__hit" data-open aria-label="${esc(l.name)}, ${esc(what)}, ${esc(placeText(l))}${l.isSample ? ', sample listing' : ''}. Open preview">${esc(l.name)}</button></h3>${badgeHtml(l)}${sample}</div>
-    <p class="wc__meta">${esc(what)}</p>
-    <p class="wc__where">${PIN}<span>${esc(placeText(l))}</span></p>
-    ${extra}
-    ${statusHtml(l)}
-  </div>
-</article>`;
-}
-
-/**
- * Tile: the visual card used by the map carousel ('wide': image fills the card, words over it)
- * and the city guide shelves ('portrait': image on top, words below). The name is the button.
- */
-export function tileHtml(l: Listing, variant: 'wide' | 'portrait'): string {
+export function tileHtml(l: Listing, variant: 'wide' | 'portrait' | 'grid'): string {
   const what = kindLabel(l);
+  const over = variant !== 'portrait';
   const media = imageHtml({ src: mainImage(l), seed: l.id, kind: l.kind, ratio: variant === 'wide' ? 'photo' : 'portrait', label: l.isSample ? undefined : initials(l.name) });
   const sample = l.isSample ? '<span class="wt__sample">Sample</span>' : '';
   const status = l.kind === 'musician' && l.openToCollab ? '<span class="wt__live">Open to collaborate</span>' : '';
-  return `<article class="wt wt--${variant}" data-id="${esc(l.id)}">
+  return `<article class="wt wt--${variant}${variant === 'grid' ? ' wt--wide' : ''} wt--${l.kind}" data-id="${esc(l.id)}">
   <div class="wt__media">${media}</div>
   <div class="wt__body">
     <h3 class="wt__name"><button type="button" class="wt__hit" data-open aria-label="${esc(l.name)}, ${esc(what)}, ${esc(placeText(l))}${l.isSample ? ', sample listing' : ''}. Open preview"><span>${esc(l.name)}</span></button>${badgeHtml(l)}</h3>
     <p class="wt__meta">${esc(what)}${sample}</p>
-    ${variant === 'wide' ? `<p class="wt__where">${esc(placeText(l))}</p>` : status}
+    ${over ? `<p class="wt__where">${esc(placeText(l))}</p>` : status}
   </div>
 </article>`;
 }
