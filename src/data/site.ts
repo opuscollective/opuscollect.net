@@ -4,6 +4,10 @@ export const SITE = {
   product: 'Opus',
   url: 'https://opuscollect.net',
   motto: 'The Future. The Legacy. The Sound.',
+  /** Broader brand statement (the homepage headline until 2026-11-14). Kept for other contexts. */
+  statement: 'The future of music is independent.',
+  /** Homepage headline. */
+  headline: 'Your world of music.',
   description:
     'Opus Collective is the professional network for independent music. Discover artists, producers, engineers and songwriters, and earn Opus Verified recognition.',
   location: 'Birmingham, AL',

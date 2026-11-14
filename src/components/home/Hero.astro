@@ -1,6 +1,7 @@
 ---
 import { CITIES, citySlug } from '@/data/cities';
 import Icon from '../ui/Icon.astro';
+import { SITE } from '@/data/site';
 
 // Fallback links when WebGL is unavailable. Plain city names only; live counts come from /api/world.
 const topCities = CITIES.slice(0, 8);
@@ -13,16 +14,15 @@ const topCities = CITIES.slice(0, 8);
 
   <div class="hero__stage" data-hero-stage>
     <h1 id="hero-title" class="hero__title">
-      <span class="hero__line"><span class="hero-in" style="--i:1">The future of music</span></span>
-      <span class="hero__line"><span class="hero-in" style="--i:2">is independent.</span></span>
+      <span class="hero__line"><span class="hero-in" style="--i:1">{SITE.headline}</span></span>
     </h1>
 
     <p class="hero__value hero-in" style="--i:4">Make connections around the world.</p>
 
     <div class="hero__ctas hero-in" style="--i:5">
       <a class="hero__go" href="/world" data-hero-open>Explore World <Icon name="arrow-right" size={18} /></a>
-      <!-- Guests join; members finish or open their profile (set from /api/profile below). -->
-      <a class="hero__mark" href="/sign-up?next=/start" data-hero-mark>Leave Your Mark</a>
+      <!-- Guests go straight to registration; members finish or open their profile (set from /api/profile below). -->
+      <a class="hero__mark" href="/sign-up?next=/start" data-hero-mark>Join</a>
     </div>
 
     <!-- Accessible fallback, shown when WebGL is not available -->
@@ -122,7 +122,7 @@ const topCities = CITIES.slice(0, 8);
     e.preventDefault();
     enter();
   });
-  // Leave Your Mark: guests sign up (and are then guided to set up a profile at /start). Members get the
+  // Join: guests sign up (and are then guided to set up a profile at /start). Members get the
   // next step for their own profile instead, from the same profile API the account pages use.
   const mark = hero.querySelector<HTMLAnchorElement>('[data-hero-mark]');
   if (mark && document.cookie.split('; ').includes('opus_in=1')) {
@@ -166,7 +166,7 @@ const topCities = CITIES.slice(0, 8);
        taller box so the top of the sphere is never cut off by the box edge. */
     .hero .hero__globe { top: 0; bottom: -60%; --globe-r: 0.371; }
     /* One line each: a smaller headline that never wraps, and the line under it. */
-    .hero .hero__title { font-size: clamp(2.2rem, 3.7vw, 4.75rem); line-height: 1; white-space: nowrap; }
+    .hero .hero__title { font-size: clamp(2.6rem, 4.6vw, 5.6rem); line-height: 1; white-space: nowrap; }
     .hero .hero__line { display: inline-block; vertical-align: top; }
     .hero .hero__value { white-space: nowrap; font-size: clamp(1rem, 0.9rem + 0.3vw, 1.25rem); }
     .hero .hero__stage { gap: 24px; }
@@ -211,7 +211,7 @@ const topCities = CITIES.slice(0, 8);
   /* Desktop: exactly two lines, never a stray word on its own. */
   @media (min-width: 900px) { .hero__line > span { white-space: nowrap; } }
 
-  /* Two actions side by side, same height: Explore World leads (warm white), Leave Your Mark follows (outlined). */
+  /* Two actions side by side, same height: Explore World leads (warm white), Join follows (outlined). */
   .hero__ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 4px; }
   .hero__go, .hero__mark { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 24px; border-radius: var(--r-pill);
     font-size: 15px; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap;
