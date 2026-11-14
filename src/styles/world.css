@@ -3,7 +3,7 @@
    sage only for availability; warm neutrals for surfaces. */
 
 .world {
-  --panel-w: clamp(420px, 40vw, 700px);
+  --panel-w: clamp(440px, 46vw, 1000px);
   position: relative;
   display: grid;
   /* The directory is always on the left, the map on the right: the same on every Opus World page and on the homepage. */
@@ -404,7 +404,7 @@
   /* Map: the globe takes the page; search, filters and count float in a compact card. */
   .world[data-view='map'] { grid-template-columns: 0px minmax(0, 1fr); }
   .world[data-view='map'] .world__panel {
-    position: absolute; z-index: 3; top: 16px; left: 16px; width: clamp(420px, 32vw, 560px); max-height: calc(100% - 32px);
+    position: absolute; z-index: 3; top: 16px; left: 16px; width: min(clamp(440px, 46vw, 1000px), calc(100% - 200px)); max-height: calc(100% - 32px);
     border: 0; border-radius: 18px; background: var(--glass); backdrop-filter: blur(14px); box-shadow: var(--shadow-pop);
     animation: wpop 0.28s var(--ease) both;
   }
@@ -721,25 +721,35 @@
   .wx__note { margin-top: 8px; }
 }
 
-/* ---------- Phones: one listing per row, like a property feed ----------
-   A full-width picture with the details underneath, set in Opus type: name, specialty, city. */
+/* ---------- Directory as a listing feed (every screen) ----------
+   Like a property feed: a big picture, the details right under it, cards nearly touching with sharp corners,
+   so the directory reads as one connected surface. Two per row beside the map, one per row on phones. */
+.world .wp__results, .world .wg__track { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; padding: 6px 0 0; }
+.world .wg__track { padding-top: 10px; }
+.world .wt--grid { height: auto; overflow: hidden; border-radius: 0; background: var(--c-surface-2); box-shadow: none; transition: background-color 0.3s var(--ease); }
+.world .wt--grid::before { display: none; }
+.world .wt--grid:hover { transform: none; box-shadow: none; background: var(--surface-hover); }
+.world .wt--grid .wt__media { position: relative; inset: auto; height: auto; aspect-ratio: 3 / 2; border-radius: 0; overflow: hidden; }
+.world .wt--grid .wt__media .im { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; }
+.world .wt--grid .wt__media::after { display: none; }
+.world .wt--grid .wt__body { position: static; padding: 14px 16px 16px; color: var(--c-text); }
+.world .wt--grid .wt__name { font-size: 17px; }
+.world .wt--grid .wt__meta { margin-top: 4px; font-size: 14px; color: var(--c-fg-muted); }
+.world .wt--grid .wt__where { margin-top: 2px; font-size: 13.5px; color: var(--c-fg-faint); }
+.world .wt--grid .im__label { color: var(--c-fg-faint); }
+.world .wt--grid .wt__hit::after { border-radius: 0; }
+.world .wt--grid.is-active { box-shadow: inset 0 0 0 2px var(--c-accent); }
+.world .wt--skeleton { border-radius: 0; }
+.world .wt--skeleton::before { display: block; padding-top: calc(66.67% + 76px); }
+/* Map view's floating card: square corners too, so the feed runs to its edges. */
+@media (min-width: 861px) { .world[data-view='map'] .world__panel { border-radius: 4px; } .world[data-view='map'] .wp__results { max-height: 62vh; } }
+/* List view (full page): more per row, same cards. */
+@media (min-width: 861px) {
+  .world[data-view='list'] .wp__results, .world[data-view='list'] .wg__track { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 3px; }
+  .world[data-view='list'] .wg { width: min(1240px, 100% - 64px); margin-inline: auto; }
+  .world[data-view='list'] .wg__track, .world[data-view='list'] .wg__head { padding-inline: 0; }
+}
 @media (max-width: 860px) {
-  .world .wp__results, .world .wg__track { grid-template-columns: 1fr; gap: 26px; }
-  .world .wp__results { padding-top: 6px; }
-  .world .wt--grid { height: auto; overflow: visible; border-radius: 0; background: none; box-shadow: none; }
-  .world .wt--grid::before { display: none; }
-  .world .wt--grid:hover { transform: none; box-shadow: none; }
-  .world .wt--grid .wt__media { position: relative; inset: auto; height: auto; aspect-ratio: 3 / 2; border-radius: 14px; overflow: hidden;
-    box-shadow: inset 0 0 0 1px var(--c-hairline); }
-  .world .wt--grid .wt__media .im { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .world .wt--grid .wt__media::after { display: none; }
-  .world .wt--grid .wt__body { position: static; padding: 12px 2px 0; color: var(--c-text); }
-  .world .wt--grid .wt__name { font-size: 17px; }
-  .world .wt--grid .wt__meta { margin-top: 3px; font-size: 14px; color: var(--c-fg-muted); }
-  .world .wt--grid .wt__where { margin-top: 2px; font-size: 13.5px; color: var(--c-fg-faint); }
-  .world .wt--grid .im__label { color: var(--c-fg-faint); }
-  .world .wt--grid .wt__hit::after { border-radius: 14px; }
-  .world .wt--grid.is-active .wt__media { box-shadow: 0 0 0 2px var(--c-accent); }
-  .world .wt--grid.is-active { box-shadow: none; }
-  .world .wt--skeleton::before { padding-top: calc(66.67% + 64px); }
+  .world .wp__results, .world .wg__track { grid-template-columns: 1fr; gap: 3px; }
+  .world .wp__results { padding-bottom: 96px; }
 }
