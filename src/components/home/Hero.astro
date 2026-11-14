@@ -152,7 +152,14 @@ const topCities = CITIES.slice(0, 8);
    */
   async function enter() {
     let href = '/world?view=map&enter=1';
-    if (!api) { location.href = href; return; }
+    // Still loading the globe: go straight to World, which still flies to their city.
+    if (!api) {
+      if (leaving) return;
+      leaving = true;
+      const to = await destination();
+      location.href = to?.guessed ? `${href}&near=${encodeURIComponent(to.name)}` : href;
+      return;
+    }
     if (!start()) return;
     hero.classList.add('is-entering');
     const to = await destination();

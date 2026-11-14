@@ -145,7 +145,8 @@ export interface Camera { center: [number, number]; zoom: number }
 
 export interface WorldMapApi {
   setData(listings: Listing[]): void;
-  flyToCity(lat: number, lng: number): void;
+  /** Resolves when the camera has settled on the city (or after a few seconds at most). */
+  flyToCity(lat: number, lng: number): Promise<void>;
   flyToListing(l: Listing): void;
   /** Pan just enough to bring a listing into view, without changing the zoom the visitor chose. */
   ensureVisible(l: Listing): void;
@@ -379,7 +380,18 @@ export async function mountWorldMap(
 
   return {
     setData(ls) { data = ls; refreshData(); },
-    flyToCity(lat, lng) { stop(); map.flyTo({ center: [lng, lat], padding: base(), zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) }); },
+    flyToCity(lat, lng) {
+      stop();
+      // Settled = the move that ends at the city, not an earlier move this fly interrupted.
+      const settled = new Promise<void>((res) => {
+        const done = () => { map.off('moveend', check); clearTimeout(t); res(); };
+        const check = () => { if (map.getZoom() > 9.9) done(); };
+        const t = setTimeout(done, 9000);
+        map.on('moveend', check);
+      });
+      map.flyTo({ center: [lng, lat], padding: base(), zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) });
+      return settled;
+    },
     flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], padding: base(), zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: reduce ? 0 : 900 }); },
     ensureVisible(l) {
       if (!hasPoint(l) || l.onMap === false) return;

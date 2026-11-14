@@ -116,7 +116,7 @@ export function initWorld(root: HTMLElement) {
   // Answered before: go straight there, without asking again.
   if (!asking && from?.mode === 'city' && (entering || plain)) params.set('city', from.name);
   if (asking) root.dataset.entry = 'ask';
-  else if (handoff) root.dataset.entry = 'arrive';
+  else if (handoff || near) root.dataset.entry = 'arrive';
 
   // ---------- View mode: Map, Split, List ----------
   const readPref = (): Partial<Record<'desktop' | 'mobile', View>> => { try { return JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}'); } catch { return {}; } };
@@ -557,7 +557,7 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   // same choice filters to members near the city, and the map picks it up when you switch back.
   function goPlace(p: { name: string; lat: number; lng: number }, openSheet = true) {
     place = p; inView = true; guideOff = false;
-    if (map) { map.setPlace(p); map.flyToCity(p.lat, p.lng); }
+    if (map) { map.setPlace(p); map.flyToCity(p.lat, p.lng).then(revealAfterArrival); }
     else camera = { center: [p.lng, p.lat], zoom: 10.2 };
     changed();
     if (openSheet && mobile.matches && view === 'map') setSheet('half');
@@ -790,7 +790,8 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
     from = next; saveFrom(next); whereLabel();
     whereEl.classList.remove('is-in');
     setTimeout(() => { whereEl.hidden = true; }, reduceMotion.matches ? 0 : 380);
-    delete root.dataset.entry;
+    // A city: the directory and controls stay hidden until the camera has settled on it (see goPlace).
+    if (next.mode === 'city' && p && map) root.dataset.entry = 'arrive'; else delete root.dataset.entry;
     if (next.mode === 'city' && p) { map?.release(false); goPlace(p); }
     else { map?.release(true); if (place) { clearPlace(); changed(); } }
     requestAnimationFrame(() => map?.resize());
@@ -875,8 +876,9 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
     await Promise.race([m.ready(), new Promise((r) => setTimeout(r, 6000))]);
     img?.classList.add('is-gone');
     setTimeout(() => img?.remove(), 900);
-    if (root.dataset.entry === 'arrive') delete root.dataset.entry;
   }
+  /** The directory and controls come in only once the camera has settled where the visitor is going. */
+  function revealAfterArrival() { if (root.dataset.entry === 'arrive') delete root.dataset.entry; }
   // ---------- Map: mounted only when a view shows it ----------
   const hasWebGL = () => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } };
   function noMap() {
@@ -929,8 +931,8 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
           prep.classList.add('is-out');
           setTimeout(() => prep.remove(), 600);
         }
-        if (arrive && place) { inView = true; if (hand) m.release(false); map.flyToCity(place.lat, place.lng); changed(); if (askedView !== 'map' && mobile.matches && view === 'map') setSheet('half'); }
-        else if (place && !camera) map.flyToCity(place.lat, place.lng);
+        if (arrive && place) { inView = true; if (hand || entering) root.dataset.entry = 'arrive'; if (hand) m.release(false); map.flyToCity(place.lat, place.lng).then(revealAfterArrival); changed(); if (askedView !== 'map' && mobile.matches && view === 'map') setSheet('half'); }
+        else { if (place && !camera) map.flyToCity(place.lat, place.lng); revealAfterArrival(); }
       } catch (err) {
         console.error('Map failed to load', err);
         noMap();
