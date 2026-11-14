@@ -168,7 +168,9 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   const home = () => {
     const w = el.clientWidth || 1, h = el.clientHeight || 1;
     const fov = (globe.camera() as unknown as { fov?: number }).fov ?? 50;
-    const r = Math.min(h * 0.53, w * 0.47);
+    // Radius as a share of the box height; desktop sets a taller box (so the sphere is never clipped) and a smaller share.
+    const share = parseFloat(getComputedStyle(el).getPropertyValue('--globe-r')) || 0.53;
+    const r = Math.min(h * share, w * 0.47);
     const k = h / 2 / Math.tan((fov * Math.PI) / 360) / r;
     return Math.sqrt(k * k + 1) - 1;
   };
