@@ -479,7 +479,6 @@
 
   .wp__head { padding: 0 14px 10px; gap: 10px; }
   .wp__results { overflow: visible; padding: 2px 14px 96px; }
-  .world .wt--grid::before, .world .wt--skeleton::before { padding-top: 75%; } /* 4:3 keeps two to a row readable on a phone */
   .wp__bar { padding: 2px 16px 6px; }
   .vs { display: none; }
   .wp__long { display: none; }
@@ -720,4 +719,27 @@
   .wx__opts { gap: 6px; }
   .wx__opt { min-height: 46px; font-size: 15px; justify-content: flex-start; padding: 0 16px; }
   .wx__note { margin-top: 8px; }
+}
+
+/* ---------- Phones: one listing per row, like a property feed ----------
+   A full-width picture with the details underneath, set in Opus type: name, specialty, city. */
+@media (max-width: 860px) {
+  .world .wp__results, .world .wg__track { grid-template-columns: 1fr; gap: 26px; }
+  .world .wp__results { padding-top: 6px; }
+  .world .wt--grid { height: auto; overflow: visible; border-radius: 0; background: none; box-shadow: none; }
+  .world .wt--grid::before { display: none; }
+  .world .wt--grid:hover { transform: none; box-shadow: none; }
+  .world .wt--grid .wt__media { position: relative; inset: auto; height: auto; aspect-ratio: 3 / 2; border-radius: 14px; overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--c-hairline); }
+  .world .wt--grid .wt__media .im { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .world .wt--grid .wt__media::after { display: none; }
+  .world .wt--grid .wt__body { position: static; padding: 12px 2px 0; color: var(--c-text); }
+  .world .wt--grid .wt__name { font-size: 17px; }
+  .world .wt--grid .wt__meta { margin-top: 3px; font-size: 14px; color: var(--c-fg-muted); }
+  .world .wt--grid .wt__where { margin-top: 2px; font-size: 13.5px; color: var(--c-fg-faint); }
+  .world .wt--grid .im__label { color: var(--c-fg-faint); }
+  .world .wt--grid .wt__hit::after { border-radius: 14px; }
+  .world .wt--grid.is-active .wt__media { box-shadow: 0 0 0 2px var(--c-accent); }
+  .world .wt--grid.is-active { box-shadow: none; }
+  .world .wt--skeleton::before { padding-top: calc(66.67% + 64px); }
 }
