@@ -10,6 +10,8 @@ const topCities = CITIES.slice(0, 8);
     <div class="hero__loading" data-globe-loading aria-hidden="true"><span></span></div>
   </div>
   <div class="hero__veil" aria-hidden="true"></div>
+  <!-- Explore World: shown while the camera turns to the visitor's area; World shows the same line in the same place. -->
+  <p class="opus-prep" data-hero-prep role="status" hidden>Preparing your world</p>
 
   <div class="hero__stage" data-hero-stage>
     <!-- The product, presented: name, promise, supporting line, actions. The Earth below is its demonstration. -->
@@ -34,6 +36,7 @@ const topCities = CITIES.slice(0, 8);
 
 <script>
   import { findCity, citySlug } from '@/data/cities';
+  import { readFrom } from '@/scripts/world-entry';
   import type { Handoff } from '@/scripts/hero-globe';
   type CityPoint = { city: string; country: string; lat: number; lng: number; count: number };
 
@@ -72,7 +75,7 @@ const topCities = CITIES.slice(0, 8);
   document.fonts?.ready.then(placeEarth);
   const host = hero.querySelector<HTMLElement>('[data-hero-globe]')!;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let api: { dive: (lat?: number, lng?: number, close?: boolean) => void; approach: () => Promise<Handoff>; rise: () => void } | null = null;
+  let api: { dive: (lat?: number, lng?: number, close?: boolean) => void; approach: (to?: { lat: number; lng: number }) => Promise<Handoff>; rise: () => void } | null = null;
 
   const hasWebGL = () => {
     try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; }
@@ -125,14 +128,41 @@ const topCities = CITIES.slice(0, 8);
     api.dive(lat, lng, true);
     setTimeout(() => { location.href = href; }, reduce ? 0 : 1500);
   }
-  /** Explore World: approach the Earth, hand the camera to World, open World's entrance. */
+  /**
+   * Where Explore World should take this visitor: the city they chose before on this device, or else a first guess
+   * from /api/where (the nearest Opus city to their network's approximate area; nothing is stored). Waits briefly
+   * at most, so the move never stalls. null: World asks where they're connecting from, as before.
+   */
+  async function destination(): Promise<{ name: string; lat: number; lng: number; guessed: boolean } | null> {
+    const saved = readFrom();
+    if (saved?.mode === 'world') return null;
+    if (saved?.mode === 'city') { const c = findCity(saved.name); return c ? { name: c.name, lat: c.lat, lng: c.lng, guessed: false } : null; }
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 900);
+    try {
+      const r = await fetch('/api/where', { signal: ctl.signal, credentials: 'same-origin' });
+      const d = (await r.json()) as { city: { name: string; lat: number; lng: number } | null };
+      return d.city ? { ...d.city, guessed: true } : null;
+    } catch { return null; } finally { clearTimeout(t); }
+  }
+  const prep = hero.querySelector<HTMLElement>('[data-hero-prep]')!;
+  /**
+   * Explore World: the words lift away, the Earth turns to the visitor's part of the world and comes closer,
+   * "Preparing your world" appears, and World opens at that exact view and zooms down into their city.
+   */
   async function enter() {
-    // World opens on its full globe with the directory floating at the left, so the Earth stays where it was.
-    const href = '/world?view=map&enter=1';
+    let href = '/world?view=map&enter=1';
     if (!api) { location.href = href; return; }
     if (!start()) return;
     hero.classList.add('is-entering');
-    const handoff = await api.approach();
+    const to = await destination();
+    // A guess is shown, never saved: World labels it and lets them change it.
+    if (to?.guessed) href += `&near=${encodeURIComponent(to.name)}`;
+    if (to) {
+      prep.hidden = false;
+      setTimeout(() => prep.classList.add('is-in'), reduce ? 0 : 900);
+    }
+    const handoff = await api.approach(to ?? undefined);
     const { image, ...camera } = handoff;
     try {
       sessionStorage.setItem('opus.enter', JSON.stringify(camera));
@@ -167,6 +197,7 @@ const topCities = CITIES.slice(0, 8);
     if (!e.persisted || !leaving) return;
     leaving = false;
     hero.classList.remove('is-diving', 'is-leaving', 'is-entering');
+    prep.classList.remove('is-in'); prep.hidden = true;
     api?.rise();
   });
 </script>
@@ -182,6 +213,8 @@ const topCities = CITIES.slice(0, 8);
   @media (min-width: 1000px) {
     /* The frame stays open at the bottom: the product grid below continues the same dark canvas and closes it. */
     .hero { min-height: max(calc(100svh - 12px), 680px); margin: 0 12px; }
+    /* A little more than one screen, so the Earth sits larger and fuller under the words. */
+    .hero { min-height: max(calc(106svh - 12px), 720px); }
   }
   /* Tablets and up (Bogo, 2026-11-14): name, promise, line and actions as one group at the top, the Earth
      rising directly beneath them. Same Earth at the same size (radius 0.371 x a box 1.6x the hero's height);
@@ -229,7 +262,7 @@ const topCities = CITIES.slice(0, 8);
   .hero__stage { gap: 0; }
   .hero__title { margin: 0; font-size: clamp(4rem, 8.4vw, 9.5rem); line-height: 0.9; letter-spacing: -0.06em; font-weight: 600; color: #f4f2ee; }
   .hero__promise { margin: clamp(10px, 1.2vw, 18px) 0 0; font-size: clamp(1.7rem, 3.1vw, 3.4rem); line-height: 1.08; letter-spacing: -0.035em; font-weight: 500; color: #f4f2ee; }
-  .hero__value { margin: clamp(12px, 1.2vw, 18px) 0 0; font-size: clamp(1.02rem, 0.92rem + 0.32vw, 1.3rem); line-height: 1.35; letter-spacing: -0.015em; color: rgba(244, 242, 238, 0.72); }
+  .hero__value { margin: clamp(12px, 1.2vw, 18px) 0 0; font-size: clamp(1.14rem, 0.96rem + 0.48vw, 1.55rem); line-height: 1.35; letter-spacing: -0.018em; color: rgba(244, 242, 238, 0.82); }
   .hero__line { display: block; overflow: hidden; padding: 0.04em 0.06em 0.06em; }
   .hero__line > span { display: inline-block; }
 
@@ -241,6 +274,7 @@ const topCities = CITIES.slice(0, 8);
     transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
   .hero__go { background: #0071e3; color: #fff; }
   .hero__go:hover { background: #0077ed; }
+  .hero__mark, .hero__go { transition-duration: 0.2s; }
   .hero__go:active { background: #006edb; }
   .hero__mark { border-color: #2997ff; color: #2997ff; background: transparent; }
   .hero__mark:hover { background: rgba(41, 151, 255, 0.1); }
@@ -293,10 +327,10 @@ const topCities = CITIES.slice(0, 8);
   /* Phones: the same composition, tighter. The Earth fills the lower half, behind and beneath the words. */
   @media (max-width: 760px) {
     .hero { min-height: max(calc(100svh - 48px), 620px); padding: 108px 20px calc(32px + env(safe-area-inset-bottom)); }
-    .hero__globe { top: 32%; bottom: -30%; left: -18%; right: -18%; }
+    .hero__globe { top: 35%; bottom: -33%; left: -18%; right: -18%; }
     .hero__title { font-size: clamp(3.6rem, 19vw, 5.2rem); }
     .hero__promise { margin-top: 4px; font-size: clamp(1.55rem, 7.4vw, 2.1rem); }
-    .hero__value { font-size: 1rem; max-width: 22em; }
+    .hero__value { font-size: 1.1rem; max-width: 21em; }
     .hero__ctas { gap: 10px; margin-top: 24px; }
     .hero__go, .hero__mark { min-height: 48px; min-width: 0; padding: 0 22px; font-size: 15px; }
     .hero__veil { background: radial-gradient(80% 30% at 50% 26%, color-mix(in srgb, var(--bg) 65%, transparent) 0%, transparent 100%), linear-gradient(0deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 70%, transparent) 8%, color-mix(in srgb, var(--bg) 30%, transparent) 18%, transparent 30%); }

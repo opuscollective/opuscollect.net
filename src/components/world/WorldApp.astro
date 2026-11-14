@@ -40,6 +40,14 @@ const {
             var at = h.img || h;
             img.style.cssText = 'top:' + at.top + 'px;left:' + (at.left || 0) + 'px;width:' + at.w + 'px;height:' + at.h + 'px';
             document.currentScript.parentNode.insertBefore(img, document.currentScript);
+            // On the way to the visitor's city (or their saved one): the same line the homepage was showing.
+            var sp = new URLSearchParams(location.search);
+            var saved = JSON.parse(localStorage.getItem('opus.world.from.v1') || 'null');
+            if (sp.get('near') || (saved && saved.mode === 'city')) {
+              var p = document.createElement('p');
+              p.className = 'opus-prep is-in'; p.setAttribute('role', 'status'); p.setAttribute('data-prep', ''); p.textContent = 'Preparing your world';
+              document.currentScript.parentNode.insertBefore(p, document.currentScript);
+            }
           } catch (e) { /* World opens normally */ }
         })();
       </script>

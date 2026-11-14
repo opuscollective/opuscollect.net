@@ -93,7 +93,7 @@ export function initWorld(root: HTMLElement) {
     // Keep the address short: the kind is the path, and a known city on its own is /world/<city>.
     const city = place && !f.kinds.length ? CITIES.find((c) => c.name === place!.name) : undefined;
     u.pathname = city ? `/world/${citySlug(city.name)}` : KIND_PATH[f.kinds[0] ?? ''];
-    u.searchParams.delete('type'); u.searchParams.delete('view'); u.searchParams.delete('enter');
+    u.searchParams.delete('type'); u.searchParams.delete('view'); u.searchParams.delete('enter'); u.searchParams.delete('near');
     set('q', f.text); set('specialty', f.specialty || ''); set('genre', f.genre); set('studio', f.studioType || '');
     set('collab', f.openToCollab ? '1' : ''); set('verified', f.verifiedOnly ? '1' : ''); set('city', city ? '' : place?.name); set('p', previewId);
     history.replaceState(history.state, '', u);
@@ -105,9 +105,14 @@ export function initWorld(root: HTMLElement) {
   params.delete('enter');
   const handoff = entering ? takeHandoff() : null;
   let from: From | null = readFrom();
+  // Explore World's first guess at the visitor's city (see /api/where). Shown, never saved: they can change it.
+  const nearQ = params.get('near');
+  params.delete('near');
+  const near = entering && !from && nearQ ? findCity(nearQ) : undefined;
+  if (near) params.set('city', near.name);
   // A plain /world visit (nothing asked for in the address) also gets the question the first time.
   const plain = location.pathname.replace(/\/$/, '') === '/world' && !params.get('city') && !f.text && !f.kinds.length && !params.get('p');
-  const asking = !from && (entering || plain);
+  const asking = !from && !near && (entering || plain);
   // Answered before: go straight there, without asking again.
   if (!asking && from?.mode === 'city' && (entering || plain)) params.set('city', from.name);
   if (asking) root.dataset.entry = 'ask';
@@ -765,7 +770,7 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   const whereList = $<HTMLUListElement>('[data-where-list]');
   const whereCityBtn = $<HTMLButtonElement>('[data-where-city]');
   const whereBtns = () => root.querySelectorAll<HTMLButtonElement>('[data-where-opts] button');
-  const whereLabel = () => { $('[data-where-label]').textContent = from?.mode === 'city' ? from.name : 'Worldwide'; };
+  const whereLabel = () => { $('[data-where-label]').textContent = from?.mode === 'city' ? from.name : near && !from ? near.name : 'Worldwide'; };
   whereLabel();
 
   function showWhere() {
@@ -917,6 +922,13 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
         if (active) map.setActive(active);
         render(false);
         if (hand) await settleHandoff(m);
+        // "Preparing your world" stays a moment on the arrived view, then gives way as the zoom into the city begins.
+        const prep = document.querySelector<HTMLElement>('[data-prep]');
+        if (prep) {
+          if (arrive && !reduceMotion.matches) await new Promise((r) => setTimeout(r, 650));
+          prep.classList.add('is-out');
+          setTimeout(() => prep.remove(), 600);
+        }
         if (arrive && place) { inView = true; if (hand) m.release(false); map.flyToCity(place.lat, place.lng); changed(); if (askedView !== 'map' && mobile.matches && view === 'map') setSheet('half'); }
         else if (place && !camera) map.flyToCity(place.lat, place.lng);
       } catch (err) {

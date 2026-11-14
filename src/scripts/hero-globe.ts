@@ -290,15 +290,16 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     /**
      * Explore World: the camera moves in toward whatever part of the Earth faces the viewer. Resolves with exactly where it stopped, so World can open its map at that same view.
      */
-    approach(): Promise<Handoff> {
-      const dur = ms(1900);
+    approach(to?: { lat: number; lng: number }): Promise<Handoff> {
+      // Turning to face the visitor's own area takes a little longer than moving straight in.
+      const dur = ms(to ? 2300 : 1900);
       hold(); sharpen(); quiet(true);
       unbox(dur);
       const pov = globe.pointOfView();
-      const lat = Math.max(-35, Math.min(55, pov.lat));
+      const lat = to ? to.lat : Math.max(-35, Math.min(55, pov.lat));
       // A real approach: the Earth grows past the edges of the screen, stopping just short of the point where its
       // imagery would soften (World takes over from there with the same lit Earth). Never pulls back.
-      globe.pointOfView({ lat, lng: pov.lng, altitude: Math.min(pov.altitude, CLOSEST + 0.1) }, dur);
+      globe.pointOfView({ lat, lng: to ? to.lng : pov.lng, altitude: Math.min(pov.altitude, CLOSEST + 0.1) }, dur);
       return new Promise((res) => setTimeout(() => {
         const end = globe.pointOfView();
         // Where the camera's frame ended up on screen: World opens its map with the Earth at this same size and place.

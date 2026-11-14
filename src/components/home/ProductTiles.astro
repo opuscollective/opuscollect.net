@@ -11,7 +11,7 @@
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
 
 const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
-const OPACITY = [0.92, 0.7, 0.5, 0.34, 0.2, 0.1];
+const OPACITY = [0.92, 0.74, 0.56, 0.42, 0.3, 0.2];
 ---
 <section class="pt tone-dark" aria-label="What you can do on Opus">
   <div class="pt__grid">
@@ -91,14 +91,14 @@ const OPACITY = [0.92, 0.7, 0.5, 0.34, 0.2, 0.1];
   .tile__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
   .tile__btn { display: inline-flex; align-items: center; height: 42px; padding: 0 20px; border-radius: var(--r-pill); border: 1px solid currentColor; font-size: 15px; font-weight: 500; white-space: nowrap;
     transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
-  .tile__btn:hover { opacity: 0.82; }
-  .tile__btn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  .tile__btn:hover { opacity: 0.84; }
+  .tile__btn:focus-visible { outline: 2px solid #2997ff; outline-offset: 3px; }
   /* The filled button takes the opposite of the tile's surface. */
   .tile--dark .tile__btn--go { background: #f4f2ee; color: #0d0d0f; border-color: #f4f2ee; }
   .tile--cream .tile__btn--go, .tile--paper .tile__btn--go { background: #141416; color: #f4f2ee; border-color: #141416; }
 
   .tile__soon { position: absolute; top: 20px; right: 20px; z-index: 3; padding: 4px 10px; border: 1px solid currentColor; border-radius: var(--r-pill);
-    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; }
+    font-size: 11px; font-weight: 500; line-height: 16px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
 
   .tile__media { position: relative; flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-top: 28px; }
 
@@ -132,6 +132,8 @@ const OPACITY = [0.92, 0.7, 0.5, 0.34, 0.2, 0.1];
   .vstrip__text { margin: 0; font-size: clamp(1.15rem, 0.95rem + 0.8vw, 1.75rem); font-weight: 500; letter-spacing: -0.03em; color: rgba(244, 242, 238, 0.72); }
   .vstrip__name { color: #f4f2ee; }
   .vstrip__btn { color: #f4f2ee; border-color: rgba(244, 242, 238, 0.32); }
+  .vstrip__btn:hover { opacity: 1; border-color: rgba(244, 242, 238, 0.6); }
+  .vstrip__seal :global(svg) { display: block; }
 
   /* Motion: quiet, one idea per tile. Fully visible without JS; global reduced-motion turns it off. */
   :global(.js) .tile__photo { transform: scale(1.06); transition: transform 1.6s var(--ease); }
@@ -151,7 +153,8 @@ const OPACITY = [0.92, 0.7, 0.5, 0.34, 0.2, 0.1];
     .tile { --pad: 48px; min-height: 520px; border-radius: 0; border-left: 0; border-right: 0; }
     .tile__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); }
     .tile__line { font-size: clamp(1.05rem, 4.6vw, 1.25rem); }
-    .vstrip { border-radius: 0; border-left: 0; border-right: 0; padding: 28px 20px; }
+    .vstrip { border-radius: 0; border-left: 0; border-right: 0; padding: 32px 20px 36px; gap: 14px; flex-direction: column; }
+    .tile__soon { top: 16px; right: 16px; }
     .covers img { width: 52cqw; }
   }
 </style>
