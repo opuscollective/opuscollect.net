@@ -179,6 +179,8 @@ export async function unreadSummary(db: D1Database, me: string) {
       (SELECT COUNT(*) FROM conversations c WHERE (c.a_id = ?1 OR c.b_id = ?1) AND c.last_sender_id IS NOT NULL AND c.last_sender_id <> ?1
          AND c.last_message_at > (CASE WHEN c.a_id = ?1 THEN c.a_read_at ELSE c.b_read_at END)
          AND NOT EXISTS (SELECT 1 FROM blocks k WHERE k.blocker_id = ?1 AND k.blocked_id = c.last_sender_id)) AS dm,
-      (SELECT COUNT(*) FROM notifications n WHERE n.user_id = ?1 AND n.read_at IS NULL) AS notes`).bind(me).first<{ dm: number; notes: number }>();
-  return { dm: r?.dm ?? 0, notifications: r?.notes ?? 0 };
+      (SELECT COUNT(*) FROM notifications n WHERE n.user_id = ?1 AND n.read_at IS NULL) AS notes,
+      (SELECT COUNT(*) FROM connections x WHERE x.addressee_id = ?1 AND x.status = 'pending'
+         AND NOT EXISTS (SELECT 1 FROM blocks k WHERE k.blocker_id = ?1 AND k.blocked_id = x.requester_id)) AS reqs`).bind(me).first<{ dm: number; notes: number; reqs: number }>();
+  return { dm: r?.dm ?? 0, notifications: r?.notes ?? 0, requests: r?.reqs ?? 0 };
 }

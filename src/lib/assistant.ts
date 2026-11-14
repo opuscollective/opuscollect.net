@@ -27,7 +27,7 @@ export const PAGES = {
   world: '/world',
   profile: '/account/profile',
   account: '/account',
-  connections: '/account/connections',
+  connections: '/network',
   bookings: '/account/bookings',
   music: '/works',
   start: '/start',

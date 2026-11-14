@@ -1,35 +1,291 @@
 ---
+/**
+ * Network. Signed in: My Network, with connections, received requests and sent requests in one place, plus
+ * Discover people and Messages. Signed out: what Network is, and the way in. Real relationships only:
+ * every count here is a count of rows, never an estimate.
+ */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import ComingSoon from '@/components/layout/ComingSoon.astro';
+import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
+import { listConnections, type ConnItem } from '@/server/connections';
+import { mediaUrl } from '@/server/profiles';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const TABS = ['connections', 'received', 'sent'] as const;
+type Tab = (typeof TABS)[number];
+const q = Astro.url.searchParams.get('tab');
+const tab: Tab = (TABS as readonly string[]).includes(q ?? '') ? (q as Tab) : 'connections';
+let data: Awaited<ReturnType<typeof listConnections>> | null = null;
+let failed = false;
+if (user) {
+  try { data = await listConnections(Astro.locals.runtime.env.DB, user.id); }
+  catch (e) { console.error('network', e); failed = true; }
+}
+const connected = data?.connected ?? [], incoming = data?.incoming ?? [], outgoing = data?.outgoing ?? [], blocked = data?.blocked ?? [];
+const specialties = [...new Map(connected.filter((c) => c.other.specialty).map((c) => [c.other.specialtyKey!, c.other.specialty!])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const ago = (t: number) => {
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  if (s < 7 * 86400) { const d = Math.round(s / 86400); return `${d} day${d === 1 ? '' : 's'} ago`; }
+  return DATE.format(t);
+};
+const sub = (c: ConnItem) => [c.other.specialty, c.other.place].filter(Boolean).join(' · ');
+const COUNT = { connections: connected.length, received: incoming.length, sent: outgoing.length };
+const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' };
 ---
-<BaseLayout title="Network" description="Your connections, inquiries, collaborations and Partner Sessions on Opus." noindex>
-  <ComingSoon kicker="Network" phase="In development" title="Connections and inquiries, in one place." body="Talk to the world in Global Chat, connect with the people you meet, then message them privately. Inquiries and collaborations come next.">
-    <p class="nw__count" data-nw-count hidden></p>
-    <p class="nw__actions"><button type="button" class="btn-app" data-open-messages="global">Open Global Chat</button><button type="button" class="btn-app btn-app--ghost" data-open-messages="private">Private messages</button></p>
-    <p><a class="link" href="/account/connections">See your connections</a></p>
-    <!-- Partner Sessions: introduced here, where collaboration lives. Not bookable yet; today it points to the real "open to collaborate" filter in World. -->
-    <div class="ps">
-      <p class="ps__kicker">Partner Sessions · Coming soon</p>
-      <p class="ps__body">Work sessions between artists, producers, engineers and writers, in your city or remote. Until then, find people who are open to collaborate in World and connect with them.</p>
-      <p><a class="link" href="/musicians?collab=1">Find people open to collaborate</a></p>
+<BaseLayout title={user ? 'My Network' : 'Network'} description="Network on Opus: turn discovery into working relationships. Connect with an introduction, then message your connections." noindex={!!user}>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide nw" style="margin-inline:auto">
+      <p class="t-meta app__kicker">Network</p>
+      {!user ? (
+        <>
+          <h1 class="app__title">Turn discovery into working relationships.</h1>
+          <p class="app__lead">Find people in World, send a request with a short introduction, and once they accept, message them directly. Your connections are yours: no follower counts, no paid reach.</p>
+          <div class="row" style="margin-top:24px"><a class="btn-app" href="/sign-in?next=/network">Sign in</a><a class="btn-app btn-app--ghost" href="/sign-up">Join Opus</a><a class="btn-app btn-app--ghost" href="/musicians">Discover people</a></div>
+          <ol class="nw__how" role="list">
+            <li><b>Discover</b><span>Find artists, producers, engineers and writers by city and specialty in World.</span></li>
+            <li><b>Connect</b><span>Send a request with an optional introduction. They accept or decline.</span></li>
+            <li><b>Message</b><span>Connected members talk in private messages, on any page.</span></li>
+          </ol>
+        </>
+      ) : (
+        <>
+          <div class="nw__top">
+            <div>
+              <h1 class="app__title">My Network</h1>
+              <p class="nw__sum">{connected.length} {connected.length === 1 ? 'connection' : 'connections'}{incoming.length > 0 && <> · <a class="link" href="/network?tab=received">{incoming.length} waiting for you</a></>}</p>
+            </div>
+            <div class="nw__quick">
+              <a class="btn-app btn-app--ghost" href="/musicians">Discover people</a>
+              <button class="btn-app" type="button" data-open-messages="private">Messages</button>
+            </div>
+          </div>
+
+          {failed && <p class="notice notice--error" style="margin-top:20px">Your network couldn’t be loaded just now. Please try again.</p>}
+
+          <nav class="nw__tabs" aria-label="My Network" data-tabs>
+            {TABS.map((t) => (
+              <a href={`/network?tab=${t}`} data-tab={t} aria-current={tab === t ? 'page' : undefined}>
+                {LABEL[t]} <span class:list={['nw__n', { 'is-hot': t === 'received' && COUNT[t] > 0 }]} data-count={t}>{COUNT[t]}</span>
+              </a>
+            ))}
+          </nav>
+
+          <!-- Connections -->
+          <section class="nw__pane" data-pane="connections" hidden={tab !== 'connections'} aria-label="Connections">
+            {connected.length === 0 ? (
+              <div class="nw__empty">
+                <h2>No connections yet</h2>
+                <p class="dim">Find people in <a class="link" href="/musicians">World</a> and send a request from their profile.</p>
+              </div>
+            ) : (
+              <>
+                <div class="nw__tools">
+                  <label class="sr-only" for="nw-q">Search your connections</label>
+                  <input class="input" id="nw-q" type="search" placeholder="Search by name, specialty or city" autocomplete="off" data-search />
+                  {specialties.length > 1 && (
+                    <>
+                      <label class="sr-only" for="nw-s">Specialty</label>
+                      <select class="select" id="nw-s" data-spec>
+                        <option value="">All specialties</option>
+                        {specialties.map(([k, v]) => <option value={k}>{v}</option>)}
+                      </select>
+                    </>
+                  )}
+                </div>
+                <ul class="nw__list" role="list" data-list>
+                  {connected.map((c) => (
+                    <li class="nw__row" data-id={c.id} data-spec={c.other.specialtyKey ?? ''} data-text={`${c.other.name} ${sub(c)}`.toLowerCase()}>
+                      <a class="nw__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+                        <span class="nw__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''} aria-hidden="true">{!c.other.photoKey && c.other.name.slice(0, 1)}</span>
+                        <span class="nw__id"><b>{c.other.name}{c.other.verified && <VerifiedBadge size={15} />}</b><small>{sub(c) || 'Opus member'}</small></span>
+                      </a>
+                      <span class="nw__meta">Connected {c.respondedAt ? DATE.format(c.respondedAt) : ''}</span>
+                      <div class="nw__acts">
+                        {c.other.handle && <a class="btn-app btn-app--ghost nw__btn" href={`/m/${c.other.handle}`}>View profile</a>}
+                        {c.other.handle && <button class="btn-app nw__btn" type="button" data-message-handle={c.other.handle}>Message</button>}
+                        <button class="nw__x" type="button" data-act="remove" data-name={c.other.name}>Remove</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <p class="dim nw__none" data-none hidden>No connections match.</p>
+              </>
+            )}
+            {blocked.length > 0 && (
+              <details class="nw__blocked">
+                <summary>Blocked members <span class="dim">({blocked.length})</span></summary>
+                <ul class="nw__list" role="list">{blocked.map((b) => (
+                  <li class="nw__row"><span class="nw__who"><span class="nw__id"><b>{b.display_name ?? 'Opus member'}</b></span></span>
+                    {b.handle && <div class="nw__acts"><button class="nw__x" type="button" data-unblock={b.handle}>Unblock</button></div>}</li>
+                ))}</ul>
+              </details>
+            )}
+          </section>
+
+          <!-- Received requests -->
+          <section class="nw__pane" data-pane="received" hidden={tab !== 'received'} aria-label="Received requests">
+            {incoming.length === 0 ? (
+              <div class="nw__empty"><h2>No requests waiting</h2><p class="dim">When someone asks to connect, it shows here. Keep “Open to collaboration” on in your profile to receive requests.</p></div>
+            ) : (
+              <ul class="nw__list" role="list">{incoming.map((c) => (
+                <li class="nw__row nw__row--req" data-id={c.id}>
+                  <a class="nw__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+                    <span class="nw__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''} aria-hidden="true">{!c.other.photoKey && c.other.name.slice(0, 1)}</span>
+                    <span class="nw__id"><b>{c.other.name}{c.other.verified && <VerifiedBadge size={15} />}</b><small>{sub(c) || 'Opus member'}</small></span>
+                  </a>
+                  <span class="nw__meta"><time datetime={new Date(c.createdAt).toISOString()}>{ago(c.createdAt)}</time></span>
+                  {c.message && <p class="nw__intro">{c.message}</p>}
+                  <div class="nw__acts">
+                    <button class="btn-app nw__btn" type="button" data-act="accept">Accept</button>
+                    <button class="btn-app btn-app--ghost nw__btn" type="button" data-act="decline">Decline</button>
+                  </div>
+                </li>
+              ))}</ul>
+            )}
+          </section>
+
+          <!-- Sent requests -->
+          <section class="nw__pane" data-pane="sent" hidden={tab !== 'sent'} aria-label="Sent requests">
+            {outgoing.length === 0 ? (
+              <div class="nw__empty"><h2>No pending requests</h2><p class="dim">Requests you send wait here until they’re answered.</p></div>
+            ) : (
+              <ul class="nw__list" role="list">{outgoing.map((c) => (
+                <li class="nw__row" data-id={c.id}>
+                  <a class="nw__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+                    <span class="nw__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''} aria-hidden="true">{!c.other.photoKey && c.other.name.slice(0, 1)}</span>
+                    <span class="nw__id"><b>{c.other.name}{c.other.verified && <VerifiedBadge size={15} />}</b><small>{c.other.specialty ?? 'Opus member'}</small></span>
+                  </a>
+                  <span class="nw__meta"><span class="nw__pending">Pending</span> Sent {DATE.format(c.createdAt)}</span>
+                  <div class="nw__acts"><button class="btn-app btn-app--ghost nw__btn" type="button" data-act="withdraw">Cancel request</button></div>
+                </li>
+              ))}</ul>
+            )}
+          </section>
+          <p class="dim mu-err" data-status role="alert"></p>
+        </>
+      )}
     </div>
-  </ComingSoon>
+  </section>
 </BaseLayout>
+
 <script>
-  // Accepted connections only, for the signed-in member. Nothing is shown to visitors.
-  if (document.cookie.split('; ').includes('opus_in=1')) {
-    fetch('/api/connections').then((r) => (r.ok ? r.json() : null)).then((d: { connected?: unknown[] } | null) => {
-      const el = document.querySelector<HTMLElement>('[data-nw-count]');
-      if (!d || !el || !Array.isArray(d.connected)) return;
-      el.textContent = `You have ${d.connected.length} ${d.connected.length === 1 ? 'connection' : 'connections'}.`;
-      el.hidden = false;
-    }).catch(() => {});
+  // Tabs switch in place (the URL follows, so refresh and Back keep the same view).
+  const tabs = document.querySelector<HTMLElement>('[data-tabs]');
+  const show = (t: string, push = true) => {
+    document.querySelectorAll<HTMLElement>('[data-pane]').forEach((p) => (p.hidden = p.dataset.pane !== t));
+    tabs?.querySelectorAll<HTMLAnchorElement>('[data-tab]').forEach((a) => (a.dataset.tab === t ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
+    if (push) history.replaceState(null, '', `/network?tab=${t}`);
+  };
+  tabs?.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('[data-tab]');
+    if (!a || e.metaKey || e.ctrlKey) return;
+    e.preventDefault(); show(a.dataset.tab!);
+  });
+  // Arriving from the Messages link in the header opens the Messages panel.
+  if (new URLSearchParams(location.search).has('messages')) {
+    window.addEventListener('load', () => document.querySelector<HTMLButtonElement>('[data-open-messages]')?.click());
   }
+
+  // Search and specialty filter, on what is already on the page.
+  const search = document.querySelector<HTMLInputElement>('[data-search]');
+  const spec = document.querySelector<HTMLSelectElement>('[data-spec]');
+  const none = document.querySelector<HTMLElement>('[data-none]');
+  const filter = () => {
+    const q = (search?.value ?? '').trim().toLowerCase(), s = spec?.value ?? '';
+    let n = 0;
+    document.querySelectorAll<HTMLElement>('[data-list] > li').forEach((li) => {
+      const on = (!q || li.dataset.text!.includes(q)) && (!s || li.dataset.spec === s);
+      li.hidden = !on; if (on) n++;
+    });
+    if (none) none.hidden = n > 0;
+  };
+  search?.addEventListener('input', filter);
+  spec?.addEventListener('change', filter);
+
+  // Accept, decline, cancel, remove: the server checks that each one is yours to take.
+  const status = document.querySelector<HTMLElement>('[data-status]');
+  const bump = (t: string, d: number) => {
+    const el = document.querySelector<HTMLElement>(`[data-count="${t}"]`);
+    if (el) { const n = Math.max(0, Number(el.textContent) + d); el.textContent = String(n); el.classList.toggle('is-hot', t === 'received' && n > 0); }
+  };
+  document.querySelectorAll<HTMLButtonElement>('[data-act]').forEach((b) => b.addEventListener('click', async () => {
+    const li = b.closest<HTMLElement>('[data-id]')!;
+    const act = b.dataset.act!;
+    if (act === 'remove' && !confirm(`Remove ${b.dataset.name ?? 'this connection'} from your network? You can connect again later.`)) return;
+    li.querySelectorAll('button').forEach((x) => (x.disabled = true));
+    if (status) status.textContent = '';
+    const r = await fetch(`/api/connections/${li.dataset.id}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: act }) });
+    if (!r.ok) {
+      li.querySelectorAll('button').forEach((x) => (x.disabled = false));
+      if (status) status.textContent = (await r.json().catch(() => ({}))).error ?? 'Something went wrong.';
+      return;
+    }
+    if (act === 'accept') { location.href = '/network?tab=connections'; return; }
+    li.remove();
+    bump(act === 'remove' ? 'connections' : act === 'withdraw' ? 'sent' : 'received', -1);
+    document.querySelectorAll<HTMLElement>('[data-req-count]').forEach((el) => { if (act === 'decline') { const n = Math.max(0, Number(el.textContent) - 1); el.textContent = String(n); el.hidden = n === 0; } });
+  }));
+  document.querySelectorAll<HTMLButtonElement>('[data-unblock]').forEach((b) => b.addEventListener('click', async () => {
+    const r = await fetch('/api/connections/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ handle: b.dataset.unblock, on: false }) });
+    if (r.ok) location.reload();
+  }));
 </script>
+
 <style>
-  .nw__count { margin: 0 0 12px; color: var(--text-2); }
-  .nw__actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
-  .ps { max-width: 560px; margin-top: 8px; padding-top: 22px; border-top: 1px solid var(--line); }
-  .ps__kicker { margin: 0 0 6px; font-size: 13px; letter-spacing: 0.02em; color: var(--text-3); }
-  .ps__body { margin: 0 0 10px; color: var(--text-2); }
+  .nw__how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 56px 0 0; padding: 0; list-style: none; }
+  .nw__how li { display: flex; flex-direction: column; gap: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .nw__how b { font-size: 17px; font-weight: 600; color: var(--text); }
+  .nw__how span { font-size: 15px; line-height: 1.5; color: var(--text-2); }
+  .nw__top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .nw__sum { margin: 8px 0 0; font-size: 15px; color: var(--text-2); }
+  .nw__quick { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nw__tabs { display: inline-flex; gap: 4px; margin-top: 28px; padding: 4px; border-radius: var(--r-pill); background: var(--surface-sunken); }
+  .nw__tabs a { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: var(--r-pill); color: var(--text-2); font-size: 15px; font-weight: 500; }
+  .nw__tabs a[aria-current='page'] { background: var(--surface-raised); color: var(--text); box-shadow: 0 1px 3px var(--shadow-c); }
+  .nw__tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .nw__n { min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 10px; background: var(--nav-hover); font-size: 12px; color: var(--text-2); }
+  .nw__n.is-hot { background: var(--c-verified, #2f80ff); color: #fff; }
+  .nw__pane { margin-top: 20px; }
+  .nw__tools { display: flex; gap: 10px; margin-bottom: 8px; }
+  .nw__tools .input { flex: 1; min-width: 0; }
+  .nw__tools .select { width: auto; max-width: 220px; }
+  .nw__list { margin: 0; padding: 0; list-style: none; }
+  .nw__row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 20px; padding: 14px 0; border-bottom: 1px solid var(--line-faint); }
+  .nw__row[hidden] { display: none; }
+  .nw__who { display: flex; align-items: center; gap: 14px; min-width: 0; color: var(--text); }
+  .nw__av { flex-shrink: 0; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; font-size: 18px; font-weight: 600; color: var(--text-3); }
+  .nw__id { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .nw__id b { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; font-size: 16px; }
+  .nw__id small { font-size: 13px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nw__meta { font-size: 13px; color: var(--text-3); white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; }
+  .nw__pending { padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); font-size: 12px; color: var(--text-2); }
+  .nw__acts { display: flex; align-items: center; gap: 8px; }
+  .nw__btn { min-height: 38px; padding: 0 16px; font-size: 14px; }
+  .nw__x { min-height: 38px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--text-3); font: inherit; font-size: 14px; cursor: pointer; }
+  .nw__x:hover { background: var(--nav-hover); color: var(--text); }
+  .nw__row--req { grid-template-columns: minmax(0, 1fr) auto; }
+  .nw__row--req .nw__acts { grid-column: 1 / -1; padding-left: 62px; }
+  .nw__intro { grid-column: 1 / -1; margin: 0; padding: 12px 14px; margin-left: 62px; border-radius: 12px; background: var(--surface-sunken); font-size: 15px; line-height: 1.55; color: var(--text); white-space: pre-line; overflow-wrap: anywhere; }
+  .nw__empty { padding: 32px 0; }
+  .nw__empty h2 { margin: 0 0 6px; font-size: 20px; }
+  .nw__none { padding: 16px 0; }
+  .nw__blocked { margin-top: 28px; }
+  .nw__blocked summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-2); }
+  @media (max-width: 720px) {
+    .nw__how { grid-template-columns: 1fr; }
+    .nw__tabs { display: flex; width: 100%; }
+    .nw__tabs a { flex: 1; justify-content: center; padding: 0 8px; font-size: 14px; }
+    .nw__quick { width: 100%; }
+    .nw__quick > * { flex: 1; }
+    .nw__tools { flex-direction: column; }
+    .nw__tools .select { max-width: none; width: 100%; }
+    .nw__row { grid-template-columns: minmax(0, 1fr) auto; }
+    .nw__acts { grid-column: 1 / -1; padding-left: 62px; flex-wrap: wrap; }
+    .nw__intro { margin-left: 0; }
+    .nw__row--req .nw__acts .nw__btn { flex: 1; }
+  }
 </style>

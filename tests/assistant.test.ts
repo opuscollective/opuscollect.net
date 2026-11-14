@@ -33,7 +33,7 @@ test('own pages respect sign-in', () => {
   assert.equal(go('Take me to my profile', out), '/sign-in?next=%2Faccount%2Fprofile');
   assert.equal(respond('Take me to my profile', out).offer, 'Sign in');
   assert.equal(go('Show my releases', inn), '/works');
-  assert.equal(go('my connections', inn), '/account/connections');
+  assert.equal(go('my connections', inn), '/network');
 });
 
 test('verification is explained, with the page offered, not opened', () => {

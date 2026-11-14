@@ -2,31 +2,54 @@
 /**
  * The Opus ecosystem on the homepage, continuing the hero's dark canvas (World is the hero itself).
  * Seven products on a 12-column grid, so no two neighbours share a size or a surface:
- *   Studios (7, dark photo)   | Works (5, cream, real covers)
+ *   Studios (7, dark, console)   | Works (5, cream, real covers)
  *   Events (5, white)         | Venues (7, dark, coming soon)
  *   Airplay (7, dark, soon)   | Charts (5, paper, coming soon)
- *   Collective (12, full-width feature)
+ *   Collective (12, dark, abstract connections)
  *   Opus Verified (a slim strip across the bottom)
- * Only real destinations. Products in development say so. Venues, Events and Airplay use drawn graphics,
- * not stock photos. No invented releases, events, rankings or numbers.
+ * One card system (Chunk 1.5): same radius, padding, type scale, single action and hover; the whole card is the link.
+ * Only real destinations. Products in development say so. Every visual except the Works covers is drawn, so no card
+ * is a busy photograph. No invented releases, events, rankings or numbers.
  */
 import VerifiedBadge from '../ui/VerifiedBadge.astro';
 
 const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
 const OPACITY = [0.92, 0.74, 0.56, 0.42, 0.3, 0.2];
-const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-const RINGS = new Set([5, 12, 13, 19, 26]);
+const FADERS = [0.62, 0.4, 0.78, 0.55, 0.3, 0.7, 0.5, 0.86, 0.44, 0.66, 0.36, 0.58];
+const NODES: [number, number, number][] = [[430, 120, 3], [520, 70, 2.2], [600, 150, 4], [690, 90, 2.4], [560, 250, 2.6], [660, 300, 3.4], [740, 220, 2], [480, 330, 2.2], [380, 240, 2], [770, 360, 2.6], [610, 380, 1.8], [720, 30, 1.8]];
+const LINKS: [number, number][] = [[0, 1], [1, 2], [2, 3], [0, 2], [2, 4], [4, 5], [5, 6], [3, 6], [4, 7], [7, 8], [0, 8], [5, 9], [5, 10], [3, 11], [6, 9]];
 const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0.66, 0.3, 0.56, 0.78, 0.4, 0.6, 0.86, 0.48, 0.32];
 ---
 <section class="pt tone-dark" aria-label="What you can do on Opus">
   <div class="pt__grid">
 
-    <article class="tile tile--dark tile--photo tile--studios tile--w7 tone-dark" aria-labelledby="pt-studios" data-reveal>
-      <img class="tile__photo" src="/images/studio-control-room-1400.jpg" alt="" loading="lazy" decoding="async" width="1400" height="934" />
+    <article class="tile tile--dark tile--studios tile--w7 tone-dark" aria-labelledby="pt-studios" data-reveal>
       <div class="tile__text">
         <h2 class="tile__name" id="pt-studios">Studios</h2>
         <p class="tile__line">Find your next session.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/studios">Find a Studio</a></div>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/studios">Find a Studio</a></div>
+      </div>
+      <!-- A drawn console strip under a soft studio light, not a photograph. -->
+      <div class="tile__media desk" aria-hidden="true">
+        <span class="desk__glow"></span>
+        <svg class="desk__svg" viewBox="0 0 640 220" preserveAspectRatio="xMidYMax meet">
+          <defs>
+            <linearGradient id="desk-top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2b30" /><stop offset="1" stop-color="#121215" /></linearGradient>
+            <linearGradient id="desk-cap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f2ee" /><stop offset="1" stop-color="#a9a6a0" /></linearGradient>
+          </defs>
+          <path d="M40 70 L600 70 L640 220 L0 220 Z" fill="url(#desk-top)" />
+          {FADERS.map((h, i) => {
+            const x = 78 + i * 44;
+            return (
+              <g>
+                <circle cx={x} cy="88" r="5" fill="#3a3b41" />
+                <circle cx={x} cy="88" r="1.6" fill={i % 4 === 1 ? '#2997ff' : '#6b6a70'} />
+                <rect x={x - 1} y="104" width="2" height="92" rx="1" fill="#050506" />
+                <rect class="desk__cap" x={x - 8} y={104 + (1 - h) * 80} width="16" height="12" rx="2" fill="url(#desk-cap)" style={`--i:${i}`} />
+              </g>
+            );
+          })}
+        </svg>
       </div>
     </article>
 
@@ -34,28 +57,27 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
       <div class="tile__text">
         <h2 class="tile__name" id="pt-works">Works</h2>
         <p class="tile__line">Your work speaks for itself.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/works">Explore Works</a></div>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/works">Explore Works</a></div>
       </div>
       <!-- Real releases from the Opus Collective catalog: Amazing and Scenic by Bogo, luciaism by NUGGET!. -->
-      <a class="tile__media covers" href="/releases" tabindex="-1" aria-hidden="true">
+      <div class="tile__media covers" aria-hidden="true">
         <img class="covers__l" src="/images/releases/card/amazing-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
         <img class="covers__r" src="/images/releases/card/luciaism-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
         <img class="covers__c" src="/images/releases/card/scenic-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
-      </a>
+      </div>
     </article>
 
     <article class="tile tile--white tile--events tile--w5" aria-labelledby="pt-events" data-reveal>
       <div class="tile__text">
         <h2 class="tile__name" id="pt-events">Events</h2>
         <p class="tile__line">Make something happen.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/events">Explore Events</a></div>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/events">Explore Events</a></div>
       </div>
-      <!-- A drawn month, not real dates or events. -->
-      <div class="tile__media cal" aria-hidden="true">
-        <div class="cal__grid">
-          {WEEK.map((d) => <span class="cal__wd">{d}</span>)}
-          {Array.from({ length: 28 }, (_, i) => <span class:list={['cal__d', { 'is-ring': RINGS.has(i + 1) }]} style={`--i:${i}`}>{i + 1}</span>)}
-        </div>
+      <!-- Three floating date tiles: a sense of what's ahead, not real dates or events. -->
+      <div class="tile__media dates" aria-hidden="true">
+        <span class="date date--a"><small>Fri</small><b>12</b></span>
+        <span class="date date--b"><small>Sat</small><b>13</b><i></i></span>
+        <span class="date date--c"><small>Sun</small><b>14</b></span>
       </div>
     </article>
 
@@ -64,7 +86,7 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
       <div class="tile__text">
         <h2 class="tile__name" id="pt-venues">Venues</h2>
         <p class="tile__line">Find your stage.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/venues">See What’s Coming</a></div>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/venues">See What’s Coming</a></div>
       </div>
       <!-- A drawn stage: one light, one floor. -->
       <div class="tile__media stage" aria-hidden="true">
@@ -79,7 +101,7 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
       <div class="tile__text">
         <h2 class="tile__name" id="pt-airplay">Airplay</h2>
         <p class="tile__line">Get your music heard.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/airplay">See What’s Coming</a></div>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/airplay">See What’s Coming</a></div>
       </div>
       <!-- A drawn signal, not audio data. -->
       <div class="tile__media wave" aria-hidden="true">
@@ -92,7 +114,7 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
       <div class="tile__text">
         <h2 class="tile__name" id="pt-charts">Charts</h2>
         <p class="tile__line">Every city has a sound.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/charts">See What’s Coming</a></div>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/charts">See What’s Coming</a></div>
       </div>
       <!-- Decorative city names, not rankings. -->
       <ul class="tile__media cities" role="list" aria-label="Cities Charts will cover">
@@ -100,14 +122,18 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
       </ul>
     </article>
 
-    <article class="tile tile--dark tile--photo tile--collective tile--w12 tone-dark" aria-labelledby="pt-collective" data-reveal>
-      <img class="tile__photo" src="/images/scenic-room-1200.jpg" alt="" loading="lazy" decoding="async" width="1200" height="1800" />
+    <article class="tile tile--dark tile--collective tile--w12 tone-dark" aria-labelledby="pt-collective" data-reveal>
       <div class="tile__text">
         <p class="tile__kicker">The Opus Collective</p>
         <h2 class="tile__name" id="pt-collective">Collective</h2>
         <p class="tile__line">Beyond the platform. The people, the gatherings and the culture behind Opus.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/collective">Explore the Collective</a></div>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/collective">Explore the Collective</a></div>
       </div>
+      <!-- Abstract connections: points of light joined by fine lines. Not a map and not real members. -->
+      <svg class="web" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <g class="web__lines">{LINKS.map(([a, b]) => <line x1={NODES[a]![0]} y1={NODES[a]![1]} x2={NODES[b]![0]} y2={NODES[b]![1]} />)}</g>
+        <g class="web__nodes">{NODES.map(([x, y, r], i) => <circle cx={x} cy={y} r={r} style={`--i:${i}`} />)}</g>
+      </svg>
     </article>
 
     <article class="vstrip tone-dark" aria-labelledby="pt-verified" data-reveal>
@@ -134,7 +160,8 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
   .tile--w5 { grid-column: span 5; }
   .tile--w7 { grid-column: span 7; }
   .tile--w12 { grid-column: 1 / -1; }
-  @media (hover: hover) { .tile:hover { transform: translateY(-3px); box-shadow: 0 30px 60px -36px rgba(0, 0, 0, 0.6); } }
+  @media (hover: hover) { .tile:hover { transform: translateY(-2px); box-shadow: 0 30px 60px -38px rgba(0, 0, 0, 0.55); } }
+  @media (prefers-reduced-motion: reduce) { .tile, .tile:hover { transform: none; transition: none; } }
   .tile--dark { background: #0d0d0f; color: #f4f2ee; border: 1px solid rgba(255, 255, 255, 0.06); }
   .tile--cream { background: #efe9df; color: #141416; }
   .tile--paper { background: #f8f6f1; color: #141416; border: 1px solid #e3ddd3; }
@@ -160,10 +187,20 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
 
   .tile__media { position: relative; flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-top: 28px; }
 
-  /* Studios and Collective: full-bleed photographs, darkened at the top for the words. */
-  .tile__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
-  .tile--photo::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8, 8, 10, 0.86) 0%, rgba(8, 8, 10, 0.45) 42%, rgba(8, 8, 10, 0.08) 100%); }
-  .tile--collective .tile__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
+  /* The whole card is the link: the action's hit area stretches over the card. */
+  .tile__link::after { content: ''; position: absolute; inset: 0; z-index: 3; }
+  .tile { cursor: pointer; }
+  .tile .tile__text { position: static; } /* so the stretched link measures from the card, not the text block */
+  .tile:has(.tile__link:focus-visible) { outline: 2px solid #2997ff; outline-offset: 3px; }
+  .tile__link:focus-visible { outline: none; }
+
+  /* Studios: a console strip under one soft light, in the lower part of the card. */
+  .desk { margin-top: auto; align-items: flex-end; height: 48%; flex: none; }
+  .desk__glow { position: absolute; left: 50%; bottom: 10%; width: 90%; height: 120%; transform: translateX(-50%);
+    background: radial-gradient(ellipse 50% 45% at 50% 70%, rgba(255, 236, 205, 0.16), transparent 70%); pointer-events: none; }
+  .desk__svg { position: relative; width: min(100%, 640px); height: auto; display: block; }
+  .desk__cap { transition: transform .9s var(--ease); transition-delay: calc(var(--i) * 25ms); }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) { .tile--studios:hover .desk__cap:nth-child(odd) { transform: translateY(-6px); } }
 
   /* Music: three real covers, Scenic in front. */
   .covers { align-items: center; margin-bottom: var(--pad); }
@@ -179,18 +216,29 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
   }
 
   /* Charts: city names fading out, like a sound trailing off. Not a ranking. */
-  .cities { flex-direction: column; align-items: center; justify-content: center; gap: 0; margin: 0 0 var(--pad); padding: 0; list-style: none;
-    font-size: clamp(1.7rem, 7cqw, 3.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.08; }
-  .cities li { opacity: var(--o); }
+  .cities { flex-direction: column; align-items: stretch; justify-content: center; gap: 0; width: min(76cqw, 340px); margin: 0 auto var(--pad); padding: 0; list-style: none;
+    font-size: clamp(1.25rem, 4.6cqw, 1.9rem); font-weight: 500; letter-spacing: -0.03em; line-height: 1.1; text-align: left; }
+  .cities li { display: flex; align-items: baseline; gap: 14px; padding: 9px 0; border-bottom: 1px solid rgba(20, 20, 22, calc(var(--o) * 0.16)); opacity: var(--o); }
+  .cities li::before { content: counter(c, decimal-leading-zero); counter-increment: c; font-size: 0.5em; font-weight: 400; letter-spacing: 0.04em; color: #8b867f; font-variant-numeric: tabular-nums; }
+  .cities { counter-reset: c; }
 
-  /* Events: a drawn month. A few days ringed; on hover the rings open up. */
-  .cal { align-items: center; margin-bottom: var(--pad); }
-  .cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: clamp(6px, 1.6cqw, 12px); width: min(78cqw, 380px); font-size: clamp(13px, 3.4cqw, 17px); font-variant-numeric: tabular-nums; }
-  .cal__wd { font-size: 0.72em; letter-spacing: 0.08em; color: #8b867f; padding-bottom: 4px; }
-  .cal__d { position: relative; display: grid; place-items: center; aspect-ratio: 1; color: #3a3a3e; }
-  .cal__d.is-ring::before { content: ''; position: absolute; inset: 8%; border-radius: 50%; border: 1.5px solid #0071e3; transition: transform 0.6s var(--ease), background 0.6s var(--ease); transition-delay: calc(var(--i) * 12ms); }
-  .cal__d.is-ring { color: #0071e3; font-weight: 600; }
-  @media (hover: hover) { .tile--events:hover .cal__d.is-ring::before { transform: scale(1.12); background: rgba(0, 113, 227, 0.08); } }
+  /* Events: three floating date tiles; the one in front carries a quiet blue mark. */
+  .dates { align-items: center; margin-bottom: var(--pad); }
+  .date { position: absolute; top: 50%; left: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    width: min(30cqw, 150px); aspect-ratio: 1; border-radius: 16px; background: #fff; color: #141416;
+    box-shadow: 0 1px 0 rgba(20, 16, 12, 0.04), 0 24px 50px -24px rgba(20, 16, 12, 0.35), 0 0 0 1px rgba(20, 16, 12, 0.06); transition: transform .9s var(--ease); }
+  .date small { font-size: clamp(11px, 2.6cqw, 13px); letter-spacing: 0.1em; text-transform: uppercase; color: #8b867f; }
+  .date b { font-size: clamp(34px, 9cqw, 54px); font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+  .date i { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; border-radius: 50%; background: #0071e3; }
+  .date--a { transform: translate(-128%, -42%) rotate(-6deg) scale(.86); opacity: .7; }
+  .date--c { transform: translate(28%, -42%) rotate(6deg) scale(.86); opacity: .7; }
+  .date--b { z-index: 2; transform: translate(-50%, -54%); }
+  @media (hover: hover) {
+    .tile--events:hover .date--a { transform: translate(-134%, -44%) rotate(-8deg) scale(.86); }
+    .tile--events:hover .date--c { transform: translate(34%, -44%) rotate(8deg) scale(.86); }
+    .tile--events:hover .date--b { transform: translate(-50%, -58%); }
+  }
+  .tile--events { background: #f5f3ef; }
 
   /* Venues: one light on an empty stage. On hover the light comes up. */
   .stage { margin-top: 0; }
@@ -212,12 +260,17 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
   }
   @keyframes pt-wave { from { transform: scaleY(1); } to { transform: scaleY(0.35); } }
 
-  /* Collective: the full-width feature. Words to the left over the photograph. */
-  .tile--collective { min-height: clamp(460px, 38vw, 620px); align-items: flex-start; justify-content: flex-end; text-align: left; padding: var(--pad); }
-  .tile--collective .tile__text { align-items: flex-start; }
+  /* Collective: the full-width feature. Words to the left; points of light and fine lines to the right. */
+  .tile--collective { min-height: clamp(440px, 34vw, 560px); align-items: flex-start; justify-content: flex-end; text-align: left; padding: var(--pad);
+    background: radial-gradient(70% 90% at 78% 40%, rgba(41, 151, 255, 0.10), transparent 70%), #0b0b0d; }
+  .tile--collective .tile__text { align-items: flex-start; max-width: 560px; }
   .tile--collective .tile__actions { justify-content: flex-start; }
   .tile--collective .tile__line { max-width: 36ch; }
-  .tile--collective::after { background: linear-gradient(90deg, rgba(8, 8, 10, 0.86) 0%, rgba(8, 8, 10, 0.4) 55%, rgba(8, 8, 10, 0.1) 100%) !important; }
+  .web { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; }
+  .web__lines line { stroke: rgba(244, 242, 238, 0.1); stroke-width: 1; }
+  .web__nodes circle { fill: rgba(244, 242, 238, 0.8); transition: fill .6s var(--ease), r .6s var(--ease); }
+  .web__nodes circle:nth-child(3n) { fill: #2997ff; }
+  @media (hover: hover) { .tile--collective:hover .web__lines line { stroke: rgba(244, 242, 238, 0.24); } }
 
   /* Opus Verified: one slim line across the grid, seal, statement and the way in. */
   .vstrip { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px 22px; padding: 26px 28px;
@@ -230,8 +283,6 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
   .vstrip__seal :global(svg) { display: block; }
 
   /* Motion: quiet, one idea per tile. Fully visible without JS; global reduced-motion turns it off. */
-  :global(.js) .tile__photo { transform: scale(1.06); transition: transform 1.6s var(--ease); }
-  :global(.js) .tile.is-in .tile__photo { transform: scale(1); }
   :global(.js) .cities li { transform: translateY(6px); transition: transform 0.9s var(--ease); transition-delay: calc(0.2s + var(--i) * 0.07s); }
   :global(.js) .tile--charts.is-in .cities li { transform: none; }
 
@@ -246,6 +297,8 @@ const BARS = [0.34, 0.58, 0.82, 0.46, 0.94, 0.62, 0.38, 0.72, 0.5, 0.88, 0.42, 0
     .pt__grid { gap: 8px; }
     .tile { --pad: 48px; min-height: 500px; border-radius: 0; border-left: 0; border-right: 0; }
     .tile--collective { min-height: 520px; padding: var(--pad) 24px; }
+    .web { opacity: .55; }
+    .date { width: 32cqw; }
     .tile__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); }
     .tile__line { font-size: clamp(1.05rem, 4.6vw, 1.25rem); }
     .vstrip { border-radius: 0; border-left: 0; border-right: 0; padding: 32px 20px 36px; gap: 14px; flex-direction: column; }

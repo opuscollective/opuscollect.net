@@ -20,6 +20,8 @@
   --surface-sunken: #ebe7e1;   /* inputs on panels, wells, segmented tracks, image placeholders */
   --surface-hover: #f6f4f0;    /* row and button hover on a surface */
   --surface-raised: #ffffff;   /* selected segment, menus, popovers */
+  --nav-hover: rgba(26, 26, 28, 0.06);   /* header item hover, menu rows */
+  --nav-scrim: rgba(242, 239, 234, 0.38); /* the page behind an open header panel */
   --glass: rgba(255, 255, 255, 0.9);        /* translucent panels over the map */
   --glass-header: rgba(242, 239, 234, 0.86);
   --scrim: rgba(28, 24, 20, 0.32);
@@ -74,6 +76,8 @@
   --surface-sunken: #111113;
   --surface-hover: #232327;
   --surface-raised: #2a2a2f;
+  --nav-hover: rgba(242, 239, 234, 0.09);
+  --nav-scrim: rgba(8, 8, 10, 0.42);
   --glass: rgba(28, 28, 31, 0.92);
   --glass-header: rgba(20, 20, 22, 0.86);
   --scrim: rgba(0, 0, 0, 0.6);
@@ -119,6 +123,7 @@
   :root:not([data-theme]) {
     color-scheme: dark;
     --bg: #141416; --surface: #1c1c1f; --surface-sunken: #111113; --surface-hover: #232327; --surface-raised: #2a2a2f;
+    --nav-hover: rgba(242, 239, 234, 0.09); --nav-scrim: rgba(8, 8, 10, 0.42);
     --glass: rgba(28, 28, 31, 0.92); --glass-header: rgba(20, 20, 22, 0.86); --scrim: rgba(0, 0, 0, 0.6);
     --text: #f2efea; --text-2: #b8b2ba; --text-3: #9a949c;
     --line-faint: rgba(242, 239, 234, 0.06); --line: rgba(242, 239, 234, 0.1); --line-strong: rgba(242, 239, 234, 0.18);

@@ -5,7 +5,7 @@ import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import { SPECIALTIES, allSpecialties } from '@/data/specialties';
 import { PLACE_BY_ID, visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
-import { relationship } from '@/server/connections';
+import { relationship, DEFAULT_INTRO, INTRO_MAX } from '@/server/connections';
 import { connectionCount } from '@/server/messages';
 import { profileReleases } from '@/server/releases';
 import { RELEASE_KINDS } from '@/data/music';
@@ -63,34 +63,62 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           ) : !viewer ? (
             p.openToCollab && <a class="btn-app" href={'/sign-in?next=' + encodeURIComponent('/m/' + p.handle + '?connect=1')}>Connect</a>
           ) : rel?.state === 'connected' ? (
-            <button class="btn-app" type="button" data-message-handle={p.handle}>Message</button>
+            <>
+              <span class="mp__state" data-conn-state="connected">Connected</span>
+              <button class="btn-app" type="button" data-message-handle={p.handle}>Message</button>
+            </>
           ) : rel?.state === 'sent' ? (
-            <a class="btn-app btn-app--ghost" href="/account/connections" title="Your request is waiting for a reply">Pending</a>
+            <>
+              <span class="mp__state" data-conn-state="sent">Request sent</span>
+              <button class="btn-app btn-app--ghost" type="button" data-conn-act="withdraw" data-conn-id={rel.id}>Cancel request</button>
+            </>
           ) : rel?.state === 'received' ? (
-            <a class="btn-app" href="/account/connections">Respond to request</a>
+            <>
+              <button class="btn-app" type="button" data-conn-act="accept" data-conn-id={rel.id}>Accept</button>
+              <button class="btn-app btn-app--ghost" type="button" data-conn-act="decline" data-conn-id={rel.id}>Decline</button>
+            </>
           ) : rel?.state === 'none' && p.openToCollab ? (
-            <button class="btn-app" type="button" data-connect-open>Connect</button>
+            <button class="btn-app" type="button" data-connect-open aria-haspopup="dialog">Connect</button>
           ) : null}
           {viewer && !isOwner && (
             <details class="mp__more">
               <summary aria-label="More actions">···</summary>
-              <div>{rel?.state === 'connected' && <a class="mp__more-link" href="/account/connections">Connected · manage</a>}<button type="button" data-block={rel?.state === 'blocked' ? 'off' : 'on'}>{rel?.state === 'blocked' ? 'Unblock' : 'Block'} {p.displayName}</button></div>
+              <div>
+                {rel?.state === 'connected' && <button type="button" class="mp__more-plain" data-conn-act="remove" data-conn-id={rel.id}>Remove connection</button>}
+                {rel?.state === 'connected' && <a class="mp__more-link" href="/network">My Network</a>}
+                <button type="button" data-block={rel?.state === 'blocked' ? 'off' : 'on'}>{rel?.state === 'blocked' ? 'Unblock' : 'Block'} {p.displayName}</button>
+              </div>
             </details>
           )}
         </div>
       </header>
+      {rel?.state === 'received' && <p class="mp__note" data-conn-note>{p.displayName} asked to connect with you. You can also answer in <a class="link" href="/network?tab=received">My Network</a>.</p>}
+      <p class="dim mu-err" data-conn-status role="alert"></p>
 
       {viewer && !isOwner && rel?.state === 'none' && p.openToCollab && (
-        <form class="panel mp__connect" data-connect hidden novalidate>
-          <h2>Connect with {p.displayName}</h2>
-          <p class="dim">Introduce yourself and what you’d like to make together. If they accept, you’ll both see each other’s email.</p>
-          <input type="hidden" name="to" value={p.handle} />
-          <label class="field" style="margin-top:14px"><span class="sr-only">Introduction</span>
-            <textarea class="textarea" name="message" maxlength="600" rows="4" placeholder="Hi, I’m a producer in Atlanta working on an R&B EP. I’d love a topline on one track…"></textarea>
-          </label>
-          <div data-status class="form-status" style="margin-top:12px"></div>
-          <div class="row" style="margin-top:12px"><button class="btn-app" type="submit">Send request</button><button class="btn-app btn-app--ghost" type="button" data-connect-cancel>Cancel</button></div>
-        </form>
+        <dialog class="cdlg" data-connect aria-labelledby="cdlg-title">
+          <form class="cdlg__form" data-connect-form novalidate>
+            <div class="cdlg__who">
+              <span class="cdlg__av" style={p.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''} aria-hidden="true"></span>
+              <span>
+                <b id="cdlg-title">Connect with {p.displayName}</b>
+                <small>{[roles[0], where].filter(Boolean).join(' · ') || 'Opus member'}</small>
+              </span>
+            </div>
+            <input type="hidden" name="to" value={p.handle} />
+            <label class="field cdlg__field">
+              <span>Introduction <span class="dim">(optional)</span></span>
+              <textarea class="textarea" name="message" maxlength={INTRO_MAX} rows="4" data-intro>{DEFAULT_INTRO}</textarea>
+              <small class="cdlg__count"><span data-intro-count>{DEFAULT_INTRO.length}</span>/{INTRO_MAX}</small>
+            </label>
+            <p class="cdlg__fine">{p.displayName} sees this with your request. It isn’t a message; once you’re connected you can message each other.</p>
+            <div data-status class="form-status"></div>
+            <div class="cdlg__row">
+              <button class="btn-app btn-app--ghost" type="button" data-connect-cancel>Cancel</button>
+              <button class="btn-app" type="submit">Send request</button>
+            </div>
+          </form>
+        </dialog>
       )}
 
       <div class="mp__grid">
@@ -178,7 +206,24 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__more button { width: 100%; padding: 10px 12px; border: 0; background: none; color: var(--danger); text-align: left; font: inherit; font-size: 14px; border-radius: 6px; cursor: pointer; }
   .mp__more button:hover, .mp__more-link:hover { background: var(--surface-hover); }
   .mp__more-link { display: block; padding: 10px 12px; border-radius: 6px; color: var(--text); font-size: 14px; text-decoration: none; }
-  .mp__connect { margin-top: 28px; }
+  .mp__state { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: var(--r-pill); background: var(--nav-hover); font-size: 13px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
+  .mp__note { margin: 16px 0 0; font-size: 14px; color: var(--text-2); }
+  .mp__more-plain { color: var(--text) !important; }
+  .cdlg { width: min(440px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 18px; background: var(--surface-raised); color: var(--text); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--line-faint); }
+  .cdlg::backdrop { background: rgba(10, 10, 12, 0.36); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .cdlg[open] { animation: cdlg-in .22s var(--ease); }
+  @keyframes cdlg-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+  @media (prefers-reduced-motion: reduce) { .cdlg[open] { animation: none; } }
+  .cdlg__form { display: flex; flex-direction: column; gap: 16px; padding: 22px; }
+  .cdlg__who { display: flex; align-items: center; gap: 14px; }
+  .cdlg__who b { display: block; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .cdlg__who small { display: block; margin-top: 2px; font-size: 13px; color: var(--text-3); }
+  .cdlg__av { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; }
+  .cdlg__field .textarea { min-height: 112px; padding: 12px 14px; resize: vertical; line-height: 1.5; }
+  .cdlg__count { align-self: flex-end; font-variant-numeric: tabular-nums; }
+  .cdlg__fine { margin: -4px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-3); }
+  .cdlg__row { display: flex; justify-content: flex-end; gap: 8px; }
+  @media (max-width: 520px) { .cdlg__row > * { flex: 1; } }
   .mp__grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: clamp(32px, 6vw, 80px); margin-top: 48px; }
   .mp__sec + .mp__sec { margin-top: 40px; }
   .mp__sec h2 { color: var(--c-fg-faint); margin-bottom: 14px; }
@@ -203,13 +248,33 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
 
 <script>
   import { bindForm } from '@/scripts/form';
-  const form = document.querySelector<HTMLFormElement>('[data-connect]');
+  // Connect: a compact dialog with an optional, editable introduction. Nothing is sent until "Send request".
+  const dlg = document.querySelector<HTMLDialogElement>('[data-connect]');
+  const form = dlg?.querySelector<HTMLFormElement>('[data-connect-form]');
   const open = document.querySelector<HTMLButtonElement>('[data-connect-open]');
-  open?.addEventListener('click', () => { if (form) { form.hidden = false; form.querySelector('textarea')?.focus(); } });
-  // Arriving from an World preview's Connect button opens the introduction form directly.
-  if (new URLSearchParams(location.search).get('connect') === '1' && open && form) { form.hidden = false; form.scrollIntoView({ block: 'center' }); form.querySelector('textarea')?.focus({ preventScroll: true }); }
-  document.querySelector('[data-connect-cancel]')?.addEventListener('click', () => { if (form) form.hidden = true; });
-  if (form) bindForm(form, { url: '/api/connections', busyLabel: 'Sending…', onSuccess: () => location.reload() });
+  const intro = dlg?.querySelector<HTMLTextAreaElement>('[data-intro]');
+  const count = dlg?.querySelector<HTMLElement>('[data-intro-count]');
+  intro?.addEventListener('input', () => { if (count) count.textContent = String(intro.value.length); });
+  const openDlg = () => { if (!dlg) return; dlg.showModal(); intro?.focus(); intro?.setSelectionRange(intro.value.length, intro.value.length); };
+  open?.addEventListener('click', openDlg);
+  dlg?.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // click outside the card
+  dlg?.querySelector('[data-connect-cancel]')?.addEventListener('click', () => dlg.close());
+  dlg?.addEventListener('close', () => open?.focus());
+  // Arriving from a World preview's Connect button opens the dialog directly.
+  if (new URLSearchParams(location.search).get('connect') === '1' && open) openDlg();
+  if (form) bindForm(form, { url: '/api/connections', busyLabel: 'Sending…', onSuccess: () => { location.href = location.pathname; } });
+
+  // Cancel, accept, decline and remove, right here on the profile.
+  const cstatus = document.querySelector<HTMLElement>('[data-conn-status]');
+  document.querySelectorAll<HTMLButtonElement>('[data-conn-act]').forEach((b) => b.addEventListener('click', async () => {
+    const act = b.dataset.connAct!;
+    if (act === 'remove' && !confirm('Remove this connection? You can connect again later.')) return;
+    b.disabled = true; if (cstatus) cstatus.textContent = '';
+    const r = await fetch(`/api/connections/${b.dataset.connId}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: act }) });
+    if (r.ok) { location.href = location.pathname; return; }
+    b.disabled = false;
+    if (cstatus) cstatus.textContent = (await r.json().catch(() => ({}))).error ?? 'Something went wrong.';
+  }));
 
   document.querySelector<HTMLButtonElement>('[data-block]')?.addEventListener('click', async (e) => {
     const b = e.currentTarget as HTMLButtonElement;

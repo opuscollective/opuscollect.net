@@ -16,29 +16,24 @@ export const SITE = {
   location: 'Birmingham, AL',
 };
 
-export interface NavLink { label: string; href: string; soon?: boolean; external?: boolean }
-/** A product that lives inside a nav area (Studios and Venues in World, Airplay in Works, Events in Future). */
-export interface NavProduct { label: string; href: string; line: string; soon?: boolean }
-export interface NavItem { label: string; href: string; lead: string; products?: NavProduct[]; groups: { title: string; links: NavLink[] }[]; soon?: boolean }
+export interface NavLink { label: string; href: string; soon?: boolean; external?: boolean; /** Opens the Messages panel instead of navigating (when it is available). */ messages?: boolean; /** Shows the live count of pending connection requests. */ count?: 'requests' }
+export interface NavItem { label: string; href: string; line: string; soon?: boolean; groups: { title?: string; links: NavLink[] }[] }
 
 /**
- * Main navigation (Milestone 1, 2026-11-14): ten products in six areas, so the header never crowds.
- *   World (Studios, Venues) · Works (Airplay) · Future (Events) · Charts · Network · Collective
- * Desktop: six words, each opening a panel that leads with its products. Phones: all ten products, the ones
- * inside an area listed under it. Products still in development say "Coming soon" and open a page that says so.
+ * Main navigation (Chunk 1.5, 2026-11-14): all ten Opus products, each directly in the header.
+ * Desktop: one row; each word opens a compact panel sized to its links. Narrower screens move the
+ * last few into "More" rather than squeezing the type. Phones: every product in the menu, nothing hover-only.
+ * Products still in development say "Coming soon" and open a page that says so.
  */
 export const NAV: NavItem[] = [
   {
-    label: 'World', href: '/world', lead: 'The people, studios and stages behind the music, on one map.',
-    products: [
-      { label: 'Studios', href: '/studios', line: 'Find your next session.' },
-      { label: 'Venues', href: '/venues', line: 'Find your stage.', soon: true },
-    ],
+    label: 'World', href: '/world', line: 'The people, studios and stages behind the music, on one map.',
     groups: [
       { title: 'Explore', links: [
         { label: 'Open the map', href: '/world' },
         { label: 'People', href: '/musicians' },
         { label: 'Organizations', href: '/organizations' },
+        { label: 'Verified members', href: '/world?verified=1' },
       ] },
       { title: 'Cities', links: [
         { label: 'Birmingham', href: '/world/birmingham' },
@@ -46,72 +41,78 @@ export const NAV: NavItem[] = [
         { label: 'Los Angeles', href: '/world/los-angeles' },
         { label: 'London', href: '/world/london' },
       ] },
-      { title: 'Trust', links: [
-        { label: 'Opus Verified', href: '/verified' },
-        { label: 'Verified members', href: '/world?verified=1' },
-        { label: 'List your studio', href: '/business' },
-      ] },
     ],
   },
   {
-    label: 'Works', href: '/works', lead: 'Your work speaks for itself: releases, credits, portfolio and achievements.',
-    products: [
-      { label: 'Airplay', href: '/airplay', line: 'Get your music heard.', soon: true },
-    ],
-    groups: [
-      { title: 'Your work', links: [
-        { label: 'My works', href: '/works' },
-        { label: 'Start a release', href: '/start' },
-        { label: 'Portfolio and achievements', href: '/account/profile' },
-      ] },
-      { title: 'Discover', links: [
-        { label: 'Releases', href: '/releases' },
-      ] },
-    ],
+    label: 'Works', href: '/works', line: 'Your work speaks for itself.',
+    groups: [{ links: [
+      { label: 'My works', href: '/works' },
+      { label: 'Start a release', href: '/start' },
+      { label: 'Portfolio and achievements', href: '/account/profile' },
+      { label: 'Releases on Opus', href: '/releases' },
+    ] }],
   },
   {
-    label: 'Future', href: '/future', lead: 'What’s ahead for you, and for all of us.',
-    products: [
-      { label: 'Events', href: '/events', line: 'Make something happen.' },
-    ],
-    groups: [
-      { title: 'Future', links: [
-        { label: 'My Future', href: '/future' },
-        { label: 'Our Future', href: '/future?tab=our' },
-      ] },
-      { title: 'Events', links: [
-        { label: 'Create an event', href: '/events/new' },
-        { label: 'The Opus Summit', href: '/summit' },
-      ] },
-    ],
+    label: 'Studios', href: '/studios', line: 'Find your next session.',
+    groups: [{ links: [
+      { label: 'Find a studio', href: '/studios' },
+      { label: 'Your bookings', href: '/account/bookings' },
+      { label: 'List your studio', href: '/business' },
+    ] }],
   },
   {
-    label: 'Charts', href: '/charts', lead: 'Rising artists, city by city. No pay-to-rank.', soon: true,
-    groups: [
-      { title: 'Opus Charts', links: [
-        { label: 'About Charts', href: '/charts', soon: true },
-      ] },
-    ],
+    label: 'Venues', href: '/venues', line: 'Find your stage.', soon: true,
+    groups: [{ links: [
+      { label: 'What’s coming', href: '/venues' },
+      { label: 'Create an event at a venue', href: '/events/new' },
+    ] }],
   },
   {
-    label: 'Network', href: '/network', lead: 'Your connections, inquiries and collaborations.', soon: true,
-    groups: [
-      { title: 'Network', links: [
-        { label: 'Connections', href: '/account/connections' },
-        { label: 'Bookings', href: '/account/bookings' },
-        { label: 'Messages and inquiries', href: '/network', soon: true },
-      ] },
-    ],
+    label: 'Events', href: '/events', line: 'Make something happen.',
+    groups: [{ links: [
+      { label: 'Upcoming events', href: '/events' },
+      { label: 'Create an event', href: '/events/new' },
+      { label: 'The Opus Summit', href: '/summit' },
+    ] }],
   },
   {
-    label: 'Collective', href: '/collective', lead: 'The people and the culture around Opus.',
-    groups: [
-      { title: 'Opus Collective', links: [
-        { label: 'About the Collective', href: '/collective' },
-        { label: 'Community programs', href: '/community' },
-        { label: 'The Opus Summit', href: '/summit' },
-      ] },
-    ],
+    label: 'Airplay', href: '/airplay', line: 'Get your music heard.', soon: true,
+    groups: [{ links: [
+      { label: 'What’s coming', href: '/airplay' },
+      { label: 'Get your releases ready', href: '/works' },
+    ] }],
+  },
+  {
+    label: 'Future', href: '/future', line: 'What’s ahead for you, and for all of us.',
+    groups: [{ links: [
+      { label: 'My Future', href: '/future?tab=mine' },
+      { label: 'Our Future', href: '/future?tab=our' },
+      { label: 'Create an event', href: '/events/new' },
+    ] }],
+  },
+  {
+    label: 'Charts', href: '/charts', line: 'Every city has a sound. No pay-to-rank.', soon: true,
+    groups: [{ links: [
+      { label: 'About Charts', href: '/charts' },
+    ] }],
+  },
+  {
+    label: 'Network', href: '/network', line: 'Turn discovery into working relationships.',
+    groups: [{ links: [
+      { label: 'Discover people', href: '/musicians' },
+      { label: 'My connections', href: '/network' },
+      { label: 'Received requests', href: '/network?tab=received', count: 'requests' },
+      { label: 'Sent requests', href: '/network?tab=sent' },
+      { label: 'Messages', href: '/network?messages=1', messages: true },
+    ] }],
+  },
+  {
+    label: 'Collective', href: '/collective', line: 'Beyond the platform.',
+    groups: [{ links: [
+      { label: 'About the Collective', href: '/collective' },
+      { label: 'Community programs', href: '/community' },
+      { label: 'The Opus Summit', href: '/summit' },
+    ] }],
   },
 ];
 
@@ -120,7 +121,7 @@ export const ACCOUNT_MENU = [
   { label: 'Your profile', href: '/account/profile' },
   { label: 'Your works', href: '/works' },
   { label: 'My Future', href: '/future' },
-  { label: 'Connections', href: '/account/connections' },
+  { label: 'My Network', href: '/network' },
   { label: 'Bookings', href: '/account/bookings' },
   { label: 'Business dashboard', href: '/business' },
   { label: 'Account settings', href: '/account' },
