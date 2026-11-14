@@ -159,6 +159,13 @@ const topCities = CITIES.slice(0, 8);
     /* The frame stays open at the bottom: the product grid below continues the same dark canvas and closes it. */
     .hero { min-height: max(calc(100svh - 12px), 680px); margin: 0 12px; }
   }
+  /* Tablets and up (Bogo, 2026-11-14): the words sit in the bottom half, over the lower Earth; the Earth stays put. */
+  @media (min-width: 761px) {
+    .hero { justify-content: flex-end; padding-top: 120px; padding-bottom: clamp(64px, 11vh, 140px); }
+    .hero__veil { background: radial-gradient(48% 30% at 50% 74%, color-mix(in srgb, var(--bg) 80%, transparent) 0%, color-mix(in srgb, var(--bg) 46%, transparent) 58%, transparent 100%),
+      linear-gradient(0deg, var(--bg) 0%, var(--bg) 3%, color-mix(in srgb, var(--bg) 86%, transparent) 10%, color-mix(in srgb, var(--bg) 62%, transparent) 19%,
+        color-mix(in srgb, var(--bg) 34%, transparent) 29%, color-mix(in srgb, var(--bg) 12%, transparent) 38%, transparent 46%); }
+  }
   /* Faint stars behind the Earth. Three tiled layers at different sizes so no pattern shows. */
   .hero::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.9;
     /* Thin out toward the bottom so the starfield never stops at a line. */
