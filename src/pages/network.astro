@@ -3,7 +3,9 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import ComingSoon from '@/components/layout/ComingSoon.astro';
 ---
 <BaseLayout title="Network" description="Your connections, inquiries, collaborations and Partner Sessions on Opus." noindex>
-  <ComingSoon kicker="Network" phase="In development" title="Connections and inquiries, in one place." body="Message the people you meet in World, answer inquiries and keep track of collaborations. Your current connections are in your account until then.">
+  <ComingSoon kicker="Network" phase="In development" title="Connections and inquiries, in one place." body="Talk to the world in Global Chat, connect with the people you meet, then message them privately. Inquiries and collaborations come next.">
+    <p class="nw__count" data-nw-count hidden></p>
+    <p class="nw__actions"><button type="button" class="btn-app" data-open-messages="global">Open Global Chat</button><button type="button" class="btn-app btn-app--ghost" data-open-messages="private">Private messages</button></p>
     <p><a class="link" href="/account/connections">See your connections</a></p>
     <!-- Partner Sessions: introduced here, where collaboration lives. Not bookable yet; today it points to the real "open to collaborate" filter in World. -->
     <div class="ps">
@@ -13,7 +15,20 @@ import ComingSoon from '@/components/layout/ComingSoon.astro';
     </div>
   </ComingSoon>
 </BaseLayout>
+<script>
+  // Accepted connections only, for the signed-in member. Nothing is shown to visitors.
+  if (document.cookie.split('; ').includes('opus_in=1')) {
+    fetch('/api/connections').then((r) => (r.ok ? r.json() : null)).then((d: { connected?: unknown[] } | null) => {
+      const el = document.querySelector<HTMLElement>('[data-nw-count]');
+      if (!d || !el || !Array.isArray(d.connected)) return;
+      el.textContent = `You have ${d.connected.length} ${d.connected.length === 1 ? 'connection' : 'connections'}.`;
+      el.hidden = false;
+    }).catch(() => {});
+  }
+</script>
 <style>
+  .nw__count { margin: 0 0 12px; color: var(--text-2); }
+  .nw__actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
   .ps { max-width: 560px; margin-top: 8px; padding-top: 22px; border-top: 1px solid var(--line); }
   .ps__kicker { margin: 0 0 6px; font-size: 13px; letter-spacing: 0.02em; color: var(--text-3); }
   .ps__body { margin: 0 0 10px; color: var(--text-2); }

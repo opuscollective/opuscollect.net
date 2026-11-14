@@ -42,6 +42,7 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
     const sp = allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s]?.label ?? s);
     roles = `<p class="pv__roles">${sp.map((s, i) => `<span${i === 0 ? ' class="is-primary"' : ''}>${esc(s)}</span>`).join('')}</p>${l.genres.length ? `<p class="pv__genres">${esc(l.genres.join(' · '))}</p>` : ''}`;
     status = l.openToCollab ? '<p class="wc__status is-live">Open to collaborate</p>' : '<p class="wc__status">Not taking new collaborations</p>';
+    if (typeof d.connections === 'number' && !l.isSample) status += `<p class="pv__conns">${d.connections} ${d.connections === 1 ? 'connection' : 'connections'}</p>`;
   } else {
     roles = `<p class="pv__roles"><span class="is-primary">${esc(kindLabel(l))}</span></p>`;
     if (l.kind === 'studio') {

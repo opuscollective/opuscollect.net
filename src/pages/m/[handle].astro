@@ -6,6 +6,7 @@ import { SPECIALTIES, allSpecialties } from '@/data/specialties';
 import { PLACE_BY_ID, visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
 import { relationship } from '@/server/connections';
+import { connectionCount } from '@/server/messages';
 import { profileReleases } from '@/server/releases';
 import { RELEASE_KINDS } from '@/data/music';
 import '@/styles/app.css';
@@ -30,6 +31,8 @@ const metroPlace = p.placeId ? PLACE_BY_ID.get(PLACE_BY_ID.get(p.placeId)?.metro
 const worldCity = p.locationVisibility === 'city' || p.locationVisibility === 'metro' ? metroPlace?.name : undefined;
 const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
 const rel = viewer ? await relationship(db, viewer.id, ownerId) : null;
+// Accepted connections only; never estimated.
+const connections = await connectionCount(db, ownerId);
 // The member's record: releases they put out, plus releases where they confirmed a credit.
 const record = await profileReleases(db, ownerId);
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
@@ -50,6 +53,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {roles.length > 0 && <p class="mp__roles"><span class="mp__primary">{roles[0]}</span>{roles.slice(1).map((r) => <span>{r}</span>)}</p>}
           <p class="mp__meta">
             {where && <span>{where}</span>}
+            <span class="mp__conns">{connections} {connections === 1 ? 'connection' : 'connections'}</span>
             <span class:list={['mp__collab', { 'is-on': p.openToCollab }]}>{p.openToCollab ? 'Open to collaboration' : 'Not taking new collaborations'}</span>
           </p>
         </div>
@@ -59,9 +63,9 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           ) : !viewer ? (
             p.openToCollab && <a class="btn-app" href={'/sign-in?next=' + encodeURIComponent('/m/' + p.handle + '?connect=1')}>Connect</a>
           ) : rel?.state === 'connected' ? (
-            <a class="btn-app btn-app--ghost" href="/account/connections">Connected</a>
+            <button class="btn-app" type="button" data-message-handle={p.handle}>Message</button>
           ) : rel?.state === 'sent' ? (
-            <a class="btn-app btn-app--ghost" href="/account/connections">Request sent</a>
+            <a class="btn-app btn-app--ghost" href="/account/connections" title="Your request is waiting for a reply">Pending</a>
           ) : rel?.state === 'received' ? (
             <a class="btn-app" href="/account/connections">Respond to request</a>
           ) : rel?.state === 'none' && p.openToCollab ? (
@@ -70,7 +74,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {viewer && !isOwner && (
             <details class="mp__more">
               <summary aria-label="More actions">···</summary>
-              <div><button type="button" data-block={rel?.state === 'blocked' ? 'off' : 'on'}>{rel?.state === 'blocked' ? 'Unblock' : 'Block'} {p.displayName}</button></div>
+              <div>{rel?.state === 'connected' && <a class="mp__more-link" href="/account/connections">Connected · manage</a>}<button type="button" data-block={rel?.state === 'blocked' ? 'off' : 'on'}>{rel?.state === 'blocked' ? 'Unblock' : 'Block'} {p.displayName}</button></div>
             </details>
           )}
         </div>
@@ -172,7 +176,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__more summary::-webkit-details-marker { display: none; }
   .mp__more div { position: absolute; right: 0; top: 56px; z-index: 5; min-width: 200px; padding: 6px; border: 1px solid var(--c-ink-600); border-radius: var(--r-md); background: var(--surface); }
   .mp__more button { width: 100%; padding: 10px 12px; border: 0; background: none; color: var(--danger); text-align: left; font: inherit; font-size: 14px; border-radius: 6px; cursor: pointer; }
-  .mp__more button:hover { background: var(--surface-hover); }
+  .mp__more button:hover, .mp__more-link:hover { background: var(--surface-hover); }
+  .mp__more-link { display: block; padding: 10px 12px; border-radius: 6px; color: var(--text); font-size: 14px; text-decoration: none; }
   .mp__connect { margin-top: 28px; }
   .mp__grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: clamp(32px, 6vw, 80px); margin-top: 48px; }
   .mp__sec + .mp__sec { margin-top: 40px; }

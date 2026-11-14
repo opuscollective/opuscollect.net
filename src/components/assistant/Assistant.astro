@@ -96,6 +96,7 @@ import Icon from '../ui/Icon.astro';
 
   function open(from?: HTMLElement | null) {
     opener = from ?? (document.activeElement as HTMLElement | null);
+    document.dispatchEvent(new CustomEvent('opus:guide-open'));
     if (!started) { bubble(welcome(), 'opus'); setChips(suggestionsFor(location.pathname)); started = true; }
     panel.hidden = false;
     scrim.hidden = !phone.matches;
@@ -116,6 +117,8 @@ import Icon from '../ui/Icon.astro';
   }
 
   launch.addEventListener('click', () => (panel.hidden ? open(launch) : close()));
+  // Messages shares the corner: opening it closes the guide.
+  document.addEventListener('opus:messages-open', () => { if (!panel.hidden) close(false); });
   panel.querySelector('[data-oa-close]')!.addEventListener('click', () => close());
   scrim.addEventListener('click', () => close());
   form.addEventListener('submit', (e) => { e.preventDefault(); ask(input.value); });

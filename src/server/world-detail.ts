@@ -4,6 +4,7 @@
  * queries as /api/world, so a preview can never reveal more than the directory does.
  * Never selects private fields (studio address, email, owner).
  */
+import { connectionCount } from './messages';
 import type { Listing } from '@/types/directory';
 import { profileReleases } from './releases';
 import { RELEASE_KINDS } from '@/data/music';
@@ -33,6 +34,8 @@ export interface ProfileDetail {
   /** A button is only live when it does something. Otherwise it carries the honest reason. */
   actions: { primary: PreviewAction; profile: PreviewAction };
   isSample?: boolean;
+  /** Accepted connections, real members only (never on sample listings). */
+  connections?: number;
 }
 
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
@@ -79,6 +82,7 @@ async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | n
   if (l.kind === 'musician') {
     return {
       ...base,
+      connections: await connectionCount(db, r.owner_user_id).catch(() => undefined),
       actions: {
         primary: l.openToCollab ? { label: 'Connect', href: l.href + '?connect=1' } : { label: 'Connect', disabledReason: 'Not taking new collaborations right now' },
         profile: { label: 'View full profile', href: l.href },

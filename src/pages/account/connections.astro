@@ -44,7 +44,7 @@ const when = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'sh
                 <span class="cx__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''}></span>
                 <span><b>{c.other.name}</b><small>{sub(c)}</small></span>
               </a>
-              <div class="row"><a class="btn-app btn-app--ghost" href={`mailto:${c.other.email}`}>Email {c.other.email}</a><button class="btn-app btn-app--ghost" data-act="remove">Remove</button></div>
+              <div class="row">{c.other.handle && <button class="btn-app" type="button" data-message-handle={c.other.handle}>Message</button>}<a class="btn-app btn-app--ghost" href={`mailto:${c.other.email}`}>Email {c.other.email}</a><button class="btn-app btn-app--ghost" data-act="remove">Remove</button></div>
             </li>
           ))}</ul>
         )}

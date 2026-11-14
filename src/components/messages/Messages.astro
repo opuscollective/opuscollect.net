@@ -1,0 +1,237 @@
+---
+/**
+ * Messages: Global Chat and private messages in one place.
+ * Desktop: a floating panel, bottom-right, never full screen. Phones: full screen, like an app.
+ * The launcher sits beside the Opus chip, shows real unread counts, and never opens by itself.
+ * Behaviour lives in src/scripts/messages.ts.
+ */
+---
+<button type="button" class="om-launch" data-om-launch aria-controls="opus-messages" aria-expanded="false" aria-label="Messages">
+  <svg class="om-launch__icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5.5h16v10H9.5L5.5 19v-3.5H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+  <span class="om-launch__label" aria-hidden="true">Messages</span>
+  <span class="om-badge" data-om-badge hidden></span>
+  <span class="om-dot" data-om-dot hidden aria-hidden="true"></span>
+</button>
+
+<section class="om" id="opus-messages" data-om role="dialog" aria-modal="false" aria-label="Messages" hidden>
+  <header class="om__head">
+    <button type="button" class="om__icon om__back" data-om-back aria-label="Back">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="om__tabs" role="tablist" aria-label="Conversations">
+      <button type="button" role="tab" class="om__tab" data-om-tab="global" aria-selected="true" aria-controls="om-global" id="om-tab-global">Global<span class="om-dot om-dot--tab" data-om-gdot hidden></span></button>
+      <button type="button" role="tab" class="om__tab" data-om-tab="private" aria-selected="false" aria-controls="om-private" id="om-tab-private">Private<span class="om-count" data-om-pcount hidden></span></button>
+    </div>
+    <button type="button" class="om__icon om__min" data-om-min aria-label="Minimize messages">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 9.5 12 15.5l6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </header>
+
+  <!-- Global -->
+  <div class="om__view" id="om-global" role="tabpanel" aria-labelledby="om-tab-global" data-om-view="global">
+    <div class="om__banner" data-g-banner hidden></div>
+    <div class="om__scroll" data-g-scroll>
+      <p class="om__top" data-g-top hidden></p>
+      <div class="om__list" data-g-list role="log" aria-live="polite" aria-relevant="additions" aria-label="Global Chat"></div>
+      <div class="om__state" data-g-state></div>
+    </div>
+    <button type="button" class="om__new" data-g-new hidden>New messages <span aria-hidden="true">↓</span></button>
+    <div class="om__foot" data-g-foot>
+      <p class="om__note" data-g-note role="status" aria-live="polite"></p>
+      <form class="om__composer" data-g-form autocomplete="off" hidden>
+        <label for="om-g-input" class="sr-only">Message everyone</label>
+        <textarea id="om-g-input" rows="1" maxlength="500" placeholder="Say something to the world" enterkeyhint="send" data-g-input></textarea>
+        <button type="submit" class="om__send" data-g-send>Send</button>
+      </form>
+      <button type="button" class="om__fake" data-g-try hidden>Say something to the world</button>
+      <div class="om__join" data-g-join hidden>
+        <p>Join Opus to say something to the world.</p>
+        <div class="om__join-actions"><a class="om__btn om__btn--solid" data-g-joinlink href="/sign-up">Join</a><a class="om__btn" data-g-signin href="/sign-in">Sign in</a></div>
+      </div>
+      <p class="om__rule">No promo. Just conversation.</p>
+    </div>
+  </div>
+
+  <!-- Private -->
+  <div class="om__view" id="om-private" role="tabpanel" aria-labelledby="om-tab-private" data-om-view="private" hidden>
+    <div class="om__scroll om__scroll--home" data-p-home>
+      <div data-p-notes></div>
+      <div data-p-convos></div>
+    </div>
+    <div class="om__convo" data-p-convo hidden>
+      <div class="om__with" data-p-with></div>
+      <div class="om__scroll" data-p-scroll>
+        <p class="om__top" data-p-top hidden></p>
+        <div class="om__list om__list--dm" data-p-list role="log" aria-live="polite" aria-relevant="additions"></div>
+      </div>
+      <div class="om__foot">
+        <p class="om__note" data-p-note role="status" aria-live="polite"></p>
+        <form class="om__composer" data-p-form autocomplete="off">
+          <label for="om-p-input" class="sr-only">Message</label>
+          <textarea id="om-p-input" rows="1" maxlength="2000" placeholder="Message" enterkeyhint="send" data-p-input></textarea>
+          <button type="submit" class="om__send" data-p-send>Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="om-menu" data-om-menu role="menu" hidden></div>
+</section>
+
+<script>
+  import '@/scripts/messages';
+</script>
+
+<style is:global>
+  /* ---------- Launcher: beside the Opus chip, same glass, same height ---------- */
+  .om-launch { position: fixed; z-index: 45; bottom: calc(20px + env(safe-area-inset-bottom));
+    right: calc(max(20px, env(safe-area-inset-right)) + var(--oa-w, 0px) + var(--oa-gap, 0px));
+    display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px 0 14px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--r-pill);
+    background: rgba(16, 16, 18, 0.78); color: #f4f2ee; backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.6); font-size: 14px; font-weight: 500; letter-spacing: -0.01em;
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+  .om-launch:hover { border-color: rgba(255, 255, 255, 0.3); background: rgba(16, 16, 18, 0.9); }
+  .om-launch:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  .om-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #f4f2ee; color: #111; font-size: 11px; font-weight: 600; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+  .om-dot { width: 6px; height: 6px; border-radius: 50%; background: #f4f2ee; opacity: .85; }
+  .om-dot--tab { display: inline-block; margin-left: 6px; vertical-align: middle; background: currentColor; }
+  .om-badge[hidden], .om-dot[hidden], .om-count[hidden] { display: none; }
+  .om-open .om-launch, .om-open .oa-launch, .oa-open .om-launch { opacity: 0; pointer-events: none; transform: translateY(6px); }
+  body:has(.hero.is-diving) .om-launch, body:has(.world[data-entry]) .om-launch { opacity: 0; pointer-events: none; }
+
+  /* ---------- Panel ---------- */
+  .om { position: fixed; z-index: 70; right: max(16px, env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; width: clamp(360px, 26vw, 420px); height: min(640px, calc(100svh - 96px));
+    background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.5); font-size: 14px;
+    opacity: 0; transform: translateY(10px); transition: opacity .35s var(--ease), transform .45s var(--ease-glide); }
+  .om.is-open { opacity: 1; transform: none; }
+  .om.no-anim { transition: none; }
+  .om :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+  .om__head { display: flex; align-items: center; gap: 6px; padding: 8px 8px 8px 10px; border-bottom: 1px solid var(--line-faint); }
+  .om__icon { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--text-2); }
+  .om__icon:hover { background: var(--surface-hover); color: var(--text); }
+  .om__back { visibility: hidden; }
+  .om.in-convo .om__back { visibility: visible; }
+  .om__tabs { flex: 1; display: flex; justify-content: center; gap: 2px; padding: 3px; margin: 0 auto; max-width: 240px; border-radius: var(--r-pill); background: var(--bg); }
+  .om__tab { flex: 1; height: 30px; border: 0; border-radius: var(--r-pill); background: none; color: var(--text-3); font-size: 13px; font-weight: 500; }
+  .om__tab[aria-selected='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+  .om-count { display: inline-block; min-width: 16px; height: 16px; margin-left: 6px; padding: 0 4px; border-radius: 8px; background: var(--text); color: var(--bg); font-size: 10px; line-height: 16px; font-weight: 600; vertical-align: 1px; }
+
+  .om__view { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .om__view[hidden], .om__convo[hidden], .om__scroll--home[hidden] { display: none; }
+  .om__scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 0 6px; }
+  .om__top { margin: 6px 16px 10px; color: var(--text-3); font-size: 12px; text-align: center; }
+  .om__top a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+  .om__state { padding: 40px 28px; color: var(--text-3); text-align: center; line-height: 1.5; }
+  .om__state:empty { display: none; }
+  .om__state strong { display: block; margin-bottom: 4px; color: var(--text); font-weight: 500; }
+  .om__state button { margin-top: 12px; }
+  .om__banner { padding: 7px 14px; border-bottom: 1px solid var(--line-faint); background: var(--bg); color: var(--text-2); font-size: 12px; text-align: center; }
+
+  /* A message: avatar, name, public city and time, then words. Plain rows, not bubbles. */
+  .om-m { position: relative; display: grid; grid-template-columns: 32px 1fr; column-gap: 10px; padding: 7px 14px 3px; }
+  .om-m.is-cont { padding-top: 1px; }
+  .om-m.is-cont .om-m__av, .om-m.is-cont .om-m__head { display: none; }
+  .om-m.is-cont .om-m__text { grid-column: 2; }
+  .om-m:hover, .om-m:focus-within { background: var(--surface-hover); }
+  .om-m__av { grid-row: span 2; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: var(--bg); display: grid; place-items: center; color: var(--text-2); font-size: 12px; font-weight: 500; text-decoration: none; }
+  .om-m__av img { width: 100%; height: 100%; object-fit: cover; }
+  .om-m__head { display: flex; align-items: baseline; gap: 6px; min-width: 0; padding-right: 26px; }
+  .om-m__name { color: var(--text); font-weight: 500; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  a.om-m__name:hover { text-decoration: underline; text-underline-offset: 2px; }
+  .om-m__seal { flex: none; align-self: center; width: 13px; height: 13px; }
+  .om-m__meta { flex: none; color: var(--text-3); font-size: 12px; white-space: nowrap; }
+  .om-m__text { margin: 1px 0 0; color: var(--text); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .om-m.is-mine .om-m__name::after { content: ' · you'; color: var(--text-3); font-weight: 400; }
+  .om-m.is-pending .om-m__text { opacity: .55; }
+  .om-m__more { position: absolute; top: 4px; right: 8px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: none; color: var(--text-3); opacity: 0; }
+  .om-m:hover .om-m__more, .om-m__more:focus-visible, .om-m__more[aria-expanded='true'] { opacity: 1; }
+  .om-m__more:hover { color: var(--text); background: var(--surface); }
+  @media (hover: none) { .om-m__more { opacity: .6; } }
+
+  /* Private: my words on the right, in Opus ink; theirs on the left. */
+  .om__list--dm { display: flex; flex-direction: column; gap: 3px; padding: 4px 12px; }
+  .om-d { max-width: 82%; align-self: flex-start; padding: 8px 12px; border-radius: 16px; background: var(--bg); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .om-d.is-mine { align-self: flex-end; background: var(--text); color: var(--bg); }
+  .om-d.is-pending { opacity: .55; }
+  .om-d__time { display: block; margin: 8px 0 2px; color: var(--text-3); font-size: 11px; text-align: center; }
+  .om-d__seen { align-self: flex-end; margin: 1px 4px 4px; color: var(--text-3); font-size: 11px; }
+
+  .om__new { position: absolute; left: 50%; bottom: calc(var(--om-foot, 96px) + 10px); transform: translateX(-50%); height: 30px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 12px; font-weight: 500; box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .5); }
+  .om__new[hidden] { display: none; }
+
+  .om__foot { border-top: 1px solid var(--line-faint); padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px) * var(--om-phone, 0)); }
+  .om__note { margin: 0 4px 6px; color: var(--text-2); font-size: 12px; }
+  .om__note:empty { display: none; }
+  .om__composer { display: flex; align-items: flex-end; gap: 6px; padding: 4px 4px 4px 12px; border: 1px solid var(--line-strong); border-radius: 20px; background: var(--bg); }
+  .om__composer[hidden] { display: none; }
+  .om__composer:focus-within { border-color: var(--text-3); }
+  .om__composer textarea { flex: 1; min-width: 0; min-height: 32px; max-height: 120px; padding: 6px 0; border: 0; outline: 0; resize: none; background: none; color: var(--text); font: inherit; font-size: 16px; line-height: 20px; }
+  .om__composer textarea::placeholder { color: var(--text-3); }
+  .om .om__composer textarea:focus-visible { outline: none; }
+  .om__send { flex: none; min-width: 64px; height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .om__send.is-wait, .om__send:disabled { background: var(--line); color: var(--text-2); }
+  .om__fake { width: 100%; height: 42px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 20px; background: var(--bg); color: var(--text-3); font-size: 15px; text-align: left; }
+  .om__fake[hidden], .om__join[hidden] { display: none; }
+  .om__rule { margin: 6px 4px 0; color: var(--text-3); font-size: 11px; letter-spacing: .01em; text-align: center; }
+  .om__join { padding: 6px 4px 2px; text-align: center; }
+  .om__join p { margin: 0 0 10px; color: var(--text); font-size: 14px; font-weight: 500; }
+  .om__join-actions { display: flex; justify-content: center; gap: 8px; }
+  .om__btn { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: none; color: var(--text); font-size: 13px; font-weight: 500; text-decoration: none; }
+  .om__btn:hover { border-color: var(--text-3); }
+  .om__btn--solid { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .om__btn--small { min-height: 30px; padding: 0 12px; font-size: 12px; }
+
+  /* Private home: requests, then conversations. */
+  .om__section { margin: 10px 16px 4px; color: var(--text-3); font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+  .om-row { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px; width: 100%; padding: 9px 16px; border: 0; background: none; color: var(--text); text-align: left; text-decoration: none; }
+  button.om-row:hover, a.om-row:hover { background: var(--surface-hover); }
+  .om-row .om-m__av { width: 40px; height: 40px; grid-row: auto; }
+  .om-row__main { min-width: 0; }
+  .om-row__name { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .om-row__sub { display: block; color: var(--text-3); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .om-row.is-unread .om-row__sub { color: var(--text); }
+  .om-row__side { display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: 12px; }
+  .om-row__unread { width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
+  .om-row__acts { display: flex; gap: 6px; }
+
+  .om__convo { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .om__with { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--line-faint); }
+  .om__with .om-m__av { width: 28px; height: 28px; grid-row: auto; }
+  .om__with a.om__with-name { flex: 1; min-width: 0; color: var(--text); font-weight: 500; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .om__with a.om__with-name:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+  .om-menu { position: absolute; z-index: 3; min-width: 190px; padding: 5px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 40px -16px rgba(0, 0, 0, .45); }
+  .om-menu[hidden] { display: none; }
+  .om-menu button { display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--text); font-size: 13px; text-align: left; }
+  .om-menu button:hover, .om-menu button:focus-visible { background: var(--surface-hover); }
+  .om-menu button.is-danger { color: var(--c-danger, #c0392b); }
+  .om-menu hr { margin: 4px 6px; border: 0; border-top: 1px solid var(--line-faint); }
+  .om-menu p { margin: 4px 10px 6px; color: var(--text-3); font-size: 12px; }
+
+  .om-skel { display: grid; grid-template-columns: 32px 1fr; gap: 10px; padding: 10px 14px; }
+  .om-skel i { display: block; border-radius: 6px; background: var(--bg); }
+  .om-skel i:first-child { width: 32px; height: 32px; border-radius: 50%; }
+  .om-skel i:last-child { height: 30px; }
+
+  /* ---------- Phones: full screen, composer above the keyboard ---------- */
+  @media (max-width: 760px) {
+    .om-launch { width: 48px; height: 48px; padding: 0; justify-content: center; }
+    .om-launch__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .om-launch .om-badge { position: absolute; top: -3px; right: -3px; }
+    .om-launch .om-dot { position: absolute; top: 6px; right: 6px; }
+    body:has([data-world]) .om-launch { bottom: calc(152px + 96px + env(safe-area-inset-bottom)); }
+    body:has([data-sheet='half'], [data-sheet='full']) .om-launch { opacity: 0; pointer-events: none; }
+    body:has(.world.has-cards) .om-launch { top: calc(64px + 14px); bottom: auto; }
+    .om { --om-phone: 1; inset: 0; top: var(--om-top, 0px); bottom: auto; right: 0; width: 100%; height: var(--om-vh, 100dvh); border: 0; border-radius: 0; box-shadow: none;
+      padding-top: env(safe-area-inset-top); transform: translateY(16px); }
+    .om__head { padding: 6px 6px 6px 6px; }
+    .om__back { visibility: visible; }
+    .om__min { visibility: hidden; }
+    .om-m__more { opacity: .6; }
+    html.om-open, html.om-open body { overflow: hidden; }
+  }
+  @media (prefers-reduced-motion: reduce) { .om, .om-launch { transition: none; } }
+</style>

@@ -4,6 +4,7 @@ import SiteHeader from '@/components/layout/SiteHeader.astro';
 import SiteFooter from '@/components/layout/SiteFooter.astro';
 import { SITE } from '@/data/site';
 import Assistant from '@/components/assistant/Assistant.astro';
+import Messages from '@/components/messages/Messages.astro';
 
 interface Props {
   title?: string;
@@ -16,8 +17,10 @@ interface Props {
   lightFooter?: boolean;
   /** Show the Opus guide launcher (on by default). */
   assistant?: boolean;
+  /** Show Messages (Global Chat and private messages); on by default. */
+  messages?: boolean;
 }
-const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false, lightFooter = false, assistant = true } = Astro.props;
+const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false, lightFooter = false, assistant = true, messages = true } = Astro.props;
 const fullTitle = title ? `${title} · ${SITE.product}` : `${SITE.product} · The professional network for independent music`;
 const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogImage = new URL(image, SITE.url).href;
@@ -66,6 +69,7 @@ const ogImage = new URL(image, SITE.url).href;
     <main id="main"><slot /></main>
     {!hideFooter && <SiteFooter light={lightFooter} />}
     {assistant && <Assistant />}
+    {messages && <Messages />}
     <script>
       // Reveal-on-scroll. Content is visible without JS and with reduced motion.
       const els = document.querySelectorAll('[data-reveal]');
