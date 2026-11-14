@@ -7,12 +7,12 @@ const { overlay = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 // Which pages light up each nav item. People, studios, organizations, profiles and Verified belong to World.
 const SECTIONS: Record<string, string[]> = {
-  '/world': ['/world', '/musicians', '/organizations', '/studios', '/m/', '/verified'],
-  '/music': ['/music', '/releases', '/r/'],
-  '/future': ['/future'],
+  '/world': ['/world', '/musicians', '/organizations', '/studios', '/venues', '/m/', '/verified'],
+  '/works': ['/works', '/music', '/releases', '/r/', '/airplay'],
+  '/future': ['/future', '/events'],
   '/charts': ['/charts'],
   '/network': ['/network', '/account/connections', '/account/bookings'],
-  '/collective': ['/collective', '/community', '/about', '/events'],
+  '/collective': ['/collective', '/community', '/about', '/summit'],
 };
 const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/'));
 ---
@@ -37,8 +37,16 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
                   <p class="mega__name">{item.label}{item.soon && <span class="mega__soon">Coming soon</span>}</p>
                   <p class="mega__desc" id={`mega-${i}-lead`}>{item.lead}</p>
                 </div>
-                {item.groups.map((g, gi) => (
-                  <div class:list={['mega__group', { 'mega__group--main': gi === 0 }]}>
+                {item.products && (
+                  <div class="mega__group mega__products">
+                    <p class="t-meta mega__title">Products</p>
+                    <ul role="list">
+                      {item.products.map((pr) => <li><a href={pr.href} tabindex="-1"><span class="mega__pname">{pr.label}{pr.soon && <span class="mega__soon">Coming soon</span>}</span><small>{pr.line}</small></a></li>)}
+                    </ul>
+                  </div>
+                )}
+                {item.groups.slice(0, item.products ? 2 : 3).map((g, gi) => (
+                  <div class:list={['mega__group', { 'mega__group--main': gi === 0 && !item.products }]}>
                     <p class="t-meta mega__title">{g.title}</p>
                     <ul role="list">
                       {g.links.map((l) => <li><a href={l.href} tabindex="-1">{l.label}{l.soon && <span class="mega__soon">Soon</span>}</a></li>)}
@@ -82,7 +90,12 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
       <ul role="list" class="mmenu__list">
         {NAV.map((item, i) => (
           <li style={`--i:${i}`}>
-            <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}</a>
+            <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}{item.soon && <span class="mmenu__soon">Soon</span>}</a>
+            {item.products && (
+              <ul role="list" class="mmenu__sub">
+                {item.products.map((pr) => <li><a href={pr.href} aria-current={path === pr.href || path.startsWith(pr.href + '/') ? 'page' : undefined}><b>{pr.label}</b><span>{pr.soon ? 'Coming soon' : pr.line}</span></a></li>)}
+              </ul>
+            )}
           </li>
         ))}
       </ul>
@@ -203,7 +216,12 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
   .mega__group a { display: inline-flex; align-items: center; gap: 10px; min-height: 34px; font-size: 15px; color: var(--text-2); }
   .mega__group--main a { min-height: 40px; font-size: 22px; font-weight: 500; letter-spacing: -0.03em; color: var(--text); }
   .mega__group a:hover { color: var(--accent); }
-  .mega__soon { padding: 3px 7px; border: 1px solid var(--line); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+  .mega__soon { padding: 3px 7px; border: 1px solid var(--line); border-radius: var(--r-pill); font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+  /* Products inside an area (Studios and Venues in World, Airplay in Works, Events in Future): name and one line. */
+  .mega__products a { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 0; padding: 6px 0; }
+  .mega__pname { display: inline-flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 500; letter-spacing: -0.03em; color: var(--text); }
+  .mega__products small { font-size: 14px; color: var(--text-3); }
+  .mega__products a:hover .mega__pname { color: var(--accent); }
 
   .hdr__actions { display: flex; align-items: center; gap: 16px; }
   .hdr__signin { font-size: 14px; color: var(--text-2); min-height: 44px; display: inline-flex; align-items: center; }
@@ -241,6 +259,13 @@ const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path ==
   .mmenu__list a { display: block; padding: 7px 0; font-size: clamp(28px, 7.6vw, 38px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.12; color: var(--text); transition: color var(--dur-fast); }
   .mmenu__list a:active { color: var(--text-3); }
   .mmenu__list a[aria-current] { color: var(--accent); }
+  .mmenu__list > li > a { display: flex; align-items: center; gap: 12px; }
+  .mmenu__soon { padding: 3px 8px; border: 1px solid var(--line); border-radius: var(--r-pill); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+  /* Products inside an area, under it: smaller, with their one line, still big enough to tap. */
+  .mmenu__sub { margin: 0 0 6px; padding-left: 2px; }
+  .mmenu__sub a { display: flex; align-items: baseline; gap: 10px; min-height: 44px; padding: 8px 0; font-size: 20px; font-weight: 500; letter-spacing: -0.02em; }
+  .mmenu__sub a b { font-weight: 500; }
+  .mmenu__sub a span { font-size: 14px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
   .mmenu__actions { display: flex; flex-direction: column; gap: 12px; }
   .mmenu__acct { margin: 0 0 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
   .mmenu__acct a, .mmenu__acct button { display: flex; align-items: center; min-height: 44px; font-size: 15px; color: var(--text-2); background: none; border: 0; padding: 0; }

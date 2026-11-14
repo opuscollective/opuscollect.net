@@ -1,6 +1,6 @@
 /**
  * Future: one timeline of what is coming up on Opus for a person, built from data Opus already
- * keeps (studio bookings, planned releases, Collective events). Pure helpers, no database here.
+ * keeps (studio bookings, planned releases, member events, Collective events). Pure helpers, no database here.
  */
 export type FutureKind = 'session' | 'release' | 'event';
 
@@ -17,6 +17,13 @@ export interface FutureItem {
   /** Sort key within a day (ms). */
   at: number;
   status?: string;
+  /** How the status pill reads: waiting on someone, canceled, or your own role. */
+  tone?: 'pending' | 'canceled' | 'role';
+  /** Optional image for member events. */
+  image?: string | null;
+  /** Event id, when the item is a member event (lets the page offer Accept / Decline or Remove). */
+  eventId?: string;
+  past?: boolean;
   href: string;
 }
 

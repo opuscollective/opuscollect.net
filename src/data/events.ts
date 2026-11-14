@@ -15,6 +15,6 @@ export interface OpusEvent {
 }
 
 export const EVENTS: OpusEvent[] = [
-  { id: 'opus-summit-2027', title: 'The Opus Summit', place: '200 creatives, one retreat', when: 'Summer 2027', sortDay: '2027-06-21', href: '/events#summit' },
-  { id: 'birmingham-conferences', title: 'Opus conferences', place: 'Birmingham, AL', when: 'Dates to be announced', sortDay: null, href: '/events' },
+  { id: 'opus-summit-2027', title: 'The Opus Summit', place: '200 creatives, one retreat', when: 'Summer 2027', sortDay: '2027-06-21', href: '/summit#summit' },
+  { id: 'birmingham-conferences', title: 'Opus conferences', place: 'Birmingham, AL', when: 'Dates to be announced', sortDay: null, href: '/summit' },
 ];

@@ -88,7 +88,7 @@ const STEPS = ['You', 'Your first release', 'Done'];
           </p>
           <div class="st__next">
             {profile.status !== 'published' && <a class="btn-app btn-app--block" href="/account/profile">Finish your profile</a>}
-            <a class="btn-app btn-app--ghost btn-app--block" href="/music">Your releases</a>
+            <a class="btn-app btn-app--ghost btn-app--block" href="/works">Your releases</a>
             <a class="btn-app btn-app--ghost btn-app--block" href={`/m/${profile.handle}`}>See your profile</a>
           </div>
         </>
@@ -101,7 +101,7 @@ const STEPS = ['You', 'Your first release', 'Done'];
   import { bindForm } from '@/scripts/form';
   const basics = document.querySelector<HTMLFormElement>('[data-basics]');
   if (basics) bindForm(basics, { url: '/api/profile', busyLabel: 'Saving…', onSuccess: () => { location.href = '/start'; } });
-  // Step 2 creates the release in Opus Music, then opens its builder.
+  // Step 2 creates the release in Works, then opens its builder.
   const first = document.querySelector<HTMLFormElement>('[data-first-release]');
   first?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -111,7 +111,7 @@ const STEPS = ['You', 'Your first release', 'Done'];
     const title = (first.elements.namedItem('title') as HTMLInputElement).value;
     const r = await fetch('/api/releases', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title, past: btn?.value === 'past' }) });
     const d = (await r.json().catch(() => ({}))) as { id?: string; error?: string };
-    if (r.ok && d.id) location.href = `/music/${d.id}`;
+    if (r.ok && d.id) location.href = `/works/${d.id}`;
     else { first.querySelectorAll('button').forEach((b) => (b.disabled = false)); msg.textContent = d.error ?? 'Something went wrong. Please try again.'; }
   });
 </script>

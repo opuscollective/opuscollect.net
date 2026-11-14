@@ -99,7 +99,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {(record.length > 0 || isOwner) && (
             <section class="mp__sec"><h2 class="t-meta">Releases</h2>
               {record.length === 0 ? (
-                <p class="dim" style="font-size:14px">Add your releases and past work in <a class="link" href="/music">Music</a>. Credits from other members show here once you confirm them.</p>
+                <p class="dim" style="font-size:14px">Add your releases and past work in <a class="link" href="/works">Works</a>. Credits from other members show here once you confirm them.</p>
               ) : (
                 <ul class="pr-list" role="list">{record.map((x) => (
                   <li><a class="pr-item" href={`/r/${x.id}`}>

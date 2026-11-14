@@ -29,7 +29,7 @@ export const PAGES = {
   account: '/account',
   connections: '/account/connections',
   bookings: '/account/bookings',
-  music: '/music',
+  music: '/works',
   start: '/start',
   releases: '/releases',
   verified: '/verified',
@@ -42,6 +42,10 @@ export const PAGES = {
   about: '/about',
   events: '/events',
   future: '/future',
+  newEvent: '/events/new',
+  ourFuture: '/future?tab=our',
+  venues: '/venues',
+  airplay: '/airplay',
 } as const;
 export type PageKey = keyof typeof PAGES;
 
@@ -128,10 +132,10 @@ export function welcome(): string { return GREETING; }
 export function suggestionsFor(path: string): string[] {
   if (/^\/(world|musicians|organizations)(\/|$)/.test(path)) return ['Producers in Atlanta', 'Only Opus Verified members', 'People open to collaborate', 'How does World work?'];
   if (/^\/studios(\/|$)/.test(path)) return ['Recording studios in Nashville', 'Home studios', 'List my studio', 'How does booking work?'];
-  if (/^\/(music|releases|start|r)(\/|$)/.test(path)) return ['Start a release', 'Show my releases', 'How do credits work?', 'Find a mixing engineer'];
+  if (/^\/(music|works|releases|start|r)(\/|$)/.test(path)) return ['Start a release', 'Show my releases', 'How do credits work?', 'Find a mixing engineer'];
   if (/^\/verified(\/|$)/.test(path)) return ['How do I get verified?', 'Show verified members', 'Find producers in Birmingham'];
   if (/^\/account(\/|$)/.test(path)) return ['Take me to my profile', 'What’s coming up?', 'My connections', 'Show my releases'];
-  if (/^\/future(\/|$)/.test(path)) return ['Book a studio session', 'Start a release', 'Show Collective events'];
+  if (/^\/future(\/|$)/.test(path)) return ['Book a studio session', 'Start a release', 'Create an event'];
   return ['Find producers in Birmingham', 'Explore recording studios', 'Discover musicians', 'How does Opus work?'];
 }
 
@@ -155,7 +159,7 @@ export function respond(input: string, ctx: AssistantContext): Reply {
   }
   if (has(t, 'how does opus work', 'what is opus', 'how do i use opus', 'what can you do', 'what can i do', 'how does this work', 'how does it work') || (t === 'help' || t === 'help me')) {
     return {
-      text: 'Opus is where the independent music world finds each other. World is the directory of people and studios, Music holds your releases and credits, Network keeps your connections and bookings, and Opus Verified marks reviewed work. Ask me for a person, a studio or a page and I will take you there.',
+      text: 'Opus is where the independent music world finds each other. World is the directory of people and studios, Works holds your releases and credits, Network keeps your connections and bookings, and Opus Verified marks reviewed work. Ask me for a person, a studio or a page and I will take you there.',
       suggestions: ['Find producers in Birmingham', 'Explore recording studios', 'Show my releases', 'How do I get verified?'],
     };
   }
@@ -166,7 +170,7 @@ export function respond(input: string, ctx: AssistantContext): Reply {
     return { text: 'Open a studio’s page and send a request to book with the date, time and service. The studio confirms it. Payments are not on Opus yet.', action: { type: 'directory', kind: 'studio', city: city?.name }, offer: city ? `Studios in ${city.name}` : 'Browse studios' };
   }
   if (has(t, 'how do credits work', 'credits')) {
-    return { text: 'Add everyone who worked on a release. When they are on Opus, they confirm their credit and it shows on both profiles.', action: { type: 'page', page: 'music' }, offer: 'Open Music' };
+    return { text: 'Add everyone who worked on a release. When they are on Opus, they confirm their credit and it shows on both profiles.', action: { type: 'page', page: 'music' }, offer: 'Open Works' };
   }
   if (has(t, 'charts?', 'rankings?', 'top artists?')) {
     return { text: 'Charts is still in development: city-by-city charts with no pay-to-rank. There are no live rankings yet.', action: { type: 'page', page: 'charts' }, offer: 'See what’s coming' };
@@ -177,7 +181,7 @@ export function respond(input: string, ctx: AssistantContext): Reply {
     return { text: 'Messaging is not on Opus yet. For now you can connect with someone from their profile, and see your connections in Network.', action: { type: 'page', page: 'connections' }, offer: 'Open my connections' };
   }
   if (has(t, 'pay', 'payment', 'payments', 'invoice', 'distribute', 'distribution', 'upload to spotify', 'royalt(?:y|ies)')) {
-    return { text: 'Opus does not handle payments or distribution yet. Music keeps your releases and credits in one place.', action: { type: 'page', page: 'music' }, offer: 'Open Music' };
+    return { text: 'Opus does not handle payments or distribution yet. Works keeps your releases and credits in one place.', action: { type: 'page', page: 'music' }, offer: 'Open Works' };
   }
 
   // ----- Future: what's coming -----
@@ -201,6 +205,10 @@ export function respond(input: string, ctx: AssistantContext): Reply {
 
   // ----- Places and pages -----
   if (has(t, 'collective', 'community')) return { text: 'Opening the Collective.', action: { type: 'page', page: 'collective' } };
+  if (has(t, 'create an event', 'new event', 'host an event', 'make an event', 'post an event')) return { text: 'Opening Create an event.', action: { type: 'page', page: 'newEvent' } };
+  if (has(t, 'our future', 'events near', 'whats happening', 'what is happening')) return { text: 'Opening Our Future: public events coming up.', action: { type: 'page', page: 'ourFuture' } };
+  if (has(t, 'venues?', 'stage')) return { text: 'Opening Venues. It’s coming soon; here’s what it will do.', action: { type: 'page', page: 'venues' } };
+  if (has(t, 'airplay', 'radio')) return { text: 'Opening Airplay. It’s coming soon; here’s what it will do.', action: { type: 'page', page: 'airplay' } };
   if (has(t, 'events?')) return { text: 'Opening events.', action: { type: 'page', page: 'events' } };
   if (has(t, 'releases', 'listen', 'new music')) return { text: 'Opening releases on Opus.', action: { type: 'page', page: 'releases' } };
   if (has(t, 'network')) return { text: 'Opening Network.', action: { type: 'page', page: 'network' } };
@@ -229,7 +237,7 @@ export function respond(input: string, ctx: AssistantContext): Reply {
   }
   if (city) return { text: `Opening World in ${city.name}.`, action: { type: 'directory', city: city.name } };
   if (has(t, 'world', 'map', 'globe', 'directory', 'explore', 'discover')) return { text: 'Opening World.', action: { type: 'page', page: 'world' } };
-  if (has(t, 'music')) return { text: 'Opening Music.', action: { type: 'page', page: 'music' } };
+  if (has(t, 'music', 'works?', 'portfolio')) return { text: 'Opening Works.', action: { type: 'page', page: 'music' } };
   if (has(t, 'home', 'homepage', 'start page')) return { text: 'Opening the homepage.', action: { type: 'page', page: 'home' } };
 
   // ----- A place Opus does not know -----

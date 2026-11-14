@@ -1,0 +1,75 @@
+---
+/** Create or edit an event. Dates and times are the event's own local time, in the time zone chosen here. */
+import PlaceSelect from '@/components/business/PlaceSelect.astro';
+import { CATEGORIES, EVENT_ZONES, localTime } from '@/lib/events';
+import { localDay } from '@/lib/booking-time';
+import type { EventView } from '@/server/events';
+interface Props { event?: EventView | null; defaultPlace?: string | null }
+const { event = null, defaultPlace = null } = Astro.props;
+const tz = event?.timezone ?? '';
+const zones = tz && !EVENT_ZONES.includes(tz) ? [tz, ...EVENT_ZONES] : EVENT_ZONES;
+const endDay = event?.endAt ? localDay(event.endAt, event.timezone) : '';
+const startDay = event ? localDay(event.startAt, event.timezone) : '';
+---
+<form class="form evf" data-event-form data-id={event?.id ?? ''} novalidate>
+  <label class="field"><span>Title *</span><input class="input" name="title" maxlength="120" required value={event?.title ?? ''} placeholder="Friday Night Sessions" /></label>
+  <label class="field"><span>Kind of event *</span>
+    <select class="select" name="category" required>
+      <option value="">Choose one</option>
+      {Object.entries(CATEGORIES).map(([k, v]) => <option value={k} selected={event?.category === k}>{v}</option>)}
+    </select>
+  </label>
+  <div class="evf__row">
+    <label class="field"><span>Date *</span><input class="input" type="date" name="date" required value={startDay} /></label>
+    <label class="field"><span>Start time *</span><input class="input" type="time" name="time" required value={event ? localTime(event.startAt, event.timezone) : ''} /></label>
+  </div>
+  <div class="evf__row">
+    <label class="field"><span>End time</span><input class="input" type="time" name="endTime" value={event?.endAt ? localTime(event.endAt, event.timezone) : ''} /><small>Optional. An earlier time means it runs past midnight.</small></label>
+    <label class="field"><span>End date</span><input class="input" type="date" name="endDate" value={endDay && endDay !== startDay ? endDay : ''} /><small>Only for events over more than one day.</small></label>
+  </div>
+  <label class="field"><span>Time zone *</span>
+    <select class="select" name="timezone" required data-tz={tz}>
+      {zones.map((z) => <option value={z} selected={z === tz}>{z.replace(/_/g, ' ')}</option>)}
+    </select>
+    <small>Everyone sees the date and time in this zone, so it reads the same wherever they are.</small>
+  </label>
+  <label class="field"><span>City *</span><PlaceSelect selected={event?.placeId ?? defaultPlace} required /></label>
+  <label class="field"><span>Venue or location *</span><input class="input" name="venue" maxlength="120" required value={event?.venue ?? ''} placeholder="The Nick, 2nd floor" /><small>Shown publicly as you write it.</small></label>
+  <label class="field"><span>Description</span><textarea class="textarea" name="description" maxlength="4000" rows="6" placeholder="What’s happening, who it’s for, anything people should know.">{event?.description ?? ''}</textarea></label>
+  <label class="field"><span>Link for details or tickets</span><input class="input" name="link" maxlength="500" inputmode="url" value={event?.link ?? ''} placeholder="https://" /><small>Optional. Opus doesn’t sell tickets; people follow this link for that.</small></label>
+  <fieldset class="field evf__vis">
+    <legend>Who can find it</legend>
+    <label class="check"><input type="radio" name="visibility" value="public" checked={(event?.visibility ?? 'public') === 'public'} /><span><b>Public</b>: listed in Our Future and on Events.</span></label>
+    <label class="check"><input type="radio" name="visibility" value="unlisted" checked={event?.visibility === 'unlisted'} /><span><b>Unlisted</b>: only people with the link can open it.</span></label>
+  </fieldset>
+  <div data-status class="form-status"></div>
+  <div class="row"><button class="btn-app" type="submit">{event ? 'Save changes' : 'Create event'}</button>{event && <a class="btn-app btn-app--ghost" href={event.href}>Cancel</a>}</div>
+</form>
+
+<script>
+  import { bindForm, values } from '@/scripts/form';
+  const form = document.querySelector<HTMLFormElement>('[data-event-form]');
+  if (form) {
+    // New events start in the visitor's own time zone when it is one we list.
+    const tz = form.querySelector<HTMLSelectElement>('[name="timezone"]')!;
+    if (!tz.dataset.tz) {
+      const mine = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (![...tz.options].some((o) => o.value === mine)) tz.add(new Option(mine.replace(/_/g, ' '), mine), 0);
+      tz.value = mine;
+    }
+    const id = form.dataset.id;
+    bindForm(form, {
+      url: id ? `/api/events/${id}` : '/api/events',
+      body: (f) => values(f),
+      busyLabel: id ? 'Saving…' : 'Creating…',
+      onSuccess: (d) => { location.href = `/events/${id || d.id}${id ? '?saved=1' : '?created=1'}`; },
+    });
+  }
+</script>
+
+<style>
+  .evf { max-width: 640px; }
+  .evf__row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .evf__vis { border: 0; padding: 0; margin: 0; gap: 10px; }
+  @media (max-width: 520px) { .evf__row { grid-template-columns: 1fr; } }
+</style>

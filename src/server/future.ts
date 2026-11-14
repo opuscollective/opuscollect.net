@@ -1,20 +1,39 @@
-/** Gathers a member's Future from existing records. Read-only; no tables of its own. */
+/** Gathers a member's Future: sessions, planned releases and the events they host, perform at or saved. */
 import { listMyBookings, listBusinessBookings, STATUS_LABEL } from './bookings';
 import { getMyStudio } from './business';
 import { listMyReleases } from './releases';
 import { EVENTS } from '@/data/events';
+import { myEvents, listPublicEvents, ROLE_LABEL, type EventView, type MyRole } from './events';
 import { formatSlot, tzAbbr, localDay } from '@/lib/booking-time';
 import { formatDay, type FutureItem } from '@/lib/future';
 
 const LIVE = new Set(['requested', 'accepted']);
 const KIND_NAME: Record<string, string> = { single: 'Single', ep: 'EP', album: 'Album', mixtape: 'Mixtape' };
 
-export function eventItems(): FutureItem[] {
-  return EVENTS.map((e) => ({ id: `event-${e.id}`, kind: 'event', title: e.title, detail: e.place, when: e.when, day: e.sortDay, at: 0, href: e.href }));
+/** Collective events from src/data/events.ts. Announced facts only: undated ones stay undated. */
+export function collectiveItems(): FutureItem[] {
+  return EVENTS.map((e) => ({ id: `opus-${e.id}`, kind: 'event', title: e.title, detail: `Opus Collective · ${e.place}`, when: e.when, day: e.when.startsWith('Dates') ? null : e.sortDay, at: 0, href: e.href }));
 }
 
+export function eventItem(e: EventView, role?: MyRole): FutureItem {
+  const canceled = e.status === 'canceled';
+  return {
+    id: `ev-${e.id}`, kind: 'event', title: e.title, detail: [e.categoryLabel, e.venue, e.place.split(',')[0]].filter(Boolean).join(' · '),
+    when: e.when, day: e.day, at: e.startAt, image: e.image, eventId: e.id, past: e.past, href: e.href,
+    status: canceled ? 'Canceled' : role ? ROLE_LABEL[role] : undefined,
+    tone: canceled ? 'canceled' : role === 'invited' ? 'pending' : role ? 'role' : undefined,
+  };
+}
+
+/** Our Future: public member events plus Collective events. */
+export async function ourFuture(db: D1Database, placeId?: string) {
+  const events = await listPublicEvents(db, { placeId });
+  return [...events.map((e) => eventItem(e)), ...(placeId ? [] : collectiveItems())];
+}
+
+/** My Future. Each source appears once; nothing is invented. Past member events (last 30 days) come back with past = true. */
 export async function futureFor(db: D1Database, userId: string, now = Date.now()): Promise<FutureItem[]> {
-  const items: FutureItem[] = [];
+  const items: FutureItem[] = (await myEvents(db, userId, now)).map((m) => eventItem(m.event, m.role));
   const when = (ts: number, tz: string) => `${formatSlot(ts, tz)} ${tzAbbr(ts, tz)}`;
 
   // Sessions you booked.
@@ -48,8 +67,8 @@ export async function futureFor(db: D1Database, userId: string, now = Date.now()
     if (r.released || !r.releaseDate || r.releaseDate < today) continue;
     items.push({
       id: `release-${r.id}`, kind: 'release', title: r.title, detail: `${KIND_NAME[r.kind] ?? 'Release'}${r.status === 'draft' ? ' · draft' : ''}`,
-      when: formatDay(r.releaseDate), day: r.releaseDate, at: 0, href: `/music/${r.id}`,
+      when: formatDay(r.releaseDate), day: r.releaseDate, at: 0, href: `/works/${r.id}`,
     });
   }
-  return [...items, ...eventItems()];
+  return items;
 }

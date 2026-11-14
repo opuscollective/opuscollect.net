@@ -1,0 +1,15 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductPreview from '@/components/layout/ProductPreview.astro';
+---
+<BaseLayout title="Venues" description="Venues on Opus: find your stage. Coming soon.">
+  <ProductPreview
+    name="Venues" line="Find your stage."
+    lead="Rooms, stages and spaces for live music, on the World map next to the people who play them."
+    does={['Venue pages with the stage, capacity, sound and the kind of nights they host.', 'Venues on the World map, found the same way as people and studios.', 'Events at a venue, linked from the venue’s page.']}
+    forWho={['Artists looking for a room that fits their sound and their crowd.', 'Venues and promoters who want to reach the right performers.', 'Organizers planning shows, open mics and showcases.']}
+    coming={['Venue profiles, reviewed by Opus before they are listed.', 'Avails and booking inquiries, without payments to start.', 'Venues linked to Events, so a show shows where it happens.']}
+    availability="Venues is in development and not open yet. There are no venue listings on Opus today, so nothing here is a real listing. You can already create events at any venue in Events."
+    now={[{ label: 'Create an event', href: '/events/new' }, { label: 'Explore World', href: '/world' }]}
+  />
+</BaseLayout>

@@ -17,22 +17,28 @@ export const SITE = {
 };
 
 export interface NavLink { label: string; href: string; soon?: boolean; external?: boolean }
-export interface NavItem { label: string; href: string; lead: string; groups: { title: string; links: NavLink[] }[]; soon?: boolean }
+/** A product that lives inside a nav area (Studios and Venues in World, Airplay in Works, Events in Future). */
+export interface NavProduct { label: string; href: string; line: string; soon?: boolean }
+export interface NavItem { label: string; href: string; lead: string; products?: NavProduct[]; groups: { title: string; links: NavLink[] }[]; soon?: boolean }
 
 /**
- * Main navigation: five product areas, Apple-style. Hovering an item on desktop opens a panel with its parts.
- * Studios live under World, releases under Music, and Opus Verified is a trust feature inside World.
- * Areas still in development say "Coming soon" in their panel and open a page that says so.
+ * Main navigation (Milestone 1, 2026-11-14): ten products in six areas, so the header never crowds.
+ *   World (Studios, Venues) · Works (Airplay) · Future (Events) · Charts · Network · Collective
+ * Desktop: six words, each opening a panel that leads with its products. Phones: all ten products, the ones
+ * inside an area listed under it. Products still in development say "Coming soon" and open a page that says so.
  */
 export const NAV: NavItem[] = [
   {
-    label: 'World', href: '/world', lead: 'The people, studios and places behind the music, on one map.',
+    label: 'World', href: '/world', lead: 'The people, studios and stages behind the music, on one map.',
+    products: [
+      { label: 'Studios', href: '/studios', line: 'Find your next session.' },
+      { label: 'Venues', href: '/venues', line: 'Find your stage.', soon: true },
+    ],
     groups: [
       { title: 'Explore', links: [
-        { label: 'People', href: '/musicians' },
-        { label: 'Studios', href: '/studios' },
-        { label: 'Organizations', href: '/organizations' },
         { label: 'Open the map', href: '/world' },
+        { label: 'People', href: '/musicians' },
+        { label: 'Organizations', href: '/organizations' },
       ] },
       { title: 'Cities', links: [
         { label: 'Birmingham', href: '/world/birmingham' },
@@ -48,29 +54,34 @@ export const NAV: NavItem[] = [
     ],
   },
   {
-    label: 'Music', href: '/music', lead: 'Start a release, credit the people you made it with, and hear the catalog.',
+    label: 'Works', href: '/works', lead: 'Your work speaks for itself: releases, credits, portfolio and achievements.',
+    products: [
+      { label: 'Airplay', href: '/airplay', line: 'Get your music heard.', soon: true },
+    ],
     groups: [
-      { title: 'Your music', links: [
-        { label: 'My releases', href: '/music' },
-        { label: 'Start a release', href: '/music' },
-        { label: 'Add past releases', href: '/music' },
+      { title: 'Your work', links: [
+        { label: 'My works', href: '/works' },
+        { label: 'Start a release', href: '/start' },
+        { label: 'Portfolio and achievements', href: '/account/profile' },
       ] },
-      { title: 'Listen', links: [
+      { title: 'Discover', links: [
         { label: 'Releases', href: '/releases' },
       ] },
     ],
   },
   {
-    label: 'Future', href: '/future', lead: 'What’s coming: your sessions, planned releases and Collective events.',
+    label: 'Future', href: '/future', lead: 'What’s ahead for you, and for all of us.',
+    products: [
+      { label: 'Events', href: '/events', line: 'Make something happen.' },
+    ],
     groups: [
-      { title: 'Your timeline', links: [
-        { label: 'Everything coming up', href: '/future' },
-        { label: 'Studio sessions', href: '/future?show=session' },
-        { label: 'Planned releases', href: '/future?show=release' },
+      { title: 'Future', links: [
+        { label: 'My Future', href: '/future' },
+        { label: 'Our Future', href: '/future?tab=our' },
       ] },
-      { title: 'Collective', links: [
-        { label: 'Events', href: '/future?show=event' },
-        { label: 'The Opus Summit', href: '/events#summit' },
+      { title: 'Events', links: [
+        { label: 'Create an event', href: '/events/new' },
+        { label: 'The Opus Summit', href: '/summit' },
       ] },
     ],
   },
@@ -98,7 +109,7 @@ export const NAV: NavItem[] = [
       { title: 'Opus Collective', links: [
         { label: 'About the Collective', href: '/collective' },
         { label: 'Community programs', href: '/community' },
-        { label: 'Events', href: '/events' },
+        { label: 'The Opus Summit', href: '/summit' },
       ] },
     ],
   },
@@ -107,7 +118,8 @@ export const NAV: NavItem[] = [
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
 export const ACCOUNT_MENU = [
   { label: 'Your profile', href: '/account/profile' },
-  { label: 'Your music', href: '/music' },
+  { label: 'Your works', href: '/works' },
+  { label: 'My Future', href: '/future' },
   { label: 'Connections', href: '/account/connections' },
   { label: 'Bookings', href: '/account/bookings' },
   { label: 'Business dashboard', href: '/business' },

@@ -1,0 +1,61 @@
+---
+/**
+ * Events: the product page. Upcoming public events from members, Collective gatherings, and Create an event.
+ * Real events only; with none yet, it says so.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import EventPoster from '@/components/events/EventPoster.astro';
+import { listPublicEvents } from '@/server/events';
+import { EVENTS } from '@/data/events';
+import '@/styles/app.css';
+import '@/styles/events.css';
+export const prerender = false;
+
+let events: Awaited<ReturnType<typeof listPublicEvents>> = [];
+let failed = false;
+try { events = await listPublicEvents(Astro.locals.runtime.env.DB, { limit: 24 }); } catch (e) { console.error('events', e); failed = true; }
+const user = Astro.locals.user;
+---
+<BaseLayout title="Events" description="Events on Opus. Make something happen: shows, sessions, workshops and listening parties from Opus members.">
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+      <p class="t-meta app__kicker">Events</p>
+      <h1 class="app__title">Make something happen.</h1>
+      <p class="app__lead">Shows, open mics, showcases, workshops and listening parties, created by Opus members. Feature the artists on your lineup; they’re listed once they accept. Save events to My Future to keep track. Opus doesn’t sell tickets.</p>
+      <div class="row" style="margin-top:24px">
+        <a class="btn-app" href={user ? '/events/new' : '/sign-in?next=/events/new'}>Create an event</a>
+        <a class="btn-app btn-app--ghost" href="/future?tab=our">See Our Future</a>
+      </div>
+
+      <h2 style="margin-top:48px">Coming up</h2>
+      {failed ? <p class="dim">Events couldn’t be loaded just now. Please try again.</p>
+        : events.length === 0 ? (
+        <div class="panel" style="margin-top:16px">
+          <h3 style="margin:0">No member events yet</h3>
+          <p class="dim">Be the first. Create an event and it shows here and in Our Future.</p>
+        </div>
+      ) : (
+        <div class="ev-grid">
+          {events.map((e) => (
+            <a class="ev-card" href={e.href}>
+              <EventPoster image={e.image} startAt={e.startAt} timezone={e.timezone} category={e.categoryLabel} small />
+              <span class="ev-card__body">
+                <span class="ev-card__when">{e.when}</span>
+                <span class="ev-card__title">{e.title}</span>
+                <span class="ev-card__where">{e.venue} · {e.place.split(',')[0]}</span>
+                <span class="ev-card__where">by {e.organizer.name}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
+
+      <h2 style="margin-top:48px">From the Opus Collective</h2>
+      <ul class="mu-list" role="list" style="margin-top:12px">
+        {EVENTS.map((e) => (
+          <li><a class="ev-person" href={e.href} style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)"><span>{e.title}<small>{e.place}</small></span><span class="dim">{e.when}</span></a></li>
+        ))}
+      </ul>
+    </div>
+  </section>
+</BaseLayout>
