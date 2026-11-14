@@ -42,7 +42,7 @@ const pending = await db
               <p class="dim">{profile.display_name} · {profile.status === 'published' ? 'Public in World' : 'Draft, only you can see it'}</p>
               <div class="row" style="margin-top:16px">
                 <a class="btn-app" href="/account/profile">Edit profile</a>
-                <a class="btn-app btn-app--ghost" href={`/m/${profile.handle}`}>View profile</a>
+                <a class="btn-app btn-app--ghost" href={`/${profile.handle}`}>View profile</a>
               </div>
             </>
           ) : (

@@ -1,0 +1,62 @@
+---
+/**
+ * Public portfolio shell (opuscollect.net/<username>). It should feel like the member's own website,
+ * so it skips the Opus site header and footer: a slim Opus mark, the page, and a quiet line back to Opus.
+ * Always dark, like ballerbogo.com, whatever the visitor's site theme.
+ */
+import '@/styles/global.css';
+import '@/styles/portfolio.css';
+import { SITE } from '@/data/site';
+
+interface Props {
+  title: string;
+  description: string;
+  canonical: string;
+  image?: string | null;
+  imageAlt?: string;
+  noindex?: boolean;
+  preload?: string | null;
+  jsonLd?: unknown;
+}
+const { title, description, canonical, image, imageAlt, noindex = false, preload, jsonLd } = Astro.props;
+// Images resolve against the host actually serving them (preview builds included); canonical stays on opuscollect.net.
+const ogImage = new URL(image ?? '/images/scenic-room.jpg', Astro.url.origin).href;
+---
+<!doctype html>
+<html lang="en" data-theme="dark" class="pf-html">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta property="og:type" content="profile" />
+    <meta property="og:site_name" content={SITE.product} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    {imageAlt && <meta property="og:image:alt" content={imageAlt} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="theme-color" content="#0b0b0b" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    {preload && <link rel="preload" as="image" href={preload} fetchpriority="high" />}
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd).replace(/</g, '\\u003c')} />}
+    <script is:inline>document.documentElement.classList.add('js');</script>
+  </head>
+  <body class="pf-body">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <slot name="bar" />
+    <main id="main"><slot /></main>
+  </body>
+</html>

@@ -3,7 +3,8 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SPECIALTIES } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
 import { PLACES, placeLabel } from '@/data/places';
-import { getMyProfile, missingForPublish, mediaUrl } from '@/server/profiles';
+import { getMyProfile, missingForPublish, mediaUrl, WORK_KINDS } from '@/server/profiles';
+import { profileReleases } from '@/server/releases';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -12,6 +13,13 @@ if (!user) return Astro.redirect('/sign-in?next=/account/profile');
 const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
 const missing = profile ? missingForPublish(profile, user.emailVerified) : null;
 const welcome = Astro.url.searchParams.has('welcome');
+const db = Astro.locals.runtime.env.DB;
+const host = Astro.url.host;
+const origin = Astro.url.origin;
+// Releases that can be featured: published ones the member owns or holds a confirmed credit on (from Opus Music).
+const featurable = profile ? await profileReleases(db, user.id) : [];
+const drafts = profile ? ((await db.prepare("SELECT COUNT(*) AS n FROM releases WHERE owner_user_id = ? AND status = 'draft'").bind(user.id).first<{ n: number }>())?.n ?? 0) : 0;
+const releaseInfo = Object.fromEntries(featurable.map((r) => [r.id, { title: r.title, image: mediaUrl(r.coverKey), meta: [r.own ? '' : 'Credit', r.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ') }]));
 
 // Group places: each metro followed by its localities, sorted by country then name.
 const metros = PLACES.filter((p) => p.kind === 'metro').sort((a, b) => a.countryName.localeCompare(b.countryName) || a.name.localeCompare(b.name));
@@ -23,53 +31,148 @@ const linkFields = [
   ['youtube', 'YouTube', 'youtube.com/@…'], ['instagram', 'Instagram', 'instagram.com/…'], ['tiktok', 'TikTok', 'tiktok.com/@…'], ['website', 'Website', 'yourname.com'],
 ] as const;
 ---
-<BaseLayout title="Edit profile" noindex>
+<BaseLayout title="Customize Your Profile" noindex>
   <section class="app">
-    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+    <div class="cz-layout">
+    <div class="app__wrap app__wrap--wide cz-main">
       <p class="t-meta app__kicker">{p ? 'Your profile' : 'Step 1 of 1'}</p>
-      <h1 class="app__title">{p ? 'Edit your profile' : 'What’s your specialty?'}</h1>
-      <p class="app__lead">{p ? 'Changes save as a draft until you publish. Published profiles appear in World at city level only.' : 'Set up your professional profile. You can save a draft and finish later. Nothing is public until you publish.'}</p>
+      <h1 class="app__title">{p ? 'Your Opus' : 'What’s your specialty?'}</h1>
+      <p class="app__lead">{p ? 'One profile, two views: a compact card in World and your full portfolio page. Changes save as a draft until you publish. Published profiles appear in World at city level only.' : 'Set up your professional profile. You can save a draft and finish later. Nothing is public until you publish.'}</p>
 
       {welcome && !user.emailVerified && <p class="notice" style="margin-top:20px">Welcome to Opus. We sent a confirmation link to <b>{user.email}</b>. You can build your profile now and publish once your email is confirmed.</p>}
 
       <div class="notice" style="margin-top:20px" data-state>
         {p?.status === 'published'
-          ? <span><b>Published.</b> Your profile is public at <a class="link" href={`/m/${p.handle}`}>opuscollect.net/m/{p.handle}</a>.</span>
+          ? <span><b>Published.</b> Your profile is public at <a class="link" href={`/${p.handle}`}>opuscollect.net/{p.handle}</a>.</span>
           : missing && missing.length
             ? <span><b>Draft.</b> To publish, add: {missing.join(', ')}.</span>
             : p ? <span><b>Draft.</b> Ready to publish.</span> : <span><b>New profile.</b> Required fields are marked.</span>}
       </div>
 
       <form class="form" data-profile novalidate>
-        <!-- Photos -->
-        <div class="panel">
-          <h2>Photos</h2>
-          <p class="dim">A clear photo of you (required). JPEG or WebP. Location data is removed from every photo you upload.</p>
-          <div class="pe-photos">
-            <div class="pe-photo">
-              <div class="pe-photo__img" data-photo-preview style={p?.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''}>{!p?.photoKey && <span>No photo</span>}</div>
-              <label class="btn-app btn-app--ghost pe-file">Upload photo<input type="file" accept="image/jpeg,image/png,image/webp,image/heic" data-upload="photo" /></label>
+        <!-- ===================== Customize Your Profile ===================== -->
+        <section class="cz" id="customize" aria-labelledby="cz-h">
+          <div class="cz__head">
+            <div>
+              <h2 id="cz-h" class="cz__title">Customize Your Profile</h2>
+              <p class="dim">Your public page, the link for your Instagram, TikTok, YouTube or Spotify bio. One premium Opus layout, with your photography and your work.</p>
             </div>
-            <div class="pe-cover">
-              <div class="pe-cover__img" data-cover-preview style={p?.coverKey ? `background-image:url(${mediaUrl(p.coverKey)})` : ''}>{!p?.coverKey && <span>Optional cover image</span>}</div>
-              <div class="row">
-                <label class="btn-app btn-app--ghost pe-file">Upload cover<input type="file" accept="image/jpeg,image/png,image/webp" data-upload="cover" /></label>
-                {p?.coverKey && <button type="button" class="btn-app btn-app--ghost" data-remove="cover">Remove</button>}
+            {p && (
+              <div class="cz-link">
+                <span class="cz-link__url" data-link-label>{host}/<b data-handle-preview>{p.handle}</b></span>
+                <div class="row">
+                  <button type="button" class="btn-app btn-app--ghost btn-app--sm" data-copy-link={`${origin}/${p.handle}`}>Copy Profile Link</button>
+                  <a class="btn-app btn-app--ghost btn-app--sm" href={`/${p.handle}`} target="_blank" rel="noopener">View</a>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div class="panel">
+            <h2>Your link</h2>
+            <label class="field" style="margin-top:14px"><span>Username</span>
+              <div class="cz-handle"><span>{host}/</span><input class="input" name="handle" value={p?.handle ?? ''} maxlength="30" placeholder="your-name" autocomplete="off" autocapitalize="none" spellcheck="false" /></div>
+              <small data-handle-status>Lowercase letters, numbers and hyphens. If you change it later, your old link keeps redirecting here.</small>
+            </label>
+          </div>
+
+          <div class="panel">
+            <h2>Hero image and photo</h2>
+            <p class="dim">The hero image opens your page, so use your best portrait or performance shot, ideally a tall one at least 1600 pixels. It fades into the page on every screen. Tap the photo to choose what stays in frame. JPEG, PNG or WebP. Location data is removed from every photo.</p>
+            <div class="cz-hero">
+              <div class="cz-hero__pick" data-focus-pick role="group" aria-label="Choose the focal point">
+                {p?.coverKey
+                  ? <img src={mediaUrl(p.coverKey)} alt="Your hero image" data-cover-preview draggable="false" />
+                  : <div class="cz-hero__none" data-cover-preview><span>{p?.photoKey ? 'No hero image yet. Your profile photo is used until you add one.' : 'No hero image yet'}</span></div>}
+                <span class="cz-hero__dot" data-focus-dot hidden></span>
+              </div>
+              <div class="cz-hero__frames" aria-hidden="true">
+                <figure><div class="cz-frame cz-frame--phone" data-frame></div><figcaption>Phone</figcaption></figure>
+                <figure><div class="cz-frame cz-frame--desk" data-frame></div><figcaption>Computer</figcaption></figure>
               </div>
             </div>
-          </div>
-          <p class="dim" data-upload-status role="status"></p>
-          {!p && <p class="dim">Save your details first, then add photos.</p>}
-        </div>
-
-        <!-- Basics -->
-        <div class="panel">
-          <h2>Basics</h2>
-          <div class="form" style="margin-top:16px">
-            <div class="grid-2">
-              <label class="field"><span>Artist or professional name *</span><input class="input" name="displayName" value={p?.displayName ?? ''} maxlength="80" required /></label>
-              <label class="field"><span>Profile address</span><input class="input" name="handle" value={p?.handle ?? ''} maxlength="30" placeholder="your-name" /><small>opuscollect.net/m/<b data-handle-preview>{p?.handle || 'your-name'}</b></small></label>
+            <input type="hidden" name="coverFocus" value={p?.coverFocus ?? '50% 35%'} />
+            <div class="row" style="margin-top:14px">
+              <label class="btn-app btn-app--ghost pe-file">Upload hero image<input type="file" accept="image/jpeg,image/png,image/webp" data-upload="cover" /></label>
+              {p?.coverKey && <button type="button" class="btn-app btn-app--ghost" data-remove="cover">Remove</button>}
+              <label class="check" style="margin-left:4px"><input type="checkbox" name="coverMono" checked={!!p?.coverMono} /> <span>Black and white</span></label>
             </div>
+            <div class="pe-photos" style="margin-top:22px">
+              <div class="pe-photo">
+                <div class="pe-photo__img" data-photo-preview style={p?.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''}>{!p?.photoKey && <span>No photo</span>}</div>
+              </div>
+              <div>
+                <p style="font-size:14px;color:var(--text)">Profile photo *</p>
+                <p class="dim" style="margin-top:4px">A clear photo of you. It’s your picture on World cards, in connections and in link previews.</p>
+                <label class="btn-app btn-app--ghost pe-file" style="margin-top:12px">Upload photo<input type="file" accept="image/jpeg,image/png,image/webp,image/heic" data-upload="photo" /></label>
+              </div>
+            </div>
+            <p class="dim" data-upload-status role="status"></p>
+            {!p && <p class="dim">Save your details first, then add photos.</p>}
+          </div>
+
+          <div class="panel">
+            <h2>Name and story</h2>
+            <div class="form" style="margin-top:16px">
+              <label class="field"><span>Artist or professional name *</span><input class="input" name="displayName" value={p?.displayName ?? ''} maxlength="80" required /></label>
+              <label class="field"><span>Tagline</span><input class="input" name="tagline" value={p?.tagline ?? ''} maxlength="120" placeholder="Producer and engineer. Making records in Atlanta." /><small>One line under your name. <span data-tag-count>{p?.tagline.length ?? 0}</span> / 120</small></label>
+              <label class="field"><span>Short biography *</span>
+                <textarea class="textarea" name="bio" maxlength="1200" rows="5" placeholder="Who you are, what you make, and who you want to work with.">{p?.bio ?? ''}</textarea>
+                <small><span data-bio-count>{p?.bio.length ?? 0}</span> / 1200</small>
+              </label>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>Social and streaming</h2>
+            <p class="dim">Shown as a row of simple icons under your name. These are links you add yourself; Opus will mark connected, verified accounts separately once account connections arrive.</p>
+            <div class="grid-2" style="margin-top:16px">
+              {linkFields.map(([k, label, ph]) => (
+                <label class="field"><span>{label}</span><input class="input" data-link={k} value={p?.links[k] ?? ''} placeholder={ph} inputmode="url" /></label>
+              ))}
+            </div>
+          </div>
+
+          <div class="panel" id="featured">
+            <h2>Featured work</h2>
+            <p class="dim">The centerpiece of your page: large artwork in your order. Feature releases from <a class="link" href="/music">Music</a> (they stay in sync), or add videos, photography, placements and projects.</p>
+            <p class="notice cz-auto" data-featured-auto hidden>Showing all your published releases, newest first, until you change this list.</p>
+            <ol class="cz-feat" data-featured role="list"></ol>
+            <div class="cz-feat__add">
+              <label class="field"><span>Add a release</span>
+                <select class="select" data-add-release>
+                  <option value="">{featurable.length ? 'Choose a release' : 'No published releases yet'}</option>
+                  {featurable.map((r) => <option value={r.id}>{r.title}{r.own ? '' : ` (credit: ${r.roles.join(', ') || 'contributor'})`}</option>)}
+                </select>
+                {drafts > 0 && <small>{drafts} draft release{drafts === 1 ? '' : 's'} in Music. Publish {drafts === 1 ? 'it' : 'them'} to feature here.</small>}
+              </label>
+              <button type="button" class="btn-app btn-app--ghost" data-add-work>Add other work</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>Links</h2>
+            <p class="dim">New drops, music videos, merch, tickets, booking. They sit quietly below your featured work. Hide a link to keep it without showing it.</p>
+            <ol class="cz-links" data-links role="list"></ol>
+            <button type="button" class="btn-app btn-app--ghost" data-add-link>Add a link</button>
+          </div>
+
+          <div class="panel" id="visibility">
+            <h2>Visibility and availability</h2>
+            <div class="form" style="margin-top:14px">
+              <p class="dim" style="margin:0">{p?.status === 'published' ? 'Your page is public. Anyone with the link can see it, no sign-up needed.' : 'Your page is a draft. Only you can see it until you publish.'}</p>
+              <label class="check"><input type="checkbox" name="allowIndexing" checked={p ? p.allowIndexing : true} /> <span><b style="color:var(--text);font-weight:500">Let search engines show my page.</b> Turn off to keep it reachable only by link.</span></label>
+              <label class="check"><input type="checkbox" name="openToCollab" checked={p ? p.openToCollab : true} /> <span><b style="color:var(--text);font-weight:500">Open to collaboration.</b> Visitors see a Connect button and members can send you requests with a project idea.</span></label>
+              <label class="check"><input type="checkbox" name="showOnMap" checked={p ? p.showOnMap : true} /> <span><b style="color:var(--text);font-weight:500">Show me on the World map.</b> Your pin sits at your city or area, never your address. Turn this off to appear in list results only.</span></label>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== Professional details ===================== -->
+        <h2 class="cz__title cz__title--sub">Professional details</h2>
+        <div class="panel">
+          <h2>Specialty, genres and city</h2>
+          <div class="form" style="margin-top:16px">
             <label class="field"><span>Primary Specialty *</span>
               <select class="select" name="primarySpecialty" required>
                 <option value="">Choose your main role</option>
@@ -107,30 +210,13 @@ const linkFields = [
               </select>
               <small>Opus never sends a more precise location than you choose here, not even behind the scenes.</small>
             </label>
-            <label class="field"><span>Short biography *</span>
-              <textarea class="textarea" name="bio" maxlength="1200" rows="5" placeholder="Who you are, what you make, and who you want to work with.">{p?.bio ?? ''}</textarea>
-              <small><span data-bio-count>{p?.bio.length ?? 0}</span> / 1200</small>
-            </label>
-            <label class="check"><input type="checkbox" name="openToCollab" checked={p ? p.openToCollab : true} /> <span><b style="color:var(--text);font-weight:500">Open to collaboration.</b> Members can send you connection requests with a project idea.</span></label>
-            <label class="check"><input type="checkbox" name="showOnMap" checked={p ? p.showOnMap : true} /> <span><b style="color:var(--text);font-weight:500">Show me on the World map.</b> Your pin sits at your city or area, never your address. Turn this off to appear in list results only.</span></label>
-          </div>
-        </div>
-
-        <!-- Links -->
-        <div class="panel">
-          <h2>Listen and follow</h2>
-          <p class="dim">Optional. Links to where your work lives.</p>
-          <div class="grid-2" style="margin-top:16px">
-            {linkFields.map(([k, label, ph]) => (
-              <label class="field"><span>{label}</span><input class="input" data-link={k} value={p?.links[k] ?? ''} placeholder={ph} inputmode="url" /></label>
-            ))}
           </div>
         </div>
 
         <!-- Credits -->
         <div class="panel">
-          <h2>Professional credits</h2>
-          <p class="dim">Optional. Releases you worked on and your role.</p>
+          <h2>Other credits</h2>
+          <p class="dim">Optional. Work that isn’t in Opus Music yet. Shown as “listed by you”; credits confirmed in Music are marked separately.</p>
           <div data-rows="credits" data-template="credit" class="pe-rows"></div>
           <button type="button" class="btn-app btn-app--ghost" data-add="credits">Add a credit</button>
         </div>
@@ -149,17 +235,11 @@ const linkFields = [
           <button type="button" class="btn-app btn-app--ghost" data-add="collaborations">Add a collaboration</button>
         </div>
 
-        <div class="panel">
-          <h2>Portfolio</h2>
-          <p class="dim">Optional. Press, videos, case studies or anything else that shows your work.</p>
-          <div data-rows="portfolio" data-template="portfolio" class="pe-rows"></div>
-          <button type="button" class="btn-app btn-app--ghost" data-add="portfolio">Add a link</button>
-        </div>
 
         <div data-status class="form-status"></div>
         <div class="pe-actions">
           <button class="btn-app btn-app--ghost" type="submit" data-intent="save">{p?.status === 'published' ? 'Save' : 'Save draft'}</button>
-          {p && <a class="btn-app btn-app--ghost" href={`/m/${p.handle}`} target="_blank" data-preview>Preview</a>}
+          {p && <a class="btn-app btn-app--ghost cz-preview-link" href={`/${p.handle}`} target="_blank" data-preview>Preview</a>}
           {p?.status === 'published'
             ? <button class="btn-app btn-app--ghost" type="submit" data-intent="unpublish">Unpublish</button>
             : null}
@@ -167,16 +247,89 @@ const linkFields = [
         </div>
       </form>
     </div>
+    {p && (
+      <aside class="cz-preview" aria-label="Preview of your public page">
+        <div class="cz-preview__bar"><span>Preview</span><a class="link" href={`/${p.handle}`} target="_blank" rel="noopener">Open full page</a></div>
+        <div class="cz-phone"><iframe src={`/${p.handle}`} title="Your public page on a phone" loading="lazy" data-preview-frame></iframe></div>
+        <p class="dim">Updates when you save.</p>
+      </aside>
+    )}
+    </div>
   </section>
   <script type="application/json" id="profile-data" set:html={JSON.stringify(p ?? null).replace(/</g, '\\u003c')}></script>
+  <script type="application/json" id="release-data" set:html={JSON.stringify(releaseInfo).replace(/</g, '\\u003c')}></script>
+  <script type="application/json" id="work-kinds" set:html={JSON.stringify(WORK_KINDS)}></script>
 </BaseLayout>
 
 <style>
-  .pe-photos { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; margin-top: 16px; align-items: start; }
+  .cz-layout { display: grid; grid-template-columns: minmax(0, 760px); justify-content: center; gap: 48px; }
+  @media (min-width: 1180px) { .cz-layout { grid-template-columns: minmax(0, 720px) 340px; } }
+  .cz-main { max-width: none; }
+  .cz { margin-top: 28px; }
+  .cz__head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  .cz__head .dim { margin-top: 6px; max-width: 46ch; }
+  .cz__title { font-size: 24px; font-weight: 500; letter-spacing: -0.03em; }
+  .cz__title--sub { margin: 40px 0 16px; }
+  .cz-link { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .cz-link__url { font-size: 14px; color: var(--text-3); }
+  .cz-link__url b { color: var(--text); font-weight: 500; }
+  :global(.btn-app--sm) { min-height: 36px; padding: 0 14px; font-size: 13px; }
+  .cz-handle { display: flex; align-items: center; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface-sunken); overflow: hidden; }
+  .cz-handle span { padding: 0 2px 0 14px; font-size: 15px; color: var(--text-3); white-space: nowrap; }
+  .cz-handle .input { border: 0; background: none; padding-left: 0; }
+  .cz-handle:focus-within { border-color: var(--accent); }
+  :global([data-handle-status].is-ok) { color: var(--live); }
+  :global([data-handle-status].is-bad) { color: var(--danger); }
+
+  .cz-hero { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 16px; margin-top: 16px; align-items: start; }
+  .cz-hero__pick { position: relative; border-radius: var(--r-md); overflow: hidden; background: var(--surface-sunken); border: 1px solid var(--line); cursor: crosshair; touch-action: none; }
+  .cz-hero__pick img { display: block; width: 100%; max-height: 420px; object-fit: contain; background: #111; user-select: none; }
+  .cz-hero__none { display: grid; place-items: center; min-height: 220px; padding: 20px; text-align: center; font-size: 13px; color: var(--text-3); cursor: default; }
+  .cz-hero__dot { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.25); pointer-events: none; }
+  .cz-hero__frames { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .cz-hero__frames figure { margin: 0; }
+  .cz-hero__frames figcaption { margin-top: 6px; font-size: 12px; color: var(--text-3); text-align: center; }
+  .cz-frame { position: relative; overflow: hidden; border-radius: 8px; background: #0b0b0b center / cover no-repeat; }
+  .cz-frame::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, #0b0b0b 100%); }
+  .cz-frame--phone { aspect-ratio: 390 / 476; width: 62%; margin: 0 auto; }
+  .cz-frame--desk { aspect-ratio: 1080 / 700; }
+  :global(.cz-frame.is-mono) { filter: grayscale(1); }
+
+  .cz-auto { margin-top: 14px; }
+  .cz-feat, .cz-links { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 14px; padding: 0; list-style: none; }
+  .cz-feat:empty, .cz-links:empty { margin: 8px 0; }
+  :global(.cz-row) { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+  :global(.cz-row.is-hidden) { opacity: 0.55; }
+  :global(.cz-row__art) { width: 56px; height: 56px; border-radius: 4px; background: var(--surface-sunken) center / cover no-repeat; display: grid; place-items: center; font-size: 11px; color: var(--text-3); overflow: hidden; position: relative; }
+  :global(.cz-row__art input) { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  :global(.cz-row__main) { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  :global(.cz-row__main b) { font-size: 14px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :global(.cz-row__main small) { font-size: 12px; color: var(--text-3); }
+  :global(.cz-row__fields) { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  :global(.cz-row__fields .input), :global(.cz-row__fields .select) { min-height: 38px; font-size: 14px; }
+  :global(.cz-row__fields .wide) { grid-column: 1 / -1; }
+  :global(.cz-row__tools) { display: flex; gap: 4px; align-items: center; }
+  :global(.cz-row--link) { grid-template-columns: minmax(0, 1fr) auto; }
+  :global(.cz-tool) { width: 34px; height: 34px; border: 1px solid var(--c-ink-600); border-radius: 50%; background: none; color: var(--c-fg-faint); cursor: pointer; display: grid; place-items: center; font-size: 14px; }
+  :global(.cz-tool:hover) { color: var(--text); border-color: var(--line-strong); }
+  :global(.cz-tool:disabled) { opacity: 0.35; cursor: default; }
+  :global(.cz-vis) { font-size: 12px; color: var(--text-3); display: flex; gap: 6px; align-items: center; padding: 0 6px; }
+  .cz-feat__add { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .cz-feat__add .field { flex: 1 1 260px; }
+
+  .cz-preview { display: none; }
+  @media (min-width: 1180px) {
+    .cz-preview { display: block; position: sticky; top: 88px; align-self: start; margin-top: 210px; }
+    .cz-preview-link { display: none; }
+  }
+  .cz-preview__bar { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; font-size: 13px; color: var(--text-3); }
+  .cz-phone { position: relative; width: 340px; height: 680px; border-radius: 40px; padding: 10px; background: #0b0b0b; box-shadow: 0 0 0 1px var(--line-strong), 0 30px 60px -20px var(--shadow-c); overflow: hidden; }
+  .cz-phone iframe { width: 390px; height: 760px; border: 0; border-radius: 30px; transform: scale(0.8205); transform-origin: 0 0; background: #0b0b0b; }
+  .cz-preview > .dim { margin-top: 10px; font-size: 12px; text-align: center; }
+
+  .pe-photos { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 20px; align-items: center; }
   .pe-photo, .pe-cover { display: flex; flex-direction: column; gap: 12px; }
-  .pe-photo__img { width: 160px; height: 160px; border-radius: 50%; }
-  .pe-cover__img { width: 100%; aspect-ratio: 3 / 1; border-radius: var(--r-md); }
-  .pe-photo__img, .pe-cover__img { display: grid; place-items: center; background: var(--surface-sunken) center / cover no-repeat; border: 1px solid var(--c-ink-600); color: var(--line-strong); font-size: 13px; }
+  .pe-photo__img { width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-sunken) center / cover no-repeat; border: 1px solid var(--c-ink-600); color: var(--line-strong); font-size: 13px; }
   .pe-file { position: relative; overflow: hidden; width: max-content; }
   .pe-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .pe-rows { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 14px; }
@@ -184,14 +337,20 @@ const linkFields = [
   .pe-actions { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding: 14px 0; background: linear-gradient(to top, var(--c-bg) 70%, transparent); }
   :global(.pe-row) { display: grid; gap: 8px; grid-template-columns: 1fr auto; align-items: center; }
   :global(.pe-row--credit) { grid-template-columns: 2fr 1.2fr 1.4fr 0.7fr 2fr auto; }
-  :global(.pe-row--portfolio) { grid-template-columns: 1fr 2fr auto; }
   :global(.pe-row .input) { min-height: 42px; font-size: 14px; }
   :global(.pe-row__x) { width: 36px; height: 36px; border: 1px solid var(--c-ink-600); border-radius: 50%; background: none; color: var(--c-fg-faint); cursor: pointer; }
   :global(.pe-row__x:hover) { color: var(--text); border-color: var(--line-strong); }
   @media (max-width: 720px) {
-    .pe-photos { grid-template-columns: 1fr; }
-    :global(.pe-row--credit), :global(.pe-row--portfolio) { grid-template-columns: 1fr 1fr; }
-    :global(.pe-row--credit .pe-row__x), :global(.pe-row--portfolio .pe-row__x) { justify-self: end; }
+    .cz-hero { grid-template-columns: 1fr; }
+    .cz-hero__frames { grid-template-columns: 0.62fr 1fr; align-items: end; }
+    .cz-frame--phone { width: 100%; }
+    :global(.pe-row--credit) { grid-template-columns: 1fr 1fr; }
+    :global(.pe-row--credit .pe-row__x) { justify-self: end; }
+    :global(.cz-row) { grid-template-columns: 48px minmax(0, 1fr); }
+    :global(.cz-row__art) { width: 48px; height: 48px; }
+    :global(.cz-row__tools) { grid-column: 1 / -1; justify-content: flex-end; }
+    :global(.cz-row--link .cz-row__tools) { grid-column: auto; }
+    :global(.cz-row__fields) { grid-template-columns: 1fr; }
   }
 </style>
 
@@ -200,15 +359,21 @@ const linkFields = [
   import { prepareImage } from '@/scripts/image';
 
   type Row = Record<string, string>;
+  type Featured = { t: 'release'; id: string } | { t: 'work'; id: string; title: string; url: string; kind: string; imageKey: string | null; imageUrl?: string | null };
+  type Link = { title: string; url: string; hidden?: boolean };
   const data = JSON.parse(document.getElementById('profile-data')!.textContent || 'null') as null | {
-    handle: string; credits: Row[]; achievements: string[]; collaborations: string[]; portfolio: Row[];
+    id: string; handle: string; credits: Row[]; achievements: string[]; collaborations: string[]; portfolio: Link[]; featured: Featured[] | null; coverFocus: string; coverKey: string | null; photoKey: string | null;
   };
+  const RELEASES = JSON.parse(document.getElementById('release-data')!.textContent || '{}') as Record<string, { title: string; image: string | null; meta: string }>;
+  const KINDS = JSON.parse(document.getElementById('work-kinds')!.textContent || '{}') as Record<string, string>;
   const form = document.querySelector<HTMLFormElement>('[data-profile]')!;
+  const h = (tag: string, cls = '', text = '') => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+  const tool = (label: string, glyph: string, fn: () => void) => { const b = h('button', 'cz-tool', glyph) as HTMLButtonElement; b.type = 'button'; b.setAttribute('aria-label', label); b.title = label; b.addEventListener('click', fn); return b; };
+  const input = (cls: string, value: string, ph: string, max: number, label: string) => { const i = h('input', 'input ' + cls) as HTMLInputElement; i.value = value; i.placeholder = ph; i.maxLength = max; i.setAttribute('aria-label', label); return i; };
 
-  // ----- repeatable rows -----
+  // ----- repeatable rows (credits, achievements, collaborations) -----
   const TEMPLATES: Record<string, { cls: string; fields: [string, string, string][] }> = {
     credit: { cls: 'pe-row pe-row--credit', fields: [['title', 'Release or song', '120'], ['role', 'Your role', '80'], ['artist', 'Artist', '120'], ['year', 'Year', '4'], ['url', 'Link (optional)', '500']] },
-    portfolio: { cls: 'pe-row pe-row--portfolio', fields: [['title', 'Title', '120'], ['url', 'https://…', '500']] },
     line: { cls: 'pe-row', fields: [['value', '', '200']] },
   };
   function addRow(host: HTMLElement, v: Row | string = {}) {
@@ -230,7 +395,7 @@ const linkFields = [
     return row;
   }
   document.querySelectorAll<HTMLElement>('[data-rows]').forEach((host) => {
-    const key = host.dataset.rows as 'credits' | 'achievements' | 'collaborations' | 'portfolio';
+    const key = host.dataset.rows as 'credits' | 'achievements' | 'collaborations';
     (data?.[key] ?? []).forEach((v) => addRow(host, v as Row | string));
   });
   document.querySelectorAll<HTMLButtonElement>('[data-add]').forEach((b) => b.addEventListener('click', () => {
@@ -242,6 +407,103 @@ const linkFields = [
     row.querySelectorAll<HTMLInputElement>('input').forEach((i) => (o[i.dataset.k!] = i.value.trim()));
     return o;
   });
+
+  // ----- ordered lists with move up / move down -----
+  function moveTools<T>(list: T[], i: number, render: () => void) {
+    const wrap = h('div', 'cz-row__tools');
+    const up = tool('Move up', '↑', () => { [list[i - 1], list[i]] = [list[i]!, list[i - 1]!]; render(); });
+    const down = tool('Move down', '↓', () => { [list[i + 1], list[i]] = [list[i]!, list[i + 1]!]; render(); });
+    up.disabled = i === 0; down.disabled = i === list.length - 1;
+    wrap.append(up, down);
+    return wrap;
+  }
+
+  // ----- featured work -----
+  const featHost = document.querySelector<HTMLElement>('[data-featured]')!;
+  const autoNote = document.querySelector<HTMLElement>('[data-featured-auto]')!;
+  let featuredTouched = false;
+  const featured: Featured[] = data?.featured
+    ? data.featured.map((f) => (f.t === 'work' ? { ...f, imageUrl: f.imageKey ? '/media/' + f.imageKey : null } : f)).filter((f) => f.t === 'work' || RELEASES[f.id])
+    : Object.keys(RELEASES).map((id) => ({ t: 'release' as const, id }));
+  autoNote.hidden = !(data && data.featured == null && featured.length > 0);
+  const touch = () => { featuredTouched = true; autoNote.hidden = true; };
+  const releaseSelect = document.querySelector<HTMLSelectElement>('[data-add-release]')!;
+  function syncReleaseOptions() {
+    const used = new Set(featured.flatMap((f) => (f.t === 'release' ? [f.id] : [])));
+    Array.from(releaseSelect.options).forEach((o) => { if (o.value) o.hidden = o.disabled = used.has(o.value); });
+  }
+  function renderFeatured() {
+    featHost.replaceChildren();
+    featured.forEach((f, i) => {
+      const li = h('li', 'cz-row');
+      const art = h('span', 'cz-row__art');
+      const main = h('div', 'cz-row__main');
+      if (f.t === 'release') {
+        const r = RELEASES[f.id]!;
+        if (r.image) art.style.backgroundImage = `url(${r.image})`; else art.textContent = 'No art';
+        main.append(h('b', '', r.title), h('small', '', ['Release from Music', r.meta].filter(Boolean).join(' · ')));
+      } else {
+        if (f.imageUrl) art.style.backgroundImage = `url(${f.imageUrl})`; else art.textContent = 'Add art';
+        const file = h('input') as HTMLInputElement; file.type = 'file'; file.accept = 'image/jpeg,image/png,image/webp'; file.setAttribute('aria-label', 'Upload artwork');
+        file.addEventListener('change', async () => {
+          const fl = file.files?.[0]; if (!fl) return;
+          art.textContent = '…';
+          try {
+            const blob = await prepareImage(fl, 1400, 'square');
+            const r = await fetch('/api/profile/image?slot=work', { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error ?? 'Upload failed.');
+            f.imageKey = d.key; f.imageUrl = d.url; touch(); renderFeatured();
+          } catch (e) { art.textContent = 'Retry'; alertUpload(e); }
+        });
+        art.append(file);
+        const fields = h('div', 'cz-row__fields');
+        const t = input('', f.title, 'Title', 80, 'Title'); t.addEventListener('input', () => { f.title = t.value; touch(); });
+        const k = h('select', 'select') as HTMLSelectElement; k.setAttribute('aria-label', 'Type of work');
+        Object.entries(KINDS).forEach(([v, label]) => { const o = new Option(label, v, false, v === f.kind); k.add(o); });
+        k.addEventListener('change', () => { f.kind = k.value; touch(); });
+        const u = input('wide', f.url, 'Link (YouTube, Vimeo, portfolio…)', 500, 'Link'); u.inputMode = 'url'; u.addEventListener('input', () => { f.url = u.value; touch(); });
+        fields.append(t, k, u);
+        main.append(fields);
+      }
+      const tools = moveTools(featured, i, () => { touch(); renderFeatured(); });
+      tools.append(tool('Remove from featured', '×', () => { featured.splice(i, 1); touch(); renderFeatured(); }));
+      li.append(art, main, tools);
+      featHost.append(li);
+    });
+    syncReleaseOptions();
+  }
+  renderFeatured();
+  releaseSelect.addEventListener('change', () => { if (!releaseSelect.value) return; featured.push({ t: 'release', id: releaseSelect.value }); releaseSelect.value = ''; touch(); renderFeatured(); });
+  document.querySelector('[data-add-work]')!.addEventListener('click', () => {
+    if (!data) { upStatus.textContent = 'Save your details first, then add featured work.'; return; }
+    featured.push({ t: 'work', id: Math.random().toString(36).slice(2, 10), title: '', url: '', kind: 'music-video', imageKey: null, imageUrl: null });
+    touch(); renderFeatured(); featHost.querySelector<HTMLInputElement>('li:last-child input.input')?.focus();
+  });
+
+  // ----- custom links -----
+  const linkHost = document.querySelector<HTMLElement>('[data-links]')!;
+  const links: Link[] = (data?.portfolio ?? []).map((l) => ({ ...l }));
+  function renderLinks() {
+    linkHost.replaceChildren();
+    links.forEach((l, i) => {
+      const li = h('li', 'cz-row cz-row--link' + (l.hidden ? ' is-hidden' : ''));
+      const fields = h('div', 'cz-row__fields');
+      const t = input('', l.title, 'Title (New single, Tickets…)', 80, 'Link title'); t.addEventListener('input', () => (l.title = t.value));
+      const u = input('', l.url, 'https://…', 500, 'Link address'); u.inputMode = 'url'; u.addEventListener('input', () => (l.url = u.value));
+      fields.append(t, u);
+      const tools = moveTools(links, i, renderLinks);
+      const vis = h('label', 'cz-vis'); const cb = h('input') as HTMLInputElement; cb.type = 'checkbox'; cb.checked = !l.hidden;
+      cb.addEventListener('change', () => { l.hidden = !cb.checked; li.classList.toggle('is-hidden', !!l.hidden); });
+      vis.append(cb, document.createTextNode('Show'));
+      tools.prepend(vis);
+      tools.append(tool('Remove link', '×', () => { links.splice(i, 1); renderLinks(); }));
+      li.append(fields, tools);
+      linkHost.append(li);
+    });
+  }
+  renderLinks();
+  document.querySelector('[data-add-link]')!.addEventListener('click', () => { links.push({ title: '', url: '' }); renderLinks(); linkHost.querySelector<HTMLInputElement>('li:last-child input')?.focus(); });
 
   // ----- chip limits -----
   function capChips(sel: string, max: number) {
@@ -255,7 +517,6 @@ const linkFields = [
   }
   capChips('[data-specialties]', 6);
   capChips('[data-genres]', 5);
-  // The primary specialty can't also be an additional one.
   const primary = form.querySelector<HTMLSelectElement>('[name="primarySpecialty"]')!;
   const syncPrimary = () => document.querySelectorAll<HTMLInputElement>('[data-specialties] input').forEach((b) => {
     const isP = b.value === primary.value;
@@ -264,10 +525,72 @@ const linkFields = [
   });
   primary.addEventListener('change', syncPrimary); syncPrimary();
 
-  const bio = form.querySelector<HTMLTextAreaElement>('[name="bio"]')!;
-  bio.addEventListener('input', () => (document.querySelector('[data-bio-count]')!.textContent = String(bio.value.length)));
+  const counter = (name: string, sel: string) => { const el = form.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${name}"]`)!; el.addEventListener('input', () => (document.querySelector(sel)!.textContent = String(el.value.length))); };
+  counter('bio', '[data-bio-count]'); counter('tagline', '[data-tag-count]');
+
+  // ----- username with live availability -----
   const handle = form.querySelector<HTMLInputElement>('[name="handle"]')!;
-  handle.addEventListener('input', () => (document.querySelector('[data-handle-preview]')!.textContent = handle.value || 'your-name'));
+  const hStatus = document.querySelector<HTMLElement>('[data-handle-status]')!;
+  const hDefault = hStatus.textContent;
+  let hTimer = 0;
+  handle.addEventListener('input', () => {
+    const v = handle.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-{2,}/g, '-');
+    if (v !== handle.value) handle.value = v;
+    document.querySelectorAll('[data-handle-preview]').forEach((e) => (e.textContent = v || 'your-name'));
+    clearTimeout(hTimer);
+    hStatus.classList.remove('is-ok', 'is-bad');
+    if (!v || v === data?.handle) { hStatus.textContent = hDefault; return; }
+    hStatus.textContent = 'Checking…';
+    hTimer = window.setTimeout(async () => {
+      const r = await fetch('/api/profile/username?u=' + encodeURIComponent(v)).then((x) => x.json()).catch(() => null);
+      if (handle.value !== v || !r) return;
+      if (r.ok) { hStatus.textContent = `${location.host}/${r.username} is available.${data ? ' Your old link will redirect here.' : ''}`; hStatus.classList.add('is-ok'); }
+      else { hStatus.textContent = r.reason ?? r.error ?? 'Not available.'; hStatus.classList.add('is-bad'); }
+    }, 350);
+  });
+
+  // ----- copy profile link -----
+  document.querySelector<HTMLButtonElement>('[data-copy-link]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    try { await navigator.clipboard.writeText(b.dataset.copyLink!); b.textContent = 'Copied'; } catch { b.textContent = b.dataset.copyLink!; }
+    setTimeout(() => (b.textContent = 'Copy Profile Link'), 1800);
+  });
+
+  // ----- hero focal point -----
+  const focusInput = form.querySelector<HTMLInputElement>('[name="coverFocus"]')!;
+  const mono = form.querySelector<HTMLInputElement>('[name="coverMono"]')!;
+  const pick = document.querySelector<HTMLElement>('[data-focus-pick]')!;
+  const dot = document.querySelector<HTMLElement>('[data-focus-dot]')!;
+  const frames = document.querySelectorAll<HTMLElement>('[data-frame]');
+  let heroUrl = data?.coverKey ? '/media/' + data.coverKey : data?.photoKey ? '/media/' + data.photoKey : '';
+  function paintFocus() {
+    const [x, y] = focusInput.value.split(' ').map((n) => parseFloat(n));
+    const img = pick.querySelector('img');
+    dot.hidden = !img;
+    if (img) { dot.style.left = `${x}%`; dot.style.top = `${img.offsetTop + (img.clientHeight * (y ?? 35)) / 100}px`; }
+    frames.forEach((f) => { f.style.backgroundImage = heroUrl ? `url(${heroUrl})` : ''; f.style.backgroundPosition = focusInput.value; f.classList.toggle('is-mono', mono.checked); });
+  }
+  function setFocus(e: PointerEvent) {
+    const img = pick.querySelector('img'); if (!img) return;
+    const r = img.getBoundingClientRect();
+    // object-fit: contain, so measure against the drawn image, not the box.
+    const ratio = img.naturalWidth / img.naturalHeight || 1;
+    let w = r.width, hh = r.height;
+    if (w / hh > ratio) w = hh * ratio; else hh = w / ratio;
+    const ox = r.left + (r.width - w) / 2, oy = r.top + (r.height - hh) / 2;
+    const x = Math.min(100, Math.max(0, ((e.clientX - ox) / w) * 100));
+    const y = Math.min(100, Math.max(0, ((e.clientY - oy) / hh) * 100));
+    focusInput.value = `${Math.round(x)}% ${Math.round(y)}%`;
+    paintFocus();
+  }
+  let dragging = false;
+  pick.addEventListener('pointerdown', (e) => { if (!pick.querySelector('img')) return; dragging = true; pick.setPointerCapture(e.pointerId); setFocus(e); });
+  pick.addEventListener('pointermove', (e) => { if (dragging) setFocus(e); });
+  pick.addEventListener('pointerup', () => (dragging = false));
+  mono.addEventListener('change', paintFocus);
+  pick.querySelector('img')?.addEventListener('load', paintFocus);
+  addEventListener('resize', paintFocus);
+  paintFocus();
 
   // ----- save / publish -----
   let intent = 'save';
@@ -278,12 +601,15 @@ const linkFields = [
     body: (f) => {
       const v = values(f);
       const checked = (sel: string) => Array.from(document.querySelectorAll<HTMLInputElement>(`${sel} input:checked`)).map((i) => i.value);
-      const links: Record<string, string> = {};
-      document.querySelectorAll<HTMLInputElement>('[data-link]').forEach((i) => (links[i.dataset.link!] = i.value.trim()));
+      const socials: Record<string, string> = {};
+      document.querySelectorAll<HTMLInputElement>('[data-link]').forEach((i) => (socials[i.dataset.link!] = i.value.trim()));
       return {
-        displayName: v.displayName, handle: v.handle, primarySpecialty: v.primarySpecialty, placeId: v.placeId, bio: v.bio,
-        openToCollab: v.openToCollab, showOnMap: v.showOnMap, locationVisibility: v.locationVisibility, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'), links,
-        credits: readRows('credits'), portfolio: readRows('portfolio'),
+        displayName: v.displayName, handle: v.handle, primarySpecialty: v.primarySpecialty, placeId: v.placeId, bio: v.bio, tagline: v.tagline,
+        coverFocus: v.coverFocus, coverMono: v.coverMono, allowIndexing: v.allowIndexing,
+        openToCollab: v.openToCollab, showOnMap: v.showOnMap, locationVisibility: v.locationVisibility, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'), links: socials,
+        credits: readRows('credits'),
+        portfolio: links.filter((l) => l.url.trim()).map((l) => ({ title: l.title.trim(), url: l.url.trim(), hidden: !!l.hidden })),
+        featured: featuredTouched ? featured.map((x) => (x.t === 'work' ? { t: 'work', id: x.id, title: x.title.trim(), url: x.url.trim(), kind: x.kind, imageKey: x.imageKey } : x)) : undefined,
         achievements: readRows('achievements').map((r) => r.value), collaborations: readRows('collaborations').map((r) => r.value),
         publish: intent === 'publish' ? true : intent === 'unpublish' ? false : undefined,
       };
@@ -293,34 +619,53 @@ const linkFields = [
 
   // ----- photos -----
   const upStatus = document.querySelector<HTMLElement>('[data-upload-status]')!;
-  document.querySelectorAll<HTMLInputElement>('[data-upload]').forEach((input) => input.addEventListener('change', async () => {
-    const file = input.files?.[0];
+  const alertUpload = (e: unknown) => (upStatus.textContent = e instanceof Error ? e.message : 'Upload failed.');
+  document.querySelectorAll<HTMLInputElement>('[data-upload]').forEach((inp) => inp.addEventListener('change', async () => {
+    const file = inp.files?.[0];
     if (!file) return;
-    if (!data) { upStatus.textContent = 'Save your details first, then add photos.'; input.value = ''; return; }
-    const slot = input.dataset.upload as 'photo' | 'cover';
+    if (!data) { upStatus.textContent = 'Save your details first, then add photos.'; inp.value = ''; return; }
+    const slot = inp.dataset.upload as 'photo' | 'cover';
     upStatus.textContent = 'Preparing image…';
     try {
       // Re-encode in the browser: resizes, fixes orientation and drops all metadata (including GPS) before upload.
-      const blob = await prepareImage(file, slot === 'photo' ? 800 : 2000, slot === 'photo' ? 'square' : 'free');
+      const blob = await prepareImage(file, slot === 'photo' ? 800 : 2400, slot === 'photo' ? 'square' : 'free');
       upStatus.textContent = 'Uploading…';
       const r = await fetch(`/api/profile/image?slot=${slot}`, { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error ?? 'Upload failed.');
-      const el = document.querySelector<HTMLElement>(slot === 'photo' ? '[data-photo-preview]' : '[data-cover-preview]')!;
-      el.style.backgroundImage = `url(${d.url})`; el.textContent = '';
-      upStatus.textContent = slot === 'photo' ? 'Photo updated.' : 'Cover updated.';
+      if (slot === 'photo') {
+        const el = document.querySelector<HTMLElement>('[data-photo-preview]')!;
+        el.style.backgroundImage = `url(${d.url})`; el.textContent = '';
+        if (!data.coverKey) heroUrl = d.url;
+      } else {
+        const img = document.createElement('img'); img.src = d.url; img.alt = 'Your hero image'; img.draggable = false; img.dataset.coverPreview = '';
+        img.addEventListener('load', paintFocus);
+        pick.querySelector('[data-cover-preview]')?.replaceWith(img);
+        heroUrl = d.url; data.coverKey = d.url.replace('/media/', '');
+      }
+      paintFocus();
+      reloadPreview();
+      upStatus.textContent = slot === 'photo' ? 'Photo updated.' : 'Hero image updated. Tap it to set the focal point, then save.';
     } catch (e) {
-      upStatus.textContent = e instanceof Error ? e.message : 'Upload failed.';
-    } finally { input.value = ''; }
+      alertUpload(e);
+    } finally { inp.value = ''; }
   }));
   document.querySelector<HTMLButtonElement>('[data-remove="cover"]')?.addEventListener('click', async (e) => {
     const r = await fetch('/api/profile/image?slot=cover', { method: 'DELETE' });
-    if (r.ok) { const el = document.querySelector<HTMLElement>('[data-cover-preview]')!; el.style.backgroundImage = ''; el.textContent = 'Optional cover image'; (e.target as HTMLElement).remove(); }
+    if (r.ok) {
+      const none = document.createElement('div'); none.className = 'cz-hero__none'; none.dataset.coverPreview = ''; none.innerHTML = '<span>Hero image removed. Your profile photo is used until you add one.</span>';
+      pick.querySelector('[data-cover-preview]')?.replaceWith(none);
+      heroUrl = data?.photoKey ? '/media/' + data.photoKey : ''; if (data) data.coverKey = null;
+      (e.target as HTMLElement).remove(); paintFocus(); reloadPreview();
+    }
   });
+
+  const frame = document.querySelector<HTMLIFrameElement>('[data-preview-frame]');
+  function reloadPreview() { if (frame) frame.src = frame.src.split('?')[0] + '?t=' + Date.now(); }
 
   const saved = new URLSearchParams(location.search).get('saved');
   if (saved) {
     const st = document.querySelector<HTMLElement>('[data-state]');
-    if (st) st.insertAdjacentHTML('afterbegin', `<b>${saved === 'publish' ? 'Saved and published.' : saved === 'unpublish' ? 'Unpublished.' : 'Draft saved.'}</b> `);
+    if (st) st.insertAdjacentHTML('afterbegin', `<b>${saved === 'publish' ? 'Saved and published.' : saved === 'unpublish' ? 'Unpublished.' : 'Saved.'}</b> `);
   }
 </script>

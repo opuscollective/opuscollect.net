@@ -24,7 +24,7 @@ const when = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'sh
         {incoming.length === 0 ? <p class="dim">No new requests. Make sure “Open to collaboration” is on in your profile.</p> : (
           <ul class="cx" role="list">{incoming.map((c) => (
             <li class="cx__item" data-id={c.id}>
-              <a class="cx__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+              <a class="cx__who" href={c.other.handle ? `/${c.other.handle}` : undefined}>
                 <span class="cx__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''}></span>
                 <span><b>{c.other.name}</b><small>{sub(c)}</small></span>
               </a>
@@ -40,7 +40,7 @@ const when = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'sh
         {connected.length === 0 ? <p class="dim">No connections yet. Find people in <a class="link" href="/musicians?collab=1">World</a>.</p> : (
           <ul class="cx" role="list">{connected.map((c) => (
             <li class="cx__item" data-id={c.id}>
-              <a class="cx__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+              <a class="cx__who" href={c.other.handle ? `/${c.other.handle}` : undefined}>
                 <span class="cx__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''}></span>
                 <span><b>{c.other.name}</b><small>{sub(c)}</small></span>
               </a>
@@ -55,7 +55,7 @@ const when = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'sh
         {outgoing.length === 0 ? <p class="dim">No pending requests.</p> : (
           <ul class="cx" role="list">{outgoing.map((c) => (
             <li class="cx__item" data-id={c.id}>
-              <a class="cx__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+              <a class="cx__who" href={c.other.handle ? `/${c.other.handle}` : undefined}>
                 <span class="cx__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''}></span>
                 <span><b>{c.other.name}</b><small>Waiting for a reply · sent {when(c.createdAt)}</small></span>
               </a>

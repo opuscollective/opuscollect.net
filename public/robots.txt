@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /account
+Disallow: /api/
+Disallow: /business
+Disallow: /bookings/
+Allow: /
+
+Sitemap: https://opuscollect.net/sitemap.xml

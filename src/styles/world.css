@@ -718,3 +718,10 @@
   .wx__opt { min-height: 46px; font-size: 15px; justify-content: flex-start; padding: 0 16px; }
   .wx__note { margin-top: 8px; }
 }
+
+/* Compact musician preview: the full portfolio lives at opuscollect.net/<username>. */
+.pv__tagline { margin-top: 16px; font-size: 14px; line-height: 1.5; color: var(--c-fg-subtle); }
+.pv__art { display: block; margin-top: 14px; }
+.pv__art ul { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.pv__art img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 4px; box-shadow: 0 0 0 1px var(--line); transition: opacity 0.15s; }
+.pv__art:hover img { opacity: 0.9; }

@@ -12,8 +12,6 @@ import { SPECIALTIES, allSpecialties } from '@/data/specialties';
 
 const section = (title: string, body: string) => (body ? `<section class="pv__sec"><h3>${esc(title)}</h3>${body}</section>` : '');
 const chips = (xs: string[]) => (xs.length ? `<ul class="pv__chips">${xs.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '');
-const EXT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>';
-const PLAY = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5.5v13l11-6.5z"/></svg>';
 
 /** A button only looks live when it does something. Otherwise it is disabled and says why. */
 function actionHtml(a: PreviewAction, primary: boolean): string {
@@ -40,7 +38,7 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
   let status = '';
   if (l.kind === 'musician') {
     const sp = allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s]?.label ?? s);
-    roles = `<p class="pv__roles">${sp.map((s, i) => `<span${i === 0 ? ' class="is-primary"' : ''}>${esc(s)}</span>`).join('')}</p>${l.genres.length ? `<p class="pv__genres">${esc(l.genres.join(' · '))}</p>` : ''}`;
+    roles = `<p class="pv__roles"><span class="is-primary">${esc(sp[0] ?? '')}</span>${sp.length > 1 ? `<span>+${sp.length - 1} more</span>` : ''}</p>`;
     status = l.openToCollab ? '<p class="wc__status is-live">Open to collaborate</p>' : '<p class="wc__status">Not taking new collaborations</p>';
   } else {
     roles = `<p class="pv__roles"><span class="is-primary">${esc(kindLabel(l))}</span></p>`;
@@ -56,19 +54,10 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
   const bio = d.bio ? `<p class="pv__bio">${esc(d.bio)}</p>` : '';
   let body = '';
   if (l.kind === 'musician') {
-    const featured = d.featured.map((f) => `<li><a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer"><span class="pv__play">${PLAY}</span><span><b>${esc(f.title)}</b><small>${esc(f.platform)}</small></span>${EXT}</a></li>`).join('');
-    const credits = d.credits.map((c) => {
-      const t = `<b>${esc(c.title)}</b><small>${esc([c.role, c.artist, c.year].filter(Boolean).join(' · '))}</small>`;
-      return `<li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<span>${t}</span>`}</li>`;
-    }).join('');
-    const rel = (d.releases ?? []).map((r) => `<li><a href="${esc(r.url)}"><b>${esc(r.title)}</b><small>${esc(r.meta)}</small></a></li>`).join('');
-    const links = d.links.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}${EXT}</a></li>`).join('');
-    body = section('About', bio)
-      + section('Releases', rel ? `<ul class="pv__list">${rel}</ul>` : '')
-      + section('Featured music', featured ? `<ul class="pv__list pv__list--media">${featured}</ul>` : '')
-      + section('Selected credits', credits ? `<ul class="pv__list">${credits}</ul>` : '')
-      + section('Highlights', d.achievements.length ? `<ul class="pv__bullets">${d.achievements.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : '')
-      + section('Elsewhere', links ? `<ul class="pv__links">${links}</ul>` : '');
+    // Compact on purpose: who they are, where, whether they're open, and the way into their full portfolio.
+    const art = (d.featuredArt ?? []).filter((f) => f.image).map((f) => `<li><img src="${esc(f.image!)}" alt="${esc(f.title)}" loading="lazy" decoding="async" width="200" height="200" /></li>`).join('');
+    body = (d.tagline ? `<p class="pv__tagline">${esc(d.tagline)}</p>` : '')
+      + (art ? `<a class="pv__art" href="${esc(d.actions.profile.href ?? '#')}" aria-label="Featured work by ${esc(l.name)}"><ul>${art}</ul></a>` : '');
   } else if (l.kind === 'studio') {
     const services = d.services.map((s) => `<li><span><b>${esc(s.name)}</b><small>${esc([s.detail, s.description].filter(Boolean).join(' · '))}</small></span>${s.price ? `<em>${esc(s.price)}</em>` : ''}</li>`).join('');
     body = section('Gallery', galleryHtml(d.gallery, l.id, l.name))

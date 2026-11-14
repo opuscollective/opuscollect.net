@@ -8,6 +8,8 @@ import { HttpError, audit, now, randomId, str } from './util';
 import { limit } from './ratelimit';
 import type { SessionUser } from './session';
 import type { LocationVisibility } from '@/types/directory';
+import { RESERVED, slugify, checkUsername } from './usernames';
+export { RESERVED, slugify };
 
 export const LINK_KEYS = ['spotify', 'appleMusic', 'soundcloud', 'youtube', 'instagram', 'tiktok', 'website'] as const;
 export type LinkKey = (typeof LINK_KEYS)[number];
@@ -22,7 +24,20 @@ const LINK_HOSTS: Record<LinkKey, string[] | null> = {
 };
 
 export interface Credit { title: string; role: string; artist: string; year: string; url: string }
-export interface PortfolioItem { title: string; url: string }
+/** A custom link-in-bio link (stored in profiles.portfolio, in the member's order). */
+export interface PortfolioItem { title: string; url: string; hidden?: boolean }
+
+/** Kinds of non-release work a member can feature. Keys are stored; labels can change. */
+export const WORK_KINDS = {
+  'music-video': 'Music video', performance: 'Performance', production: 'Production', placement: 'Placement',
+  mix: 'Mix and master', 'beat': 'Beat showcase', photography: 'Photography', video: 'Video', campaign: 'Visual campaign',
+  studio: 'Studio', session: 'Session', project: 'Project', other: 'Work',
+} as const;
+export type WorkKind = keyof typeof WORK_KINDS;
+export type FeaturedRef =
+  | { t: 'release'; id: string }
+  | { t: 'work'; id: string; title: string; url: string; kind: WorkKind; imageKey: string | null };
+export const FEATURED_MAX = 12;
 
 export interface ProfileData {
   id: string;
@@ -43,6 +58,12 @@ export interface ProfileData {
   achievements: string[];
   collaborations: string[];
   portfolio: PortfolioItem[];
+  tagline: string;
+  coverFocus: string;
+  coverMono: boolean;
+  /** Null = never customized (show published releases, newest first). */
+  featured: FeaturedRef[] | null;
+  allowIndexing: boolean;
   status: 'draft' | 'published' | 'hidden';
   verification: 'none' | 'verified' | 'revoked';
   updatedAt: number;
@@ -52,10 +73,17 @@ interface Row {
   id: string; handle: string; display_name: string; primary_specialty: string | null; bio: string; place_id: string | null;
   photo_key: string | null; cover_key: string | null; open_to_collab: number; show_on_map: number; location_visibility: LocationVisibility | null; links: string; credits: string; achievements: string;
   collaborations: string; portfolio: string; status: ProfileData['status']; verification: ProfileData['verification']; updated_at: number;
-  owner_user_id: string;
+  owner_user_id: string; tagline: string | null; cover_focus: string | null; cover_mono: number | null; featured: string | null; allow_indexing: number | null;
 }
 
 const parse = <T>(s: string, fallback: T): T => { try { return JSON.parse(s) as T; } catch { return fallback; } };
+
+/** "x% y%" with both values 0–100, else the default framing. */
+export function toFocus(v: unknown): string {
+  const m = typeof v === 'string' ? v.match(/^(\d{1,3}(?:\.\d)?)% (\d{1,3}(?:\.\d)?)%$/) : null;
+  if (!m || Number(m[1]) > 100 || Number(m[2]) > 100) return '50% 35%';
+  return `${m[1]}% ${m[2]}%`;
+}
 
 async function hydrate(db: D1Database, r: Row): Promise<ProfileData> {
   const [sp, gn] = await db.batch([
@@ -71,6 +99,8 @@ async function hydrate(db: D1Database, r: Row): Promise<ProfileData> {
     placeId: r.place_id, bio: r.bio, openToCollab: !!r.open_to_collab, showOnMap: r.show_on_map !== 0, locationVisibility: r.location_visibility ?? 'city', photoKey: r.photo_key, coverKey: r.cover_key,
     links: parse(r.links, {}), credits: parse(r.credits, []), achievements: parse(r.achievements, []),
     collaborations: parse(r.collaborations, []), portfolio: parse(r.portfolio, []),
+    tagline: r.tagline ?? '', coverFocus: toFocus(r.cover_focus), coverMono: !!r.cover_mono,
+    featured: r.featured == null ? null : parse<FeaturedRef[]>(r.featured, []), allowIndexing: r.allow_indexing !== 0,
     status: r.status, verification: r.verification, updatedAt: r.updated_at,
   };
 }
@@ -90,8 +120,6 @@ export async function getPublicProfile(db: D1Database, handle: string, viewerId:
 }
 
 // ---------- validation ----------
-export const slugify = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 30);
-export const RESERVED = new Set(['admin', 'account', 'api', 'world', 'opus', 'support', 'help', 'settings', 'verified', 'sign-in', 'sign-up', 'about', 'legal', 'new', 'edit', 'business', 'studios', 'bookings', 'venues', 'opportunities', 'people', 'media']);
 
 export function cleanUrl(v: unknown, hosts: string[] | null): string {
   const s = str(v, 500);
@@ -116,6 +144,7 @@ export interface SaveInput {
   handle?: unknown; displayName?: unknown; primarySpecialty?: unknown; specialties?: unknown; genres?: unknown;
   placeId?: unknown; bio?: unknown; openToCollab?: unknown; showOnMap?: unknown; locationVisibility?: unknown; links?: unknown; credits?: unknown; achievements?: unknown;
   collaborations?: unknown; portfolio?: unknown; publish?: unknown;
+  tagline?: unknown; coverFocus?: unknown; coverMono?: unknown; featured?: unknown; allowIndexing?: unknown;
 }
 
 /** What's still missing before a profile can be published. */
@@ -129,6 +158,42 @@ export function missingForPublish(p: ProfileData, emailVerified: boolean): strin
   if (p.bio.trim().length < 40) m.push('A short bio (40 characters or more)');
   if (!p.photoKey) m.push('Profile photo');
   return m;
+}
+
+/**
+ * Validates Featured Work. Releases must be published and owned by (or credited to, confirmed) this member.
+ * Work images must be ones this profile uploaded. Order is kept.
+ */
+async function cleanFeatured(db: D1Database, userId: string, profileId: string | null, v: unknown): Promise<FeaturedRef[]> {
+  const items = list(v, FEATURED_MAX * 2);
+  const releaseIds = items.flatMap((x) => { const o = (x ?? {}) as Record<string, unknown>; return o.t === 'release' && typeof o.id === 'string' ? [o.id.slice(0, 40)] : []; });
+  const allowed = new Set<string>();
+  if (releaseIds.length) {
+    const { results } = await db.prepare(`SELECT r.id FROM releases r WHERE r.status = 'published' AND r.id IN (${releaseIds.map(() => '?').join(',')})
+      AND (r.owner_user_id = ? OR EXISTS (SELECT 1 FROM release_credits c WHERE c.release_id = r.id AND c.user_id = ? AND c.status = 'confirmed'))`)
+      .bind(...releaseIds, userId, userId).all<{ id: string }>();
+    results.forEach((r) => allowed.add(r.id));
+  }
+  const out: FeaturedRef[] = [];
+  const seen = new Set<string>();
+  for (const x of items) {
+    const o = (x ?? {}) as Record<string, unknown>;
+    if (o.t === 'release') {
+      const id = str(o.id, 40);
+      if (allowed.has(id) && !seen.has(id)) { seen.add(id); out.push({ t: 'release', id }); }
+    } else if (o.t === 'work') {
+      const title = str(o.title, 80);
+      if (!title) throw new HttpError(400, 'Give each piece of featured work a title.');
+      const url = cleanUrl(o.url, null);
+      const kind = (typeof o.kind === 'string' && o.kind in WORK_KINDS ? o.kind : 'other') as WorkKind;
+      const key = str(o.imageKey, 120);
+      const imageKey = key && profileId && key.startsWith(`p/${profileId}/work-`) && /^[\w/.-]+$/.test(key) ? key : null;
+      const id = /^[\w-]{4,24}$/.test(str(o.id, 24)) ? str(o.id, 24) : randomId(6);
+      if (!seen.has(id)) { seen.add(id); out.push({ t: 'work', id, title, url, kind, imageKey }); }
+    }
+    if (out.length >= FEATURED_MAX) break;
+  }
+  return out;
 }
 
 export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) {
@@ -160,20 +225,31 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
   }).filter((c) => c.title);
   const achievements = list(body.achievements, 12).map((a) => str(a, 200)).filter(Boolean);
   const collaborations = list(body.collaborations, 20).map((a) => str(a, 120)).filter(Boolean);
-  const portfolio: PortfolioItem[] = list(body.portfolio, 12).map((c) => {
+  const portfolio: PortfolioItem[] = list(body.portfolio, 20).map((c) => {
     const o = (c ?? {}) as Record<string, unknown>;
-    return { title: str(o.title, 120), url: cleanUrl(o.url, null) };
+    return { title: str(o.title, 80), url: cleanUrl(o.url, null), ...(o.hidden === true ? { hidden: true } : {}) };
   }).filter((p) => p.url);
 
-  // Handle: user-chosen or derived from the name; must be unique.
-  let handle = slugify(str(body.handle, 40)) || existing?.handle || slugify(displayName) || 'member';
-  if (handle.length < 3) handle = `${handle}-${randomId(3).toLowerCase()}`;
-  if (RESERVED.has(handle)) throw new HttpError(400, 'That profile address is reserved. Try another.', 'handle');
-  const taken = await db.prepare('SELECT owner_user_id FROM profiles WHERE handle = ?').bind(handle).first<{ owner_user_id: string }>();
-  if (taken && taken.owner_user_id !== user.id) {
-    if (str(body.handle, 40)) throw new HttpError(409, 'That profile address is taken. Try another.', 'handle');
-    handle = `${handle}-${randomId(3).toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+  const tagline = str(body.tagline, 120);
+  const coverFocus = toFocus(body.coverFocus ?? existing?.coverFocus);
+  const coverMono = body.coverMono === true ? 1 : body.coverMono === false ? 0 : existing?.coverMono ? 1 : 0;
+  const allowIndexing = body.allowIndexing === false ? 0 : body.allowIndexing === true ? 1 : existing && !existing.allowIndexing ? 0 : 1;
+  const featured = body.featured === undefined ? existing?.featured ?? null : await cleanFeatured(db, user.id, existing?.id ?? null, body.featured);
+
+  // Username: user-chosen or derived from the name; unique across members and studios, and never a retired one.
+  const wanted = str(body.handle, 40);
+  let handle = slugify(wanted) || existing?.handle || slugify(displayName) || 'member';
+  if (handle.length < 3) handle = `${handle}-${randomId(3).toLowerCase().replace(/[^a-z0-9]/g, 'x')}`;
+  let avail = await checkUsername(db, handle, existing?.id ?? null);
+  if (!avail.ok) {
+    if (wanted) throw new HttpError(avail.reason.includes('taken') || avail.reason.includes('used before') ? 409 : 400, avail.reason, 'handle');
+    handle = `${handle.slice(0, 25)}-${randomId(3).toLowerCase().replace(/[^a-z0-9]/g, 'x')}`;
+    avail = await checkUsername(db, handle, existing?.id ?? null);
+    if (!avail.ok) throw new HttpError(400, 'Choose a username for your profile link.', 'handle');
   }
+  handle = avail.username;
+  const renamed = !!existing && existing.handle.toLowerCase() !== handle;
+  if (renamed) await limit(db, `handle-change:${user.id}`, 5, 30 * 86_400_000);
 
   // A published profile must stay complete; check before writing anything.
   const willPublish = body.publish === true || (body.publish !== false && existing?.status === 'published');
@@ -196,14 +272,22 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
   const stmts: D1PreparedStatement[] = [];
   if (existing) {
     stmts.push(db.prepare(`UPDATE profiles SET handle=?, display_name=?, primary_specialty=?, bio=?, place_id=?, open_to_collab=?, show_on_map=?, location_visibility=?, links=?, credits=?,
-      achievements=?, collaborations=?, portfolio=?, updated_at=? WHERE id=?`)
+      achievements=?, collaborations=?, portfolio=?, tagline=?, cover_focus=?, cover_mono=?, featured=?, allow_indexing=?, updated_at=? WHERE id=?`)
       .bind(handle, displayName, primary, bio, placeId, openToCollab, showOnMap, vis, JSON.stringify(links), JSON.stringify(credits),
-        JSON.stringify(achievements), JSON.stringify(collaborations), JSON.stringify(portfolio), t, id));
+        JSON.stringify(achievements), JSON.stringify(collaborations), JSON.stringify(portfolio), tagline, coverFocus, coverMono,
+        featured == null ? null : JSON.stringify(featured), allowIndexing, t, id));
+    if (renamed) {
+      // The old username keeps redirecting here and can't be claimed by anyone else.
+      stmts.push(db.prepare('INSERT OR IGNORE INTO profile_handle_history (handle, profile_id, created_at) VALUES (?, ?, ?)').bind(existing!.handle.toLowerCase(), id, t));
+      stmts.push(db.prepare('DELETE FROM profile_handle_history WHERE handle = ? AND profile_id = ?').bind(handle, id));
+    }
   } else {
     stmts.push(db.prepare(`INSERT INTO profiles (id, kind, owner_user_id, handle, display_name, primary_specialty, bio, place_id, open_to_collab, show_on_map, location_visibility, links, credits,
-      achievements, collaborations, portfolio, status, created_at, updated_at) VALUES (?, 'musician', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`)
+      achievements, collaborations, portfolio, tagline, cover_focus, cover_mono, featured, allow_indexing, status, created_at, updated_at)
+      VALUES (?, 'musician', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`)
       .bind(id, user.id, handle, displayName, primary, bio, placeId, openToCollab, showOnMap, vis, JSON.stringify(links), JSON.stringify(credits),
-        JSON.stringify(achievements), JSON.stringify(collaborations), JSON.stringify(portfolio), t, t));
+        JSON.stringify(achievements), JSON.stringify(collaborations), JSON.stringify(portfolio), tagline, coverFocus, coverMono,
+        featured == null ? null : JSON.stringify(featured), allowIndexing, t, t));
   }
   stmts.push(db.prepare('DELETE FROM profile_specialties WHERE profile_id = ?').bind(id));
   stmts.push(db.prepare('INSERT INTO profile_specialties (profile_id, specialty, is_primary) VALUES (?, ?, 1)').bind(id, primary));
@@ -211,6 +295,11 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
   stmts.push(db.prepare('DELETE FROM profile_genres WHERE profile_id = ?').bind(id));
   for (const g of genres) stmts.push(db.prepare('INSERT INTO profile_genres (profile_id, genre) VALUES (?, ?)').bind(id, g));
   await db.batch(stmts);
+  if (renamed) await audit(db, user.id, 'profile.username_changed', { id, from: existing!.handle, to: handle });
+
+  // Remove artwork for featured work that was taken off the profile.
+  const keep = new Set((featured ?? []).flatMap((f) => (f.t === 'work' && f.imageKey ? [f.imageKey] : [])));
+  for (const f of existing?.featured ?? []) if (f.t === 'work' && f.imageKey && !keep.has(f.imageKey)) await env.MEDIA.delete(f.imageKey).catch(() => {});
 
   const saved = (await getMyProfile(db, user.id))!;
   let status = saved.status;
@@ -279,14 +368,16 @@ export function stripWebpMetadata(buf: Uint8Array): Uint8Array {
 /** Any profile the user owns can take a photo and cover; defaults to their musician profile. */
 export interface ImageTarget { id: string; photoKey: string | null; coverKey: string | null; status: string }
 
-export async function uploadImage(env: Env, user: SessionUser, request: Request, slot: 'photo' | 'cover', target?: ImageTarget | null) {
+export async function uploadImage(env: Env, user: SessionUser, request: Request, slot: 'photo' | 'cover' | 'work', target?: ImageTarget | null) {
   const db = env.DB;
   await limit(db, `upload:${user.id}`, 30, 60 * 60_000);
   const profile = target === undefined ? await getMyProfile(db, user.id) : target;
   if (!profile) throw new HttpError(400, 'Save your profile details before adding photos.');
   const { clean, ext, type } = await cleanUpload(request);
-  const key = `p/${profile.id}/${slot}-${randomId(12)}.${ext}`;
+  const key = `p/${profile.id}/${slot}-${randomId(12).replace(/[^\w-]/g, '')}.${ext}`;
   await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } });
+  // Artwork for featured work is attached when the profile is saved, not here.
+  if (slot === 'work') return key;
   const old = slot === 'photo' ? profile.photoKey : profile.coverKey;
   await db.prepare(`UPDATE profiles SET ${slot === 'photo' ? 'photo_key' : 'cover_key'} = ?, updated_at = ? WHERE id = ?`).bind(key, now(), profile.id).run();
   if (old) await env.MEDIA.delete(old);

@@ -10,6 +10,7 @@ import { RELEASE_KINDS } from '@/data/music';
 import { LINK_KEYS, listGallery, mediaUrl, type Credit, type PortfolioItem } from './profiles';
 import { publicMusicians, publicStudios } from './directory';
 import { money } from '@/lib/booking-time';
+import { loadPortfolio } from './portfolio';
 
 export interface PreviewLink { key: string; label: string; url: string }
 export interface PreviewService { name: string; detail: string; price: string; description: string }
@@ -32,6 +33,9 @@ export interface ProfileDetail {
   projects: string[];
   /** A button is only live when it does something. Otherwise it carries the honest reason. */
   actions: { primary: PreviewAction; profile: PreviewAction };
+  /** Musicians: the one-line tagline and the first few Featured Work covers from their portfolio. */
+  tagline?: string;
+  featuredArt?: { title: string; image: string | null }[];
   isSample?: boolean;
 }
 
@@ -77,8 +81,13 @@ async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | n
     services: [] as PreviewService[], equipment: [] as string[], projects: [] as string[],
   };
   if (l.kind === 'musician') {
+    // Same data as the full portfolio, so the preview and the page never disagree.
+    const pf = await loadPortfolio(db, l.slug, null).catch(() => null);
+    const port = pf && 'portfolio' in pf ? pf.portfolio : null;
     return {
       ...base,
+      tagline: port?.profile.tagline || undefined,
+      featuredArt: (port?.featured ?? []).slice(0, 3).map((f) => ({ title: f.title, image: f.image })),
       actions: {
         primary: l.openToCollab ? { label: 'Connect', href: l.href + '?connect=1' } : { label: 'Connect', disabledReason: 'Not taking new collaborations right now' },
         profile: { label: 'View full profile', href: l.href },

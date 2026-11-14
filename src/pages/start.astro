@@ -89,7 +89,7 @@ const STEPS = ['You', 'Your first release', 'Done'];
           <div class="st__next">
             {profile.status !== 'published' && <a class="btn-app btn-app--block" href="/account/profile">Finish your profile</a>}
             <a class="btn-app btn-app--ghost btn-app--block" href="/music">Your releases</a>
-            <a class="btn-app btn-app--ghost btn-app--block" href={`/m/${profile.handle}`}>See your profile</a>
+            <a class="btn-app btn-app--ghost btn-app--block" href={`/${profile.handle}`}>See your profile</a>
           </div>
         </>
       )}

@@ -57,7 +57,7 @@ const out = releases.filter((r) => r.status === 'published');
                   <a class="mu-req__cover" href={`/r/${r.releaseId}`} style={r.coverKey ? `background-image:url(${mediaUrl(r.coverKey)})` : ''} aria-label={r.releaseTitle}></a>
                   <div class="mu-req__body">
                     <p><b>{roleLabel(r.role)}</b> on {r.trackTitle ? <>“{r.trackTitle}” from </> : null}<a class="link" href={`/r/${r.releaseId}`}>{r.releaseTitle}</a></p>
-                    <p class="dim">From {r.fromHandle ? <a class="link" href={`/m/${r.fromHandle}`}>{r.from}</a> : r.from}{r.releaseStatus !== 'published' && ' · not released yet'}</p>
+                    <p class="dim">From {r.fromHandle ? <a class="link" href={`/${r.fromHandle}`}>{r.from}</a> : r.from}{r.releaseStatus !== 'published' && ' · not released yet'}</p>
                     {r.note && <p class="mu-req__note">“{r.note}”</p>}
                     <div class="row"><button class="btn-app" data-answer="confirm">Confirm</button><button class="btn-app btn-app--ghost" data-answer="decline">Decline</button></div>
                   </div>
@@ -91,7 +91,7 @@ const out = releases.filter((r) => r.status === 'published');
                 </a></li>
               ))}</ul>
             )}
-            {profile.status === 'published' && <p class="dim" style="margin-top:14px">See how it looks on <a class="link" href={`/m/${profile.handle}`}>your profile</a>.</p>}
+            {profile.status === 'published' && <p class="dim" style="margin-top:14px">See how it looks on <a class="link" href={`/${profile.handle}`}>your profile</a>.</p>}
           </div>
         </>
       )}
