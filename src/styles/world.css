@@ -390,8 +390,8 @@
 /* Verification badges */
 .vb { display: inline-flex; width: 16px; height: 16px; flex-shrink: 0; }
 .vb svg, .vchip svg { width: 100%; height: 100%; }
-.vb .s, .vchip .s { fill: var(--c-accent); }
-.vb .c, .vchip .c { fill: none; stroke: var(--c-accent-ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.vb .s, .vchip .s { fill: var(--c-verified); }
+.vb .c, .vchip .c { fill: none; stroke: var(--c-verified-ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .vchip { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 1px 6px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--c-hairline-strong); font-size: 10px; color: var(--c-fg-muted); white-space: nowrap; }
 
 

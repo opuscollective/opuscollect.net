@@ -165,6 +165,9 @@
   --c-accent-glow: var(--accent-line);
   --c-live: var(--live);
   --c-live-dim: var(--live-soft);
+  /* Opus Verified: one saturated blue seal with a white check, the same in light and dark. */
+  --c-verified: #2f80ff;
+  --c-verified-ink: #ffffff;
 }
 
 :root {

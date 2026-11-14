@@ -1,6 +1,6 @@
 ---
 /**
- * Opus Verified mark. A monochrome seal with a check.
+ * Opus Verified mark. A blue seal with a white check (Bogo, 2026-11-14).
  * Scalloped seal (12 soft lobes) with a check. Refined 2026-11-10 after Bogo's feedback on the old star shape.
  */
 interface Props { size?: number; label?: boolean; tone?: 'light' | 'dark' }
@@ -16,9 +16,8 @@ const { size = 16, label = false, tone = 'light' } = Astro.props;
 
 <style>
   .vbadge { display: inline-flex; align-items: center; gap: 6px; line-height: 1; }
-  .vbadge--light .vbadge__seal { fill: var(--c-white); }
-  .vbadge--light .vbadge__check { stroke: var(--c-black); }
-  .vbadge--dark .vbadge__seal { fill: var(--c-paper-ink); }
-  .vbadge--dark .vbadge__check { stroke: var(--c-paper); }
+  /* Same blue seal on every surface; tone is kept for callers but no longer changes the colour. */
+  .vbadge__seal { fill: var(--c-verified); }
+  .vbadge__check { stroke: var(--c-verified-ink); }
   .vbadge__text { font-size: 13px; font-weight: 500; letter-spacing: -0.005em; }
 </style>
