@@ -1,0 +1,12 @@
+---
+/** Opus Collective page carried over from the v23 site. Content lives in src/legacy/releases.html. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import html from '@/legacy/releases.html?raw';
+import '@/styles/legacy.css';
+---
+<BaseLayout title="Releases" description="Releases from Opus Collective artists, including Amazing and Scenic by Bogo." image="/images/scenic-cover.jpg">
+  <div class="legacy"><Fragment set:html={html} /></div>
+</BaseLayout>
+<script>
+  import '@/scripts/legacy-site.js';
+</script>

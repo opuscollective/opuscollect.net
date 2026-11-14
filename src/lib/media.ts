@@ -1,5 +1,5 @@
 /**
- * Reusable image handling for Opus World: portraits, studio covers, galleries, organization logos.
+ * Reusable image handling for World: portraits, studio covers, galleries, organization logos.
  *
  * - Real images come from member uploads in R2 (/media/...). Uploads are resized and stripped of
  *   metadata in the browser and stripped again on the server.

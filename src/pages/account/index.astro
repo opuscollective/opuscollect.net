@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import '@/styles/app.css';
+import ThemeSwitch from '@/components/ui/ThemeSwitch.astro';
 export const prerender = false;
 const user = Astro.locals.user;
 if (!user) return Astro.redirect('/sign-in?next=/account');
@@ -18,7 +19,7 @@ const pending = await db
     <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
       <p class="t-meta app__kicker">Account</p>
       <h1 class="app__title">Your account</h1>
-      <p class="app__lead">Signed in as <b style="color:#fff;font-weight:500">{user.email}</b></p>
+      <p class="app__lead">Signed in as <b style="color:var(--text);font-weight:500">{user.email}</b></p>
 
       {reset && <p class="notice notice--ok" style="margin-top:24px">Your password was changed. Other devices were signed out.</p>}
 
@@ -38,7 +39,7 @@ const pending = await db
           <h2>Your profile</h2>
           {profile ? (
             <>
-              <p class="dim">{profile.display_name} · {profile.status === 'published' ? 'Public in Opus World' : 'Draft, only you can see it'}</p>
+              <p class="dim">{profile.display_name} · {profile.status === 'published' ? 'Public in World' : 'Draft, only you can see it'}</p>
               <div class="row" style="margin-top:16px">
                 <a class="btn-app" href="/account/profile">Edit profile</a>
                 <a class="btn-app btn-app--ghost" href={`/m/${profile.handle}`}>View profile</a>
@@ -46,11 +47,19 @@ const pending = await db
             </>
           ) : (
             <>
-              <p class="dim">You haven’t set up your profile yet. It takes about three minutes.</p>
-              <div class="row" style="margin-top:16px"><a class="btn-app" href="/account/profile">Create your profile</a></div>
+              <p class="dim">You haven’t set up your profile yet. It takes about a minute.</p>
+              <div class="row" style="margin-top:16px"><a class="btn-app" href="/start">Set up your profile</a></div>
             </>
           )}
         </div>
+
+        {profile && (
+          <div class="panel">
+            <h2>Releases</h2>
+            <p class="dim">Build a release, add past work, and credit the people you made it with.</p>
+            <div class="row" style="margin-top:16px"><a class="btn-app btn-app--ghost" href="/music">Your releases</a></div>
+          </div>
+        )}
 
         <div class="panel">
           <h2>Connections</h2>
@@ -62,6 +71,12 @@ const pending = await db
           <h2>Bookings and business</h2>
           <p class="dim">Studio sessions you’ve requested, and Opus Business tools if you run a studio.</p>
           <div class="row" style="margin-top:16px"><a class="btn-app btn-app--ghost" href="/account/bookings">Your bookings</a><a class="btn-app btn-app--ghost" href="/business">Opus Business</a></div>
+        </div>
+
+        <div class="panel">
+          <h2>Appearance</h2>
+          <p class="dim">Light, dark, or match your device. Saved on this device.</p>
+          <div style="margin-top:16px"><ThemeSwitch variant="segmented" /></div>
         </div>
 
         <div class="panel">
@@ -108,10 +123,7 @@ const pending = await db
   const del = document.querySelector<HTMLFormElement>('[data-delete]')!;
   bindForm(del, { url: '/api/account/delete', busyLabel: 'Deleting…', onSuccess: () => { location.href = '/?deleted=1'; } });
 
-  document.querySelector('[data-logout]')?.addEventListener('click', async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    location.href = '/';
-  });
+  // Sign out buttons ([data-logout]) are handled by the site header script.
   const resend = document.querySelector<HTMLButtonElement>('[data-resend]');
   const rs = document.querySelector<HTMLElement>('[data-resend-status]');
   resend?.addEventListener('click', async () => {

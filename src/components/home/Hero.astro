@@ -1,83 +1,77 @@
 ---
-import Button from '../ui/Button.astro';
+import { CITIES, citySlug } from '@/data/cities';
+import Icon from '../ui/Icon.astro';
 import { SITE } from '@/data/site';
-import { CITIES } from '@/data/cities';
 
 // Fallback links when WebGL is unavailable. Plain city names only; live counts come from /api/world.
 const topCities = CITIES.slice(0, 8);
 ---
-<section class="hero" aria-labelledby="hero-title">
+<section class="hero tone-dark" aria-labelledby="hero-title" data-hero>
   <div class="hero__globe" data-hero-globe>
     <div class="hero__loading" data-globe-loading aria-hidden="true"><span></span></div>
-    <!-- Accessible fallback, shown when WebGL is not available -->
-    <nav class="hero__fallback" data-globe-fallback hidden aria-label="Browse by city">
-      <p class="t-meta">Browse by city</p>
-      <ul role="list">{topCities.map((c) => <li><a href={`/world?city=${encodeURIComponent(c.name)}`}>{c.name}</a></li>)}</ul>
-    </nav>
   </div>
-  <div class="hero__fade" aria-hidden="true"></div>
+  <div class="hero__veil" aria-hidden="true"></div>
 
-  <div class="container hero__inner">
-    <p class="hero__eyebrow t-meta hero-in" style="--i:0"><span class="hero__dot" aria-hidden="true"></span>Opus World · {SITE.motto}</p>
+  <div class="hero__stage" data-hero-stage>
     <h1 id="hero-title" class="hero__title">
-      <span class="hero__line"><span class="hero-in" style="--i:1">The future of</span></span>
-      <span class="hero__line"><span class="hero-in" style="--i:2">music is</span></span>
-      <span class="hero__line"><span class="hero-in" style="--i:3">independent.</span></span>
+      <span class="hero__line"><span class="hero-in" style="--i:1">{SITE.headline}</span></span>
     </h1>
-    <p class="hero__lead hero-in" style="--i:4">
-      Discover the artists, producers, engineers, studios, and organizations shaping what’s next.
-    </p>
 
-    <form class="hsearch hero-in" style="--i:5" action="/world" method="get" role="search" data-hero-search autocomplete="off">
-      <label for="hero-city" class="sr-only">Search a city</label>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/></svg>
-      <input id="hero-city" name="city" type="text" placeholder="Search a city: Atlanta, London, Lagos…" list="hero-cities" />
-      <datalist id="hero-cities">{CITIES.map((c) => <option value={c.name}>{c.countryName}</option>)}</datalist>
-      <button type="submit">Go</button>
-    </form>
-    <p class="hsearch__result t-meta" data-hero-result aria-live="polite"></p>
+    <p class="hero__value hero-in" style="--i:4">Make connections around the world.</p>
 
-    <div class="hero__ctas hero-in" style="--i:6">
-      <Button href="/world" size="lg" arrow="right">Explore the World</Button>
-      <Button href="/sign-up" variant="secondary" size="lg">Join Opus</Button>
+    <div class="hero__ctas hero-in" style="--i:5">
+      <a class="hero__go" href="/world" data-hero-open>Explore World <Icon name="arrow-right" size={18} /></a>
+      <!-- Guests go straight to registration; members finish or open their profile (set from /api/profile below). -->
+      <a class="hero__mark" href="/sign-up?next=/start" data-hero-mark>Join</a>
     </div>
 
-    <dl class="hero__stats hero-in" style="--i:7" aria-label="Opus World statistics" data-hero-stats hidden>
-      <div><dt>Musicians</dt><dd data-stat="musicians">0</dd></div>
-      <div><dt>Studios</dt><dd data-stat="studios">0</dd></div>
-      <div><dt>Countries</dt><dd data-stat="countries">0</dd></div>
-      <p class="hero__statnote t-meta" data-sample-note hidden>Preview build · includes labeled sample listings</p>
-    </dl>
-    <p class="hero__statnote hero__first t-meta" data-hero-first hidden>Opus World is just opening. <a href="/sign-up">Be one of the first on the map →</a></p>
+    <!-- Accessible fallback, shown when WebGL is not available -->
+    <nav class="hero__fallback" data-globe-fallback hidden aria-label="Browse by city">
+      <ul role="list">{topCities.map((c) => <li><a href={`/world/${citySlug(c.name)}`}>{c.name}</a></li>)}</ul>
+    </nav>
   </div>
 </section>
 
 <script>
-  import { findCity } from '@/data/cities';
+  import { findCity, citySlug } from '@/data/cities';
+  import type { Handoff } from '@/scripts/hero-globe';
   type CityPoint = { city: string; country: string; lat: number; lng: number; count: number };
 
-  const host = document.querySelector<HTMLElement>('[data-hero-globe]');
-  const form = document.querySelector<HTMLFormElement>('[data-hero-search]');
-  const result = document.querySelector<HTMLElement>('[data-hero-result]');
-  let api: { flyTo: (lat: number, lng: number) => void } | null = null;
+  /*
+   * The homepage is the entrance; World is the product. Explore World runs one continuous move:
+   *   1. Enter: the words fade away and the globe stays.
+   *   2. Approach: the camera moves in toward the Earth (a real camera move in the same 3D scene).
+   *   3. Discover: World opens with its map at exactly the view the camera stopped at, and the browser
+   *      crossfades the two pages with the header held still. World then asks where you're connecting from.
+   * Location is never asked for here.
+   */
+  const hero = document.querySelector<HTMLElement>('[data-hero]')!;
+  const host = hero.querySelector<HTMLElement>('[data-hero-globe]')!;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let api: { dive: (lat?: number, lng?: number, close?: boolean) => void; approach: () => Promise<Handoff>; rise: () => void } | null = null;
 
   const hasWebGL = () => {
     try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; }
   };
   const fail = () => {
-    host?.querySelector('[data-globe-loading]')?.remove();
-    const fb = host?.querySelector<HTMLElement>('[data-globe-fallback]');
+    host.querySelector('[data-globe-loading]')?.remove();
+    const fb = hero.querySelector<HTMLElement>('[data-globe-fallback]');
     if (fb) fb.hidden = false;
   };
 
+  // Real member counts by city (aggregated to the metro, never exact locations).
+  const summary: Promise<CityPoint[]> = fetch('/api/world?summary=1')
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then((d: { cities: CityPoint[] }) => d.cities)
+    .catch((err) => { console.error('Could not load member counts', err); return []; });
+
   async function boot() {
-    if (!host) return;
     if (!hasWebGL()) return fail();
-    const points: CityPoint[] = await summary;
+    const points = await summary;
     try {
       const { mountHeroGlobe } = await import('@/scripts/hero-globe');
       api = await mountHeroGlobe(host, points, {
-        onSelect: (p) => { location.href = `/world?city=${encodeURIComponent(p.city)}`; },
+        onSelect: (p) => { const c = findCity(p.city); go(c?.lat ?? p.lat, c?.lng ?? p.lng, c ? `/world/${citySlug(c.name)}${qs()}` : `/world${qs()}`); },
       });
       host.classList.add('is-ready');
       host.querySelector('[data-globe-loading]')?.remove();
@@ -86,122 +80,205 @@ const topCities = CITIES.slice(0, 8);
       fail();
     }
   }
+  const idle = (window as any).requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200));
+  idle(boot);
 
-  // Real member counts by city (aggregated to the metro, never exact locations).
-  const summary: Promise<CityPoint[]> = fetch('/api/world?summary=1')
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-    .then((d: { cities: CityPoint[]; stats: Record<string, number>; includesSample: boolean }) => {
-      const st = document.querySelector<HTMLElement>('[data-hero-stats]');
-      const total = (d.stats.musicians ?? 0) + (d.stats.studios ?? 0) + (d.stats.organizations ?? 0);
-      if (st && total > 0) {
-        for (const [k, v] of Object.entries(d.stats)) { const el = st.querySelector(`[data-stat="${k}"]`); if (el) el.textContent = String(v); }
-        st.hidden = false;
-        const note = st.querySelector<HTMLElement>('[data-sample-note]');
-        if (note) note.hidden = !d.includesSample;
-      } else {
-        const first = document.querySelector<HTMLElement>('[data-hero-first]');
-        if (first) first.hidden = false;
-      }
-      return d.cities;
-    })
-    .catch((err) => { console.error('Could not load member counts', err); return []; });
+  // Phones open World's full-screen map; wider screens open it with the directory beside it.
+  const qs = () => (matchMedia('(max-width: 760px)').matches ? '?view=map' : '');
 
-  // Load the globe once the hero is visible and the main thread is idle.
-  if (host) {
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        io.disconnect();
-        const idle = (window as any).requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200));
-        idle(boot);
-      }
-    });
-    io.observe(host);
+  let leaving = false;
+  function start(): boolean {
+    if (leaving) return false;
+    leaving = true;
+    if (scrollY > 0) scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+    hero.classList.add('is-diving', 'is-leaving');
+    return true;
+  }
+  /** A city on the globe: close in on it, then open World there (it already knows where you are going). */
+  function go(lat: number, lng: number, href: string) {
+    if (!api) { location.href = href; return; }
+    if (!start()) return;
+    api.dive(lat, lng, true);
+    setTimeout(() => { location.href = href; }, reduce ? 0 : 1500);
+  }
+  /** Explore World: approach the Earth, hand the camera to World, open World's entrance. */
+  async function enter() {
+    // World opens on its full globe with the directory floating at the left, so the Earth stays where it was.
+    const href = '/world?view=map&enter=1';
+    if (!api) { location.href = href; return; }
+    if (!start()) return;
+    hero.classList.add('is-entering');
+    const handoff = await api.approach();
+    const { image, ...camera } = handoff;
+    try {
+      sessionStorage.setItem('opus.enter', JSON.stringify(camera));
+      if (image) sessionStorage.setItem('opus.enter.img', image);
+    } catch { /* World opens at its usual view */ }
+    location.href = href;
   }
 
-  // City search: rotate the globe to the city, then offer to open it in Opus World.
-  form?.addEventListener('submit', (e) => {
-    const q = (form.elements.namedItem('city') as HTMLInputElement).value;
-    const c = findCity(q);
-    if (!c) return; // Let the form submit to /world, which shows a helpful empty state.
+  hero.querySelector<HTMLAnchorElement>('[data-hero-open]')?.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
-    if (api) api.flyTo(c.lat, c.lng);
-    if (result) {
-      result.innerHTML = `<a href="/world?city=${encodeURIComponent(c.name)}">Open ${c.name} in Opus World →</a>`;
-    }
-    if (!api) location.href = `/world?city=${encodeURIComponent(c.name)}`;
+    enter();
+  });
+  // Join: guests sign up (and are then guided to set up a profile at /start). Members get the
+  // next step for their own profile instead, from the same profile API the account pages use.
+  const mark = hero.querySelector<HTMLAnchorElement>('[data-hero-mark]');
+  if (mark && document.cookie.split('; ').includes('opus_in=1')) {
+    const set = (label: string, href: string) => { mark.textContent = label; mark.href = href; mark.dataset.ready = ''; };
+    fetch('/api/profile', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((d: { profile: unknown; missing: string[] | null }) => {
+        if (!d.profile) set('Complete Your Profile', '/start');
+        else if (d.missing?.length) set('Complete Your Profile', '/account/profile');
+        else set('View or Edit Your Profile', '/account/profile');
+      })
+      // Signed-out session (expired cookie): keep the guest button.
+      .catch(() => { mark.dataset.ready = ''; });
+  }
+
+  // Coming back with the back button restores this page from cache: undo the dive.
+  addEventListener('pageshow', (e) => {
+    if (!e.persisted || !leaving) return;
+    leaving = false;
+    hero.classList.remove('is-diving', 'is-leaving', 'is-entering');
+    api?.rise();
   });
 </script>
 
 <style>
   .hero {
     position: relative; isolation: isolate; overflow: hidden;
-    min-height: max(100svh, 720px); display: flex; align-items: center;
-    padding-top: 96px; padding-bottom: 64px;
-    background: radial-gradient(80% 60% at 75% 45%, #0d0f13 0%, var(--c-bg) 70%);
+    /* Centered: the words on top, the Earth rising behind and below them. */
+    min-height: max(100svh, 680px); display: flex; flex-direction: column; align-items: center;
+    padding: clamp(120px, 21vh, 220px) 24px 64px; background: var(--bg);
   }
-  /* Edge-to-edge globe on the right; bleeds off the page edge */
-  .hero__globe {
-    position: absolute; z-index: 0; top: 50%; right: -18vw;
-    width: min(1100px, 82vw); aspect-ratio: 1; transform: translateY(-50%);
-    cursor: grab; touch-action: none;
+  /* Desktop: the hero is a framed, softly rounded panel inside the page. */
+  @media (min-width: 1000px) {
+    /* The frame stays open at the bottom: the product grid below continues the same dark canvas and closes it. */
+    .hero { min-height: max(calc(100svh - 12px), 680px); margin: 0 12px; }
   }
-  .hero__globe:active { cursor: grabbing; }
+  /* Tablets and up (Bogo, 2026-11-14): the words sit in the bottom half, over the lower Earth; the Earth stays put. */
+  @media (min-width: 761px) {
+    .hero { justify-content: flex-end; padding-top: 120px; padding-bottom: clamp(110px, 17vh, 240px); }
+    /* Same Earth, same place and size as before (centre at 80%, radius 0.53 x the old 112% box), but drawn in a
+       taller box so the top of the sphere is never cut off by the box edge. */
+    .hero .hero__globe { top: 0; bottom: -60%; --globe-r: 0.371; }
+    /* One line each: a smaller headline that never wraps, and the line under it. */
+    .hero .hero__title { font-size: clamp(2.6rem, 4.6vw, 5.6rem); line-height: 1; white-space: nowrap; }
+    .hero .hero__line { display: inline-block; vertical-align: top; }
+    .hero .hero__value { white-space: nowrap; font-size: clamp(1rem, 0.9rem + 0.3vw, 1.25rem); }
+    .hero .hero__stage { gap: 24px; }
+    .hero__veil { background: radial-gradient(48% 30% at 50% 74%, color-mix(in srgb, var(--bg) 80%, transparent) 0%, color-mix(in srgb, var(--bg) 46%, transparent) 58%, transparent 100%),
+      linear-gradient(0deg, var(--bg) 0%, var(--bg) 3%, color-mix(in srgb, var(--bg) 86%, transparent) 10%, color-mix(in srgb, var(--bg) 62%, transparent) 19%,
+        color-mix(in srgb, var(--bg) 34%, transparent) 29%, color-mix(in srgb, var(--bg) 12%, transparent) 38%, transparent 46%); }
+  }
+  /* Faint stars behind the Earth. Three tiled layers at different sizes so no pattern shows. */
+  .hero::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.9;
+    /* Thin out toward the bottom so the starfield never stops at a line. */
+    -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%); mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+    background-image:
+      radial-gradient(1px 1px at 23px 41px, rgba(255,255,255,.8) 50%, transparent 51%),
+      radial-gradient(1px 1px at 157px 97px, rgba(255,255,255,.55) 50%, transparent 51%),
+      radial-gradient(1.4px 1.4px at 91px 173px, rgba(220,232,255,.9) 50%, transparent 51%),
+      radial-gradient(1px 1px at 211px 13px, rgba(255,255,255,.45) 50%, transparent 51%),
+      radial-gradient(1px 1px at 67px 229px, rgba(255,255,255,.6) 50%, transparent 51%),
+      radial-gradient(1.2px 1.2px at 301px 151px, rgba(255,255,255,.7) 50%, transparent 51%);
+    background-size: 140px 160px, 230px 190px, 310px 270px, 170px 210px, 260px 150px, 420px 370px; }
+  /* The Earth sits centred, lower than the words and cropped by the bottom edge, so it rises behind them. */
+  .hero__globe { position: absolute; top: 24%; bottom: -36%; left: 0; right: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 1.4s var(--ease); }
+  /* Only inside World can you turn and zoom the globe; on the homepage it just spins. */
   .hero__globe :global(canvas) { outline: none; }
-  .hero__globe { opacity: 0; transition: opacity 1.4s var(--ease); }
-  .hero__globe.is-ready, .hero__globe:has([data-globe-fallback]:not([hidden])) { opacity: 1; }
-  .hero__globe:has([data-globe-loading]) { opacity: 1; }
-  .hero__loading { position: absolute; inset: 12%; display: grid; place-items: center; }
-  .hero__loading span { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 1px solid #1c1e23; box-shadow: inset 0 0 120px rgba(169, 199, 236,.05); animation: breathe 2.4s ease-in-out infinite; }
-  @keyframes breathe { 50% { border-color: #2a2d34; } }
-  .hero__fallback { position: absolute; inset: 20% 15%; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
-  .hero__fallback ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
-  .hero__fallback a { display: inline-flex; gap: 8px; padding: 8px 12px; border: 1px solid var(--c-ink-600); border-radius: var(--r-sm); font-size: 14px; }
-  .hero__fallback a span { color: var(--c-fg-faint); }
+  .hero__globe.is-ready, .hero__globe:has([data-globe-loading]) { opacity: 1; }
+  .hero__loading { position: absolute; inset: 0; display: grid; place-items: center; }
+  .hero__loading span { width: min(88vh, 92%); aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--line); animation: breathe 2.4s ease-in-out infinite; }
+  @keyframes breathe { 50% { border-color: var(--line-strong); } }
+  /* A soft pool of shadow behind the words keeps them crisp over the Earth; the bottom fades into the page. */
+  .hero__veil { position: absolute; inset: 0; z-index: 1; pointer-events: none; transition: opacity 1s var(--ease);
+    background: radial-gradient(44% 30% at 50% 36%, color-mix(in srgb, var(--bg) 78%, transparent) 0%, color-mix(in srgb, var(--bg) 42%, transparent) 58%, transparent 100%),
+      /* The Earth dissolves into the page: a long, eased fade (not a band), fully dark only at the very edge. */
+      linear-gradient(0deg, var(--bg) 0%, var(--bg) 3%, color-mix(in srgb, var(--bg) 86%, transparent) 10%, color-mix(in srgb, var(--bg) 62%, transparent) 19%,
+        color-mix(in srgb, var(--bg) 34%, transparent) 29%, color-mix(in srgb, var(--bg) 12%, transparent) 38%, transparent 46%); }
 
-  /* Keeps type legible where it overlaps the globe */
-  .hero__fade { position: absolute; inset: 0; z-index: 1; pointer-events: none;
-    background: linear-gradient(90deg, var(--c-bg) 0%, rgba(5,5,6,.85) 30%, rgba(5,5,6,0) 58%), linear-gradient(0deg, var(--c-bg) 0%, transparent 18%); }
-
-  .hero__inner { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 24px; pointer-events: none; }
-  .hero__inner > * { pointer-events: auto; }
-  .hero__eyebrow { display: flex; align-items: center; gap: 10px; color: var(--c-fg-muted); }
-  .hero__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-accent); box-shadow: 0 0 10px var(--c-accent-glow); }
-  .hero__title { font-size: clamp(2.75rem, 1rem + 6.2vw, 7.25rem); line-height: 0.92; letter-spacing: -0.06em; font-weight: 500; max-width: 9.5ch; }
+  .hero__stage { position: relative; z-index: 2; width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 28px; pointer-events: none;
+    transition: transform 0.9s cubic-bezier(.5, 0, .2, 1), opacity 0.7s var(--ease), filter 0.9s var(--ease); }
+  .hero__stage > * { pointer-events: auto; }
+  .hero__title { margin: 0; font-size: clamp(2.5rem, 5.6vw, 7.5rem); line-height: 0.96; letter-spacing: -0.055em; font-weight: 500; color: #f4f2ee; }
+  .hero__value { margin: -8px 0 0; font-size: clamp(1.05rem, 0.92rem + 0.45vw, 1.45rem); line-height: 1.3; letter-spacing: -0.02em; color: rgba(244, 242, 238, 0.76); }
   .hero__line { display: block; overflow: hidden; padding-bottom: 0.05em; }
   .hero__line > span { display: inline-block; }
-  .hero__lead { max-width: 440px; font-size: var(--t-lead); line-height: 1.5; color: var(--c-fg-subtle); }
+  /* Desktop: exactly two lines, never a stray word on its own. */
+  @media (min-width: 900px) { .hero__line > span { white-space: nowrap; } }
 
-  .hsearch { display: flex; align-items: center; gap: 12px; width: min(100%, 460px); height: 56px; padding: 0 6px 0 18px;
-    background: rgba(14, 15, 18, 0.8); border: 1px solid var(--c-ink-600); border-radius: var(--r-md); backdrop-filter: blur(12px); color: var(--c-fg-faint);
-    transition: border-color var(--dur) var(--ease); }
-  .hsearch:focus-within { border-color: var(--c-accent); }
-  .hsearch input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--c-white); font-size: 16px; }
-  .hsearch input::placeholder { color: #77727a; }
-  .hsearch button { height: 44px; padding: 0 18px; border: 0; border-radius: var(--r-sm); background: var(--c-white); color: var(--c-black); font-weight: 500; }
-  .hsearch__result { min-height: 14px; margin-top: -12px; color: var(--c-accent); }
-  .hsearch__result :global(a:hover) { text-decoration: underline; }
-  .hero__ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+  /* Two actions side by side, same height: Explore World leads (warm white), Join follows (outlined). */
+  .hero__ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 4px; }
+  .hero__go, .hero__mark { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 24px; border-radius: var(--r-pill);
+    font-size: 15px; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap;
+    transition: gap var(--dur) var(--ease), transform var(--dur) var(--ease), background var(--dur-fast), border-color var(--dur-fast); }
+  .hero__go { background: #f4f2ee; color: #0d0d0f; box-shadow: 0 18px 50px -18px rgba(0, 0, 0, 0.7); }
+  .hero__go:hover { gap: 14px; background: #fff; transform: translateY(-1px); }
+  .hero__mark { border: 1px solid rgba(244, 242, 238, 0.32); color: #f4f2ee; background: rgba(255, 255, 255, 0.02); }
+  .hero__mark:hover { border-color: rgba(244, 242, 238, 0.6); background: rgba(255, 255, 255, 0.06); }
+  .hero__go:focus-visible, .hero__mark:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 4px; }
+  /* Members: keep the button's place but don't flash the guest label before their own appears. */
+  :global(.is-signed-in) .hero__mark:not([data-ready]) { color: transparent; }
 
-  .hero__stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 32px; margin: 16px 0 0; padding-top: 20px; border-top: 1px solid var(--c-line); }
-  .hero__stats div { display: flex; flex-direction: column-reverse; }
-  .hero__stats dt { font-size: 12px; color: var(--c-fg-faint); }
-  .hero__stats dd { margin: 0; font-size: 28px; font-weight: 500; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
-  .hero__statnote { width: 100%; color: var(--c-fg-ghost); font-size: 10px; }
-  .hero__first { margin-top: 16px; font-size: 12px; color: var(--c-fg-faint); }
-  .hero__first a { color: var(--c-fg); text-decoration: underline; text-underline-offset: 3px; }
+  .hero__fallback ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0; }
+  .hero__fallback a { display: inline-flex; padding: 8px 12px; border: 1px solid var(--c-ink-600); border-radius: var(--r-pill); font-size: 14px; }
+
+  /* Diving: the words move toward the viewer and dissolve while the camera closes in on the globe. */
+  /* Enter: the words lift away gently and the globe stays. */
+  .hero.is-diving .hero__stage { transform: translateY(-14px); opacity: 0; pointer-events: none; transition: transform 0.7s var(--ease), opacity 0.55s var(--ease); }
+  .hero.is-diving .hero__stage > * { pointer-events: none; }
+  .hero.is-diving .hero__veil { opacity: 0; }
+  /* Leaving for World, the Earth lifts out of the hero into a full-screen layer (see hero-globe.ts), so the
+     hero's edges never cut it. The hero rises above the page below it, still under the header. */
+  .hero.is-diving { z-index: 40; }
+  .hero__globe.is-full { position: fixed; inset: 0; background-color: var(--bg); }
+
+  .hero__globe { background-color: transparent; transition: opacity 1.4s var(--ease), transform 1.2s var(--ease), background-color 0.6s var(--ease); }
+
 
   .js .hero-in { opacity: 0; transform: translateY(0.5em); animation: hero-in 1.1s var(--ease) forwards; animation-delay: calc(var(--i) * 80ms + 120ms); }
   .js .hero__line .hero-in { transform: translateY(105%); }
   @keyframes hero-in { to { opacity: 1; transform: none; } }
 
-  :global(.gl-tip) { padding: 8px 10px; background: rgba(10,11,13,.92); border: 1px solid #2a2d34; border-radius: 6px; font: 13px var(--font-sans); color: #fff; display: flex; flex-direction: column; gap: 2px; }
-  :global(.gl-tip span) { color: #8e8890; font-size: 12px; }
+  /* Map-from-space labels on the globe. */
+  :global(.gl-label) { pointer-events: none; transform: translate(-50%, -50%); white-space: nowrap; text-align: center; transition: opacity .4s var(--ease);
+    font-family: var(--font-sans); text-shadow: 0 1px 2px rgba(0,0,0,.8), 0 0 10px rgba(0,0,0,.6); }
+  :global(.gl-label--land) { font-size: 11px; font-weight: 600; letter-spacing: .28em; text-transform: uppercase; color: rgba(255,255,255,.92); }
+  :global(.gl-label--sea) { max-width: 7em; white-space: normal; font-size: 11px; font-style: italic; font-weight: 500; letter-spacing: .06em; line-height: 1.15; color: rgba(150,200,240,.85); }
+  /* You are here, the Opus way: the OC mark in a dark glass chip, with icy sound waves rippling out. */
+  :global(.gl-label--me) { position: relative; width: 34px; height: 34px; }
+  :global(.gl-label--me span) { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%;
+    background: rgba(12, 13, 16, 0.82); border: 1px solid rgba(255, 255, 255, 0.85); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px); }
+  :global(.gl-label--me img) { width: 18px; height: auto; }
+  :global(.gl-label--me b) { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(169, 199, 236, 0.9);
+    animation: me-wave 2.4s cubic-bezier(.2, .6, .3, 1) infinite; }
+  :global(.gl-label--me b:nth-child(2)) { animation-delay: .8s; }
+  :global(.gl-label--me b:nth-child(3)) { animation-delay: 1.6s; }
+  @keyframes me-wave { from { transform: scale(1); opacity: .9; } to { transform: scale(2.8); opacity: 0; } }
+  @media (max-width: 760px) { :global(.gl-label--land), :global(.gl-label--sea) { font-size: 9.5px; } }
+  /* The headline sits over the globe: map labels appear only once you dive in. */
+  .hero:not(.is-diving) :global(.gl-label--land), .hero:not(.is-diving) :global(.gl-label--sea),
+  .hero.is-entering :global(.gl-label--land), .hero.is-entering :global(.gl-label--sea) { opacity: 0 !important; }
+  :global(.gl-tip) { padding: 8px 10px; background: var(--glass); border: 1px solid var(--line-strong); border-radius: 6px; font: 13px var(--font-sans); color: var(--text); display: flex; flex-direction: column; gap: 2px; }
+  :global(.gl-tip span) { color: var(--text-3); font-size: 12px; }
 
-  @media (max-width: 900px) {
-    .hero { flex-direction: column; align-items: stretch; padding-top: 64px; min-height: auto; }
-    /* Whole globe visible on phones; vertical swipes scroll the page, sideways swipes turn the globe. */
-    .hero__globe { position: relative; top: auto; right: auto; transform: none; width: min(100%, 560px); min-height: 0; overflow: hidden; margin: 0 auto; align-self: center; touch-action: pan-y; }
-    .hero__fade { background: linear-gradient(0deg, var(--c-bg) 0%, transparent 22%); }
-    .hero__inner { margin-top: -4vw; }
+  /* Phones: the same composition, tighter. The Earth fills the lower half, behind and beneath the words. */
+  @media (max-width: 760px) {
+    .hero { min-height: max(calc(100svh - 48px), 620px); padding: 108px 20px calc(32px + env(safe-area-inset-bottom)); }
+    .hero__globe { top: 28%; bottom: -26%; left: -18%; right: -18%; }
+    .hero__stage { gap: 20px; }
+    .hero__title { font-size: clamp(2.4rem, 11.4vw, 3.6rem); line-height: 0.98; }
+    .hero__value { margin-top: -6px; font-size: 1.05rem; }
+    .hero__ctas { gap: 10px; }
+    .hero__go, .hero__mark { min-height: 46px; padding: 0 18px; font-size: 14.5px; }
+    .hero__go { gap: 8px; }
+    .hero__veil { background: radial-gradient(80% 30% at 50% 26%, color-mix(in srgb, var(--bg) 65%, transparent) 0%, transparent 100%), linear-gradient(0deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 70%, transparent) 8%, color-mix(in srgb, var(--bg) 30%, transparent) 18%, transparent 30%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero__stage { transition: none; }
   }
 </style>

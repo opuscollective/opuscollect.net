@@ -3,6 +3,8 @@ import '@/styles/global.css';
 import SiteHeader from '@/components/layout/SiteHeader.astro';
 import SiteFooter from '@/components/layout/SiteFooter.astro';
 import { SITE } from '@/data/site';
+import Assistant from '@/components/assistant/Assistant.astro';
+import Messages from '@/components/messages/Messages.astro';
 
 interface Props {
   title?: string;
@@ -10,10 +12,15 @@ interface Props {
   image?: string;
   overlayHeader?: boolean;
   noindex?: boolean;
-  /** App-style pages (Opus World) skip the footer so the map can fill the screen. */
+  /** App-style pages (World) skip the footer so the map can fill the screen. */
   hideFooter?: boolean;
+  lightFooter?: boolean;
+  /** Show the Opus guide launcher (on by default). */
+  assistant?: boolean;
+  /** Show Messages (Global Chat and private messages); on by default. */
+  messages?: boolean;
 }
-const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false } = Astro.props;
+const { title, description = SITE.description, image = '/images/scenic-room.jpg', overlayHeader = false, noindex = false, hideFooter = false, lightFooter = false, assistant = true, messages = true } = Astro.props;
 const fullTitle = title ? `${title} · ${SITE.product}` : `${SITE.product} · The professional network for independent music`;
 const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogImage = new URL(image, SITE.url).href;
@@ -34,7 +41,18 @@ const ogImage = new URL(image, SITE.url).href;
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#f2efea" />
+    <script is:inline>
+      // Apply the saved theme before first paint (System, Light or Dark). See src/scripts/theme.ts.
+      (function () {
+        var p = 'system';
+        try { p = localStorage.getItem('opus.theme') || 'system'; } catch (e) {}
+        var t = p === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : p;
+        var d = document.documentElement;
+        d.dataset.theme = t; d.dataset.themePref = p;
+        if (t === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#141416');
+      })();
+    </script>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -49,7 +67,9 @@ const ogImage = new URL(image, SITE.url).href;
     <a class="skip-link" href="#main">Skip to content</a>
     <SiteHeader overlay={overlayHeader} />
     <main id="main"><slot /></main>
-    {!hideFooter && <SiteFooter />}
+    {!hideFooter && <SiteFooter light={lightFooter} />}
+    {assistant && <Assistant />}
+    {messages && <Messages />}
     <script>
       // Reveal-on-scroll. Content is visible without JS and with reduced motion.
       const els = document.querySelectorAll('[data-reveal]');

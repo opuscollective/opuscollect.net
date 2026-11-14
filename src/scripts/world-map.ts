@@ -1,5 +1,5 @@
 /**
- * Opus World map (MapLibre GL JS 5).
+ * World map (MapLibre GL JS 5).
  * One canvas does both jobs: a 3D globe when zoomed out, and a flat street-level
  * map when zoomed into a city. The globe-to-map transition is built into MapLibre's
  * globe projection, so there is no hand-off between two libraries.
@@ -15,35 +15,106 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import { hasPoint, type Listing } from '@/types/directory';
+import { sunAt, sunlight, dayAmount } from '@/lib/sun';
 import { aggregate, levelForZoom, nextZoom, placePoints, type Aggregate, type GeoLevel } from '@/lib/world-geo';
 
 const OFM = 'https://tiles.openfreemap.org';
 
-const C = {
-  bg: '#050506',
-  land: '#141518',
-  border: 'rgba(214,220,230,0.18)',
-  water: '#08090b',
-  road: '#202227',
-  roadMajor: '#2b2e35',
-  building: '#191a1e',
-  label: '#8e8890',
-};
+/** Map colours come from the theme tokens (--map-* in styles/tokens.css), so the map follows Light and Dark. */
+interface Palette { bg: string; land: string; border: string; water: string; park: string; road: string; roadMajor: string; building: string; label: string; horizon: string }
+
+function readPalette(): Palette {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+  return {
+    bg: v('--map-bg', '#141416'),
+    land: v('--map-land', '#1c1d21'),
+    border: v('--map-border', 'rgba(214,220,230,0.18)'),
+    water: v('--map-water', '#0e0f11'),
+    park: v('--map-park', '#181a1c'),
+    road: v('--map-road', '#26282d'),
+    roadMajor: v('--map-road-major', '#31343b'),
+    building: v('--map-building', '#202125'),
+    label: v('--map-label', '#8e8890'),
+    horizon: v('--map-horizon', '#16181c'),
+  };
+}
+
+/**
+ * The Earth from space, the same picture as the homepage globe: NASA Blue Marble where the sun is up,
+ * city lights where it is night, with the same soft twilight band. Painted once into a canvas in Web Mercator
+ * (the night side is a low-resolution mask, scaled up, so the edge stays soft) and repainted every few minutes.
+ * The imagery is 4096 px around the Earth, so it is shown only while it is sharp (to zoom ~3) and then hands
+ * over to the street map, which is sharp at every zoom.
+ */
+const EARTH_COORDS: [[number, number], [number, number], [number, number], [number, number]] = [[-180, 85.0511], [180, 85.0511], [180, -85.0511], [-180, -85.0511]];
+const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = rej; i.src = src; });
+async function earthCanvas(size: 2048 | 4096) {
+  const [day, night] = await Promise.all([loadImg(`/images/earth/day-mercator-${size}.webp`), loadImg(`/images/earth/night-mercator-${size}.webp`)]);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const paint = () => {
+    const sun = sunAt(new Date());
+    const M = 256;
+    const mask = document.createElement('canvas'); mask.width = mask.height = M;
+    const mctx = mask.getContext('2d')!;
+    const px = mctx.createImageData(M, M);
+    for (let y = 0; y < M; y++) {
+      const lat = (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 0.5)) / M))) * 180) / Math.PI;
+      for (let x = 0; x < M; x++) {
+        const lng = -180 + ((x + 0.5) / M) * 360;
+        px.data[(y * M + x) * 4 + 3] = Math.round((1 - dayAmount(sunlight(lat, lng, sun))) * 255);
+      }
+    }
+    mctx.putImageData(px, 0, 0);
+    // Night lights only where it is night, then laid over the day picture.
+    const nightLayer = document.createElement('canvas'); nightLayer.width = nightLayer.height = size;
+    const nctx = nightLayer.getContext('2d')!;
+    nctx.drawImage(night, 0, 0, size, size);
+    nctx.globalCompositeOperation = 'destination-in';
+    nctx.imageSmoothingQuality = 'high';
+    nctx.drawImage(mask, 0, 0, size, size);
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(day, 0, 0, size, size);
+    ctx.drawImage(nightLayer, 0, 0);
+    nightLayer.width = 0; // free it now
+  };
+  paint();
+  return { canvas, paint };
+}
+
+const sky = (C: Palette) => ({
+  'sky-color': C.bg,
+  // The same thin blue atmosphere as the homepage globe, fading out as you come down to a city.
+  'horizon-color': '#a9c8ff',
+  'fog-color': C.bg,
+  'sky-horizon-blend': 0.6,
+  'horizon-fog-blend': 0.6,
+  'fog-ground-blend': 0.9,
+  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 3, 0.6, 5, 0] as maplibregl.ExpressionSpecification,
+});
+
+/** Repaints an existing map in the current theme, keeping its data, markers and camera. */
+function applyPalette(map: maplibregl.Map, C: Palette) {
+  const paint: [string, string, string][] = [
+    ['bg', 'background-color', C.water], ['land', 'fill-color', C.land], ['omt-water', 'fill-color', C.water],
+    ['omt-park', 'fill-color', C.park], ['omt-building', 'fill-color', C.building], ['omt-road-minor', 'line-color', C.road],
+    ['omt-road-major', 'line-color', C.roadMajor], ['borders', 'line-color', C.border], ['omt-place', 'text-color', C.label],
+    ['omt-place', 'text-halo-color', C.bg],
+  ];
+  for (const [id, prop, value] of paint) if (map.getLayer(id)) map.setPaintProperty(id, prop, value);
+  map.setSky(sky(C));
+}
 
 function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
+  const C = readPalette();
   return {
     version: 8,
     projection: { type: 'globe' },
+    // Lights the atmosphere around the globe, so it has the same blue rim as the homepage Earth.
+    light: { anchor: 'map', position: [1.5, 90, 80] },
     glyphs: `${OFM}/fonts/{fontstack}/{range}.pbf`,
-    sky: {
-      'sky-color': C.bg,
-      'horizon-color': '#0c0e12',
-      'fog-color': C.bg,
-      'sky-horizon-blend': 0.6,
-      'horizon-fog-blend': 0.6,
-      'fog-ground-blend': 0.9,
-      'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.35, 4, 0.2, 6, 0],
-    },
+    sky: sky(C),
     sources: {
       countries: { type: 'geojson', data: countries },
       omt: { type: 'vector', url: `${OFM}/planet`, attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' },
@@ -53,7 +124,7 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
       { id: 'land', type: 'fill', source: 'countries', paint: { 'fill-color': C.land } },
       // City detail (OpenFreeMap). Fades in as you zoom toward a city.
       { id: 'omt-water', type: 'fill', source: 'omt', 'source-layer': 'water', minzoom: 4, paint: { 'fill-color': C.water } },
-      { id: 'omt-park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 8, paint: { 'fill-color': '#121416' } },
+      { id: 'omt-park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 8, paint: { 'fill-color': C.park } },
       { id: 'omt-building', type: 'fill', source: 'omt', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': C.building } },
       { id: 'omt-road-minor', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 10,
         filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary']]],
@@ -61,7 +132,7 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
       { id: 'omt-road-major', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 5,
         filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
         paint: { 'line-color': C.roadMajor, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 16, 5] } },
-      { id: 'borders', type: 'line', source: 'countries', paint: { 'line-color': C.border, 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.4, 6, 1] } },
+      { id: 'borders', type: 'line', source: 'countries', paint: { 'line-color': C.border, 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.4, 6, 1], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 0, 0.12, 3, 0.2, 4.5, 1] } },
       { id: 'omt-place', type: 'symbol', source: 'omt', 'source-layer': 'place', minzoom: 5,
         filter: ['in', ['get', 'class'], ['literal', ['city', 'town', 'suburb', 'neighbourhood']]],
         layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 14, 13], 'text-letter-spacing': 0.04 },
@@ -90,6 +161,10 @@ export interface WorldMapApi {
   getZoom(): number;
   getCamera(): Camera;
   resize(): void;
+  /** After the entrance: drop the handoff framing, and either rest or let the globe turn slowly. */
+  release(worldwide: boolean): void;
+  /** Resolves once the map has drawn everything for the current view. */
+  ready(): Promise<void>;
   /** Frees the WebGL context and all markers (List view). */
   destroy(): void;
 }
@@ -105,12 +180,16 @@ export async function mountWorldMap(
   el: HTMLElement,
   initial: Listing[],
   cb: MapCallbacks,
-  opts: { padBottom?: number; camera?: Camera | null } = {},
+  opts: { padBottom?: number; inset?: () => { left: number; bottom: number }; camera?: Camera | null; pad?: { top: number; bottom: number; left?: number; right?: number } } = {},
 ): Promise<WorldMapApi> {
+  // Phones get the 2048 px Earth: a 4096 px canvas is near the limit some phone browsers allow.
+  const earthP = earthCanvas(el.clientWidth < 700 ? 2048 : 4096).catch((err) => { console.warn('Earth imagery unavailable; showing the plain map.', err); return null; });
   const topo = (await fetch('/data/countries-50m.json').then((r) => r.json())) as Topology;
+  const earth = await earthP;
   const countries = feature(topo, topo.objects.countries as GeometryCollection) as unknown as GeoJSON.FeatureCollection;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const homeZoom = () => (el.clientWidth < 700 ? 0.85 : 1.5);
+  // About as large as the homepage globe, and still within what the 4096 px imagery shows sharply.
+  const homeZoom = () => (el.clientWidth < 700 ? 1 : el.clientWidth > 1400 ? 2.1 : 1.8);
 
   const map = new maplibregl.Map({
     container: el,
@@ -127,7 +206,12 @@ export async function mountWorldMap(
   map.touchZoomRotate.disableRotation();
   // On phones the bottom sheet covers the lower edge; centre the globe in the visible area.
   if (opts.padBottom) map.setPadding({ top: 0, left: 0, right: 0, bottom: opts.padBottom });
+  // Coming from the homepage: the globe sits exactly where the homepage camera left it (see world-entry.ts).
+  if (opts.pad) map.setPadding({ top: opts.pad.top, left: opts.pad.left ?? 0, right: opts.pad.right ?? 0, bottom: (opts.padBottom ?? 0) + opts.pad.bottom });
+  const firstIdle = new Promise<void>((res) => map.once('idle', () => res()));
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+  const onTheme = () => { if (map.isStyleLoaded()) applyPalette(map, readPalette()); else map.once('load', () => applyPalette(map, readPalette())); };
+  window.addEventListener('opus:theme', onTheme);
 
   // Missing third-party tiles should not break the map. Log once and continue.
   let warned = false;
@@ -158,6 +242,18 @@ export async function mountWorldMap(
   }
 
   await new Promise<void>((res) => map.on('load', () => res()));
+  if (earth) {
+    // The Earth from space, under the street map, handing over to it before the imagery could soften.
+    map.addSource('earth', { type: 'canvas', canvas: earth.canvas, coordinates: EARTH_COORDS, animate: false });
+    map.addLayer({ id: 'earth', type: 'raster', source: 'earth',
+      paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 1, 3.1, 1, 3.9, 0], 'raster-fade-duration': 0, 'raster-resampling': 'linear' } }, 'omt-water');
+  }
+  // Keep the night side where it really is: repaint the Earth every five minutes.
+  const sunTimer = earth ? setInterval(() => {
+    earth.paint();
+    const src = map.getSource('earth') as maplibregl.CanvasSource | undefined;
+    if (src) { src.play(); requestAnimationFrame(() => src.pause()); }
+  }, 5 * 60_000) : 0;
 
   // Groups that would overlap on screen merge into one count (summed), then split as you zoom in.
   map.addSource('listings', {
@@ -266,7 +362,7 @@ export async function mountWorldMap(
   // Slow idle spin on the globe until the visitor touches the map (first visit only, never when restoring a view).
   let spinning = !reduce && !opts.camera;
   const spin = () => {
-    if (!spinning || map.getZoom() > 2.5) return;
+    if (!spinning || map.getZoom() > 2.6) return;
     const c = map.getCenter();
     map.easeTo({ center: [c.lng + 4, c.lat], duration: 1000, easing: (t) => t });
   };
@@ -276,15 +372,19 @@ export async function mountWorldMap(
   spin();
 
   let place: maplibregl.Marker | null = null;
+  // Every move after the entrance frames the visible map: the part not covered by the floating directory card
+  // (desktop Map view) or the bottom sheet (phones). Passing this on each
+  // move also drops the homepage framing, which an interrupted release() would otherwise leave behind.
+  const base = () => { const i = opts.inset?.(); return { top: 0, left: i?.left ?? 0, right: 0, bottom: i?.bottom ?? opts.padBottom ?? 0 }; };
 
   return {
     setData(ls) { data = ls; refreshData(); },
-    flyToCity(lat, lng) { stop(); map.flyTo({ center: [lng, lat], zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) }); },
-    flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: reduce ? 0 : 900 }); },
+    flyToCity(lat, lng) { stop(); map.flyTo({ center: [lng, lat], padding: base(), zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) }); },
+    flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], padding: base(), zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: reduce ? 0 : 900 }); },
     ensureVisible(l) {
       if (!hasPoint(l) || l.onMap === false) return;
       if (map.getBounds().contains([l.location.lng, l.location.lat])) return;
-      stop(); map.easeTo({ center: [l.location.lng, l.location.lat], duration: reduce ? 0 : 700 });
+      stop(); map.easeTo({ center: [l.location.lng, l.location.lat], padding: base(), duration: reduce ? 0 : 700 });
     },
     setActive(id) { active = id; paintStates(); },
     setHover(id) { hover = id; paintStates(); },
@@ -297,13 +397,20 @@ export async function mountWorldMap(
       pe.innerHTML = '<i></i><span>' + p.name.replace(/[&<>"]/g, '') + '</span>';
       place = new maplibregl.Marker({ element: pe }).setLngLat([p.lng, p.lat]).addTo(map);
     },
-    resetView() { stop(); map.flyTo({ zoom: homeZoom(), duration: reduce ? 0 : 1100, essential: true }); },
+    resetView() { stop(); map.flyTo({ padding: base(), zoom: homeZoom(), duration: reduce ? 0 : 1100, essential: true }); },
     zoomOut() { stop(); map.easeTo({ zoom: Math.max(1.2, map.getZoom() - 3), duration: reduce ? 0 : 800 }); },
     getCenter: () => { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
     getBounds: () => map.getBounds(),
     getZoom: () => map.getZoom(),
     getCamera: () => { const c = map.getCenter(); return { center: [c.lng, c.lat], zoom: map.getZoom() }; },
     resize: () => map.resize(),
-    destroy() { stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
+    release(worldwide) {
+      const padding = base();
+      // Worldwide: settle back to the whole globe and let it turn. Otherwise just drop the handoff framing.
+      map.easeTo({ padding, ...(worldwide ? { zoom: Math.min(map.getZoom(), el.clientWidth < 700 ? 1.3 : Math.max(homeZoom(), 2.3)) } : {}), duration: reduce ? 0 : 1100 });
+      if (worldwide && !reduce) spinning = true; // the moveend handler starts the spin
+    },
+    ready: () => firstIdle,
+    destroy() { clearInterval(sunTimer); window.removeEventListener('opus:theme', onTheme); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
   };
 }

@@ -1,5 +1,5 @@
 /**
- * Public directory data for Opus World and the homepage globe.
+ * Public directory data for World and the homepage globe.
  *
  * Location privacy:
  * - Coordinates come only from the places table (public centre points), never from members.

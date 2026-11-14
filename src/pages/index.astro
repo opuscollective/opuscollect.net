@@ -1,12 +1,7 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Hero from '@/components/home/Hero.astro';
-import WorldBridge from '@/components/home/WorldBridge.astro';
-import DiscoverNetwork from '@/components/home/DiscoverNetwork.astro';
-import VerifiedIntro from '@/components/home/VerifiedIntro.astro';
-import TrustedServices from '@/components/home/TrustedServices.astro';
-import EventsPreview from '@/components/home/EventsPreview.astro';
-import JoinCTA from '@/components/home/JoinCTA.astro';
+import ProductTiles from '@/components/home/ProductTiles.astro';
 import { SITE } from '@/data/site';
 
 const jsonLd = {
@@ -19,13 +14,8 @@ const jsonLd = {
   ],
 };
 ---
-<BaseLayout overlayHeader>
+<BaseLayout overlayHeader lightFooter>
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <Hero />
-  <WorldBridge />
-  <DiscoverNetwork />
-  <VerifiedIntro />
-  <TrustedServices />
-  <EventsPreview />
-  <JoinCTA />
+  <ProductTiles />
 </BaseLayout>

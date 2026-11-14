@@ -1,0 +1,140 @@
+---
+/**
+ * Opus Collective: the people and culture around the platform.
+ * Opus is the platform, World is the professional network, Opus Collective is the community.
+ * Program details stay on /community and /events; Discord is one way in, not the headline.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { SOCIALS } from '@/data/site';
+
+const discord = SOCIALS.find((s) => s.label === 'Discord')!.href;
+
+const PILLARS = [
+  { title: 'Community', body: 'Collective Call, on the first Monday of the month. Members share ideas and help decide what Opus builds next.' },
+  { title: 'Creative culture', body: 'Showcases, Song Wars, Beat Battles, AUX Battles and Scenescape. The work, in front of people who care about it.' },
+  { title: 'Workshops', body: 'Opus Sessions, one craft at a time. Members help each other make beats, engineer and record.' },
+  { title: 'Live reviews', body: 'Feedback Wednesday and Live Music Reviews. Honest notes from people who listen closely.' },
+  { title: 'Gatherings', body: 'In-person conferences in Birmingham, then the Opus Summit. Creatives in the same room, with a real itinerary.' },
+];
+
+const WAYS = [
+  { label: 'Join Opus', sub: 'Your profile in World', href: '/sign-up' },
+  { label: 'Come to a gathering', sub: 'Conferences and the Summit', href: '/events' },
+  { label: 'Join the conversation', sub: 'Programs run live on Discord', href: discord, external: true },
+];
+---
+<BaseLayout title="Opus Collective" description="Opus Collective: a collective of artists, minds, and visionaries shaping what's next. Community, creative culture, workshops, live reviews and gatherings." image="/images/community-logo.jpg" overlayHeader>
+  <section class="ch tone-dark" aria-labelledby="ch-title">
+    <div class="ch__media" aria-hidden="true"><img src="/images/scenic-room.jpg" alt="" decoding="async" width="1600" height="2400" /></div>
+    <div class="container ch__inner">
+      <p class="t-meta ch__kicker">Opus Collective</p>
+      <h1 id="ch-title" class="ch__title">Beyond the platform.</h1>
+      <p class="ch__copy">A collective of artists, minds, and visionaries shaping what’s next.</p>
+    </div>
+  </section>
+
+  <section class="section cs" aria-label="What Opus Collective is">
+    <div class="container">
+      <p class="cs__statement" data-reveal>Opus is the platform. World is where you’re found. <span class="dim">Opus Collective is the people, and the culture we build together.</span></p>
+    </div>
+  </section>
+
+  <section class="section cp" aria-labelledby="cp-title">
+    <div class="container">
+      <h2 id="cp-title" class="t-h2" data-reveal>How the Collective comes together.</h2>
+      <ol class="cp__list" role="list">
+        {PILLARS.map((p, i) => (
+          <li data-reveal style={`--d:${i * 0.05}s`}>
+            <span class="cp__num t-meta">{String(i + 1).padStart(2, '0')}</span>
+            <h3 class="cp__title">{p.title}</h3>
+            <p class="cp__body">{p.body}</p>
+          </li>
+        ))}
+      </ol>
+      <a class="cp__more" href="/community" data-reveal>Every community program <Icon name="arrow-right" size={16} /></a>
+    </div>
+  </section>
+
+  <section class="cf tone-dark" aria-labelledby="cf-title">
+    <div class="container cf__inner">
+      <div class="cf__img" data-reveal><img src="/images/summit-resort.jpg" alt="Aerial view of the Summit resort at night, its pool lit up" loading="lazy" decoding="async" width="2000" height="1500" /></div>
+      <div class="cf__text" data-reveal style="--d:.06s">
+        <p class="t-meta">The Opus Summit · Summer 2027</p>
+        <h2 id="cf-title" class="cf__title">200 creatives.<br /><span class="dim">One retreat.</span></h2>
+        <p class="cf__body">Live together, make music together, and leave with the Opus Mixtape.</p>
+        <a class="cf__link" href="/events#summit">See events <Icon name="arrow-right" size={16} /></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section cw" aria-labelledby="cw-title">
+    <div class="container cw__grid">
+      <h2 id="cw-title" class="t-h2" data-reveal>Take part.</h2>
+      <ul class="cw__list" role="list">
+        {WAYS.map((w) => (
+          <li data-reveal>
+            <a href={w.href} {...(w.external ? { target: '_blank', rel: 'noopener' } : {})}>
+              <span class="cw__label">{w.label}</span>
+              <span class="cw__sub">{w.sub}</span>
+              <span class="cw__arrow" aria-hidden="true">{w.external ? '↗' : <Icon name="arrow-right" size={20} />}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .ch { position: relative; isolation: isolate; overflow: hidden; background: var(--bg); color: var(--text);
+    min-height: max(88svh, 620px); display: flex; align-items: flex-end; padding: 120px 0 clamp(64px, 9vw, 128px); }
+  .ch__media { position: absolute; inset: 0 0 0 auto; width: min(62%, 1000px); z-index: -2; }
+  .ch__media img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.82); }
+  .ch::before { content: ''; position: absolute; inset: 0; z-index: -1;
+    background: linear-gradient(90deg, var(--bg) 38%, color-mix(in srgb, var(--bg) 55%, transparent) 62%, transparent), linear-gradient(0deg, var(--bg), transparent 30%); }
+  .ch__inner { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; }
+  .ch__kicker { color: var(--text-3); }
+  .ch__title { font-size: clamp(3.25rem, 1.2rem + 7vw, 8.5rem); line-height: 0.9; letter-spacing: -0.06em; font-weight: 500; max-width: 8ch; }
+  .ch__copy { max-width: 30ch; font-size: clamp(1.125rem, 1rem + 0.6vw, 1.625rem); line-height: 1.4; letter-spacing: -0.015em; color: var(--text-2); }
+
+  .cs__statement { max-width: 24ch; font-size: clamp(1.75rem, 1rem + 2.6vw, 3.5rem); line-height: 1.08; letter-spacing: -0.045em; font-weight: 500; }
+
+  .cp__list { margin: clamp(32px, 4vw, 56px) 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .cp__list li { display: grid; grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1.3fr); gap: 8px 32px; align-items: baseline; padding-block: clamp(22px, 2.6vw, 36px); border-bottom: 1px solid var(--line); }
+  .cp__num { color: var(--text-3); }
+  .cp__title { font-size: clamp(26px, 1rem + 1.6vw, 40px); font-weight: 500; letter-spacing: -0.045em; line-height: 1.05; }
+  .cp__body { max-width: 46ch; font-size: 16px; line-height: 1.6; color: var(--text-2); }
+  .cp__more, .cf__link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 28px; font-size: 16px; font-weight: 500; border-bottom: 1px solid currentColor; }
+  .cp__more:hover, .cf__link:hover { opacity: 0.7; }
+
+  .cf { background: var(--bg); color: var(--text); padding-block: clamp(72px, 10vw, 144px); }
+  .cf__inner { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: center; gap: clamp(32px, 6vw, 96px); }
+  .cf__img { aspect-ratio: 4 / 3; border-radius: var(--r-lg); overflow: hidden; }
+  .cf__img img { width: 100%; height: 100%; object-fit: cover; }
+  .cf__text { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; }
+  .cf__text .t-meta { color: var(--text-3); }
+  .cf__title { font-size: clamp(2.5rem, 1rem + 3.6vw, 4.75rem); line-height: 0.95; letter-spacing: -0.055em; font-weight: 500; }
+  .cf__body { max-width: 34ch; font-size: 17px; line-height: 1.55; color: var(--text-2); }
+  .cf__link { margin-top: 8px; }
+
+  .cw__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 32px clamp(48px, 7vw, 128px); align-items: start; }
+  .cw__list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .cw__list a { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 26px 48px 26px 0; border-bottom: 1px solid var(--line); }
+  .cw__label { font-size: clamp(24px, 1rem + 1.4vw, 36px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.05; }
+  .cw__sub { font-size: 15px; color: var(--text-3); }
+  .cw__arrow { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; font-size: 20px; opacity: 0.35; transition: opacity var(--dur) var(--ease); }
+  .cw__list a:hover .cw__arrow { opacity: 1; }
+
+  @media (max-width: 860px) {
+    .cp__list li { grid-template-columns: 40px minmax(0, 1fr); }
+    .cp__body { grid-column: 2; }
+    .cf__inner, .cw__grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .ch { flex-direction: column; align-items: stretch; min-height: 0; padding-top: 0; }
+    .ch__media { position: relative; inset: auto; width: 100%; aspect-ratio: 4 / 5; max-height: 72vh; }
+    .ch::before { background: linear-gradient(0deg, var(--bg) 30%, transparent 55%); }
+    .ch__inner { margin-top: -96px; }
+  }
+</style>

@@ -37,14 +37,14 @@ const when = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'sh
 
       <div class="panel">
         <h2>Connected <span class="dim">({connected.length})</span></h2>
-        {connected.length === 0 ? <p class="dim">No connections yet. Find people in <a class="link" href="/world?type=musician&collab=1">Opus World</a>.</p> : (
+        {connected.length === 0 ? <p class="dim">No connections yet. Find people in <a class="link" href="/musicians?collab=1">World</a>.</p> : (
           <ul class="cx" role="list">{connected.map((c) => (
             <li class="cx__item" data-id={c.id}>
               <a class="cx__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
                 <span class="cx__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''}></span>
                 <span><b>{c.other.name}</b><small>{sub(c)}</small></span>
               </a>
-              <div class="row"><a class="btn-app btn-app--ghost" href={`mailto:${c.other.email}`}>Email {c.other.email}</a><button class="btn-app btn-app--ghost" data-act="remove">Remove</button></div>
+              <div class="row">{c.other.handle && <button class="btn-app" type="button" data-message-handle={c.other.handle}>Message</button>}<a class="btn-app btn-app--ghost" href={`mailto:${c.other.email}`}>Email {c.other.email}</a><button class="btn-app btn-app--ghost" data-act="remove">Remove</button></div>
             </li>
           ))}</ul>
         )}
@@ -81,9 +81,9 @@ const when = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'sh
   .cx { margin-top: 16px; }
   .cx__item { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: 1px solid var(--c-line); }
   .cx__who { display: flex; gap: 12px; align-items: center; }
-  .cx__who b { display: block; color: #fff; font-weight: 500; }
+  .cx__who b { display: block; color: var(--text); font-weight: 500; }
   .cx__who small { display: block; font-size: 13px; color: var(--c-fg-faint); margin-top: 2px; }
-  .cx__av { width: 44px; height: 44px; border-radius: 50%; background: #15161a center / cover no-repeat; flex-shrink: 0; }
+  .cx__av { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; flex-shrink: 0; }
   .cx__msg { font-size: 15px; line-height: 1.6; color: var(--c-fg-muted); white-space: pre-line; }
   .cx__date { font-size: 13px; margin-left: auto; }
 </style>

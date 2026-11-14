@@ -1,10 +1,13 @@
 /**
- * Profile previews for Opus World: everything the expanded card shows, for one listing.
+ * Profile previews for World: everything the expanded card shows, for one listing.
  * The listing itself (name, location, verification) comes from the same privacy-enforcing
  * queries as /api/world, so a preview can never reveal more than the directory does.
  * Never selects private fields (studio address, email, owner).
  */
+import { connectionCount } from './messages';
 import type { Listing } from '@/types/directory';
+import { profileReleases } from './releases';
+import { RELEASE_KINDS } from '@/data/music';
 import { LINK_KEYS, listGallery, mediaUrl, type Credit, type PortfolioItem } from './profiles';
 import { publicMusicians, publicStudios } from './directory';
 import { money } from '@/lib/booking-time';
@@ -22,6 +25,8 @@ export interface ProfileDetail {
   /** Featured music: portfolio items, then streaming links. */
   featured: { title: string; url: string; platform: string }[];
   credits: Credit[];
+  /** Published releases from Opus Music: ones they own or hold a confirmed credit on. */
+  releases: { title: string; meta: string; url: string; upcoming: boolean }[];
   achievements: string[];
   services: PreviewService[];
   equipment: string[];
@@ -29,6 +34,8 @@ export interface ProfileDetail {
   /** A button is only live when it does something. Otherwise it carries the honest reason. */
   actions: { primary: PreviewAction; profile: PreviewAction };
   isSample?: boolean;
+  /** Accepted connections, real members only (never on sample listings). */
+  connections?: number;
 }
 
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
@@ -48,10 +55,10 @@ const platformOf = (url: string) => {
   } catch { return ''; }
 };
 
-interface DetailRow { bio: string; cover_key: string | null; links: string; credits: string; achievements: string; portfolio: string }
+interface DetailRow { owner_user_id: string; bio: string; cover_key: string | null; links: string; credits: string; achievements: string; portfolio: string }
 
 async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | null> {
-  const r = await db.prepare("SELECT bio, cover_key, links, credits, achievements, portfolio FROM profiles WHERE id = ? AND status = 'published'").bind(l.id).first<DetailRow>();
+  const r = await db.prepare("SELECT owner_user_id, bio, cover_key, links, credits, achievements, portfolio FROM profiles WHERE id = ? AND status = 'published'").bind(l.id).first<DetailRow>();
   if (!r) return null;
   const rawLinks = parse<Record<string, unknown>>(r.links, {});
   const links: PreviewLink[] = LINK_KEYS.map((k) => ({ key: k, label: LINK_LABEL[k]!, url: safeUrl(rawLinks[k]) })).filter((x) => x.url);
@@ -63,12 +70,19 @@ async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | n
   const credits = parse<Credit[]>(r.credits, []).slice(0, 5).map((c) => ({ ...c, url: safeUrl(c.url) }));
   const base = {
     bio: r.bio, cover: mediaUrl(r.cover_key) ?? undefined, gallery: [] as string[], links, featured, credits,
+    releases: l.kind === 'musician'
+      ? (await profileReleases(db, r.owner_user_id).catch(() => [])).slice(0, 6).map((x) => ({
+          title: x.title, url: '/r/' + x.id, upcoming: !x.released,
+          meta: [x.artist && !x.own ? x.artist : '', x.roles.join(', '), RELEASE_KINDS[x.kind], x.released ? x.releaseDate?.slice(0, 4) ?? '' : 'Coming'].filter(Boolean).join(' · '),
+        }))
+      : [],
     achievements: parse<string[]>(r.achievements, []).filter((a) => typeof a === 'string').slice(0, 4),
     services: [] as PreviewService[], equipment: [] as string[], projects: [] as string[],
   };
   if (l.kind === 'musician') {
     return {
       ...base,
+      connections: await connectionCount(db, r.owner_user_id).catch(() => undefined),
       actions: {
         primary: l.openToCollab ? { label: 'Connect', href: l.href + '?connect=1' } : { label: 'Connect', disabledReason: 'Not taking new collaborations right now' },
         profile: { label: 'View full profile', href: l.href },
@@ -101,7 +115,7 @@ function sampleDetail(l: Listing): ProfileDetail {
   const n = l.id.replace(/\D/g, '');
   const base = {
     bio, links: [], featured: [], gallery: [] as string[], services: [] as PreviewService[], equipment: [] as string[], projects: [] as string[],
-    achievements: [] as string[], credits: [] as Credit[], isSample: true,
+    achievements: [] as string[], credits: [] as Credit[], releases: [] as ProfileDetail['releases'], isSample: true,
   };
   if (l.kind === 'musician') {
     return {

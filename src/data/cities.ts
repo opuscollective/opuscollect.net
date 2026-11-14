@@ -49,6 +49,9 @@ export const CITIES: City[] = [
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 /** Best-effort match on city, "City, ST", country name or alias. */
+/** Clean address for a city: "Los Angeles" becomes "los-angeles", as in /world/los-angeles. */
+export const citySlug = (name: string) => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 export function findCity(query: string): City | undefined {
   const q = norm(query.split(',')[0] ?? '');
   if (!q) return undefined;

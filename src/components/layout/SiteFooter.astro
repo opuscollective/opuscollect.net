@@ -1,33 +1,26 @@
 ---
 import { FOOTER_NAV, SOCIALS, SITE } from '@/data/site';
 const year = new Date().getFullYear();
+/** light: the warm-white editorial footer in either theme (homepage). */
+const { light = false } = Astro.props as { light?: boolean };
 ---
-<footer class="ftr">
+<footer class:list={['ftr', { 'ftr--light tone-light': light }]}>
   <div class="container">
     <div class="ftr__top">
       <div class="ftr__brand">
-        <img src="/images/oc-logo.png" alt="" width="52" height="34" />
+        <img class="logo" src="/images/oc-logo.png" alt="" width="52" height="34" />
         <p class="ftr__motto">{SITE.motto}</p>
-        <p class="ftr__line">The professional network for independent music.</p>
       </div>
-      <div class="ftr__cols">
-        {FOOTER_NAV.map((col) => (
-          <nav aria-label={col.title}>
-            <h2 class="t-meta">{col.title}</h2>
-            <ul role="list">{col.links.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
-          </nav>
-        ))}
-        <nav aria-label="Social">
-          <h2 class="t-meta">Follow</h2>
-          <ul role="list">{SOCIALS.map((s) => <li><a href={s.href} target="_blank" rel="noopener">{s.label} <span aria-hidden="true">↗</span></a></li>)}</ul>
-        </nav>
-      </div>
+      <nav aria-label="Footer">
+        <ul class="ftr__links" role="list">{FOOTER_NAV.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+      </nav>
     </div>
 
     <p class="ftr__wordmark" aria-hidden="true">Opus Collective</p>
 
     <div class="ftr__legal">
       <span>© {year} {SITE.name} · {SITE.location}</span>
+      <ul class="ftr__social" role="list" aria-label="Social">{SOCIALS.map((s) => <li><a href={s.href} target="_blank" rel="noopener">{s.label}</a></li>)}</ul>
       <ul role="list">
         <li><a href="/legal">Privacy</a></li>
         <li><a href="/legal">Terms</a></li>
@@ -37,27 +30,26 @@ const year = new Date().getFullYear();
 </footer>
 
 <style>
-  .ftr { border-top: 1px solid var(--c-line); padding-top: clamp(64px, 8vw, 112px); overflow: hidden; }
-  .ftr__top { display: grid; grid-template-columns: minmax(240px, 1fr) 2.2fr; gap: 56px; }
+  .ftr--light { background: var(--bg); color: var(--text); border-top: 0; }
+  .ftr--light .ftr__links a:hover, .ftr--light .ftr__legal a:hover { color: var(--text); }
+  .ftr { border-top: 1px solid var(--c-line); padding-top: clamp(56px, 7vw, 96px); overflow: hidden; }
+  .ftr__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 32px 56px; }
   .ftr__brand { display: flex; flex-direction: column; gap: 14px; }
-  .ftr__brand img { height: 34px; width: auto; align-self: flex-start; margin-bottom: 6px; }
+  .ftr__brand img { height: 34px; width: auto; align-self: flex-start; }
   .ftr__motto { font-size: 17px; font-weight: 500; letter-spacing: -0.015em; }
-  .ftr__line { font-size: 14px; color: var(--c-fg-faint); max-width: 260px; }
-  .ftr__cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
-  .ftr__cols h2 { color: var(--c-fg-ghost); margin-bottom: 18px; }
-  .ftr__cols ul { display: flex; flex-direction: column; gap: 4px; margin: 0; }
-  .ftr__cols a { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; font-size: 14px; color: var(--c-fg-subtle); transition: color var(--dur-fast); }
-  .ftr__cols a:hover { color: var(--c-white); }
+  .ftr__links { display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 0; }
+  .ftr__links a { display: inline-flex; align-items: center; min-height: 40px; font-size: 15px; color: var(--c-fg-subtle); transition: color var(--dur-fast); }
+  .ftr__links a:hover { color: var(--c-white); }
   .ftr__wordmark {
-    margin-top: clamp(64px, 9vw, 128px); font-size: min(200px, calc((100vw - 2 * var(--gutter)) / 7.1)); line-height: 0.8; font-weight: 600;
-    letter-spacing: -0.065em; white-space: nowrap; color: #121113; user-select: none;
+    margin-top: clamp(56px, 8vw, 112px); font-size: min(200px, calc((100vw - 2 * var(--gutter)) / 7.1)); line-height: 0.8; font-weight: 600;
+    letter-spacing: -0.065em; white-space: nowrap; color: var(--wordmark); user-select: none;
   }
-  .ftr__legal { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; padding-block: 28px 36px; margin-top: 24px; border-top: 1px solid var(--c-line); font-size: 12px; color: var(--c-fg-ghost); }
-  .ftr__legal ul { display: flex; gap: 24px; margin: 0; }
+  .ftr__legal { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; padding-block: 24px 32px; margin-top: 24px; border-top: 1px solid var(--c-line); font-size: 12px; color: var(--c-fg-ghost); }
+  .ftr__legal ul { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0; }
+  .ftr__legal a { display: inline-flex; min-height: 32px; align-items: center; }
   .ftr__legal a:hover { color: var(--c-white); }
-
-  @media (max-width: 960px) {
-    .ftr__top { grid-template-columns: 1fr; gap: 48px; }
-    .ftr__cols { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 40px; }
+  @media (max-width: 760px) {
+    .ftr__links { flex-direction: column; gap: 0; }
+    .ftr__legal { flex-direction: column; align-items: flex-start; }
   }
 </style>

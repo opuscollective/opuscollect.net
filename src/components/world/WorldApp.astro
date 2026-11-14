@@ -1,0 +1,188 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import type { ListingKind } from '@/types/directory';
+import { SPECIALTIES } from '@/data/specialties';
+import { GENRES } from '@/data/genres';
+import ViewSwitcher from '@/components/world/ViewSwitcher.astro';
+import ProfilePreview from '@/components/world/ProfilePreview.astro';
+import '@/styles/world.css';
+
+const FILTER_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
+
+/** One World app behind every clean address: /world, /musicians, /studios, /organizations and /world/<city>. */
+interface Props { kind?: ListingKind | ''; city?: string; title?: string; description?: string }
+const {
+  kind = '', city,
+  title = 'World',
+  description = 'Explore independent musicians, recording studios and music organizations on an interactive map of the world.',
+} = Astro.props;
+---
+<BaseLayout
+  title={title}
+  description={description}
+  hideFooter
+>
+  <div class="world" data-world data-view="split" data-default-kind={kind || undefined} data-city={city}>
+    <h1 class="sr-only">{title}</h1>
+
+    <div class="world__map" data-map aria-label="Interactive map of Opus members. Use the list for keyboard navigation." role="region">
+      <!-- Entering from the homepage: show the homepage's last frame in the same place until the live map has drawn,
+           so the move from one page to the other reads as one. Runs before the first paint. -->
+      <script is:inline>
+        (function () {
+          try {
+            if (new URLSearchParams(location.search).get('enter') !== '1') return;
+            var h = JSON.parse(sessionStorage.getItem('opus.enter') || 'null');
+            var src = sessionStorage.getItem('opus.enter.img');
+            if (!h || !src || Date.now() - h.at > 20000) return;
+            var img = document.createElement('img');
+            img.className = 'world__handoff'; img.alt = ''; img.src = src; img.setAttribute('data-handoff', '');
+            var at = h.img || h;
+            img.style.cssText = 'top:' + at.top + 'px;left:' + (at.left || 0) + 'px;width:' + at.w + 'px;height:' + at.h + 'px';
+            document.currentScript.parentNode.insertBefore(img, document.currentScript);
+          } catch (e) { /* World opens normally */ }
+        })();
+      </script>
+      <div class="world__loading" data-map-loading hidden><span>Loading the world…</span></div>
+      <p class="world__nogl" data-map-fallback hidden>
+        Your browser can’t show the interactive map, so results are listed only. Everything else works the same.
+      </p>
+    </div>
+
+    <!-- Cards over the map: the people in view, one swipe each. The map follows the card you're on. -->
+    <section class="wcar" data-cards hidden aria-label="People and places in view">
+      <div class="wcar__track" data-cards-track role="list"></div>
+    </section>
+
+    <!-- Entrance: one question, three answers. Location is asked for only after "Use my location". -->
+    <section class="wx" data-where hidden aria-labelledby="wx-title">
+      <h2 class="wx__title" id="wx-title" tabindex="-1">Where are you connecting from?</h2>
+      <div class="wx__opts" data-where-opts>
+        <button type="button" class="wx__opt wx__opt--main" data-where-me>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+          Use My Location
+        </button>
+        <button type="button" class="wx__opt" data-where-city aria-expanded="false" aria-controls="wx-form">Enter a City</button>
+        <button type="button" class="wx__opt" data-where-world>Explore Worldwide</button>
+      </div>
+      <form class="wx__form" id="wx-form" data-where-form hidden autocomplete="off">
+        <label for="wx-q" class="sr-only">City or region</label>
+        <input id="wx-q" type="text" placeholder="City or region" role="combobox" aria-expanded="false" aria-controls="wx-list" aria-autocomplete="list" data-where-q />
+        <ul id="wx-list" class="wx__list" role="listbox" aria-label="Cities" data-where-list hidden></ul>
+      </form>
+      <p class="wx__note" data-where-note aria-live="polite"></p>
+      <p class="wx__fine">Only your city is remembered, on this device.</p>
+    </section>
+
+    <aside class="world__panel" data-panel aria-label="Directory">
+      <button class="world__grip" type="button" data-sheet-toggle aria-expanded="false" aria-controls="world-results">
+        <span class="sr-only">Show or hide results</span><i aria-hidden="true"></i>
+      </button>
+
+      <div class="wp__head">
+        <div class="wp__search" data-search role="search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/></svg>
+          <label for="w-q" class="sr-only">Search people, studios, or cities</label>
+          <input id="w-q" type="search" placeholder="Search people, studios, or cities..." autocomplete="off" spellcheck="false"
+            role="combobox" aria-expanded="false" aria-controls="w-suggest" aria-autocomplete="list" data-q />
+          <button type="button" class="wp__clearq" data-clear-q hidden aria-label="Clear search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+          <ul id="w-suggest" class="wp__suggest" role="listbox" aria-label="Suggestions" data-suggest hidden></ul>
+        </div>
+
+        <div class="wp__row">
+          <div class="wp__kinds" role="radiogroup" aria-label="Category" data-kinds>
+            <button type="button" role="radio" aria-checked="true" data-kind="">All</button>
+            <button type="button" role="radio" aria-checked="false" data-kind="musician">People</button>
+            <button type="button" role="radio" aria-checked="false" data-kind="studio">Studios</button>
+            <button type="button" role="radio" aria-checked="false" data-kind="organization">Org<span class="wp__long">anization</span>s</button>
+          </div>
+          <button type="button" class="wp__filterbtn" data-filters-toggle aria-expanded="false" aria-controls="w-filters">
+            <Fragment set:html={FILTER_ICON} /><span>Filters</span><b class="wp__fcount" data-fcount hidden></b>
+          </button>
+        </div>
+
+        <div class="wp__filters" id="w-filters" data-filters inert>
+          <div class="wp__fin">
+            <div class="wp__fgrid">
+              <label class="wp__field" data-only="musician"><span>Specialty</span>
+                <select data-specialty>
+                  <option value="">Any specialty</option>
+                  {Object.entries(SPECIALTIES).map(([k, d]) => <option value={k}>{d.plural}</option>)}
+                </select>
+              </label>
+              <label class="wp__field" data-only="musician"><span>Genre</span>
+                <select data-genre>
+                  <option value="">Any genre</option>
+                  {GENRES.map((g) => <option value={g}>{g}</option>)}
+                </select>
+              </label>
+              <label class="wp__field" data-only="studio" hidden><span>Studio type</span>
+                <select data-studio-type>
+                  <option value="">Any studio</option>
+                  <option value="commercial">Recording studios</option>
+                  <option value="home">Home studios</option>
+                  <option value="remote">Remote services</option>
+                </select>
+              </label>
+              <label class="wp__field"><span>Sort by</span>
+                <select data-sort>
+                  <option value="recommended">Recommended</option>
+                  <option value="name">Name A–Z</option>
+                  <option value="recent">Recently added</option>
+                </select>
+              </label>
+            </div>
+            <div class="wp__switches">
+              <label class="wp__switch"><input type="checkbox" role="switch" data-verified /><span>Opus Verified only</span></label>
+              <label class="wp__switch" data-only="musician"><input type="checkbox" role="switch" data-collab /><span>Open to collaborate</span></label>
+              <label class="wp__switch"><input type="checkbox" role="switch" data-inview checked /><span>Only show the area on the map</span></label>
+            </div>
+            <div class="wp__factions">
+              <button type="button" class="wp__btn wp__btn--quiet" data-reset>Reset</button>
+              <button type="button" class="wp__btn" data-filters-done>Show results</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="wp__chips" data-chips hidden></div>
+      </div>
+
+      <div class="wp__bar">
+        <button type="button" class="wp__where" data-where-open aria-label="Change where you're connecting from">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+          <span data-where-label>Worldwide</span>
+        </button>
+        <p class="wp__count" data-count aria-live="polite">Loading World…</p>
+        <button type="button" class="wp__listbtn" data-results-toggle aria-controls="world-results" aria-expanded="false" hidden>Show list</button>
+        <ViewSwitcher />
+      </div>
+
+      <!-- City guide: shown when a place is chosen and nothing else narrows the results. -->
+      <section class="wg" data-guide hidden aria-labelledby="wg-title"></section>
+
+      <div class="wp__results" id="world-results" data-results tabindex="-1">
+        {[0, 1, 2, 3, 4, 5].map(() => <div class="wt wt--grid wt--skeleton" aria-hidden="true"></div>)}
+      </div>
+      <div class="wp__empty" data-empty role="status" hidden>
+        <p class="wp__empty-title" data-empty-title></p>
+        <p class="wp__empty-body" data-empty-body></p>
+        <div class="wp__empty-actions" data-empty-actions></div>
+      </div>
+
+      <footer class="wp__foot" data-stats hidden>
+        <p data-stats-line></p>
+        <p class="wp__sample" data-sample-note hidden>Preview build. Listings marked “Sample” are not real members.</p>
+      </footer>
+    </aside>
+
+    <ProfilePreview />
+    <button type="button" class="world__mode" data-mode hidden></button>
+  </div>
+</BaseLayout>
+
+<script>
+  import { initWorld } from '@/scripts/world-page';
+  initWorld(document.querySelector<HTMLElement>('[data-world]')!);
+</script>

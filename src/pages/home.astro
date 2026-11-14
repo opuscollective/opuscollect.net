@@ -1,0 +1,9 @@
+---
+/**
+ * Home: the signed-in workspace. Until the activity feed arrives (milestone M4),
+ * it opens the account page; signed-out visitors are asked to sign in.
+ */
+export const prerender = false;
+if (!Astro.locals.user) return Astro.redirect('/sign-in?next=/home');
+return Astro.redirect('/account');
+---

@@ -1,0 +1,151 @@
+---
+/**
+ * Future: what is coming up on Opus. Signed in, it brings together your studio sessions (booked by you
+ * or with your studio), releases with a planned date, and Collective events. Signed out, it shows
+ * public events. Read-only, built from existing records.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { futureFor, eventItems } from '@/server/future';
+import { groupByMonth, KIND_LABEL, type FutureItem } from '@/lib/future';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+let items: FutureItem[] = eventItems();
+let failed = false;
+if (user) {
+  try { items = await futureFor(Astro.locals.runtime.env.DB, user.id); }
+  catch (err) { console.error('Future failed to load', err); failed = true; }
+}
+const today = new Date().toISOString().slice(0, 10);
+const months = groupByMonth(items, today);
+const mine = items.filter((i) => i.kind !== 'event').length;
+const FILTERS = [['', 'All'], ['session', 'Sessions'], ['release', 'Releases'], ['event', 'Events']] as const;
+---
+<BaseLayout title="Future" description="What’s coming up on Opus: your studio sessions, planned releases and Collective events, in one timeline.">
+  <section class="app">
+    <div class="app__wrap app__wrap--wide fut" style="margin-inline:auto">
+      <p class="t-meta app__kicker">Future</p>
+      <h1 class="app__title">What’s coming</h1>
+      <p class="app__lead">
+        {user ? 'Your studio sessions, the releases you have planned, and Collective events, in one timeline.' : 'Collective events on Opus. Sign in to see your own sessions and planned releases here too.'}
+      </p>
+
+      {user && (
+        <div class="fut__filters" role="radiogroup" aria-label="Show" data-fut-filters>
+          {FILTERS.map(([k, l], i) => <button type="button" role="radio" aria-checked={i === 0 ? 'true' : 'false'} data-kind={k}>{l}</button>)}
+        </div>
+      )}
+
+      {failed && <p class="panel fut__note">Your sessions and releases couldn’t be loaded just now. Events are shown below.</p>}
+
+      {!user && (
+        <div class="panel fut__signin">
+          <div><h2>Your timeline</h2><p class="dim">Sessions you book, sessions booked with your studio, and release dates you set in Music.</p></div>
+          <a class="fut__btn" href="/sign-in?next=/future">Sign in</a>
+        </div>
+      )}
+
+      {user && !failed && mine === 0 && (
+        <div class="panel fut__note">
+          <h2>Nothing planned yet</h2>
+          <p class="dim">Book a session in <a class="link" href="/studios">World</a> or set a release date in <a class="link" href="/music">Music</a>, and it appears here.</p>
+        </div>
+      )}
+
+      <div class="fut__months" data-fut-list>
+        {months.map((m) => (
+          <section class="fut__month" aria-labelledby={`fm-${m.key}`} data-month>
+            <h2 class="fut__mlabel" id={`fm-${m.key}`}>{m.label}</h2>
+            <ol class="fut__list" role="list">
+              {m.items.map((i) => (
+                <li data-kind={i.kind}>
+                  <a class="fut__item" href={i.href}>
+                    <span class={`fut__dot fut__dot--${i.kind}`} aria-hidden="true"></span>
+                    <span class="fut__body">
+                      <span class="fut__when">{i.when}</span>
+                      <span class="fut__title">{i.title}</span>
+                      <span class="fut__detail">{KIND_LABEL[i.kind]} · {i.detail}</span>
+                    </span>
+                    {i.status && <span class={`fut__status${i.status === 'Requested' ? ' is-pending' : ''}`}>{i.status}</span>}
+                    <Icon name="arrow-right" size={16} class="fut__go" />
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+      <p class="fut__empty dim" data-fut-empty hidden>Nothing of this kind coming up.</p>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const bar = document.querySelector<HTMLElement>('[data-fut-filters]');
+  const list = document.querySelector<HTMLElement>('[data-fut-list]');
+  const empty = document.querySelector<HTMLElement>('[data-fut-empty]');
+  if (bar && list && empty) {
+    const btns = [...bar.querySelectorAll<HTMLButtonElement>('[data-kind]')];
+    const apply = (kind: string) => {
+      btns.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.kind === kind)));
+      list.querySelectorAll<HTMLElement>('li[data-kind]').forEach((li) => { li.hidden = !!kind && li.dataset.kind !== kind; });
+      let shown = 0;
+      list.querySelectorAll<HTMLElement>('[data-month]').forEach((m) => {
+        const any = !!m.querySelector('li[data-kind]:not([hidden])');
+        m.hidden = !any; if (any) shown++;
+      });
+      empty.hidden = shown > 0;
+    };
+    btns.forEach((b) => b.addEventListener('click', () => apply(b.dataset.kind ?? '')));
+    // Arrow keys move between the options, as in any radio group.
+    bar.addEventListener('keydown', (e) => {
+      const i = btns.findIndex((b) => b === document.activeElement);
+      if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+      e.preventDefault();
+      const n = btns[(i + (e.key === 'ArrowRight' ? 1 : btns.length - 1)) % btns.length]!;
+      n.focus(); n.click();
+    });
+    const k = new URLSearchParams(location.search).get('show');
+    if (k && btns.some((b) => b.dataset.kind === k)) apply(k);
+  }
+</script>
+
+<style>
+  .fut__filters { display: inline-flex; gap: 4px; margin-top: 28px; padding: 4px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); }
+  .fut__filters button { min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: none; color: var(--text-2); font-size: 14px; }
+  .fut__filters button[aria-checked='true'] { background: var(--text); color: var(--bg); }
+  .fut__filters button:focus-visible, .fut__item:focus-visible, .fut__btn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+  .fut__signin { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; }
+  .fut__btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .fut__note { margin-top: 24px; }
+
+  .fut__months { margin-top: 28px; }
+  .fut__month + .fut__month { margin-top: 32px; }
+  .fut__mlabel { margin: 0 0 8px; font-size: 13px; font-weight: 500; letter-spacing: 0.02em; color: var(--text-3); text-transform: uppercase; font-family: var(--font-mono); }
+  /* A thin line runs down the month; each item hangs a dot on it. */
+  .fut__list { position: relative; margin: 0; padding: 0; list-style: none; border-left: 1px solid var(--line); margin-left: 5px; }
+  .fut__item { position: relative; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 12px 12px 22px; border-radius: 12px; transition: background var(--dur-fast); }
+  .fut__item:hover { background: var(--surface-hover, var(--surface)); }
+  .fut__dot { position: absolute; left: -6px; top: 50%; width: 11px; height: 11px; margin-top: -5.5px; border-radius: 50%; border: 2px solid var(--bg); background: var(--text-3); }
+  .fut__dot--session { background: var(--text); }
+  .fut__dot--release { background: var(--accent); }
+  .fut__dot--event { background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--text-2); }
+  .fut__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .fut__when { font-size: 13px; color: var(--text-3); }
+  .fut__title { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fut__detail { font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fut__status { flex-shrink: 0; height: 24px; padding: 0 10px; display: inline-flex; align-items: center; border-radius: var(--r-pill); border: 1px solid var(--line-strong); font-size: 12px; color: var(--text-2); }
+  .fut__status.is-pending { border-color: var(--c-accent-line, var(--accent)); color: var(--accent); }
+  .fut__item :global(.fut__go) { flex-shrink: 0; color: var(--text-3); }
+  .fut__empty { margin-top: 24px; }
+
+  @media (max-width: 560px) {
+    .fut__filters { display: flex; width: 100%; }
+    .fut__filters button { flex: 1; padding: 0 6px; }
+    .fut__signin { flex-direction: column; align-items: flex-start; }
+    .fut__item :global(.fut__go) { display: none; }
+  }
+</style>

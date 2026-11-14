@@ -1,14 +1,14 @@
 ---
 /**
- * The musician directory now lives in Opus World. This page keeps old links working:
- * /directory?q=&discipline=&location= → /world?type=musician&q=&specialty=&city=
+ * The musician directory now lives in World. This page keeps old links working:
+ * /directory?q=&discipline=&location= → /musicians&q=&specialty=&city=
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 ---
 <BaseLayout title="Musician Directory" noindex>
-  <meta http-equiv="refresh" content="0; url=/world?type=musician" slot="head" />
+  <meta http-equiv="refresh" content="0; url=/musicians" slot="head" />
   <section class="container" style="padding-block: 160px 120px">
-    <p>The directory has moved to <a href="/world?type=musician">Opus World</a>.</p>
+    <p>The directory has moved to <a href="/musicians">World</a>.</p>
   </section>
 </BaseLayout>
 <script>

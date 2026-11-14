@@ -1,0 +1,157 @@
+---
+/**
+ * The Opus ecosystem on the homepage, continuing the hero's dark canvas (World is the hero itself):
+ *   Studios | Music
+ *   Charts  | Collective
+ *   Opus Verified (a slim strip across the bottom)
+ * Every tile shares the same geometry: name, one line and its action at the top, the product's visual below.
+ * Dark and warm-white surfaces alternate on purpose. Only real destinations; Charts is in development and says so.
+ * Covers are real Opus Collective releases. No invented releases, rankings or numbers.
+ */
+import VerifiedBadge from '../ui/VerifiedBadge.astro';
+
+const CITIES = ['Birmingham', 'Atlanta', 'Nashville', 'London', 'Lagos', 'Los Angeles'];
+const OPACITY = [0.92, 0.7, 0.5, 0.34, 0.2, 0.1];
+---
+<section class="pt tone-dark" aria-label="What you can do on Opus">
+  <div class="pt__grid">
+
+    <article class="tile tile--dark tile--photo tile--studios tone-dark" aria-labelledby="pt-studios" data-reveal>
+      <img class="tile__photo" src="/images/studio-control-room-1400.jpg" alt="" loading="lazy" decoding="async" width="1400" height="934" />
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-studios">Studios</h2>
+        <p class="tile__line">Find your next session.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/studios">Find a Studio</a></div>
+      </div>
+    </article>
+
+    <article class="tile tile--cream tile--music" aria-labelledby="pt-music" data-reveal style="--d:0.08s">
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-music">Music</h2>
+        <p class="tile__line">Your releases. Your credits.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/music">Explore Music</a></div>
+      </div>
+      <!-- Real releases from the Opus Collective catalog: Amazing and Scenic by Bogo, luciaism by NUGGET!. -->
+      <a class="tile__media covers" href="/releases" tabindex="-1" aria-hidden="true">
+        <img class="covers__l" src="/images/releases/card/amazing-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
+        <img class="covers__r" src="/images/releases/card/luciaism-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
+        <img class="covers__c" src="/images/releases/card/scenic-900.jpg" alt="" loading="lazy" decoding="async" width="900" height="900" />
+      </a>
+    </article>
+
+    <article class="tile tile--paper tile--charts" aria-labelledby="pt-charts" data-reveal>
+      <span class="tile__soon">Coming soon</span>
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-charts">Charts</h2>
+        <p class="tile__line">Every city has a sound.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/charts">See What’s Coming</a></div>
+      </div>
+      <!-- Decorative city names, not rankings. -->
+      <ul class="tile__media cities" role="list" aria-label="Cities Charts will cover">
+        {CITIES.map((c, i) => <li style={`--o:${OPACITY[i]};--i:${i}`}>{c}</li>)}
+      </ul>
+    </article>
+
+    <article class="tile tile--dark tile--photo tile--collective tone-dark" aria-labelledby="pt-collective" data-reveal style="--d:0.08s">
+      <img class="tile__photo" src="/images/scenic-room-1200.jpg" alt="" loading="lazy" decoding="async" width="1200" height="1800" />
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-collective">Collective</h2>
+        <p class="tile__line">Beyond the platform.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go" href="/collective">Explore the Collective</a></div>
+      </div>
+    </article>
+
+    <article class="vstrip tone-dark" aria-labelledby="pt-verified" data-reveal>
+      <span class="vstrip__seal" aria-hidden="true"><VerifiedBadge size={44} tone="light" /></span>
+      <p class="vstrip__text"><span class="vstrip__name" id="pt-verified">Opus Verified.</span> Earned. Never bought.</p>
+      <a class="tile__btn vstrip__btn" href="/verified">Learn About Verification</a>
+    </article>
+
+  </div>
+</section>
+
+<style>
+  /* The grid continues the hero's dark canvas: same background, same 12px frame, and on desktop the frame's
+     rounded bottom corners close here, after the last row, so headline, Earth and products read as one piece. */
+  .pt { padding: 4px 12px 12px; background: var(--bg); }
+  @media (min-width: 1000px) {
+    .pt { margin: 0 12px; padding: 4px 12px 12px; border-radius: 0 0 28px 28px; }
+  }
+  .pt__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 1480px; margin: 0 auto; } /* wide and ultrawide screens: the cards stay in proportion, the dark canvas still runs edge to edge */
+
+  .tile { --pad: clamp(40px, 4.4vw, 64px); position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; align-items: center;
+    aspect-ratio: 1 / 0.86; min-height: 520px; padding: var(--pad) 24px 0; text-align: center; border-radius: 18px; container-type: inline-size; }
+  .tile--dark { background: #0d0d0f; color: #f4f2ee; border: 1px solid rgba(255, 255, 255, 0.06); }
+  .tile--cream { background: #efe9df; color: #141416; }
+  .tile--paper { background: #f8f6f1; color: #141416; border: 1px solid #e3ddd3; }
+
+  .tile__text { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .tile__name { margin: 0; font-size: clamp(2.2rem, 1.4rem + 2.2vw, 3.6rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.02; }
+  .tile__line { margin: 0; max-width: 30ch; font-size: clamp(1.05rem, 0.95rem + 0.4vw, 1.35rem); letter-spacing: -0.02em; opacity: 0.78; }
+  .tile__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
+  .tile__btn { display: inline-flex; align-items: center; height: 42px; padding: 0 20px; border-radius: var(--r-pill); border: 1px solid currentColor; font-size: 15px; font-weight: 500; white-space: nowrap;
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+  .tile__btn:hover { opacity: 0.82; }
+  .tile__btn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+  /* The filled button takes the opposite of the tile's surface. */
+  .tile--dark .tile__btn--go { background: #f4f2ee; color: #0d0d0f; border-color: #f4f2ee; }
+  .tile--cream .tile__btn--go, .tile--paper .tile__btn--go { background: #141416; color: #f4f2ee; border-color: #141416; }
+
+  .tile__soon { position: absolute; top: 20px; right: 20px; z-index: 3; padding: 4px 10px; border: 1px solid currentColor; border-radius: var(--r-pill);
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; }
+
+  .tile__media { position: relative; flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-end; justify-content: center; margin-top: 28px; }
+
+  /* Studios and Collective: full-bleed photographs, darkened at the top for the words. */
+  .tile__photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
+  .tile--photo::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(8, 8, 10, 0.86) 0%, rgba(8, 8, 10, 0.45) 42%, rgba(8, 8, 10, 0.08) 100%); }
+  .tile--collective .tile__photo { object-position: 50% 60%; filter: grayscale(1) contrast(1.08) brightness(0.8); }
+
+  /* Music: three real covers, Scenic in front. */
+  .covers { align-items: center; margin-bottom: var(--pad); }
+  .covers img { position: absolute; top: 50%; left: 50%; width: min(44cqw, 300px); height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 6px;
+    box-shadow: 0 28px 60px -24px rgba(20, 16, 12, 0.55); transition: transform 0.9s var(--ease); }
+  .covers__l { transform: translate(-108%, -46%) rotate(-7deg) scale(0.86); }
+  .covers__r { transform: translate(8%, -46%) rotate(7deg) scale(0.86); }
+  .covers__c { z-index: 2; transform: translate(-50%, -52%); box-shadow: 0 40px 80px -30px rgba(120, 40, 70, 0.5), 0 24px 50px -22px rgba(20, 16, 12, 0.6); }
+  @media (hover: hover) {
+    .tile--music:hover .covers__l { transform: translate(-114%, -46%) rotate(-9deg) scale(0.86); }
+    .tile--music:hover .covers__r { transform: translate(14%, -46%) rotate(9deg) scale(0.86); }
+    .tile--music:hover .covers__c { transform: translate(-50%, -54%); }
+  }
+
+  /* Charts: city names fading out, like a sound trailing off. Not a ranking. */
+  .cities { flex-direction: column; align-items: center; justify-content: center; gap: 0; margin: 0 0 var(--pad); padding: 0; list-style: none;
+    font-size: clamp(1.7rem, 7cqw, 3.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 1.08; }
+  .cities li { opacity: var(--o); }
+
+  /* Opus Verified: one slim line across the grid, seal, statement and the way in. */
+  .vstrip { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px 22px; padding: 26px 28px;
+    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 18px; color: #f4f2ee; text-align: center; }
+  .vstrip__seal { display: inline-flex; }
+  .vstrip__text { margin: 0; font-size: clamp(1.15rem, 0.95rem + 0.8vw, 1.75rem); font-weight: 500; letter-spacing: -0.03em; color: rgba(244, 242, 238, 0.72); }
+  .vstrip__name { color: #f4f2ee; }
+  .vstrip__btn { color: #f4f2ee; border-color: rgba(244, 242, 238, 0.32); }
+
+  /* Motion: quiet, one idea per tile. Fully visible without JS; global reduced-motion turns it off. */
+  :global(.js) .tile__photo { transform: scale(1.06); transition: transform 1.6s var(--ease); }
+  :global(.js) .tile.is-in .tile__photo { transform: scale(1); }
+  :global(.js) .cities li { transform: translateY(6px); transition: transform 0.9s var(--ease); transition-delay: calc(0.2s + var(--i) * 0.07s); }
+  :global(.js) .tile--charts.is-in .cities li { transform: none; }
+
+  /* Tablets: one column, heights follow content. */
+  @media (max-width: 900px) {
+    .pt__grid { grid-template-columns: minmax(0, 1fr); }
+    .tile { aspect-ratio: auto; min-height: 560px; }
+  }
+  /* Phones: edge to edge, no outer frame wasting width. */
+  @media (max-width: 760px) {
+    .pt { padding: 8px 0 0; }
+    .pt__grid { gap: 8px; }
+    .tile { --pad: 48px; min-height: 520px; border-radius: 0; border-left: 0; border-right: 0; }
+    .tile__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); }
+    .tile__line { font-size: clamp(1.05rem, 4.6vw, 1.25rem); }
+    .vstrip { border-radius: 0; border-left: 0; border-right: 0; padding: 28px 20px; }
+    .covers img { width: 52cqw; }
+  }
+</style>

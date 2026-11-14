@@ -6,6 +6,7 @@
 import { HttpError, audit, now, randomId, str } from './util';
 import { limit } from './ratelimit';
 import type { SessionUser } from './session';
+import { notify } from './messages';
 
 const DAY = 86_400_000;
 
@@ -56,12 +57,14 @@ export async function requestConnection(env: Env, user: SessionUser, body: { to?
     if (existing.status === 'declined' && existing.requester_id === user.id && now() - since < 30 * DAY) throw new HttpError(429, 'You can send a new request 30 days after a decline.');
     await db.prepare("UPDATE connections SET requester_id = ?, addressee_id = ?, message = ?, status = 'pending', created_at = ?, responded_at = NULL WHERE id = ?")
       .bind(user.id, target.owner_user_id, message, now(), existing.id).run();
+    await notify(env, target.owner_user_id, 'connection_request', user.id, existing.id);
     return { id: existing.id };
   }
   const id = randomId();
   await db.prepare("INSERT INTO connections (id, requester_id, addressee_id, message, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)")
     .bind(id, user.id, target.owner_user_id, message, now()).run();
   await audit(db, user.id, 'connection.requested', { id });
+  await notify(env, target.owner_user_id, 'connection_request', user.id, id);
   return { id };
 }
 
@@ -75,6 +78,10 @@ export async function actOnConnection(env: Env, user: SessionUser, id: string, a
     case 'decline':
       if (c.addressee_id !== user.id || c.status !== 'pending') throw new HttpError(400, 'This request can’t be answered.');
       await db.prepare('UPDATE connections SET status = ?, responded_at = ? WHERE id = ?').bind(action === 'accept' ? 'accepted' : 'declined', t, id).run();
+      // The requester hears about an acceptance; a decline stays quiet.
+      if (action === 'accept') await notify(env, c.requester_id, 'connection_accepted', user.id, id);
+      // The request notification is answered either way.
+      await db.prepare("UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE user_id = ? AND ref_id = ? AND kind = 'connection_request'").bind(t, user.id, id).run();
       break;
     case 'withdraw':
       if (c.requester_id !== user.id || c.status !== 'pending') throw new HttpError(400, 'This request can’t be withdrawn.');

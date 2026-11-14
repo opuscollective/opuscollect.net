@@ -1,0 +1,135 @@
+---
+/**
+ * Quick setup after joining: (1) name, role and city, (2) start or add a release, (3) what's left to appear in World.
+ * Each step saves on its own, so people can stop at any point and pick up later.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { SPECIALTIES } from '@/data/specialties';
+import { PLACES, placeLabel } from '@/data/places';
+import { getMyProfile, missingForPublish } from '@/server/profiles';
+import { listMyReleases } from '@/server/releases';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-up?next=/start');
+const db = Astro.locals.runtime.env.DB;
+const profile = await getMyProfile(db, user.id);
+const releases = profile ? await listMyReleases(db, user.id).catch(() => []) : [];
+const step = !profile ? 1 : Astro.url.searchParams.has('done') || releases.length ? 3 : 2;
+const missing = profile ? missingForPublish(profile, user.emailVerified) : [];
+
+const metros = PLACES.filter((p) => p.kind === 'metro').sort((a, b) => a.countryName.localeCompare(b.countryName) || a.name.localeCompare(b.name));
+const localitiesOf = (id: string) => PLACES.filter((p) => p.kind === 'locality' && p.metroId === id).sort((a, b) => a.name.localeCompare(b.name));
+const STEPS = ['You', 'Your first release', 'Done'];
+---
+<BaseLayout title="Set up Opus" noindex>
+  <section class="app app--center">
+    <div class="app__wrap st">
+      <ol class="st__steps" aria-label="Setup steps">
+        {STEPS.map((s, i) => <li class:list={{ 'is-done': i + 1 < step, 'is-now': i + 1 === step }} aria-current={i + 1 === step ? 'step' : undefined}><span>{i + 1}</span>{s}</li>)}
+      </ol>
+
+      {step === 1 && (
+        <>
+          <h1 class="app__title">Who are you on Opus?</h1>
+          <p class="app__lead">Three things to start. You can add the rest later, and nothing is public until you publish.</p>
+          <form class="form" data-basics novalidate>
+            <label class="field"><span>Artist or professional name</span><input class="input" name="displayName" maxlength="80" required autocomplete="nickname" /></label>
+            <label class="field"><span>What do you do?</span>
+              <select class="select" name="primarySpecialty" required>
+                <option value="">Choose your main role</option>
+                {Object.entries(SPECIALTIES).map(([k, s]) => <option value={k}>{s.label}</option>)}
+              </select>
+            </label>
+            <label class="field"><span>Where are you based?</span>
+              <select class="select" name="placeId" required>
+                <option value="">Choose your city or area</option>
+                {metros.map((m) => (
+                  <optgroup label={`${m.name}${m.region ? ', ' + m.region : ''} · ${m.countryName}`}>
+                    <option value={m.id}>{placeLabel(m)}</option>
+                    {localitiesOf(m.id).map((l) => <option value={l.id}>{l.name} ({m.name} area)</option>)}
+                  </optgroup>
+                ))}
+              </select>
+              <small>Only your city or area is ever shown, never an address.</small>
+            </label>
+            <div data-status class="form-status"></div>
+            <button class="btn-app btn-app--block" type="submit">Continue</button>
+          </form>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <h1 class="app__title">What are you working on?</h1>
+          <p class="app__lead">Start a release you’re making, or add one that’s already out. It builds your resume on Opus, and you decide whether it shows on your profile.</p>
+          <form class="form" data-first-release novalidate style="margin-top:28px">
+            <label class="field"><span>Title</span><input class="input" name="title" maxlength="120" placeholder="A working title is fine" /></label>
+            <div class="st__pick">
+              <button type="submit" class="st__opt" value="new"><b>I’m working on it</b><small>Start a release. Add tracks, credit your team, and find people for it.</small></button>
+              <button type="submit" class="st__opt" value="past"><b>It’s already out</b><small>Add it to your record so it shows on your profile.</small></button>
+            </div>
+            <p class="dim" data-status role="alert"></p>
+          </form>
+          <p class="app__alt"><a href="/start?done=1">Skip for now</a></p>
+        </>
+      )}
+
+      {step === 3 && profile && (
+        <>
+          <h1 class="app__title">You’re on Opus.</h1>
+          <p class="app__lead">
+            {profile.status === 'published'
+              ? 'Your profile is live in World.'
+              : missing.length
+                ? `To appear in World, add: ${missing.join(', ').toLowerCase()}.`
+                : 'Everything’s ready. Publish your profile to appear in World.'}
+          </p>
+          <div class="st__next">
+            {profile.status !== 'published' && <a class="btn-app btn-app--block" href="/account/profile">Finish your profile</a>}
+            <a class="btn-app btn-app--ghost btn-app--block" href="/music">Your releases</a>
+            <a class="btn-app btn-app--ghost btn-app--block" href={`/m/${profile.handle}`}>See your profile</a>
+          </div>
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { bindForm } from '@/scripts/form';
+  const basics = document.querySelector<HTMLFormElement>('[data-basics]');
+  if (basics) bindForm(basics, { url: '/api/profile', busyLabel: 'Saving…', onSuccess: () => { location.href = '/start'; } });
+  // Step 2 creates the release in Opus Music, then opens its builder.
+  const first = document.querySelector<HTMLFormElement>('[data-first-release]');
+  first?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+    const msg = first.querySelector<HTMLElement>('[data-status]')!;
+    first.querySelectorAll('button').forEach((b) => (b.disabled = true)); msg.textContent = '';
+    const title = (first.elements.namedItem('title') as HTMLInputElement).value;
+    const r = await fetch('/api/releases', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title, past: btn?.value === 'past' }) });
+    const d = (await r.json().catch(() => ({}))) as { id?: string; error?: string };
+    if (r.ok && d.id) location.href = `/music/${d.id}`;
+    else { first.querySelectorAll('button').forEach((b) => (b.disabled = false)); msg.textContent = d.error ?? 'Something went wrong. Please try again.'; }
+  });
+</script>
+
+<style>
+  .st { max-width: 620px; }
+  .st__steps { display: flex; gap: 8px 20px; flex-wrap: wrap; margin: 0 0 28px; padding: 0; list-style: none; font-size: 13px; color: var(--text-3); }
+  .st__steps li { display: inline-flex; align-items: center; gap: 8px; }
+  .st__steps span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-strong); font-size: 11px; }
+  .st__steps .is-now { color: var(--text); }
+  .st__steps .is-now span { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .st__steps .is-done span { background: var(--surface); }
+  .st__pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .st__opt { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 18px; text-align: left; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--text); cursor: pointer; transition: border-color var(--dur) var(--ease); }
+  .st__opt:hover { border-color: var(--text); }
+  .st__opt b { font-weight: 500; font-size: 16px; }
+  .st__opt small { font-size: 13px; line-height: 1.45; color: var(--text-3); }
+  .st__opt:disabled { opacity: 0.6; cursor: wait; }
+  @media (max-width: 560px) { .st__pick { grid-template-columns: 1fr; } }
+  .st__next { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+</style>

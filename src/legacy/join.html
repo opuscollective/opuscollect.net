@@ -1,0 +1,48 @@
+<section style="padding: clamp(64px, 9vw, 120px) clamp(20px, 4vw, 32px)">
+<div class="opus-container" style="max-width: 1280px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: clamp(48px, 7vw, 96px); align-items: flex-start">
+<div style="flex: 1 1 420px; display: flex; flex-direction: column; gap: 28px">
+<span style="font-size: 14px; font-weight: 500; color: var(--text-3)">Vital members</span>
+<h1 style="margin: 0; font-weight: 500; font-size: clamp(40px, 6vw, 80px); line-height: 1; letter-spacing: -0.045em">Don't create <span style="color: var(--text-3)">in isolation.</span></h1>
+<p style="margin: 0; max-width: 460px; font-size: 18px; line-height: 1.6; color: var(--text-2)">Opus membership isn't open yet. Join the waitlist to get in first. Everyone on it becomes a vital member and helps shape what Opus becomes.</p>
+<ul style="margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column">
+<li style="display: flex; gap: 14px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line); font-size: 17px"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>First invites to Birmingham conferences</li>
+<li style="display: flex; gap: 14px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line); font-size: 17px"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>First in line for the Opus Summit</li>
+<li style="display: flex; gap: 14px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line); font-size: 17px"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>Early access when membership opens</li>
+<li style="display: flex; gap: 14px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 17px"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>A say in what we build next</li>
+</ul>
+</div>
+<form id="waitlist-form" action="/api/waitlist" method="post" style="flex: 1 1 380px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: clamp(24px, 4vw, 40px); box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+<label for="f-name" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-2)">Full name
+<input id="f-name" name="name" required maxlength="120" autocomplete="name" type="text" style="background: var(--bg); border: 1px solid var(--line); color: var(--text); font-family: 'Geist', sans-serif; font-size: 16px; padding: 0 14px; min-height: 48px; box-sizing: border-box; border-radius: 8px">
+</label>
+<label for="f-artist" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-2)"><span>Artist name <span style="color: var(--text-3)">(optional)</span></span>
+<input id="f-artist" name="artist_name" maxlength="120" type="text" autocomplete="off" placeholder="What you release under" style="background: var(--bg); border: 1px solid var(--line); color: var(--text); font-family: 'Geist', sans-serif; font-size: 16px; padding: 0 14px; min-height: 48px; box-sizing: border-box; border-radius: 8px">
+</label>
+<label for="f-email" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-2)">Email
+<input id="f-email" name="email" required maxlength="254" autocomplete="email" type="email" style="background: var(--bg); border: 1px solid var(--line); color: var(--text); font-family: 'Geist', sans-serif; font-size: 16px; padding: 0 14px; min-height: 48px; box-sizing: border-box; border-radius: 8px">
+</label>
+<label for="f-ig" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-2)">Instagram
+<input id="f-ig" name="instagram" maxlength="60" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="@yourhandle" style="background: var(--bg); border: 1px solid var(--line); color: var(--text); font-family: 'Geist', sans-serif; font-size: 16px; padding: 0 14px; min-height: 48px; box-sizing: border-box; border-radius: 8px">
+</label>
+<label for="f-socials" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-2)"><span>Other socials <span style="color: var(--text-3)">(optional)</span></span>
+<input id="f-socials" name="other_socials" maxlength="300" type="text" autocomplete="off" placeholder="TikTok, X, YouTube, Spotify link…" style="background: var(--bg); border: 1px solid var(--line); color: var(--text); font-family: 'Geist', sans-serif; font-size: 16px; padding: 0 14px; min-height: 48px; box-sizing: border-box; border-radius: 8px">
+</label>
+<label for="f-role" style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-2)">I'm a
+<select id="f-role" name="role" style="background: var(--bg); border: 1px solid var(--line); color: var(--text); font-family: 'Geist', sans-serif; font-size: 16px; padding: 0 14px; min-height: 48px; box-sizing: border-box; border-radius: 8px">
+<option>Artist</option>
+<option>Producer</option>
+<option>Engineer</option>
+<option>Designer</option>
+<option>Filmmaker</option>
+<option>Listener</option>
+<option>Other</option>
+</select>
+</label>
+<label class="opus-consent"><input type="checkbox" name="consent" required> Keep me updated by email about Opus membership, events, and releases. Opus stores these details to manage the list.</label>
+<label hidden aria-hidden="true">Leave empty<input name="website" tabindex="-1" autocomplete="off"></label>
+<p id="form-status" role="status" aria-live="polite"></p>
+<button type="submit" style="margin-top: 8px; background: var(--text); color: var(--bg); border: none; font-family: 'Geist', sans-serif; font-size: 15px; font-weight: 500; min-height: 52px; border-radius: 999px; cursor: pointer">Join the waitlist</button>
+<p style="margin: 0; text-align: center; font-size: 14px; color: var(--text-3)">Can't wait? <a href="https://discord.gg/QudUMNB5yP" style="color: var(--text)">Enter the Discord</a></p>
+</form>
+</div>
+</section>

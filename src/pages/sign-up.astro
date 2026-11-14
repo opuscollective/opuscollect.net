@@ -11,7 +11,7 @@ if (Astro.locals.user) return Astro.redirect(next || '/account');
     <div class="app__wrap">
       <p class="t-meta app__kicker">Join Opus</p>
       <h1 class="app__title">Create your account.</h1>
-      <p class="app__lead">Browsing Opus World is open to everyone. An account lets you build your profile, connect with other musicians and apply for Opus Verified.</p>
+      <p class="app__lead">Browsing World is open to everyone. An account takes a minute: your name, what you do and where. Then start a release or add your past work.</p>
 
       <form class="form" data-signup data-next={next} novalidate>
         <label class="field"><span>Email</span>
@@ -34,5 +34,5 @@ if (Astro.locals.user) return Astro.redirect(next || '/account');
 <script>
   import { bindForm } from '@/scripts/form';
   const form = document.querySelector<HTMLFormElement>('[data-signup]')!;
-  bindForm(form, { url: '/api/auth/register', busyLabel: 'Creating account…', onSuccess: () => { location.href = form.dataset.next || '/account/profile?welcome=1'; } });
+  bindForm(form, { url: '/api/auth/register', busyLabel: 'Creating account…', onSuccess: () => { location.href = form.dataset.next || '/start'; } });
 </script>

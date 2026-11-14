@@ -18,6 +18,9 @@ export const SPECIALTY_KEYS = [
   'instrumentalist',
   'composer',
   'arranger',
+  'photographer',
+  'videographer',
+  'creative',
 ] as const;
 
 export type Specialty = (typeof SPECIALTY_KEYS)[number];
@@ -34,6 +37,9 @@ export const SPECIALTIES: Record<Specialty, { label: string; plural: string; blu
   instrumentalist: { label: 'Instrumentalist', plural: 'Instrumentalists', blurb: 'Session and touring players on every instrument.' },
   composer: { label: 'Composer', plural: 'Composers', blurb: 'Composers for records, film, games and media.' },
   arranger: { label: 'Arranger', plural: 'Arrangers', blurb: 'Arrangers for strings, horns, choirs and bands.' },
+  photographer: { label: 'Photographer', plural: 'Photographers', blurb: 'Press, cover art and live photographers.' },
+  videographer: { label: 'Videographer', plural: 'Videographers', blurb: 'Music video directors, editors and live-session crews.' },
+  creative: { label: 'Other Creative', plural: 'Other Creatives', blurb: 'Designers, stylists and other creatives who work with musicians.' },
 };
 
 /** Old URL values (from the "discipline" era) mapped to current keys. */

@@ -1,35 +1,74 @@
 ---
-import { NAV, ACCOUNT, SITE } from '@/data/site';
+import { NAV, ACCOUNT, ACCOUNT_MENU, SITE } from '@/data/site';
 import Icon from '../ui/Icon.astro';
+import ThemeSwitch from '../ui/ThemeSwitch.astro';
 interface Props { overlay?: boolean }
 const { overlay = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
-// Profiles and studio pages belong to Opus World; dashboards to Business.
-const SECTIONS: Record<string, string[]> = { '/world': ['/world', '/m/', '/studios/'], '/business': ['/business'] };
-const current = (href: string) => (SECTIONS[href] ? SECTIONS[href].some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/')) : path === href.replace(/\.html$/, '') || path === href);
+// Which pages light up each nav item. People, studios, organizations, profiles and Verified belong to World.
+const SECTIONS: Record<string, string[]> = {
+  '/world': ['/world', '/musicians', '/organizations', '/studios', '/m/', '/verified'],
+  '/music': ['/music', '/releases', '/r/'],
+  '/future': ['/future'],
+  '/charts': ['/charts'],
+  '/network': ['/network', '/account/connections', '/account/bookings'],
+  '/collective': ['/collective', '/community', '/about', '/events'],
+};
+const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/'));
 ---
 <script is:inline>
-  // Signed-in hint (not a credential): swap Sign in / Join for Your account.
+  // Signed-in hint (not a credential): swap Sign in / Join for the account menu.
   if (document.cookie.split('; ').indexOf('opus_in=1') > -1) document.documentElement.classList.add('is-signed-in');
 </script>
-<header class:list={['hdr', { 'hdr--overlay': overlay }]} data-header>
+<header class:list={['hdr', { 'hdr--overlay': overlay, 'tone-dark': overlay }]} data-header data-overlay={overlay ? '' : undefined}>
   <div class="container hdr__inner">
     <a href="/" class="hdr__brand" aria-label={`${SITE.product} home`}>
-      <img src="/images/oc-logo.png" alt="" width="34" height="22" />
+      <img class="logo" src="/images/oc-logo.png" alt="" width="34" height="22" />
     </a>
 
     <nav class="hdr__nav" aria-label="Main">
       <ul role="list">
-        {NAV.map((item) => (
-          <li><a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}</a></li>
+        {NAV.map((item, i) => (
+          <li class="hdr__item" data-mega-item>
+            <a href={item.href} aria-current={current(item.href) ? 'page' : undefined} aria-describedby={`mega-${i}-lead`}>{item.label}</a>
+            <div class="mega" id={`mega-${i}`}>
+              <div class="container mega__inner">
+                <div class="mega__lead">
+                  <p class="mega__name">{item.label}{item.soon && <span class="mega__soon">Coming soon</span>}</p>
+                  <p class="mega__desc" id={`mega-${i}-lead`}>{item.lead}</p>
+                </div>
+                {item.groups.map((g, gi) => (
+                  <div class:list={['mega__group', { 'mega__group--main': gi === 0 }]}>
+                    <p class="t-meta mega__title">{g.title}</p>
+                    <ul role="list">
+                      {g.links.map((l) => <li><a href={l.href} tabindex="-1">{l.label}{l.soon && <span class="mega__soon">Soon</span>}</a></li>)}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </li>
         ))}
       </ul>
     </nav>
 
     <div class="hdr__actions">
+      <ThemeSwitch variant="icon" />
       <a href={ACCOUNT.signIn.href} class="hdr__signin" data-auth-out>{ACCOUNT.signIn.label}</a>
       <a href={ACCOUNT.join.href} class="hdr__join" data-auth-out>{ACCOUNT.join.label}</a>
-      <a href="/account" class="hdr__join" data-auth-in hidden>Your account</a>
+
+      <div class="acct" data-auth-in hidden>
+        <button class="acct__btn" type="button" aria-expanded="false" aria-controls="acct-menu" aria-haspopup="true" data-acct-toggle>
+          <Icon name="user" size={18} /><span class="sr-only">Account menu</span><Icon name="chevron-down" size={14} class="acct__chev" />
+        </button>
+        <div class="acct__menu" id="acct-menu" hidden data-acct-menu>
+          <ul role="list">
+            {ACCOUNT_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+          </ul>
+          <button type="button" class="acct__out" data-logout>Sign out</button>
+        </div>
+      </div>
+
       <button class="hdr__toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" data-menu-toggle>
         <span class="sr-only">Menu</span>
         <Icon name="menu" size={22} class="hdr__icon-open" />
@@ -42,13 +81,18 @@ const current = (href: string) => (SECTIONS[href] ? SECTIONS[href].some((p) => p
     <nav class="container" aria-label="Mobile">
       <ul role="list" class="mmenu__list">
         {NAV.map((item, i) => (
-          <li style={`--i:${i}`}><a href={item.href}>{item.label}</a></li>
+          <li style={`--i:${i}`}>
+            <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}</a>
+          </li>
         ))}
       </ul>
       <div class="mmenu__actions">
-        <a href={ACCOUNT.join.href} class="hdr__join hdr__join--lg" data-auth-out>{ACCOUNT.join.label}</a>
+        <ul role="list" class="mmenu__acct" data-auth-in hidden>
+          {ACCOUNT_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+          <li><button type="button" data-logout>Sign out</button></li>
+        </ul>
         <a href={ACCOUNT.signIn.href} class="mmenu__signin" data-auth-out>{ACCOUNT.signIn.label}</a>
-        <a href="/account" class="hdr__join hdr__join--lg" data-auth-in hidden>Your account</a>
+        <div class="mmenu__theme"><span class="t-meta">Theme</span><ThemeSwitch variant="segmented" /></div>
       </div>
     </nav>
   </div>
@@ -58,8 +102,14 @@ const current = (href: string) => (SECTIONS[href] ? SECTIONS[href].some((p) => p
   const header = document.querySelector<HTMLElement>('[data-header]');
   const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
   const menu = document.querySelector<HTMLElement>('[data-menu]');
+  const overlay = header?.hasAttribute('data-overlay') ?? false;
+  // On the homepage the header floats over the dark globe hero. It stays dark (clear, then dark glass)
+  // for as long as the hero is behind it, and only takes the page's own colour once the hero has scrolled away.
+  const hero = overlay ? document.querySelector<HTMLElement>('.hero') : null;
+  const overHero = () => !!hero && hero.getBoundingClientRect().bottom > (header?.offsetHeight ?? 72);
+  const tone = () => header?.classList.toggle('tone-dark', overlay && overHero() && !header.classList.contains('is-open'));
   if (header) {
-    const onScroll = () => header.classList.toggle('is-solid', window.scrollY > 24);
+    const onScroll = () => { header.classList.toggle('is-solid', window.scrollY > 24); tone(); };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
   }
@@ -67,6 +117,7 @@ const current = (href: string) => (SECTIONS[href] ? SECTIONS[href].some((p) => p
     const set = (open: boolean) => {
       toggle.setAttribute('aria-expanded', String(open));
       header.classList.toggle('is-open', open);
+      tone();
       document.documentElement.style.overflow = open ? 'hidden' : '';
       if (open) menu.hidden = false;
       else setTimeout(() => { if (toggle.getAttribute('aria-expanded') === 'false') menu.hidden = true; }, 300);
@@ -75,65 +126,133 @@ const current = (href: string) => (SECTIONS[href] ? SECTIONS[href].some((p) => p
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && header.classList.contains('is-open')) { set(false); toggle.focus(); } });
     window.matchMedia('(min-width: 961px)').addEventListener('change', (e) => { if (e.matches) set(false); });
   }
+
+  // Mega panels: keyboard focus opens the panel and makes its links tabbable; Escape closes it.
+  document.querySelectorAll<HTMLElement>('[data-mega-item]').forEach((li) => {
+    const links = li.querySelectorAll<HTMLAnchorElement>('.mega a');
+    const set = (on: boolean) => { li.classList.toggle('is-open', on); links.forEach((a) => (a.tabIndex = on ? 0 : -1)); };
+    let hold = false;
+    li.addEventListener('focusin', () => { if (!hold) set(true); });
+    li.addEventListener('focusout', (e) => { if (!li.contains(e.relatedTarget as Node)) set(false); });
+    li.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hold = true; set(false); li.querySelector<HTMLAnchorElement>(':scope > a')?.focus(); hold = false; } });
+    li.addEventListener('mouseleave', () => { if (!li.contains(document.activeElement)) set(false); });
+  });
+
+  // Account menu (signed in)
+  const acctBtn = document.querySelector<HTMLButtonElement>('[data-acct-toggle]');
+  const acctMenu = document.querySelector<HTMLElement>('[data-acct-menu]');
+  if (acctBtn && acctMenu) {
+    const open = (on: boolean) => { acctBtn.setAttribute('aria-expanded', String(on)); acctMenu.hidden = !on; };
+    acctBtn.addEventListener('click', (e) => { e.stopPropagation(); open(acctMenu.hidden); });
+    document.addEventListener('click', (e) => { if (!acctMenu.hidden && !acctMenu.contains(e.target as Node)) open(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !acctMenu.hidden) { open(false); acctBtn.focus(); } });
+  }
+  document.querySelectorAll<HTMLButtonElement>('[data-logout]').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true;
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => null);
+    location.href = '/';
+  }));
 </script>
 
 <style>
   :global(.is-signed-in) [data-auth-out] { display: none !important; }
-  :global(.is-signed-in) [data-auth-in] { display: inline-flex !important; }
+  :global(.is-signed-in) [data-auth-in] { display: block !important; }
   .hdr {
-    position: sticky; top: 0; z-index: var(--z-header);
-    background: rgba(0, 0, 0, 0.82); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2);
-    border-bottom: 1px solid var(--c-line);
+    position: sticky; top: 0; z-index: var(--z-header); color: var(--text);
+    background: var(--glass-header); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    border-bottom: 1px solid var(--line-faint);
     transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
   }
-  .hdr--overlay { position: fixed; inset: 0 0 auto; background: transparent; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .hdr--overlay.is-solid, .hdr.is-open { background: rgba(0, 0, 0, 0.86); border-color: var(--c-line); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); }
+  /* Over the hero: pinned to the very top, a faint dark fade instead of a bar, so the globe runs up behind it. */
+  .hdr--overlay { position: fixed; inset: 0 0 auto; background: linear-gradient(180deg, rgba(8, 8, 10, 0.55) 0%, rgba(8, 8, 10, 0.18) 70%, rgba(8, 8, 10, 0) 100%) border-box no-repeat; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .hdr--overlay.is-solid, .hdr.is-open { background: var(--glass-header); border-color: var(--line-faint); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2); }
+  /* Still over the dark hero: dark glass, never a light bar across the globe. */
+  .hdr--overlay.is-solid.tone-dark { background: rgba(13, 13, 15, 0.55); border-color: rgba(255, 255, 255, 0.06); }
 
   /* backdrop-filter makes the header the containing block for the fixed menu, so drop it while open */
-  .hdr.is-open { background: var(--c-black); backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .hdr__inner { display: flex; align-items: center; justify-content: space-between; gap: 32px; height: 72px; }
-  .hdr__brand { display: inline-flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 600; letter-spacing: -0.015em; flex-shrink: 0; }
+  .hdr.is-open { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  /* Three zones: logo | links | account. The equal outer columns keep the links centred on the viewport. */
+  .hdr__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 32px; height: 72px; }
+  .hdr__brand { display: inline-flex; align-items: center; gap: 12px; flex-shrink: 0; justify-self: start; grid-column: 1; }
+  .hdr__nav { grid-column: 2; }
+  .hdr__actions { grid-column: 3; justify-self: end; }
   .hdr__brand img { height: 22px; width: auto; }
 
-  .hdr__nav ul { display: flex; gap: clamp(20px, 2.6vw, 40px); margin: 0; }
-  .hdr__nav a { position: relative; display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; color: var(--c-fg-muted); transition: color var(--dur-fast); }
-  .hdr__nav a::after { content: ''; position: absolute; left: 0; right: 0; bottom: 10px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform var(--dur) var(--ease); }
-  .hdr__nav a:hover, .hdr__nav a[aria-current] { color: var(--c-white); }
-  .hdr__nav a:hover::after, .hdr__nav a[aria-current]::after { transform: scaleX(1); transform-origin: left; }
-  .hdr__nav a[aria-current]::after { background: var(--c-accent); }
+  /* Each nav item fills the bar's full height, so the pointer never leaves it on the way down into its panel. */
+  .hdr__nav { align-self: stretch; }
+  .hdr__nav > ul { display: flex; gap: clamp(18px, 2.2vw, 36px); height: 100%; margin: 0; }
+  .hdr__item { display: flex; align-items: stretch; }
+  .hdr__item > a { position: relative; display: inline-flex; align-items: center; min-height: 44px; height: 100%; font-size: 14px; color: var(--text-2); transition: color var(--dur-fast); }
+  .hdr__item > a::after { content: ''; position: absolute; left: 0; right: 0; bottom: 24px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform var(--dur) var(--ease); }
+  .hdr__item > a:hover, .hdr__item > a[aria-current] { color: var(--text); }
+  .hdr__item > a:hover::after, .hdr__item > a[aria-current]::after { transform: scaleX(1); transform-origin: left; }
+  .hdr__item > a[aria-current]::after { background: var(--accent); }
 
-  .hdr__actions { display: flex; align-items: center; gap: 20px; }
-  .hdr__signin { font-size: 14px; color: var(--c-fg-muted); min-height: 44px; display: inline-flex; align-items: center; }
-  .hdr__signin:hover { color: var(--c-white); }
+  /* Mega panels: open on hover (after a short pause, so passing over the bar doesn't flash them) and on keyboard focus. */
+  .mega { position: absolute; left: 0; right: 0; top: 100%; z-index: -1; padding-block: 36px 48px;
+    background: var(--bg); border-bottom: 1px solid var(--line-faint); box-shadow: 0 24px 48px -32px rgba(0, 0, 0, 0.35);
+    opacity: 0; visibility: hidden; transform: translateY(-6px); pointer-events: none;
+    transition: opacity .38s var(--ease), transform .45s var(--ease-glide), visibility 0s linear .38s; }
+  .hdr__item:hover .mega, .hdr__item.is-open .mega { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: .12s, .12s, 0s; }
+  .hdr:has(.hdr__item:hover), .hdr:has(.hdr__item.is-open) { background: var(--bg); border-color: var(--line-faint); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .mega__inner { display: grid; grid-template-columns: minmax(220px, 1.1fr) repeat(3, minmax(0, 1fr)); gap: 32px clamp(32px, 4vw, 72px); }
+  .mega__name { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; color: var(--text); }
+  .mega__desc { margin-top: 8px; max-width: 26ch; font-size: 15px; line-height: 1.5; color: var(--text-3); }
+  .mega__title { color: var(--text-3); margin-bottom: 12px; }
+  .mega__group ul { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+  .mega__group a { display: inline-flex; align-items: center; gap: 10px; min-height: 34px; font-size: 15px; color: var(--text-2); }
+  .mega__group--main a { min-height: 40px; font-size: 22px; font-weight: 500; letter-spacing: -0.03em; color: var(--text); }
+  .mega__group a:hover { color: var(--accent); }
+  .mega__soon { padding: 3px 7px; border: 1px solid var(--line); border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 10px; font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+
+  .hdr__actions { display: flex; align-items: center; gap: 16px; }
+  .hdr__signin { font-size: 14px; color: var(--text-2); min-height: 44px; display: inline-flex; align-items: center; }
+  .hdr__signin:hover { color: var(--text); }
   .hdr__join {
     display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border-radius: var(--r-pill);
-    background: var(--c-white); color: var(--c-black); font-size: 14px; font-weight: 500; white-space: nowrap; transition: background var(--dur);
+    background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; white-space: nowrap; transition: opacity var(--dur);
   }
-  .hdr__join:hover { background: #e6e3e7; }
-  .hdr__toggle { display: none; width: 44px; height: 44px; place-items: center; border: 0; background: transparent; color: var(--c-white); margin-right: -10px; }
+  .hdr__join:hover { opacity: 0.86; }
+
+  .acct { position: relative; }
+  .acct__btn { display: inline-flex; align-items: center; gap: 4px; height: 40px; padding: 0 10px 0 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--text); }
+  .acct__btn:hover { border-color: var(--line-strong); }
+  .acct__btn[aria-expanded='true'] :global(.acct__chev) { transform: rotate(180deg); }
+  .acct__menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; padding: 6px; border-radius: var(--r-md); background: var(--surface-raised); box-shadow: var(--shadow-pop); z-index: 10; }
+  .acct__menu ul { margin: 0; }
+  .acct__menu a, .acct__out { display: flex; width: 100%; align-items: center; min-height: 40px; padding: 0 12px; border-radius: var(--r-sm); font-size: 14px; color: var(--text); background: none; border: 0; text-align: left; }
+  .acct__menu a:hover, .acct__out:hover { background: var(--surface-hover); }
+  .acct__out { margin-top: 4px; border-top: 1px solid var(--line-faint); border-radius: 0 0 var(--r-sm) var(--r-sm); color: var(--text-2); }
+
+  .hdr__toggle { display: none; width: 44px; height: 44px; place-items: center; border: 0; background: transparent; color: var(--text); margin-right: -10px; }
   :global(.hdr__icon-close) { display: none; }
   .is-open :global(.hdr__icon-open) { display: none; }
   .is-open :global(.hdr__icon-close) { display: block; }
 
-  .mmenu { position: fixed; inset: 72px 0 0; background: var(--c-black); z-index: var(--z-menu); overflow-y: auto; opacity: 0; transition: opacity var(--dur) var(--ease); }
+  .mmenu { position: fixed; inset: 72px 0 0; background: var(--bg); z-index: var(--z-menu); overflow-y: auto; opacity: 0; transition: opacity var(--dur) var(--ease); }
   .is-open .mmenu { opacity: 1; }
-  .mmenu nav { display: flex; flex-direction: column; justify-content: space-between; min-height: 100%; padding-block: 32px 40px; gap: 40px; }
+  .mmenu nav { display: flex; flex-direction: column; min-height: 100%; padding-block: 28px 36px; padding-inline: max(32px, 8vw); gap: 20px; }
+  .mmenu__actions { margin-top: auto; }
   .mmenu__list { display: flex; flex-direction: column; margin: 0; }
-  .mmenu__list li { border-bottom: 1px solid var(--c-line); opacity: 0; transform: translateY(12px); transition: opacity .5s var(--ease), transform .5s var(--ease); transition-delay: calc(var(--i) * 50ms + 60ms); }
+  .mmenu__list li { opacity: 0; transform: translateY(12px); transition: opacity .7s var(--ease), transform .8s var(--ease-glide); transition-delay: calc(var(--i) * 60ms + 80ms); }
   .is-open .mmenu__list li { opacity: 1; transform: none; }
-  .mmenu__list a { display: block; padding: 16px 0; font-size: clamp(32px, 9vw, 44px); font-weight: 500; letter-spacing: -0.04em; line-height: 1.1; }
+  /* Large editorial type, as in the original menu. */
+  /* Like a product index: one big word per line, nothing between them. */
+  .mmenu__list a { display: block; padding: 7px 0; font-size: clamp(28px, 7.6vw, 38px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.12; color: var(--text); transition: color var(--dur-fast); }
+  .mmenu__list a:active { color: var(--text-3); }
+  .mmenu__list a[aria-current] { color: var(--accent); }
   .mmenu__actions { display: flex; flex-direction: column; gap: 12px; }
-  .hdr__join--lg { justify-content: center; min-height: 56px; font-size: 16px; }
-  .mmenu__signin { display: inline-flex; justify-content: center; align-items: center; min-height: 56px; border: 1px solid var(--c-ink-500); border-radius: var(--r-pill); font-size: 16px; }
+  .mmenu__acct { margin: 0 0 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+  .mmenu__acct a, .mmenu__acct button { display: flex; align-items: center; min-height: 44px; font-size: 15px; color: var(--text-2); background: none; border: 0; padding: 0; }
+  .mmenu__theme { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line-faint); color: var(--text-3); }
+  .mmenu__signin { display: flex; align-items: center; min-height: 44px; font-size: 17px; color: var(--text-2); }
+  :global(.is-signed-in) .mmenu__acct { display: grid !important; }
 
   @media (max-width: 960px) {
-    .hdr__nav, .hdr__signin { display: none; }
+    .hdr__nav, .hdr__signin, .hdr__actions > :global(.theme--icon), .acct, :global(.is-signed-in) .acct { display: none !important; }
     .hdr__toggle { display: grid; }
     .hdr__inner { height: 64px; }
     .mmenu { inset: 64px 0 0; }
-  }
-  @media (max-width: 960px) { .hdr__actions { gap: 8px; } }
-  @media (max-width: 380px) {
-    .hdr__brand span { display: none; }
+    .hdr__actions { gap: 8px; }
   }
 </style>
