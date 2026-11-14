@@ -8,6 +8,9 @@ export const SITE = {
   statement: 'The future of music is independent.',
   /** Homepage headline. */
   headline: 'Your world of music.',
+  /** Homepage hero (Bogo, 2026-11-14 later): the product name, its promise, and one supporting line. */
+  promise: 'The world is within reach.',
+  supporting: 'Create connections that create opportunity.',
   description:
     'Opus Collective is the professional network for independent music. Discover artists, producers, engineers and songwriters, and earn Opus Verified recognition.',
   location: 'Birmingham, AL',
