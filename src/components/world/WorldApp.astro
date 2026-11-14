@@ -41,9 +41,8 @@ const {
             img.style.cssText = 'top:' + at.top + 'px;left:' + (at.left || 0) + 'px;width:' + at.w + 'px;height:' + at.h + 'px';
             document.currentScript.parentNode.insertBefore(img, document.currentScript);
             // On the way to the visitor's city (or their saved one): the same line the homepage was showing.
-            var sp = new URLSearchParams(location.search);
             var saved = JSON.parse(localStorage.getItem('opus.world.from.v1') || 'null');
-            if (sp.get('near') || (saved && saved.mode === 'city')) {
+            if (saved && saved.mode === 'city') {
               var p = document.createElement('p');
               p.className = 'opus-prep is-in'; p.setAttribute('role', 'status'); p.setAttribute('data-prep', ''); p.textContent = 'Preparing your world';
               document.currentScript.parentNode.insertBefore(p, document.currentScript);
@@ -62,7 +61,7 @@ const {
       <div class="wcar__track" data-cards-track role="list"></div>
     </section>
 
-    <!-- Entrance: one question, three answers. Location is asked for only after "Use my location". -->
+    <!-- Entrance: one question, three answers: location, a city or ZIP code, or worldwide. Location is asked for only after "Use my location". -->
     <section class="wx" data-where hidden aria-labelledby="wx-title">
       <h2 class="wx__title" id="wx-title" tabindex="-1">Where are you connecting from?</h2>
       <div class="wx__opts" data-where-opts>
@@ -70,12 +69,12 @@ const {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
           Use My Location
         </button>
-        <button type="button" class="wx__opt" data-where-city aria-expanded="false" aria-controls="wx-form">Enter a City</button>
+        <button type="button" class="wx__opt" data-where-city aria-expanded="false" aria-controls="wx-form">Enter a City or ZIP</button>
         <button type="button" class="wx__opt" data-where-world>Explore Worldwide</button>
       </div>
       <form class="wx__form" id="wx-form" data-where-form hidden autocomplete="off">
-        <label for="wx-q" class="sr-only">City or region</label>
-        <input id="wx-q" type="text" placeholder="City or region" role="combobox" aria-expanded="false" aria-controls="wx-list" aria-autocomplete="list" data-where-q />
+        <label for="wx-q" class="sr-only">City or ZIP code</label>
+        <input id="wx-q" type="text" placeholder="City or ZIP code" role="combobox" aria-expanded="false" aria-controls="wx-list" aria-autocomplete="list" data-where-q />
         <ul id="wx-list" class="wx__list" role="listbox" aria-label="Cities" data-where-list hidden></ul>
       </form>
       <p class="wx__note" data-where-note aria-live="polite"></p>

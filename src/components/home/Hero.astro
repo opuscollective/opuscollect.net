@@ -129,42 +129,27 @@ const topCities = CITIES.slice(0, 8);
     setTimeout(() => { location.href = href; }, reduce ? 0 : 1500);
   }
   /**
-   * Where Explore World should take this visitor: the city they chose before on this device, or else a first guess
-   * from /api/where (the nearest Opus city to their network's approximate area; nothing is stored). Waits briefly
-   * at most, so the move never stalls. null: World asks where they're connecting from, as before.
+   * Where Explore World should take this visitor: the city they chose before on this device. Otherwise World
+   * asks where they're connecting from (their location, a city or a ZIP code). Nothing is guessed.
    */
-  async function destination(): Promise<{ name: string; lat: number; lng: number; guessed: boolean } | null> {
+  function destination(): { name: string; lat: number; lng: number } | null {
     const saved = readFrom();
-    if (saved?.mode === 'world') return null;
-    if (saved?.mode === 'city') { const c = findCity(saved.name); return c ? { name: c.name, lat: c.lat, lng: c.lng, guessed: false } : null; }
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 900);
-    try {
-      const r = await fetch('/api/where', { signal: ctl.signal, credentials: 'same-origin' });
-      const d = (await r.json()) as { city: { name: string; lat: number; lng: number } | null };
-      return d.city ? { ...d.city, guessed: true } : null;
-    } catch { return null; } finally { clearTimeout(t); }
+    if (saved?.mode !== 'city') return null;
+    const c = findCity(saved.name);
+    return c ? { name: c.name, lat: c.lat, lng: c.lng } : null;
   }
   const prep = hero.querySelector<HTMLElement>('[data-hero-prep]')!;
   /**
-   * Explore World: the words lift away, the Earth turns to the visitor's part of the world and comes closer,
-   * "Preparing your world" appears, and World opens at that exact view and zooms down into their city.
+   * Explore World: the words lift away and the Earth comes closer (turning to the visitor's saved city, if any,
+   * with "Preparing your world"). World opens at that exact view, asks where they're connecting from if it
+   * doesn't know, and zooms down into their city.
    */
   async function enter() {
-    let href = '/world?view=map&enter=1';
-    // Still loading the globe: go straight to World, which still flies to their city.
-    if (!api) {
-      if (leaving) return;
-      leaving = true;
-      const to = await destination();
-      location.href = to?.guessed ? `${href}&near=${encodeURIComponent(to.name)}` : href;
-      return;
-    }
+    const href = '/world?view=map&enter=1';
+    if (!api) { location.href = href; return; }
     if (!start()) return;
     hero.classList.add('is-entering');
-    const to = await destination();
-    // A guess is shown, never saved: World labels it and lets them change it.
-    if (to?.guessed) href += `&near=${encodeURIComponent(to.name)}`;
+    const to = destination();
     if (to) {
       prep.hidden = false;
       setTimeout(() => prep.classList.add('is-in'), reduce ? 0 : 900);

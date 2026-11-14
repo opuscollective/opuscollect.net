@@ -23,6 +23,7 @@ import type { ProfileDetail } from '@/server/world-detail';
 import type { Camera, WorldMapApi } from '@/scripts/world-map';
 import { takeHandoff, cameraFor, readFrom, saveFrom, type From } from '@/scripts/world-entry';
 import { nearestCity } from '@/scripts/hero-dive';
+import { zipPoint } from '@/scripts/zip-lookup';
 
 type View = 'map' | 'split' | 'list';
 type Sheet = 'peek' | 'half' | 'full';
@@ -93,7 +94,7 @@ export function initWorld(root: HTMLElement) {
     // Keep the address short: the kind is the path, and a known city on its own is /world/<city>.
     const city = place && !f.kinds.length ? CITIES.find((c) => c.name === place!.name) : undefined;
     u.pathname = city ? `/world/${citySlug(city.name)}` : KIND_PATH[f.kinds[0] ?? ''];
-    u.searchParams.delete('type'); u.searchParams.delete('view'); u.searchParams.delete('enter'); u.searchParams.delete('near');
+    u.searchParams.delete('type'); u.searchParams.delete('view'); u.searchParams.delete('enter');
     set('q', f.text); set('specialty', f.specialty || ''); set('genre', f.genre); set('studio', f.studioType || '');
     set('collab', f.openToCollab ? '1' : ''); set('verified', f.verifiedOnly ? '1' : ''); set('city', city ? '' : place?.name); set('p', previewId);
     history.replaceState(history.state, '', u);
@@ -105,18 +106,13 @@ export function initWorld(root: HTMLElement) {
   params.delete('enter');
   const handoff = entering ? takeHandoff() : null;
   let from: From | null = readFrom();
-  // Explore World's first guess at the visitor's city (see /api/where). Shown, never saved: they can change it.
-  const nearQ = params.get('near');
-  params.delete('near');
-  const near = entering && !from && nearQ ? findCity(nearQ) : undefined;
-  if (near) params.set('city', near.name);
   // A plain /world visit (nothing asked for in the address) also gets the question the first time.
   const plain = location.pathname.replace(/\/$/, '') === '/world' && !params.get('city') && !f.text && !f.kinds.length && !params.get('p');
-  const asking = !from && !near && (entering || plain);
+  const asking = !from && (entering || plain);
   // Answered before: go straight there, without asking again.
   if (!asking && from?.mode === 'city' && (entering || plain)) params.set('city', from.name);
   if (asking) root.dataset.entry = 'ask';
-  else if (handoff || near) root.dataset.entry = 'arrive';
+  else if (handoff) root.dataset.entry = 'arrive';
 
   // ---------- View mode: Map, Split, List ----------
   const readPref = (): Partial<Record<'desktop' | 'mobile', View>> => { try { return JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}'); } catch { return {}; } };
@@ -770,7 +766,7 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   const whereList = $<HTMLUListElement>('[data-where-list]');
   const whereCityBtn = $<HTMLButtonElement>('[data-where-city]');
   const whereBtns = () => root.querySelectorAll<HTMLButtonElement>('[data-where-opts] button');
-  const whereLabel = () => { $('[data-where-label]').textContent = from?.mode === 'city' ? from.name : near && !from ? near.name : 'Worldwide'; };
+  const whereLabel = () => { $('[data-where-label]').textContent = from?.mode === 'city' ? from.name : 'Worldwide'; };
   whereLabel();
 
   function showWhere() {
@@ -792,9 +788,20 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
     setTimeout(() => { whereEl.hidden = true; }, reduceMotion.matches ? 0 : 380);
     // A city: the directory and controls stay hidden until the camera has settled on it (see goPlace).
     if (next.mode === 'city' && p && map) root.dataset.entry = 'arrive'; else delete root.dataset.entry;
-    if (next.mode === 'city' && p) { map?.release(false); goPlace(p); }
+    if (next.mode === 'city' && p) { map?.release(false); preparing().then(() => goPlace(p)); }
     else { map?.release(true); if (place) { clearPlace(); changed(); } }
     requestAnimationFrame(() => map?.resize());
+  }
+  /** "Preparing your world": a moment on the chosen answer before the zoom into the city begins. */
+  function preparing(): Promise<void> {
+    if (reduceMotion.matches) return Promise.resolve();
+    const el = document.createElement('p');
+    el.className = 'opus-prep'; el.setAttribute('role', 'status'); el.textContent = 'Preparing your world';
+    document.body.append(el);
+    requestAnimationFrame(() => el.classList.add('is-in'));
+    return new Promise((res) => setTimeout(() => {
+      el.classList.add('is-out'); setTimeout(() => el.remove(), 600); res();
+    }, 1100));
   }
   $('[data-where-open]').addEventListener('click', showWhere);
   $('[data-where-world]').addEventListener('click', () => answer({ mode: 'world' }));
@@ -850,7 +857,23 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
     whereForm.hidden = !open; whereCityBtn.setAttribute('aria-expanded', String(open));
     if (open) whereQ.focus();
   });
-  whereQ.addEventListener('input', () => { cityOpts = cityOptions(whereQ.value); cityAt = cityOpts.length ? 0 : -1; drawCities(); });
+  whereQ.addEventListener('input', async () => {
+    const v = whereQ.value.trim();
+    // A US ZIP code: its approximate centre, then the nearest Opus city (looked up in the browser).
+    if (/^\d{1,5}$/.test(v)) {
+      cityOpts = []; cityAt = -1;
+      if (v.length < 5) { whereList.hidden = true; whereList.innerHTML = ''; return; }
+      const pt = await zipPoint(v).catch(() => null);
+      if (whereQ.value.trim() !== v) return; // typed on meanwhile
+      const near = pt ? nearestCity(CITIES, pt) : undefined;
+      if (near && near.km < 1500) cityOpts = [{ name: near.city.name, sub: `Nearest Opus city to ${v}`, lat: near.city.lat, lng: near.city.lng }];
+      cityAt = cityOpts.length ? 0 : -1;
+      whereList.innerHTML = cityOpts.length ? '' : `<li class="wx__none" role="presentation">${pt ? 'There’s no Opus city near that ZIP code yet.' : 'We don’t know that ZIP code. Try your city.'}</li>`;
+      if (cityOpts.length) drawCities(); else { whereList.hidden = false; whereQ.setAttribute('aria-expanded', 'false'); }
+      return;
+    }
+    cityOpts = cityOptions(whereQ.value); cityAt = cityOpts.length ? 0 : -1; drawCities();
+  });
   whereQ.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
