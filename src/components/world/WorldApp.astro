@@ -32,6 +32,10 @@ const {
         (function () {
           try {
             if (new URLSearchParams(location.search).get('enter') !== '1') return;
+            // Entering from the homepage: the directory stays out of sight from the very first frame and slides in
+            // as the camera starts down into the city (see world-page.ts and world.css).
+            var w = document.currentScript.closest('[data-world]');
+            if (w) { w.dataset.entry = 'arrive'; w.classList.add('is-entered'); }
             var h = JSON.parse(sessionStorage.getItem('opus.enter') || 'null');
             var src = sessionStorage.getItem('opus.enter.img');
             if (!h || !src || Date.now() - h.at > 20000) return;
