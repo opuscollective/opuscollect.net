@@ -858,6 +858,13 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   whereList.addEventListener('click', (e) => { const li = (e.target as Element).closest<HTMLElement>('[data-i]'); if (li) pickCity(cityOpts[Number(li.dataset.i)]); });
 
   /** The homepage's last frame gives way to the live map once it has drawn the same view. */
+  /** How much of the map the directory covers: the floating card in desktop Map view, the sheet's peek on phones. */
+  function mapInset() {
+    if (sheetActive()) return { left: 0, bottom: peekPx() };
+    if (view !== 'map') return { left: 0, bottom: 0 };
+    const pr = panel.getBoundingClientRect(), hr = host.getBoundingClientRect();
+    return { left: Math.max(0, Math.round(pr.right - hr.left)), bottom: 0 };
+  }
   async function settleHandoff(m: WorldMapApi) {
     const img = document.querySelector<HTMLImageElement>('[data-handoff]');
     await Promise.race([m.ready(), new Promise((r) => setTimeout(r, 6000))]);
@@ -901,7 +908,7 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
             if (view === 'map' && !mobile.matches) { root.setAttribute('data-results-open', ''); syncResultsToggle(); }
             if (sheetActive()) setSheet('half');
           },
-        }, { padBottom: sheetActive() ? peekPx() : 0, camera, pad: hand?.pad });
+        }, { padBottom: sheetActive() ? peekPx() : 0, inset: mapInset, camera, pad: hand?.pad });
         if ((view as View) === 'list') { m.destroy(); return; } // switched to List while the map loaded
         map = m;
         root.classList.add('is-ready');

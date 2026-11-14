@@ -180,7 +180,7 @@ export async function mountWorldMap(
   el: HTMLElement,
   initial: Listing[],
   cb: MapCallbacks,
-  opts: { padBottom?: number; camera?: Camera | null; pad?: { top: number; bottom: number; left?: number; right?: number } } = {},
+  opts: { padBottom?: number; inset?: () => { left: number; bottom: number }; camera?: Camera | null; pad?: { top: number; bottom: number; left?: number; right?: number } } = {},
 ): Promise<WorldMapApi> {
   // Phones get the 2048 px Earth: a 4096 px canvas is near the limit some phone browsers allow.
   const earthP = earthCanvas(el.clientWidth < 700 ? 2048 : 4096).catch((err) => { console.warn('Earth imagery unavailable; showing the plain map.', err); return null; });
@@ -372,15 +372,19 @@ export async function mountWorldMap(
   spin();
 
   let place: maplibregl.Marker | null = null;
+  // Every move after the entrance frames the visible map: the part not covered by the floating directory card
+  // (desktop Map view) or the bottom sheet (phones). Passing this on each
+  // move also drops the homepage framing, which an interrupted release() would otherwise leave behind.
+  const base = () => { const i = opts.inset?.(); return { top: 0, left: i?.left ?? 0, right: 0, bottom: i?.bottom ?? opts.padBottom ?? 0 }; };
 
   return {
     setData(ls) { data = ls; refreshData(); },
-    flyToCity(lat, lng) { stop(); map.flyTo({ center: [lng, lat], zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) }); },
-    flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: reduce ? 0 : 900 }); },
+    flyToCity(lat, lng) { stop(); map.flyTo({ center: [lng, lat], padding: base(), zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) }); },
+    flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], padding: base(), zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: reduce ? 0 : 900 }); },
     ensureVisible(l) {
       if (!hasPoint(l) || l.onMap === false) return;
       if (map.getBounds().contains([l.location.lng, l.location.lat])) return;
-      stop(); map.easeTo({ center: [l.location.lng, l.location.lat], duration: reduce ? 0 : 700 });
+      stop(); map.easeTo({ center: [l.location.lng, l.location.lat], padding: base(), duration: reduce ? 0 : 700 });
     },
     setActive(id) { active = id; paintStates(); },
     setHover(id) { hover = id; paintStates(); },
@@ -393,7 +397,7 @@ export async function mountWorldMap(
       pe.innerHTML = '<i></i><span>' + p.name.replace(/[&<>"]/g, '') + '</span>';
       place = new maplibregl.Marker({ element: pe }).setLngLat([p.lng, p.lat]).addTo(map);
     },
-    resetView() { stop(); map.flyTo({ zoom: homeZoom(), duration: reduce ? 0 : 1100, essential: true }); },
+    resetView() { stop(); map.flyTo({ padding: base(), zoom: homeZoom(), duration: reduce ? 0 : 1100, essential: true }); },
     zoomOut() { stop(); map.easeTo({ zoom: Math.max(1.2, map.getZoom() - 3), duration: reduce ? 0 : 800 }); },
     getCenter: () => { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
     getBounds: () => map.getBounds(),
@@ -401,7 +405,7 @@ export async function mountWorldMap(
     getCamera: () => { const c = map.getCenter(); return { center: [c.lng, c.lat], zoom: map.getZoom() }; },
     resize: () => map.resize(),
     release(worldwide) {
-      const padding = { top: 0, left: 0, right: 0, bottom: opts.padBottom ?? 0 };
+      const padding = base();
       // Worldwide: settle back to the whole globe and let it turn. Otherwise just drop the handoff framing.
       map.easeTo({ padding, ...(worldwide ? { zoom: Math.min(map.getZoom(), el.clientWidth < 700 ? 1.3 : Math.max(homeZoom(), 2.3)) } : {}), duration: reduce ? 0 : 1100 });
       if (worldwide && !reduce) spinning = true; // the moveend handler starts the spin

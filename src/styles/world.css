@@ -3,7 +3,7 @@
    sage only for availability; warm neutrals for surfaces. */
 
 .world {
-  --panel-w: clamp(380px, 35vw, 560px);
+  --panel-w: clamp(420px, 40vw, 700px);
   position: relative;
   display: grid;
   /* The directory is always on the left, the map on the right: the same on every Opus World page and on the homepage. */
@@ -71,7 +71,9 @@
 .world__panel {
   grid-column: 1; grid-row: 1;
   display: flex; flex-direction: column; min-height: 0; min-width: 0;
-  background: var(--c-surface-1); border-right: 1px solid var(--c-hairline);
+  background: var(--c-surface-1);
+  /* No hard line against the map: the directory's own colour simply meets the map, with a soft shade over its edge. */
+  position: relative; z-index: 1; box-shadow: 18px 0 40px -28px var(--shadow-c, rgba(0, 0, 0, 0.35));
 }
 .world__grip { display: none; }
 .wp__head { display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 12px; }
@@ -402,7 +404,7 @@
   /* Map: the globe takes the page; search, filters and count float in a compact card. */
   .world[data-view='map'] { grid-template-columns: 0px minmax(0, 1fr); }
   .world[data-view='map'] .world__panel {
-    position: absolute; z-index: 3; top: 16px; left: 16px; width: 400px; max-height: calc(100% - 32px);
+    position: absolute; z-index: 3; top: 16px; left: 16px; width: clamp(420px, 32vw, 560px); max-height: calc(100% - 32px);
     border: 0; border-radius: 18px; background: var(--glass); backdrop-filter: blur(14px); box-shadow: var(--shadow-pop);
     animation: wpop 0.28s var(--ease) both;
   }
@@ -477,6 +479,7 @@
 
   .wp__head { padding: 0 14px 10px; gap: 10px; }
   .wp__results { overflow: visible; padding: 2px 14px 96px; }
+  .world .wt--grid::before, .world .wt--skeleton::before { padding-top: 75%; } /* 4:3 keeps two to a row readable on a phone */
   .wp__bar { padding: 2px 16px 6px; }
   .vs { display: none; }
   .wp__long { display: none; }
@@ -557,19 +560,19 @@
 
 /* ---------- Directory: the same visual cards, two to a row ----------
    Name, what they do and where, over the picture. Nothing else, so the directory stays quiet. */
-.wp__results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; gap: 10px; align-content: start; padding: 4px 18px 20px; }
+.wp__results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; gap: 12px; align-content: start; padding: 4px 20px 24px; }
 .wp__results[hidden] { display: none; }
-/* Square by a spacer, not aspect-ratio: inside the scrolling panel, rows would otherwise shrink to fit. */
-.wt--grid::before { content: ''; display: block; padding-top: 100%; }
+/* Landscape (16:10) by a spacer, not aspect-ratio: inside the scrolling panel, rows would otherwise shrink to fit. */
+.wt--grid::before { content: ''; display: block; padding-top: 62.5%; }
 .wt--grid { width: auto; height: auto; scroll-snap-align: none; cursor: pointer; box-shadow: 0 0 0 1px var(--c-hairline-strong); }
-.wt--grid .wt__body { padding: 12px 12px 11px; }
-.wt--grid .wt__name { font-size: 14.5px; }
+.wt--grid .wt__body { padding: 14px 16px 13px; }
+.wt--grid .wt__name { font-size: 15.5px; }
 .wt--grid .wt__meta { font-size: 12px; }
 .wt--grid .wt__where { font-size: 11.5px; }
 .wt--grid .im__label { font-size: 22px; padding: 12px; }
 .wt--grid:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--line-strong); }
 .wt--grid.is-active { box-shadow: 0 0 0 2px var(--c-accent); }
-.wt--skeleton::before { content: ''; display: block; padding-top: 100%; }
+.wt--skeleton::before { content: ''; display: block; padding-top: 62.5%; }
 .wt--skeleton { border-radius: 10px; pointer-events: none;
   background: linear-gradient(90deg, var(--surface-sunken) 0%, var(--surface-hover) 50%, var(--surface-sunken) 100%); background-size: 200% 100%; animation: wc-shimmer 1.4s ease-in-out infinite; }
 .wp__results.is-entering .wt { animation: wcin 0.5s var(--ease-glide) both; }
