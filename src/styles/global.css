@@ -69,24 +69,19 @@ button { cursor: pointer; }
 .dim { color: var(--c-fg-faint); }
 .section--paper .dim { color: var(--c-paper-faint); }
 
-/* ---------- Reveal on scroll (enhancement only) ----------
-   Content is never hidden: no fade from transparent and no blur, so it is there for full-page captures,
-   the back button and anyone who scrolls fast. Sections only settle up a few pixels as they arrive. */
-.js [data-reveal] {
-  transform: translateY(14px);
-  transition: transform 1.1s var(--ease-glide);
-  transition-delay: var(--d, 0s);
-}
-.js [data-reveal].is-in { transform: none; }
+/* ---------- Reveal on scroll: retired ----------
+   Motion system (2026-11-15): large sections no longer animate just because they scroll into view. The attribute
+   stays in markup (and the script still marks it .is-in), but it changes nothing. */
+.js [data-reveal] { transform: none; }
 
 /* ---------- Moving between pages ----------
-   Browsers that support cross-document view transitions fade one page into the next; the header
-   and the Opus launcher stay put. Others simply navigate as before. */
+   Browsers with cross-document view transitions crossfade one page into the next, quickly, while the header and
+   the Opus launcher stay put. The new page is never held back for the animation. Others simply navigate. */
 @view-transition { navigation: auto; }
-::view-transition-old(root) { animation: vt-out .32s var(--ease) both; }
-::view-transition-new(root) { animation: vt-in .6s var(--ease-glide) both; }
-@keyframes vt-out { to { opacity: 0; transform: translateY(-6px); } }
-@keyframes vt-in { from { opacity: 0; transform: translateY(10px); } }
+::view-transition-old(root) { animation: vt-out var(--m-page-out) var(--m-ease-in) both; }
+::view-transition-new(root) { animation: vt-in var(--m-page) var(--m-ease) both; }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(4px); } }
 .hdr { view-transition-name: site-header; }
 /* The header doesn't fade or ghost between pages: it simply stays. */
 ::view-transition-group(site-header) { animation: none; }
@@ -94,20 +89,23 @@ button { cursor: pointer; }
 ::view-transition-new(site-header) { animation: none; }
 .oa-launch { view-transition-name: opus-launch; }
 
-/* ---------- Opening a page: its content settles in, in order ---------- */
-.js main > .app .app__wrap > * { animation: page-in .9s var(--ease-glide) both; }
-.js main > .app .app__wrap > :nth-child(2) { animation-delay: 60ms; }
-.js main > .app .app__wrap > :nth-child(3) { animation-delay: 120ms; }
-.js main > .app .app__wrap > :nth-child(4) { animation-delay: 180ms; }
-.js main > .app .app__wrap > :nth-child(n+5) { animation-delay: 240ms; }
-@keyframes page-in { from { opacity: 0; transform: translateY(14px); } }
-
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-  .js [data-reveal] { opacity: 1; transform: none; filter: none; }
-  @view-transition { navigation: none; }
+/* Without view transitions, app pages fade in once (no stagger, no slide), so arriving never flashes. */
+@supports not (view-transition-name: none) {
+  .js main > .app .app__wrap { animation: page-in var(--m-page) var(--m-ease) both; }
+  @keyframes page-in { from { opacity: 0; } }
 }
+
+/* ---------- Motion modes (see src/lib/motion.ts) ----------
+   Reduced: no page transition, no smooth scrolling; tokens already halve durations.
+   Off: nonessential animation and transition end instantly. Loading indicators marked .m-essential keep going. */
+html[data-motion='reduced'] { scroll-behavior: auto; }
+html[data-motion='off'] { scroll-behavior: auto !important; }
+html[data-motion='off'] :not(.m-essential), html[data-motion='off'] :not(.m-essential)::before, html[data-motion='off'] :not(.m-essential)::after {
+  animation-duration: 0.01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important; transition-delay: 0s !important;
+}
+html:not([data-motion='fluid'])::view-transition-old(root), html:not([data-motion='fluid'])::view-transition-new(root) { animation: none; }
+html:not([data-motion='fluid'])::view-transition-group(*) { animation-duration: 0s; }
 
 /* Explore World: "Preparing your world", shown on the homepage as the Earth turns to the visitor's area and kept in
    the same place on World until the zoom into their city begins. One quiet glass pill, no glow. */
@@ -121,4 +119,4 @@ button { cursor: pointer; }
 }
 .opus-prep.is-in { opacity: 1; transform: translate(-50%, 0); }
 .opus-prep.is-out { opacity: 0; transform: translate(-50%, -4px); transition-duration: 0.45s; }
-@media (prefers-reduced-motion: reduce) { .opus-prep, .opus-prep.is-out { transition: none; } }
+html:not([data-motion='fluid']) .opus-prep, html:not([data-motion='fluid']) .opus-prep.is-out { transition: none; }

@@ -132,7 +132,7 @@
 .bk__done h2 { font-size: 22px; }
 .skel { height: 42px; border-radius: var(--r-md); background: linear-gradient(90deg, var(--surface-hover) 0%, var(--surface-hover) 50%, var(--surface-hover) 100%); background-size: 200% 100%; animation: wc-shimmer 1.4s ease-in-out infinite; }
 @keyframes wc-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+html:not([data-motion='fluid']) .skel { animation: none; }
 
 /* ---------- Studio profile editor ---------- */
 .ph { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; margin-top: 16px; align-items: start; }

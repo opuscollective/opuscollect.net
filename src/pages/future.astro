@@ -11,6 +11,7 @@ import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import { futureFor, ourFuture } from '@/server/future';
 import { groupByMonth, KIND_LABEL, type FutureItem } from '@/lib/future';
 import { PLACE_BY_ID } from '@/data/places';
+import { listFollows, type FollowedCity } from '@/server/cities';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -21,8 +22,12 @@ const place = Astro.url.searchParams.get('place') ?? '';
 const placeId = PLACE_BY_ID.has(place) ? place : undefined;
 let items: FutureItem[] = [];
 let failed = false;
+/** Cities the member follows: Our Future can show just those (place=mine). Events are never added to My Future automatically. */
+let myCities: FollowedCity[] = [];
+if (user && tab === 'our') { try { myCities = await listFollows(Astro.locals.runtime.env, user.id); } catch (err) { console.error('Follows failed', err); } }
+const mineOnly = tab === 'our' && place === 'mine' && myCities.length > 0;
 try {
-  if (tab === 'our') items = await ourFuture(db, placeId);
+  if (tab === 'our') items = await ourFuture(db, placeId, mineOnly ? myCities.map((c) => c.id) : undefined);
   else if (user) items = await futureFor(db, user.id);
 } catch (err) { console.error('Future failed to load', err); failed = true; }
 const today = new Date().toISOString().slice(0, 10);
@@ -62,6 +67,10 @@ const TABS = [['mine', 'My Future'], ['our', 'Our Future']] as const;
             <noscript><button class="btn-app btn-app--ghost" type="submit">Show</button></noscript>
           </form>
         )}
+        {tab === 'our' && myCities.length > 0 && (
+          <a class="fut__mine" href={mineOnly ? '/future?tab=our' : '/future?tab=our&place=mine'} aria-pressed={mineOnly ? 'true' : 'false'}
+            title={myCities.map((c) => c.name).join(', ')}>{mineOnly ? 'Showing your cities' : 'Only my cities'} · {myCities.length}</a>
+        )}
         {user && <a class="fut__btn" href="/events/new">Create an event</a>}
       </div>
 
@@ -95,8 +104,8 @@ const TABS = [['mine', 'My Future'], ['our', 'Our Future']] as const;
       )}
       {!failed && tab === 'our' && months.length === 0 && (
         <div class="panel fut__note">
-          <h2>No public events {placeId ? 'here ' : ''}yet</h2>
-          <p class="dim">{placeId ? <>Try <a class="link" href="/future?tab=our">everywhere</a>, or </> : null}<a class="link" href={user ? '/events/new' : '/sign-in?next=/events/new'}>create the first one</a>.</p>
+          <h2>No public events {placeId ? 'here ' : mineOnly ? 'in your cities ' : ''}yet</h2>
+          <p class="dim">{placeId || mineOnly ? <>Try <a class="link" href="/future?tab=our">everywhere</a>, or </> : null}<a class="link" href={user ? '/events/new' : '/sign-in?next=/events/new'}>create the first one</a>.</p>
         </div>
       )}
 
@@ -185,6 +194,7 @@ const TABS = [['mine', 'My Future'], ['our', 'Our Future']] as const;
 <style>
   .fut__tabs { display: inline-flex; gap: 4px; margin-top: 24px; padding: 4px; border-radius: var(--r-pill); background: var(--surface-sunken); }
   .fut__tabs a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 20px; border-radius: var(--r-pill); color: var(--text-2); font-size: 15px; font-weight: 500; }
+  .fut__tabs a { transition: background-color var(--m-control) var(--m-ease), color var(--m-control) var(--m-ease), box-shadow var(--m-control) var(--m-ease); }
   .fut__tabs a[aria-current='page'] { background: var(--surface-raised); color: var(--text); box-shadow: 0 1px 3px var(--shadow-c); }
   .fut__tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .fut__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; }
@@ -206,6 +216,10 @@ const TABS = [['mine', 'My Future'], ['our', 'Our Future']] as const;
   .fut__filters button:focus-visible, .fut__item:focus-visible, .fut__btn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
 
   .fut__signin { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; }
+  .fut__mine { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--text-2); font-size: 14px; font-weight: 500; white-space: nowrap;
+    transition: background-color var(--m-control) var(--m-ease), color var(--m-control) var(--m-ease), border-color var(--m-control) var(--m-ease); }
+  .fut__mine:hover { color: var(--text); border-color: var(--line-strong); }
+  .fut__mine[aria-pressed='true'] { background: var(--text); color: var(--bg); border-color: var(--text); }
   .fut__btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; white-space: nowrap; }
   .fut__note { margin-top: 24px; }
 

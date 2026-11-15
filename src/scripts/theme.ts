@@ -57,7 +57,7 @@ export function initThemeSwitches() {
     sw.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && menu && !menu.hidden) { show(false); openBtn?.focus(); }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        const items = [...sw.querySelectorAll<HTMLElement>('[data-theme-value]')];
+        const items = [...sw.querySelectorAll<HTMLElement>('[data-theme-value], [data-motion-value]')];
         const i = items.indexOf(document.activeElement as HTMLElement);
         if (i < 0) return;
         e.preventDefault();

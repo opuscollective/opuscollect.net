@@ -54,7 +54,7 @@ const {
           } catch (e) { /* World opens normally */ }
         })();
       </script>
-      <div class="world__loading" data-map-loading hidden><span>Loading the world…</span></div>
+      <div class="world__loading m-essential" data-map-loading hidden><span>Loading the world…</span></div>
       <p class="world__nogl" data-map-fallback hidden>
         Your browser can’t show the interactive map, so results are listed only. Everything else works the same.
       </p>
@@ -169,6 +169,9 @@ const {
         <button type="button" class="wp__listbtn" data-results-toggle aria-controls="world-results" aria-expanded="false" hidden>Show list</button>
         <ViewSwitcher />
       </div>
+
+      <!-- My Cities: the cities this member follows, one tap into each guide. Only for signed-in members who follow some. -->
+      <nav class="wmy" data-mycities hidden aria-label="My Cities"></nav>
 
       <!-- City guide: shown when a place is chosen and nothing else narrows the results. -->
       <section class="wg" data-guide hidden aria-labelledby="wg-title"></section>

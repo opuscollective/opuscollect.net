@@ -104,9 +104,14 @@
     display: flex; flex-direction: column; width: clamp(360px, 26vw, 420px); height: min(640px, calc(100svh - 96px));
     background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
     box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.5); font-size: 14px;
-    opacity: 0; transform: translateY(10px); transition: opacity .35s var(--ease), transform .45s var(--ease-glide); }
+    opacity: 0; transform: translateY(8px); transition: opacity var(--m-modal) var(--m-ease), transform var(--m-modal) var(--m-spring); }
   .om.is-open { opacity: 1; transform: none; }
   .om.no-anim { transition: none; }
+  /* A message arriving: it eases up into place. Only height it already has is used, so the list never jumps. */
+  :global(.om-m.is-new), :global(.om-d.is-new) { animation: om-new var(--m-card) var(--m-ease) both; }
+  @keyframes om-new { from { opacity: 0; transform: translateY(6px); } }
+  :global(html:not([data-motion='fluid'])) :global(.om-m.is-new), :global(html:not([data-motion='fluid'])) :global(.om-d.is-new) { animation-name: om-fade; }
+  @keyframes om-fade { from { opacity: 0; } }
   .om :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
 
   .om__head { display: flex; align-items: center; gap: 6px; padding: 8px 8px 8px 10px; border-bottom: 1px solid var(--line-faint); }
@@ -233,5 +238,5 @@
     .om-m__more { opacity: .6; }
     html.om-open, html.om-open body { overflow: hidden; }
   }
-  @media (prefers-reduced-motion: reduce) { .om, .om-launch { transition: none; } }
+  :global(html:not([data-motion='fluid'])) .om, :global(html:not([data-motion='fluid'])) .om-launch { transform: none; } /* Reduced: fade only */
 </style>

@@ -9,6 +9,7 @@
  *   reloads (localStorage).
  */
 
+import { motion } from '@/lib/motion';
 interface Author { handle: string; name: string; photo: string | null; city: string | null; verified: boolean }
 interface GMsg { id: number; body: string; at: number; author: Author; pending?: boolean; cid?: string }
 interface DMsg { id: number; body: string; at: number; mine: boolean; pending?: boolean; cid?: string }
@@ -23,7 +24,7 @@ if (launch && panel) init();
 
 function init() {
   const phone = matchMedia('(max-width: 760px)');
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduce = motion() !== 'fluid';
   const badge = $('[data-om-badge]'), dot = $('[data-om-dot]'), gdot = $('[data-om-gdot]'), pcount = $('[data-om-pcount]');
   const tabs = [...panel.querySelectorAll<HTMLButtonElement>('[data-om-tab]')];
   const views = { global: $('[data-om-view="global"]', panel), private: $('[data-om-view="private"]', panel) };
@@ -232,8 +233,14 @@ function init() {
   function measureFoot() { requestAnimationFrame(() => panel.style.setProperty('--om-foot', `${g.foot.offsetHeight}px`)); }
 
   // ---------- Global: render ----------
+  /** Messages already on screen. Only ones that arrive after the first render ease in; history never animates. */
+  const gSeen = new Set<string>();
+  let gPainted = false;
+  let gAllowNew = true; // false while older history is being added above
+  const keysOf = (m: { id: number; cid?: string }) => [String(m.id), ...(m.cid ? [m.cid] : [])];
   function gRow(m: GMsg, prev?: GMsg) {
     const row = el('article', 'om-m');
+    if (gPainted && gAllowNew && !keysOf(m).some((k) => gSeen.has(k))) row.classList.add('is-new');
     row.dataset.id = String(m.id);
     if (m.pending) row.classList.add('is-pending');
     if (me.handle && m.author.handle === me.handle) row.classList.add('is-mine');
@@ -265,10 +272,13 @@ function init() {
   function renderGlobal(keep: 'bottom' | 'anchor' | 'none' = 'bottom') {
     const s = g.scroll;
     const anchor = keep === 'anchor' ? { h: s.scrollHeight, t: s.scrollTop } : null;
+    gAllowNew = keep !== 'anchor';
     const list = gMsgs.filter(visible);
     const frag = document.createDocumentFragment();
     list.forEach((m, i) => frag.append(gRow(m, list[i - 1])));
     g.list.replaceChildren(frag);
+    list.forEach((m) => keysOf(m).forEach((k) => gSeen.add(k)));
+    if (gLoaded) gPainted = true;
     g.state.replaceChildren();
     if (gLoaded && !list.length) {
       const st = el('div');
@@ -666,8 +676,11 @@ function init() {
     box.append(more);
     p.with.replaceChildren(box);
   }
+  const dSeen = new Set<string>();
+  let dPaintedFor: string | null = null;
   function renderConvo(keep: 'bottom' | 'anchor' | 'none' = 'bottom') {
     const s = p.scroll;
+    const fresh = dPaintedFor === convoId && keep !== 'anchor';
     const anchor = keep === 'anchor' ? { h: s.scrollHeight, t: s.scrollTop } : null;
     const f = document.createDocumentFragment();
     let lastDay = '';
@@ -679,6 +692,7 @@ function init() {
         f.append(t); lastDay = day;
       }
       const b = el('p', `om-d${m.mine ? ' is-mine' : ''}${m.pending ? ' is-pending' : ''}`, m.body);
+      if (fresh && !keysOf(m).some((k) => dSeen.has(k))) b.classList.add('is-new');
       b.title = fullTime(m.at);
       f.append(b);
     });
@@ -686,6 +700,9 @@ function init() {
     if (lastMine?.mine && theirReadAt >= lastMine.at) f.append(el('span', 'om-d__seen', 'Seen'));
     if (!dMsgs.length) f.append(el('div', 'om__state', `Say hello to ${convoWith?.name ?? 'your connection'}.`));
     p.list.replaceChildren(f);
+    if (dPaintedFor !== convoId) dSeen.clear();
+    dMsgs.forEach((m) => keysOf(m).forEach((k) => dSeen.add(k)));
+    dPaintedFor = convoId;
     p.top.hidden = !dMore;
     p.top.textContent = 'Scroll up for earlier messages';
     p.form.hidden = !dCanSend;

@@ -26,9 +26,10 @@ export function eventItem(e: EventView, role?: MyRole): FutureItem {
 }
 
 /** Our Future: public member events plus Collective events. */
-export async function ourFuture(db: D1Database, placeId?: string) {
-  const events = await listPublicEvents(db, { placeId });
-  return [...events.map((e) => eventItem(e)), ...(placeId ? [] : collectiveItems())];
+/** Our Future: everywhere, one city, or the cities a member follows (metroIds). Nothing is added to My Future by this. */
+export async function ourFuture(db: D1Database, placeId?: string, metroIds?: string[]) {
+  const events = await listPublicEvents(db, { placeId, metroIds: placeId ? undefined : metroIds });
+  return [...events.map((e) => eventItem(e)), ...(placeId || metroIds ? [] : collectiveItems())];
 }
 
 /** My Future. Each source appears once; nothing is invented. Past member events (last 30 days) come back with past = true. */

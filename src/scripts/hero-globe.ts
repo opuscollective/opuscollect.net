@@ -2,6 +2,7 @@
  * Homepage globe (globe.gl / three.js). Loaded only when the hero is on screen
  * and the browser supports WebGL. Markers are city-level aggregates of listings.
  */
+import { motion } from '@/lib/motion';
 import { sunAt } from '@/lib/sun';
 
 export interface CityPoint { city: string; country: string; lat: number; lng: number; count: number }
@@ -17,7 +18,7 @@ export interface Handoff {
 
 export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts: { onSelect: (p: CityPoint) => void }) {
   const [{ default: Globe }, THREE] = await Promise.all([import('globe.gl'), import('three')]);
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduce = motion() !== 'fluid';
   type Ring = { lat: number; lng: number; me?: boolean };
   const cityRings: Ring[] = points.filter((p) => p.count >= 5);
 
@@ -196,8 +197,13 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   resize();
   new ResizeObserver(resize).observe(el);
 
-  // Pause rendering when the hero is off screen to save battery.
-  new IntersectionObserver(([e]) => (e?.isIntersecting ? globe.resumeAnimation() : globe.pauseAnimation())).observe(el);
+  // Render only while the hero is on screen and the tab is visible, to save battery and GPU.
+  let onScreen = true;
+  const syncRun = () => (onScreen && !document.hidden ? globe.resumeAnimation() : globe.pauseAnimation());
+  new IntersectionObserver(([e]) => { onScreen = !!e?.isIntersecting; syncRun(); }).observe(el);
+  document.addEventListener('visibilitychange', syncRun);
+  // The Motion setting can change while the page is open: the slow turn follows it.
+  window.addEventListener('opus:motion', () => { if (controls.autoRotate || motion() !== 'fluid') controls.autoRotate = motion() === 'fluid'; });
 
 
   const ms = (n: number) => (reduce ? 0 : n);

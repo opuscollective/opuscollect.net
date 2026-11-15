@@ -60,7 +60,17 @@ const ogImage = new URL(image, SITE.url).href;
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <script is:inline>document.documentElement.classList.add('js');</script>
+    <script is:inline>
+      // Motion before first paint: the saved choice (Fluid, Reduced, Off) wins; Auto follows the device setting,
+      // and a session that already found this device struggling stays Reduced. See src/lib/motion.ts.
+      (function () {
+        var d = document.documentElement, p = 'auto', a = null;
+        d.classList.add('js');
+        try { p = localStorage.getItem('opus.motion') || 'auto'; a = sessionStorage.getItem('opus.motion.auto'); } catch (e) {}
+        var m = p === 'fluid' || p === 'reduced' || p === 'off' ? p : (matchMedia('(prefers-reduced-motion: reduce)').matches || a === 'reduced' ? 'reduced' : 'fluid');
+        d.dataset.motion = m; d.dataset.motionPref = p;
+      })();
+    </script>
     <slot name="head" />
   </head>
   <body>
@@ -71,10 +81,13 @@ const ogImage = new URL(image, SITE.url).href;
     {assistant && <Assistant />}
     {messages && <Messages />}
     <script>
-      // Reveal-on-scroll. Content is visible without JS and with reduced motion.
+      import { initMotion } from '@/scripts/motion-control';
+      import { motion } from '@/lib/motion';
+      initMotion();
+      // Marks [data-reveal] elements as they arrive (a few small details still key off .is-in). Sections themselves
+      // no longer animate on scroll. Content is always visible.
       const els = document.querySelectorAll('[data-reveal]');
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (reduce || !('IntersectionObserver' in window)) {
+      if (motion() !== 'fluid' || !('IntersectionObserver' in window)) {
         els.forEach((el) => el.classList.add('is-in'));
       } else {
         const io = new IntersectionObserver(

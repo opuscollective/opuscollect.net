@@ -1,0 +1,108 @@
+---
+/**
+ * My Cities, inside World: every city the member follows, each a way back into its city guide.
+ * Following is personal: no follower counts, and it never changes the member's profile location.
+ * Signed out: what following does, and the way in.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { listFollows, type FollowedCity } from '@/server/cities';
+import { guideFor, photoSrc, photoSrcset } from '@/data/city-guides';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+let cities: FollowedCity[] = [];
+let failed = false;
+if (user) { try { cities = await listFollows(Astro.locals.runtime.env, user.id); } catch (e) { console.error('My Cities', e); failed = true; } }
+const SUGGEST = [['Birmingham', 'birmingham'], ['Atlanta', 'atlanta'], ['Nashville', 'nashville'], ['London', 'london'], ['Lagos', 'lagos'], ['Los Angeles', 'los-angeles']] as const;
+---
+<BaseLayout title="My Cities · World" description="The cities you follow on Opus World." noindex>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide mc" style="margin-inline:auto">
+      <p class="t-meta app__kicker"><a href="/world" class="mc__back">World</a></p>
+      <h1 class="app__title">My Cities</h1>
+      <p class="app__lead">Follow the cities you work in, travel to or want to reach. Their events lead in Events and Our Future, and you can save any of them to My Future. Following a city doesn’t change your profile location.</p>
+
+      {!user && (
+        <div class="row" style="margin-top:24px">
+          <a class="btn-app" href="/sign-in?next=/world/cities">Sign in</a>
+          <a class="btn-app btn-app--ghost" href="/sign-up?next=/world/cities">Join Opus</a>
+          <a class="btn-app btn-app--ghost" href="/world">Explore World</a>
+        </div>
+      )}
+
+      {user && failed && <p class="panel" style="margin-top:24px">Your cities couldn’t be loaded just now. Please try again in a moment.</p>}
+
+      {user && !failed && cities.length === 0 && (
+        <div class="panel mc__empty">
+          <h2>You’re not following any cities yet</h2>
+          <p class="dim">Open a city guide in World and choose Follow City.</p>
+          <div class="mc__suggest">{SUGGEST.map(([n, s]) => <a href={`/world/${s}`}>{n}</a>)}</div>
+        </div>
+      )}
+
+      {cities.length > 0 && (
+        <ul class="mc__grid" role="list" data-mc>
+          {cities.map((c) => {
+            const g = guideFor(c.slug);
+            const p = g?.photo;
+            return (
+              <li class="mc__card" data-city={c.id}>
+                <a class="mc__hit" href={`/world/${c.slug}`} aria-label={`Open the ${c.name} city guide`}></a>
+                <div class="mc__media" style={p ? `--tone:${p.tone}` : undefined}>
+                  {p ? <img src={photoSrc(p)} srcset={photoSrcset(p)} sizes="(max-width: 760px) 100vw, 33vw" alt="" loading="lazy" decoding="async" width="800" height={Math.round(800 / p.ratio)} />
+                    : <span class="mc__initial" aria-hidden="true">{c.name.slice(0, 1)}</span>}
+                </div>
+                <div class="mc__body">
+                  <div>
+                    <h2 class="mc__name">{c.name}</h2>
+                    <p class="mc__region">{[c.region, c.countryName].filter(Boolean).join(', ')}</p>
+                  </div>
+                  <button type="button" class="mc__follow" data-follow={c.id} data-follow-name={c.name} aria-pressed="true"><span data-follow-label>Following</span></button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { initFollowButtons } from '@/scripts/city-follow';
+  initFollowButtons();
+  // Unfollowing here keeps the card until you leave, so a mis-tap is one tap to undo.
+  window.addEventListener('opus:follows', (e) => {
+    const { id, following } = (e as CustomEvent<{ id: string; following: boolean }>).detail;
+    document.querySelector(`[data-city="${CSS.escape(id)}"]`)?.classList.toggle('is-off', !following);
+  });
+</script>
+
+<style>
+  .mc__back { color: inherit; }
+  .mc__back:hover { color: var(--text); }
+  .mc__empty { margin-top: 28px; }
+  .mc__empty h2 { margin: 0; font-size: 20px; }
+  .mc__suggest { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .mc__suggest a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-pill); font-size: 14px; color: var(--text);
+    transition: border-color var(--m-hover) var(--m-ease), background-color var(--m-hover) var(--m-ease); }
+  .mc__suggest a:hover { border-color: var(--line-strong); background: var(--surface-hover); }
+  .mc__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 32px 0 0; padding: 0; list-style: none; }
+  .mc__card { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-faint);
+    transition: transform var(--m-card) var(--m-ease), opacity var(--m-card) var(--m-ease); }
+  @media (hover: hover) { .mc__card:hover { transform: translateY(-2px); } }
+  .mc__card.is-off { opacity: 0.55; }
+  .mc__hit { position: absolute; inset: 0; z-index: 1; }
+  .mc__hit:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .mc__media { aspect-ratio: 2.4; background: var(--tone, var(--surface-sunken)); display: grid; place-items: center; }
+  .mc__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mc__initial { font-size: 44px; font-weight: 500; letter-spacing: -0.04em; color: var(--text-3); }
+  .mc__body { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 16px; }
+  .mc__name { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -0.03em; }
+  .mc__region { margin: 2px 0 0; font-size: 13px; color: var(--text-2); }
+  .mc__follow { position: relative; z-index: 2; flex-shrink: 0; min-height: 34px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-pill); background: none; color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: background-color var(--m-control) var(--m-ease), color var(--m-control) var(--m-ease), border-color var(--m-control) var(--m-ease); }
+  .mc__follow:not(.is-on) { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .mc__follow:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>

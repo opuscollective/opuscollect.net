@@ -36,6 +36,7 @@ const topCities = CITIES.slice(0, 8);
 
 <script>
   import { findCity, citySlug } from '@/data/cities';
+  import { motion } from '@/lib/motion';
   import { readFrom } from '@/scripts/world-entry';
   import type { Handoff } from '@/scripts/hero-globe';
   type CityPoint = { city: string; country: string; lat: number; lng: number; count: number };
@@ -74,7 +75,7 @@ const topCities = CITIES.slice(0, 8);
   addEventListener('resize', placeEarth);
   document.fonts?.ready.then(placeEarth);
   const host = hero.querySelector<HTMLElement>('[data-hero-globe]')!;
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduce = motion() !== 'fluid';
   let api: { dive: (lat?: number, lng?: number, close?: boolean) => void; approach: (to?: { lat: number; lng: number }) => Promise<Handoff>; rise: () => void } | null = null;
 
   const hasWebGL = () => {
@@ -327,7 +328,5 @@ const topCities = CITIES.slice(0, 8);
     .hero__go, .hero__mark { min-height: 48px; min-width: 0; padding: 0 22px; font-size: 15px; }
     .hero__veil { background: radial-gradient(80% 30% at 50% 26%, color-mix(in srgb, var(--bg) 65%, transparent) 0%, transparent 100%), linear-gradient(0deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 70%, transparent) 8%, color-mix(in srgb, var(--bg) 30%, transparent) 18%, transparent 30%); }
   }
-  @media (prefers-reduced-motion: reduce) {
-    .hero__stage { transition: none; }
-  }
+  :global(html:not([data-motion='fluid'])) .hero__stage { transition: none; }
 </style>

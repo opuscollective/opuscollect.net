@@ -35,6 +35,7 @@ import OpusMark from '../ui/OpusMark.astro';
 
 <script>
   import { respond, welcome, suggestionsFor, actionHref, type Reply } from '@/lib/assistant';
+  import { motion } from '@/lib/motion';
 
   const launch = document.querySelector<HTMLButtonElement>('[data-oa-launch]')!;
   const panel = document.querySelector<HTMLElement>('[data-oa]')!;
@@ -44,7 +45,7 @@ import OpusMark from '../ui/OpusMark.astro';
   const form = panel.querySelector<HTMLFormElement>('[data-oa-form]')!;
   const input = panel.querySelector<HTMLInputElement>('[data-oa-input]')!;
   const phone = matchMedia('(max-width: 760px)');
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduce = motion() !== 'fluid';
   let opener: HTMLElement | null = null;
   let started = false;
 
@@ -160,7 +161,7 @@ import OpusMark from '../ui/OpusMark.astro';
   .oa { position: fixed; z-index: 70; right: max(16px, env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom));
     display: flex; flex-direction: column; width: min(380px, calc(100vw - 32px)); max-height: min(560px, calc(100svh - 120px));
     background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.55);
-    opacity: 0; transform: translateY(10px); transition: opacity .4s var(--ease), transform .5s var(--ease-glide); }
+    opacity: 0; transform: translateY(8px); transition: opacity var(--m-modal) var(--m-ease), transform var(--m-modal) var(--m-spring); }
   .oa.is-open { opacity: 1; transform: none; }
   .oa__head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 14px 12px 18px; border-bottom: 1px solid var(--line-faint); }
   .oa__grab { display: none; }
@@ -211,5 +212,5 @@ import OpusMark from '../ui/OpusMark.astro';
     .oa__head { padding-top: 22px; }
     .oa__grab { display: block; position: absolute; top: 8px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--line-strong); }
   }
-  @media (prefers-reduced-motion: reduce) { .oa, .oa-launch { transition: none; } }
+  :global(html:not([data-motion='fluid'])) .oa, :global(html:not([data-motion='fluid'])) .oa-launch { transform: none; } /* Reduced: fade only */
 </style>

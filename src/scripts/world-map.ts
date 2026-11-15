@@ -10,6 +10,7 @@
  *  - Streets, water and place names come from OpenFreeMap vector tiles (free, no key)
  *    and appear from zoom 4. If that service is unreachable the map still works.
  */
+import { motion, dur } from '@/lib/motion';
 import maplibregl, { type GeoJSONSource, type StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { feature } from 'topojson-client';
@@ -162,6 +163,8 @@ export interface WorldMapApi {
   getZoom(): number;
   getCamera(): Camera;
   resize(): void;
+  /** The directory now covers a different part of the map: keep the same place centred in what's visible. */
+  reframe(): void;
   /** After the entrance: drop the handoff framing, and either rest or let the globe turn slowly. */
   release(worldwide: boolean): void;
   /** Resolves once the map has drawn everything for the current view. */
@@ -188,7 +191,7 @@ export async function mountWorldMap(
   const topo = (await fetch('/data/countries-50m.json').then((r) => r.json())) as Topology;
   const earth = await earthP;
   const countries = feature(topo, topo.objects.countries as GeometryCollection) as unknown as GeoJSON.FeatureCollection;
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduce = motion() !== 'fluid';
   // About as large as the homepage globe, and still within what the 4096 px imagery shows sharply.
   const homeZoom = () => (el.clientWidth < 700 ? 1 : el.clientWidth > 1400 ? 2.1 : 1.8);
 
@@ -287,7 +290,7 @@ export async function mountWorldMap(
         e.stopPropagation(); stop();
         const src = map.getSource('listings') as GeoJSONSource;
         const z = await src.getClusterExpansionZoom(Number(p.cluster_id));
-        map.easeTo({ center: at, zoom: Math.min(z + 0.4, 16), duration: reduce ? 0 : 700 });
+        map.easeTo({ center: at, zoom: Math.min(z + 0.4, 16), duration: dur(700) });
         cb.onGroup?.(null);
       });
     } else if (p.agg) {
@@ -301,8 +304,8 @@ export async function mountWorldMap(
         e.stopPropagation(); stop();
         const [w, s, ea, n] = a.bounds;
         const z = nextZoom(a.level);
-        if (ea - w < 0.05 && n - s < 0.05) map.flyTo({ center: [a.lng, a.lat], zoom: z, duration: reduce ? 0 : 900, essential: true });
-        else map.fitBounds([[w, s], [ea, n]], { padding: 90, maxZoom: z, duration: reduce ? 0 : 900 });
+        if (ea - w < 0.05 && n - s < 0.05) map.flyTo({ center: [a.lng, a.lat], zoom: z, duration: dur(900), essential: true });
+        else map.fitBounds([[w, s], [ea, n]], { padding: 90, maxZoom: z, duration: dur(900) });
         cb.onGroup?.(a.name);
       });
     } else {
@@ -369,6 +372,8 @@ export async function mountWorldMap(
   };
   map.on('moveend', () => spinning && spin());
   const stop = () => { spinning = false; };
+  const onMotionChange = () => { if (motion() !== 'fluid') stop(); };
+  window.addEventListener('opus:motion', onMotionChange);
   ['mousedown', 'touchstart', 'wheel', 'dragstart'].forEach((ev) => map.on(ev as 'mousedown', stop));
   spin();
 
@@ -389,14 +394,17 @@ export async function mountWorldMap(
         const t = setTimeout(done, 9000);
         map.on('moveend', check);
       });
-      map.flyTo({ center: [lng, lat], padding: base(), zoom: 10.2, speed: 1.1, curve: 1.6, essential: true, ...(reduce ? { duration: 0 } : {}) });
+      // Fluid: a flight whose length follows the distance travelled. Reduced: a short direct move. Off: a cut.
+      const m = motion();
+      if (m === 'fluid') map.flyTo({ center: [lng, lat], padding: base(), zoom: 10.2, speed: 1.1, curve: 1.6, essential: true });
+      else map.easeTo({ center: [lng, lat], padding: base(), zoom: 10.2, duration: m === 'off' ? 0 : 400, essential: true });
       return settled;
     },
-    flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], padding: base(), zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: reduce ? 0 : 900 }); },
+    flyToListing(l) { stop(); map.flyTo({ center: [l.location.lng, l.location.lat], padding: base(), zoom: Math.max(map.getZoom(), l.location.precision === 'approximate' ? 11 : 12.5), duration: dur(900) }); },
     ensureVisible(l) {
       if (!hasPoint(l) || l.onMap === false) return;
       if (map.getBounds().contains([l.location.lng, l.location.lat])) return;
-      stop(); map.easeTo({ center: [l.location.lng, l.location.lat], padding: base(), duration: reduce ? 0 : 700 });
+      stop(); map.easeTo({ center: [l.location.lng, l.location.lat], padding: base(), duration: dur(700) });
     },
     setActive(id) { active = id; paintStates(); },
     setHover(id) { hover = id; paintStates(); },
@@ -409,20 +417,25 @@ export async function mountWorldMap(
       pe.innerHTML = '<i></i><span>' + p.name.replace(/[&<>"]/g, '') + '</span>';
       place = new maplibregl.Marker({ element: pe }).setLngLat([p.lng, p.lat]).addTo(map);
     },
-    resetView() { stop(); map.flyTo({ padding: base(), zoom: homeZoom(), duration: reduce ? 0 : 1100, essential: true }); },
-    zoomOut() { stop(); map.easeTo({ zoom: Math.max(1.2, map.getZoom() - 3), duration: reduce ? 0 : 800 }); },
+    resetView() { stop(); map.flyTo({ padding: base(), zoom: homeZoom(), duration: dur(1100), essential: true }); },
+    zoomOut() { stop(); map.easeTo({ zoom: Math.max(1.2, map.getZoom() - 3), duration: dur(800) }); },
     getCenter: () => { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
     getBounds: () => map.getBounds(),
     getZoom: () => map.getZoom(),
     getCamera: () => { const c = map.getCenter(); return { center: [c.lng, c.lat], zoom: map.getZoom() }; },
     resize: () => map.resize(),
+    reframe() {
+      const p = base(), c = map.getPadding();
+      if (p.left === c.left && p.bottom === c.bottom && !c.top && !c.right) return;
+      map.easeTo({ padding: p, duration: dur(450) });
+    },
     release(worldwide) {
       const padding = base();
       // Worldwide: settle back to the whole globe and let it turn. Otherwise just drop the handoff framing.
-      map.easeTo({ padding, ...(worldwide ? { zoom: Math.min(map.getZoom(), el.clientWidth < 700 ? 1.3 : Math.max(homeZoom(), 2.3)) } : {}), duration: reduce ? 0 : 1100 });
+      map.easeTo({ padding, ...(worldwide ? { zoom: Math.min(map.getZoom(), el.clientWidth < 700 ? 1.3 : Math.max(homeZoom(), 2.3)) } : {}), duration: dur(1100) });
       if (worldwide && !reduce) spinning = true; // the moveend handler starts the spin
     },
     ready: () => firstIdle,
-    destroy() { clearInterval(sunTimer); window.removeEventListener('opus:theme', onTheme); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
+    destroy() { clearInterval(sunTimer); window.removeEventListener('opus:theme', onTheme); window.removeEventListener('opus:motion', onMotionChange); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
   };
 }

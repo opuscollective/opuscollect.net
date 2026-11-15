@@ -213,7 +213,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .cdlg::backdrop { background: rgba(10, 10, 12, 0.36); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .cdlg[open] { animation: cdlg-in .22s var(--ease); }
   @keyframes cdlg-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
-  @media (prefers-reduced-motion: reduce) { .cdlg[open] { animation: none; } }
+  :global(html:not([data-motion='fluid'])) .cdlg[open] { animation: none; }
   .cdlg__form { display: flex; flex-direction: column; gap: 16px; padding: 22px; }
   .cdlg__who { display: flex; align-items: center; gap: 14px; }
   .cdlg__who b { display: block; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }

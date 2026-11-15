@@ -7,6 +7,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import EventPoster from '@/components/events/EventPoster.astro';
 import { listPublicEvents } from '@/server/events';
 import { EVENTS } from '@/data/events';
+import { listFollows, type FollowedCity } from '@/server/cities';
 import '@/styles/app.css';
 import '@/styles/events.css';
 export const prerender = false;
@@ -15,6 +16,19 @@ let events: Awaited<ReturnType<typeof listPublicEvents>> = [];
 let failed = false;
 try { events = await listPublicEvents(Astro.locals.runtime.env.DB, { limit: 24 }); } catch (e) { console.error('events', e); failed = true; }
 const user = Astro.locals.user;
+// Followed cities lead: events there first, then everything (shown once each). Following never adds anything to My Future.
+let myCities: FollowedCity[] = [];
+let mine: typeof events = [];
+if (user && !failed) {
+  try {
+    myCities = await listFollows(Astro.locals.runtime.env, user.id);
+    if (myCities.length) mine = await listPublicEvents(Astro.locals.runtime.env.DB, { metroIds: myCities.map((c) => c.id), limit: 12 });
+  } catch (e) { console.error('events: my cities', e); }
+}
+const mineIds = new Set(mine.map((e) => e.id));
+const rest = events.filter((e) => !mineIds.has(e.id));
+const cityNames = myCities.map((c) => c.name);
+const cityList = cityNames.length <= 2 ? cityNames.join(' and ') : `${cityNames.slice(0, -1).join(', ')} and ${cityNames.at(-1)}`;
 ---
 <BaseLayout title="Events" description="Events on Opus. Make something happen: shows, sessions, workshops and listening parties from Opus members.">
   <section class="app">
@@ -27,16 +41,40 @@ const user = Astro.locals.user;
         <a class="btn-app btn-app--ghost" href="/future?tab=our">See Our Future</a>
       </div>
 
-      <h2 style="margin-top:48px">Coming up</h2>
+      {myCities.length > 0 && (
+        <>
+          <h2 style="margin-top:48px">In your cities</h2>
+          <p class="dim" style="margin-top:4px">{cityList} · <a class="link" href="/future?tab=our&place=mine">See them in Our Future</a></p>
+          {mine.length === 0 ? <p class="dim">No public events in your cities yet.</p> : (
+            <div class="ev-grid">
+              {mine.map((e) => (
+                <a class="ev-card" href={e.href}>
+                  <EventPoster image={e.image} startAt={e.startAt} timezone={e.timezone} category={e.categoryLabel} small />
+                  <span class="ev-card__body">
+                    <span class="ev-card__when">{e.when}</span>
+                    <span class="ev-card__title">{e.title}</span>
+                    <span class="ev-card__where">{e.venue} · {e.place.split(',')[0]}</span>
+                    <span class="ev-card__where">by {e.organizer.name}</span>
+                  </span>
+                </a>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <h2 style="margin-top:48px">{myCities.length ? 'Everywhere' : 'Coming up'}</h2>
       {failed ? <p class="dim">Events couldn’t be loaded just now. Please try again.</p>
-        : events.length === 0 ? (
+        : rest.length === 0 && events.length === 0 ? (
         <div class="panel" style="margin-top:16px">
           <h3 style="margin:0">No member events yet</h3>
           <p class="dim">Be the first. Create an event and it shows here and in Our Future.</p>
         </div>
+      ) : rest.length === 0 ? (
+        <p class="dim">Every upcoming event right now is in your cities.</p>
       ) : (
         <div class="ev-grid">
-          {events.map((e) => (
+          {rest.map((e) => (
             <a class="ev-card" href={e.href}>
               <EventPoster image={e.image} startAt={e.startAt} timezone={e.timezone} category={e.categoryLabel} small />
               <span class="ev-card__body">

@@ -115,9 +115,12 @@ export async function listPerformers(db: D1Database, eventId: string, all = fals
 }
 
 /** Public, scheduled events that have not ended, soonest first. Our Future and the Events page. */
-export async function listPublicEvents(db: D1Database, opts: { placeId?: string; limit?: number } = {}, at = now()) {
+/** placeId: one city (with its suburbs). metroIds: several cities at once (the cities a member follows). */
+export async function listPublicEvents(db: D1Database, opts: { placeId?: string; metroIds?: string[]; limit?: number } = {}, at = now()) {
   const metro = opts.placeId ? PLACE_BY_ID.get(opts.placeId)?.metroId : undefined;
-  const ids = metro ? [...PLACE_BY_ID.values()].filter((p) => p.metroId === metro).map((p) => p.id) : null;
+  const metros = metro ? new Set([metro]) : opts.metroIds ? new Set(opts.metroIds) : null;
+  if (metros && !metros.size) return [];
+  const ids = metros ? [...PLACE_BY_ID.values()].filter((p) => metros.has(p.metroId)).map((p) => p.id) : null;
   const where = ids ? ` AND e.place_id IN (${ids.map(() => '?').join(',')})` : '';
   // An event without an end counts as running for 3 hours (see eventEndsAt).
   const { results } = await db.prepare(`${SELECT} WHERE e.visibility = 'public' AND e.status = 'scheduled' AND p.status = 'published'

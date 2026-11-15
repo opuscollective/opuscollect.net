@@ -11,12 +11,16 @@
  */
 import { tileHtml, matches, isVerified, esc, type WorldFilters } from '@/lib/world';
 import { cityGuide, type Shelf } from '@/lib/world-guide';
+import { cityGuideHeader } from '@/lib/city-guide-html';
+import { guideFor } from '@/data/city-guides';
+import { initFollowButtons, followState } from '@/scripts/city-follow';
+import { motion } from '@/lib/motion';
 import type { WorldStats } from '@/lib/world';
 import { placeIndex, suggest, norm, type Place, type Suggestion } from '@/lib/world-search';
 import { previewHtml, previewSkeleton, previewError } from '@/lib/world-preview';
 import { installImageFallbacks } from '@/lib/media';
 import { CITIES, citySlug, findCity } from '@/data/cities';
-import { PLACES as AREAS, PLACE_BY_ID as AREA_BY_ID } from '@/data/places';
+import { PLACES as AREAS, PLACE_BY_ID as AREA_BY_ID, metroId } from '@/data/places';
 import { SPECIALTIES, toSpecialty } from '@/data/specialties';
 import { hasPoint, type Listing } from '@/types/directory';
 import type { ProfileDetail } from '@/server/world-detail';
@@ -51,7 +55,8 @@ export function initWorld(root: HTMLElement) {
   const cards = $('[data-cards]');
   const track = $('[data-cards-track]');
   const mobile = matchMedia('(max-width: 860px)');
-  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  /** Fluid motion only when the Motion setting (or the device) allows it: Reduced and Off skip flourishes. */
+  const reduceMotion = { get matches() { return motion() !== 'fluid'; } };
   installImageFallbacks(root);
 
   let ALL: Listing[] = [];
@@ -69,6 +74,8 @@ export function initWorld(root: HTMLElement) {
   let camera: Camera | null = null;
   let place: { name: string; lat: number; lng: number } | null = null;
   let previewId: string | null = null;
+  /** A city was chosen before the map finished loading (a cold first visit): fly there as soon as it's up. */
+  let flyOnBoot = false;
   /** The visitor asked to see everyone in the place as a plain list instead of the guide. */
   let guideOff = false;
 
@@ -142,7 +149,8 @@ export function initWorld(root: HTMLElement) {
       // Previews follow the view: panel in Split, card in Map, drawer in List, sheet on phones.
       if (previewId) placePreview();
       requestAnimationFrame(() => map?.resize());
-      setTimeout(() => map?.resize(), 360);
+      // Once the new layout has settled, keep what was in the middle in the middle of the part you can see.
+      setTimeout(() => { map?.resize(); map?.reframe(); }, 360);
       render(true, true);
     }
   }
@@ -238,7 +246,7 @@ export function initWorld(root: HTMLElement) {
     if (had && !map) camera = null;
   }
   /** Something the visitor chose changed: sync controls and redraw with a gentle fade. */
-  function changed() { syncControls(); renderChips(); render(true, true); }
+  function changed() { syncControls(); renderChips(); render(true, true); renderMyCities(); }
 
   // ---------- Results ----------
   const inArea = () => !!map && inView && map.getZoom() >= 4;
@@ -366,27 +374,28 @@ export function initWorld(root: HTMLElement) {
   const guideMode = () => !!place && !guideOff && !f.text && !f.kinds.length && filterCount() === 0;
   let guideSig = '';
   let guideShelves: Shelf[] = [];
+  /** The followable city for a place: a metro World knows (its id is what follows and events use). */
+  const cityFor = (name: string) => { const c = CITIES.find((x) => x.name === name); return c ? { id: metroId(c), slug: citySlug(c.name), city: c } : null; };
   function renderGuide(): boolean {
     if (!guideMode()) { guide.hidden = true; guideSig = ''; return false; }
     const g = cityGuide(ALL, place!);
-    if (!g.shelves.length) { guide.hidden = true; guideSig = ''; return false; }
+    const known = cityFor(place!.name);
+    const ed = guideFor(known?.slug);
+    // A city with an editorial guide always shows it, even before anyone there has published a profile.
+    if (!g.shelves.length && !ed) { guide.hidden = true; guideSig = ''; return false; }
     const sig = `${place!.name}|${g.total}`;
     if (sig !== guideSig) {
       guideSig = sig;
       guideShelves = g.shelves;
-      const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-      const counts = [g.musicians && plural(g.musicians, 'professional', 'professionals'), g.studios && plural(g.studios, 'studio', 'studios'), g.organizations && plural(g.organizations, 'organization', 'organizations')].filter(Boolean).join(' · ');
-      guide.innerHTML = `<header class="wg__head">
-  <p class="wg__kicker">City guide</p>
-  <h2 class="wg__title" id="wg-title">${esc(g.name)}</h2>
-  <p class="wg__counts">${esc(counts)} on Opus</p>
-</header>
-${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-labelledby="wg-s${i}">
+      const region = ed?.region ?? (known ? [known.city.region, known.city.countryName].filter(Boolean).join(', ') : '');
+      guide.innerHTML = cityGuideHeader(g, { region, entry: ed, followId: known?.id })
+        + g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-labelledby="wg-s${i}">
   <div class="wg__shead"><h3 id="wg-s${i}">${esc(sh.title)}</h3>${sh.total > 2 ? `<button type="button" class="wg__all" data-shelf="${i}">See all ${sh.total}</button>` : ''}</div>
   <div class="wg__track" role="list">${sh.items.map((l) => tileHtml(l, 'grid')).join('')}</div>
-</section>`).join('')}
-<button type="button" class="wg__everyone" data-guide-list>See everyone in ${esc(g.name)} as a list</button>`;
-      if (!reduceMotion.matches) { guide.classList.remove('is-entering'); void guide.offsetWidth; guide.classList.add('is-entering'); }
+</section>`).join('')
+        + (g.total ? `<button type="button" class="wg__everyone" data-guide-list>See everyone in ${esc(g.name)} as a list</button>` : '');
+      if (motion() === 'fluid') { guide.classList.remove('is-entering'); void guide.offsetWidth; guide.classList.add('is-entering'); }
+      initFollowButtons(guide);
     }
     guide.hidden = false;
     return true;
@@ -408,6 +417,27 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
     }
     if (t.closest('[data-guide-list]')) { guideOff = true; changed(); }
   });
+
+  // ---------- My Cities ----------
+  const myEl = $('[data-mycities]');
+  let myIds: string[] = [];
+  async function loadMyCities(force = false) {
+    const s = await followState(force);
+    myIds = s.signedIn ? [...s.ids] : [];
+    renderMyCities();
+  }
+  function renderMyCities() {
+    const list = myIds.map((id) => AREA_BY_ID.get(id)).filter((p): p is NonNullable<typeof p> => !!p);
+    myEl.hidden = !list.length || !!place;
+    if (myEl.hidden) return;
+    myEl.innerHTML = `<span class="wmy__label">My Cities</span>${list.map((p) => `<button type="button" class="wmy__city" data-my="${esc(p.id)}">${esc(p.name)}</button>`).join('')}<a class="wmy__all" href="/world/cities">All</a>`;
+  }
+  myEl.addEventListener('click', (e) => {
+    const id = (e.target as Element).closest<HTMLElement>('[data-my]')?.dataset.my;
+    const p = id ? AREA_BY_ID.get(id) : undefined;
+    if (p) goPlace({ name: p.name, lat: p.lat, lng: p.lng });
+  });
+  window.addEventListener('opus:follows', () => loadMyCities());
 
   // ---------- Cards over the map ----------
   let cardIds = '';
@@ -554,10 +584,11 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   // same choice filters to members near the city, and the map picks it up when you switch back.
   function goPlace(p: { name: string; lat: number; lng: number }, openSheet = true) {
     place = p; inView = true; guideOff = false;
-    if (map) { map.setPlace(p); map.flyToCity(p.lat, p.lng); revealAfterArrival(); }
-    else camera = { center: [p.lng, p.lat], zoom: 10.2 };
-    changed();
+    // The sheet opens first, so the camera frames the city in the map that stays visible above it.
     if (openSheet && mobile.matches && view === 'map') setSheet('half');
+    if (map) { map.setPlace(p); map.flyToCity(p.lat, p.lng); revealAfterArrival(); }
+    else { camera = { center: [p.lng, p.lat], zoom: 10.2 }; flyOnBoot = true; }
+    changed();
   }
 
   // ---------- Selection and previews (card ↔ marker ↔ preview) ----------
@@ -887,13 +918,19 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   whereList.addEventListener('pointerdown', (e) => e.preventDefault());
   whereList.addEventListener('click', (e) => { const li = (e.target as Element).closest<HTMLElement>('[data-i]'); if (li) pickCity(cityOpts[Number(li.dataset.i)]); });
 
-  /** The homepage's last frame gives way to the live map once it has drawn the same view. */
-  /** How much of the map the directory covers: the floating card in desktop Map view, the sheet's peek on phones. */
+  /**
+   * How much of the map the directory covers, so the camera centres things in the part you can actually see:
+   * the floating card in desktop Map view, the bottom sheet on phones (at the height it is opening to).
+   * Read from layout (offsets), not from getBoundingClientRect: during the entrance the directory is still
+   * translated off-screen, and framing against that position left the city behind the card once it slid in.
+   */
   function mapInset() {
-    if (sheetActive()) return { left: 0, bottom: peekPx() };
+    if (sheetActive()) {
+      const y = sheet === 'full' ? sheetY('peek') : sheetY(sheet);
+      return { left: 0, bottom: Math.max(0, host.offsetHeight - (panel.offsetTop + y)) };
+    }
     if (view !== 'map') return { left: 0, bottom: 0 };
-    const pr = panel.getBoundingClientRect(), hr = host.getBoundingClientRect();
-    return { left: Math.max(0, Math.round(pr.right - hr.left)), bottom: 0 };
+    return { left: Math.max(0, Math.round(panel.offsetLeft + panel.offsetWidth - host.offsetLeft)), bottom: 0 };
   }
   async function settleHandoff(m: WorldMapApi) {
     const img = document.querySelector<HTMLImageElement>('[data-handoff]');
@@ -929,8 +966,9 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
           if (p) { place = { name: p.name, lat: p.lat, lng: p.lng }; camera = { center: [p.lng, p.lat], zoom: 2.9 }; arrive = true; params.delete('city'); syncControls(); renderChips(); }
         }
         // From the homepage: open at exactly the view its camera stopped at, then move on from there.
+        // This replaces any camera set while loading, so a city chosen meanwhile must still be flown to (flyOnBoot).
         const hand = handoff ? cameraFor(handoff, host, sheetActive() ? peekPx() : 0) : null;
-        if (hand) camera = hand.camera;
+        if (hand) { if (place && !arrive) flyOnBoot = true; camera = hand.camera; }
         const m = await mountWorldMap(host, matching(), {
           onSelect: (id) => select(id, 'map'),
           onMove: () => { if (inView) render(false); },
@@ -947,7 +985,8 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
         if (place) map.setPlace(place);
         if (active) map.setActive(active);
         render(false);
-        if (hand) await settleHandoff(m);
+        // If the visitor already answered while the map loaded, don't make them wait for the handoff frame to fade.
+        if (hand) { if (flyOnBoot) void settleHandoff(m); else await settleHandoff(m); }
         // "Preparing your world" stays a moment on the arrived view, then gives way as the zoom into the city begins.
         const prep = document.querySelector<HTMLElement>('[data-prep]');
         if (prep) {
@@ -956,7 +995,12 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
           setTimeout(() => prep.remove(), 600);
         }
         if (arrive && place) { inView = true; if (hand || entering) root.dataset.entry = 'arrive'; if (hand) m.release(false); map.flyToCity(place.lat, place.lng); revealAfterArrival(); changed(); if (askedView !== 'map' && mobile.matches && view === 'map') setSheet('half'); }
-        else { if (place && !camera) map.flyToCity(place.lat, place.lng); revealAfterArrival(); }
+        else if (place && (flyOnBoot || !camera)) {
+          // The visitor answered "Where are you connecting from?" while the map was still loading.
+          flyOnBoot = false;
+          if (hand && root.dataset.entry !== 'ask') m.release(false);
+          map.flyToCity(place.lat, place.lng); revealAfterArrival();
+        } else revealAfterArrival();
       } catch (err) {
         console.error('Map failed to load', err);
         noMap();
@@ -1013,4 +1057,5 @@ ${g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-lab
   syncResultsToggle();
   if (asking) showWhere();
   load().then(() => { if (view !== 'list') boot(); });
+  loadMyCities();
 }

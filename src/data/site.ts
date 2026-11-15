@@ -40,6 +40,7 @@ export const NAV: NavItem[] = [
         { label: 'Atlanta', href: '/world/atlanta' },
         { label: 'Los Angeles', href: '/world/los-angeles' },
         { label: 'London', href: '/world/london' },
+        { label: 'My Cities', href: '/world/cities' },
       ] },
     ],
   },
