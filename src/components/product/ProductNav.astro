@@ -1,0 +1,47 @@
+---
+/**
+ * The contextual product nav: the product's name, its sections, and its one primary action.
+ * Sticks under the global header. Phones: the name, the action, and a disclosure for the sections.
+ * Members-only sections are hidden from visitors; a signed-out action keeps its intent through ?next=.
+ */
+import { PRODUCTS } from '@/data/products';
+import '@/styles/product.css';
+
+interface Props { product: keyof typeof PRODUCTS | string; current?: string; /** Hide the CTA (e.g. when the page's hero already leads with it). */ noCta?: boolean }
+const { product, current, noCta } = Astro.props;
+const p = PRODUCTS[product]!;
+const user = Astro.locals.user;
+const items = p.items.filter((i) => !i.members || user);
+const cta = noCta ? undefined : p.cta;
+const ctaHref = cta ? (!user && cta.signedOut ? cta.signedOut : cta.href) : '';
+const ctaAttrs = cta?.action && user ? { [cta.action[0]]: cta.action[1] } : {};
+const listId = `pnav-${p.key}`;
+---
+<nav class:list={['pnav', items.length < 2 && 'pnav--single']} aria-label={`${p.name} sections`} data-pnav>
+  <div class="pnav__in">
+    <a class="pnav__name" href={p.href}>{p.name}{p.soon && <span class="pnav__soon">Coming soon</span>}</a>
+    {items.length > 1 && (
+      <button class="pnav__toggle" type="button" aria-expanded="false" aria-controls={listId} aria-label={`${p.name} sections`} data-pnav-toggle>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    )}
+    {items.length > 1 && (
+      <ul class="pnav__list" id={listId} role="list">
+        {items.map((i) => <li><a href={i.href} aria-current={i.key === current ? 'page' : undefined}>{i.label}</a></li>)}
+      </ul>
+    )}
+    {cta && <a class="pnav__cta" href={ctaHref} {...ctaAttrs}>{cta.label}</a>}
+  </div>
+</nav>
+
+<script>
+  // Phones: the sections open as a short list under the bar. Escape or a tap elsewhere closes it.
+  document.querySelectorAll<HTMLElement>('[data-pnav]').forEach((nav) => {
+    const btn = nav.querySelector<HTMLButtonElement>('[data-pnav-toggle]');
+    if (!btn) return;
+    const set = (open: boolean) => { nav.toggleAttribute('data-open', open); btn.setAttribute('aria-expanded', String(open)); };
+    btn.addEventListener('click', () => set(!nav.hasAttribute('data-open')));
+    document.addEventListener('click', (e) => { if (!nav.contains(e.target as Node)) set(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && nav.hasAttribute('data-open')) { set(false); btn.focus(); } });
+  });
+</script>

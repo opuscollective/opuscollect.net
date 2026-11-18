@@ -18,6 +18,11 @@ body {
   overflow-x: clip;
 }
 img, svg, video { display: block; max-width: 100%; }
+.logo { filter: var(--logo-filter); }
+/* A section forced dark (the globe hero) re-reads its text colour from its own tokens. */
+.tone-dark { color: var(--text); }
+.link { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.link:hover { text-decoration-color: var(--accent); }
 h1, h2, h3, h4, p, figure, blockquote, ul, ol { margin: 0; }
 ul[role='list'], ol[role='list'] { list-style: none; padding: 0; }
 h1, h2, h3, h4 { font-weight: 500; text-wrap: balance; }
@@ -62,18 +67,56 @@ button { cursor: pointer; }
   letter-spacing: var(--tr-meta); text-transform: uppercase;
 }
 .dim { color: var(--c-fg-faint); }
-.section--paper .dim { color: #7d776f; }
+.section--paper .dim { color: var(--c-paper-faint); }
 
-/* ---------- Reveal on scroll (enhancement only) ---------- */
-.js [data-reveal] {
-  opacity: 0; transform: translateY(24px);
-  transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
-  transition-delay: var(--d, 0s);
-}
-.js [data-reveal].is-in { opacity: 1; transform: none; }
+/* ---------- Reveal on scroll: retired ----------
+   Motion system (2026-11-15): large sections no longer animate just because they scroll into view. The attribute
+   stays in markup (and the script still marks it .is-in), but it changes nothing. */
+.js [data-reveal] { transform: none; }
 
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-  .js [data-reveal] { opacity: 1; transform: none; }
+/* ---------- Moving between pages ----------
+   Browsers with cross-document view transitions crossfade one page into the next, quickly, while the header and
+   the Opus launcher stay put. The new page is never held back for the animation. Others simply navigate. */
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: vt-out var(--m-page-out) var(--m-ease-in) both; }
+::view-transition-new(root) { animation: vt-in var(--m-page) var(--m-ease) both; }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(4px); } }
+.hdr { view-transition-name: site-header; }
+/* The header doesn't fade or ghost between pages: it simply stays. */
+::view-transition-group(site-header) { animation: none; }
+::view-transition-old(site-header) { display: none; }
+::view-transition-new(site-header) { animation: none; }
+.oa-launch { view-transition-name: opus-launch; }
+
+/* Without view transitions, app pages fade in once (no stagger, no slide), so arriving never flashes. */
+@supports not (view-transition-name: none) {
+  .js main > .app .app__wrap { animation: page-in var(--m-page) var(--m-ease) both; }
+  @keyframes page-in { from { opacity: 0; } }
 }
+
+/* ---------- Motion modes (see src/lib/motion.ts) ----------
+   Reduced: no page transition, no smooth scrolling; tokens already halve durations.
+   Off: nonessential animation and transition end instantly. Loading indicators marked .m-essential keep going. */
+html[data-motion='reduced'] { scroll-behavior: auto; }
+html[data-motion='off'] { scroll-behavior: auto !important; }
+html[data-motion='off'] :not(.m-essential), html[data-motion='off'] :not(.m-essential)::before, html[data-motion='off'] :not(.m-essential)::after {
+  animation-duration: 0.01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important; transition-delay: 0s !important;
+}
+html:not([data-motion='fluid'])::view-transition-old(root), html:not([data-motion='fluid'])::view-transition-new(root) { animation: none; }
+html:not([data-motion='fluid'])::view-transition-group(*) { animation-duration: 0s; }
+
+/* Explore World: "Preparing your world", shown on the homepage as the Earth turns to the visitor's area and kept in
+   the same place on World until the zoom into their city begins. One quiet glass pill, no glow. */
+.opus-prep {
+  position: fixed; left: 50%; bottom: calc(clamp(56px, 16vh, 150px) + env(safe-area-inset-bottom)); z-index: 60;
+  margin: 0; padding: 11px 20px; transform: translate(-50%, 6px); opacity: 0; pointer-events: none;
+  border-radius: 999px; background: rgba(12, 13, 16, 0.58); border: 1px solid rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  color: #f4f2ee; font-size: 15px; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap;
+  transition: opacity 0.6s cubic-bezier(.2, .7, .2, 1), transform 0.6s cubic-bezier(.2, .7, .2, 1);
+}
+.opus-prep.is-in { opacity: 1; transform: translate(-50%, 0); }
+.opus-prep.is-out { opacity: 0; transform: translate(-50%, -4px); transition-duration: 0.45s; }
+html:not([data-motion='fluid']) .opus-prep, html:not([data-motion='fluid']) .opus-prep.is-out { transition: none; }

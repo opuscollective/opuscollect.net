@@ -16,7 +16,7 @@ const ZONES = ['America/New_York', 'America/Chicago', 'America/Denver', 'America
 const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
 ---
 <BusinessShell title="Studio profile" section="studio" studio={s} pending={pending}
-  lead={isNew ? 'Studio created. Add a description and a photo, then set up services and hours.' : 'What customers see on your booking page and in Opus World.'}>
+  lead={isNew ? 'Studio created. Add a description and a photo, then set up services and hours.' : 'What customers see on your booking page and in World.'}>
   {s.status === 'published' && <button slot="actions" type="button" class="btn-app btn-app--ghost" data-unpublish>Unpublish</button>}
 
   <form class="form" data-studio novalidate>
@@ -32,7 +32,7 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
           ))}
         </div>
       </fieldset>
-      <label class="field"><span>City or area *</span><PlaceSelect selected={s.placeId} required /><small>Shown publicly. Opus World places you at the city’s centre, never at your address.</small></label>
+      <label class="field"><span>City or area *</span><PlaceSelect selected={s.placeId} required /><small>Shown publicly. World places you at the city’s centre, never at your address.</small></label>
       <fieldset class="field" style="border:0;padding:0;margin:0">
         <legend>How precisely to show your location</legend>
         <div class="bk__svc" style="margin-top:8px">
@@ -64,7 +64,7 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
       </div>
       <label class="field"><span>Booking policy</span><textarea class="textarea" name="bookingPolicy" rows="3" maxlength="1500" placeholder="E.g. guests allowed, what to bring, no smoking.">{s.bookingPolicy}</textarea></label>
       <label class="field"><span>Cancellation policy</span><textarea class="textarea" name="cancellationPolicy" rows="3" maxlength="1500" placeholder="E.g. free cancellation up to 48 hours before.">{s.cancellationPolicy}</textarea></label>
-      <label class="check"><input type="checkbox" name="showOnMap" checked={s.showOnMap} /><span>Show the studio on the Opus World map. Your city is shown, never your address. When off, you still appear in search results.</span></label>
+      <label class="check"><input type="checkbox" name="showOnMap" checked={s.showOnMap} /><span>Show the studio on the World map. Your city is shown, never your address. When off, you still appear in search results.</span></label>
     </div>
 
     <div data-status class="form-status" style="margin-top:16px"></div>
@@ -92,7 +92,7 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
 
   <div class="panel" style="margin-top:16px" id="gallery">
     <h2>Gallery</h2>
-    <p class="dim">Up to {GALLERY_MAX} photos of the rooms, booth and gear. They appear in your Opus World preview and booking page. Location data is removed before upload.</p>
+    <p class="dim">Up to {GALLERY_MAX} photos of the rooms, booth and gear. They appear in your World preview and booking page. Location data is removed before upload.</p>
     <ul class="gal" data-gallery data-max={GALLERY_MAX}>
       {gallery.map((g) => (
         <li data-gid={g.id}><img src={g.url} alt="" loading="lazy" /><button type="button" class="btn-app btn-app--ghost" data-gal-remove={g.id} aria-label="Remove photo">Remove</button></li>
@@ -121,7 +121,7 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
   }
 
   document.querySelector<HTMLButtonElement>('[data-unpublish]')?.addEventListener('click', async () => {
-    if (!confirm('Unpublish your booking page? It disappears from Opus World and the link stops taking requests. Existing bookings are kept.')) return;
+    if (!confirm('Unpublish your booking page? It disappears from World and the link stops taking requests. Existing bookings are kept.')) return;
     const r = await fetch('/api/business/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: false }) });
     if (r.ok) location.href = '/business';
   });

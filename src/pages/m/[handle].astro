@@ -1,11 +1,16 @@
 ---
+import { CITIES, citySlug } from '@/data/cities';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import { SPECIALTIES, allSpecialties } from '@/data/specialties';
 import { PLACE_BY_ID, visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
-import { relationship } from '@/server/connections';
+import { relationship, DEFAULT_INTRO, INTRO_MAX } from '@/server/connections';
+import { connectionCount } from '@/server/messages';
+import { profileReleases } from '@/server/releases';
+import { RELEASE_KINDS } from '@/data/music';
 import '@/styles/app.css';
+import '@/styles/music.css';
 export const prerender = false;
 
 const handle = Astro.params.handle ?? '';
@@ -14,18 +19,22 @@ const db = Astro.locals.runtime.env.DB;
 const found = await getPublicProfile(db, handle, viewer?.id ?? null);
 if (!found) {
   Astro.response.status = 404;
-  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Profile not found · Opus Collective</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:#fff;font-family:system-ui,sans-serif;text-align:center"><div><p style="color:#8e8890;letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This profile isn’t available.</h1><p style="color:#a39da5">It may be unpublished or the address may have changed.</p><p><a href="/world" style="color:#fff">Explore Opus World</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Profile not found · Opus Collective</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:var(--text);font-family:system-ui,sans-serif;text-align:center"><div><p style="color:var(--text-3);letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This profile isn’t available.</h1><p style="color:#a39da5">It may be unpublished or the address may have changed.</p><p><a href="/world" style="color:var(--text)">Explore World</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }
 const { profile: p, isOwner, ownerId } = found;
 if (p.handle !== handle) return Astro.redirect(`/m/${p.handle}`, 301);
 
 // Honour the member's location choice (city, metro area, state/country, or hidden).
 const where = visibleLabel(p.placeId, p.locationVisibility);
-// Links to the metro area on Opus World, unless the member shows only a region or nothing.
+// Links to the metro area on World, unless the member shows only a region or nothing.
 const metroPlace = p.placeId ? PLACE_BY_ID.get(PLACE_BY_ID.get(p.placeId)?.metroId ?? '') : undefined;
 const worldCity = p.locationVisibility === 'city' || p.locationVisibility === 'metro' ? metroPlace?.name : undefined;
 const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
 const rel = viewer ? await relationship(db, viewer.id, ownerId) : null;
+// Accepted connections only; never estimated.
+const connections = await connectionCount(db, ownerId);
+// The member's record: releases they put out, plus releases where they confirmed a credit.
+const record = await profileReleases(db, ownerId);
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
 const links = Object.entries(p.links).filter(([, v]) => !!v);
 const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${where ? ` · ${where}` : ''} on Opus.`;
@@ -44,6 +53,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {roles.length > 0 && <p class="mp__roles"><span class="mp__primary">{roles[0]}</span>{roles.slice(1).map((r) => <span>{r}</span>)}</p>}
           <p class="mp__meta">
             {where && <span>{where}</span>}
+            <span class="mp__conns">{connections} {connections === 1 ? 'connection' : 'connections'}</span>
             <span class:list={['mp__collab', { 'is-on': p.openToCollab }]}>{p.openToCollab ? 'Open to collaboration' : 'Not taking new collaborations'}</span>
           </p>
         </div>
@@ -53,41 +63,84 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           ) : !viewer ? (
             p.openToCollab && <a class="btn-app" href={'/sign-in?next=' + encodeURIComponent('/m/' + p.handle + '?connect=1')}>Connect</a>
           ) : rel?.state === 'connected' ? (
-            <a class="btn-app btn-app--ghost" href="/account/connections">Connected</a>
+            <>
+              <span class="mp__state" data-conn-state="connected">Connected</span>
+              <button class="btn-app" type="button" data-message-handle={p.handle}>Message</button>
+            </>
           ) : rel?.state === 'sent' ? (
-            <a class="btn-app btn-app--ghost" href="/account/connections">Request sent</a>
+            <>
+              <span class="mp__state" data-conn-state="sent">Request sent</span>
+              <button class="btn-app btn-app--ghost" type="button" data-conn-act="withdraw" data-conn-id={rel.id}>Cancel request</button>
+            </>
           ) : rel?.state === 'received' ? (
-            <a class="btn-app" href="/account/connections">Respond to request</a>
+            <>
+              <button class="btn-app" type="button" data-conn-act="accept" data-conn-id={rel.id}>Accept</button>
+              <button class="btn-app btn-app--ghost" type="button" data-conn-act="decline" data-conn-id={rel.id}>Decline</button>
+            </>
           ) : rel?.state === 'none' && p.openToCollab ? (
-            <button class="btn-app" type="button" data-connect-open>Connect</button>
+            <button class="btn-app" type="button" data-connect-open aria-haspopup="dialog">Connect</button>
           ) : null}
           {viewer && !isOwner && (
             <details class="mp__more">
               <summary aria-label="More actions">···</summary>
-              <div><button type="button" data-block={rel?.state === 'blocked' ? 'off' : 'on'}>{rel?.state === 'blocked' ? 'Unblock' : 'Block'} {p.displayName}</button></div>
+              <div>
+                {rel?.state === 'connected' && <button type="button" class="mp__more-plain" data-conn-act="remove" data-conn-id={rel.id}>Remove connection</button>}
+                {rel?.state === 'connected' && <a class="mp__more-link" href="/network">My Network</a>}
+                <button type="button" data-block={rel?.state === 'blocked' ? 'off' : 'on'}>{rel?.state === 'blocked' ? 'Unblock' : 'Block'} {p.displayName}</button>
+              </div>
             </details>
           )}
         </div>
       </header>
+      {rel?.state === 'received' && <p class="mp__note" data-conn-note>{p.displayName} asked to connect with you. You can also answer in <a class="link" href="/network?tab=received">My Network</a>.</p>}
+      <p class="dim mu-err" data-conn-status role="alert"></p>
 
       {viewer && !isOwner && rel?.state === 'none' && p.openToCollab && (
-        <form class="panel mp__connect" data-connect hidden novalidate>
-          <h2>Connect with {p.displayName}</h2>
-          <p class="dim">Introduce yourself and what you’d like to make together. If they accept, you’ll both see each other’s email.</p>
-          <input type="hidden" name="to" value={p.handle} />
-          <label class="field" style="margin-top:14px"><span class="sr-only">Introduction</span>
-            <textarea class="textarea" name="message" maxlength="600" rows="4" placeholder="Hi, I’m a producer in Atlanta working on an R&B EP. I’d love a topline on one track…"></textarea>
-          </label>
-          <div data-status class="form-status" style="margin-top:12px"></div>
-          <div class="row" style="margin-top:12px"><button class="btn-app" type="submit">Send request</button><button class="btn-app btn-app--ghost" type="button" data-connect-cancel>Cancel</button></div>
-        </form>
+        <dialog class="cdlg" data-connect aria-labelledby="cdlg-title">
+          <form class="cdlg__form" data-connect-form novalidate>
+            <div class="cdlg__who">
+              <span class="cdlg__av" style={p.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''} aria-hidden="true"></span>
+              <span>
+                <b id="cdlg-title">Connect with {p.displayName}</b>
+                <small>{[roles[0], where].filter(Boolean).join(' · ') || 'Opus member'}</small>
+              </span>
+            </div>
+            <input type="hidden" name="to" value={p.handle} />
+            <label class="field cdlg__field">
+              <span>Introduction <span class="dim">(optional)</span></span>
+              <textarea class="textarea" name="message" maxlength={INTRO_MAX} rows="4" data-intro>{DEFAULT_INTRO}</textarea>
+              <small class="cdlg__count"><span data-intro-count>{DEFAULT_INTRO.length}</span>/{INTRO_MAX}</small>
+            </label>
+            <p class="cdlg__fine">{p.displayName} sees this with your request. It isn’t a message; once you’re connected you can message each other.</p>
+            <div data-status class="form-status"></div>
+            <div class="cdlg__row">
+              <button class="btn-app btn-app--ghost" type="button" data-connect-cancel>Cancel</button>
+              <button class="btn-app" type="submit">Send request</button>
+            </div>
+          </form>
+        </dialog>
       )}
 
       <div class="mp__grid">
         <div class="mp__main">
           {p.bio && <section class="mp__sec"><h2 class="t-meta">About</h2><p class="mp__bio">{p.bio}</p></section>}
+          {(record.length > 0 || isOwner) && (
+            <section class="mp__sec" id="works"><h2 class="t-meta">Works</h2>
+              {record.length === 0 ? (
+                <p class="dim" style="font-size:14px">Add your work in <a class="link" href="/works?add=1">Works</a>. Credits from other members show here once you confirm them.</p>
+              ) : (
+                <ul class="pr-list" role="list">{record.map((x) => (
+                  <li><a class="pr-item" href={`/r/${x.id}`}>
+                    <span class="pr-item__cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : ''}></span>
+                    <b>{x.title}</b>
+                    <small>{[x.artist && (!x.own || !x.roles.includes('Primary Artist')) ? x.artist : null, x.roles.length ? x.roles.join(', ') : null, RELEASE_KINDS[x.kind], x.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ')}</small>
+                  </a></li>
+                ))}</ul>
+              )}
+            </section>
+          )}
           {p.credits.length > 0 && (
-            <section class="mp__sec"><h2 class="t-meta">Credits</h2>
+            <section class="mp__sec"><h2 class="t-meta">{record.length ? 'Other credits' : 'Credits'}</h2>
               <ul class="mp__credits" role="list">
                 {p.credits.map((c) => (
                   <li>
@@ -123,7 +176,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               <ul class="mp__links" role="list">{links.map(([k, v]) => <li><a href={v} target="_blank" rel="noopener nofollow ugc">{LINK_LABEL[k] ?? k} ↗</a></li>)}</ul>
             </section>
           )}
-          {where && worldCity && <section class="mp__sec"><h2 class="t-meta">Based in</h2><p><a class="link" href={`/world?city=${encodeURIComponent(worldCity)}`}>{where}</a></p></section>}
+          {where && worldCity && <section class="mp__sec"><h2 class="t-meta">Based in</h2><p><a class="link" href={CITIES.some((c) => c.name === worldCity) ? `/world/${citySlug(worldCity)}` : `/world?city=${encodeURIComponent(worldCity)}`}>{where}</a></p></section>}
         </aside>
       </div>
     </div>
@@ -131,42 +184,60 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
 </BaseLayout>
 
 <style>
-  .mp-preview { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding: 10px 16px; border-bottom: 1px solid #2c3038; background: #0c0e12; font-size: 14px; color: var(--c-fg-subtle); }
-  .mp-preview b { color: #fff; font-weight: 500; }
-  .mp__cover { height: clamp(140px, 22vw, 300px); background: #0b0c0f center / cover no-repeat; border-bottom: 1px solid var(--c-line); }
+  .mp-preview { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunken); font-size: 14px; color: var(--c-fg-subtle); }
+  .mp-preview b { color: var(--text); font-weight: 500; }
+  .mp__cover { height: clamp(140px, 22vw, 300px); background: var(--surface-sunken) center / cover no-repeat; border-bottom: 1px solid var(--c-line); }
   .mp__inner { max-width: 1080px; margin: 0 auto; padding: 0 var(--gutter) 96px; }
   .mp__head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 24px; align-items: end; margin-top: -64px; }
-  .mp__photo { width: 148px; height: 148px; border-radius: 50%; border: 4px solid var(--c-bg); background: #15161a center / cover no-repeat; }
+  .mp__photo { width: 148px; height: 148px; border-radius: 50%; border: 4px solid var(--c-bg); background: var(--surface-sunken) center / cover no-repeat; }
   .mp__name { display: flex; align-items: center; gap: 10px; font-size: clamp(2rem, 1.4rem + 2vw, 3.2rem); line-height: 1; letter-spacing: -0.045em; font-weight: 500; }
   .mp__roles { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 15px; color: var(--c-fg-faint); }
-  .mp__primary { color: #fff; }
+  .mp__primary { color: var(--text); }
   .mp__meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 14px; color: var(--c-fg-subtle); }
   .mp__collab { display: inline-flex; align-items: center; gap: 7px; }
-  .mp__collab::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #3a3c42; }
+  .mp__collab::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
   .mp__collab.is-on { color: var(--c-accent); }
   .mp__collab.is-on::before { background: var(--c-accent); }
   .mp__actions { display: flex; gap: 10px; align-items: center; }
   .mp__more { position: relative; }
   .mp__more summary { list-style: none; display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid var(--c-ink-500); border-radius: 50%; cursor: pointer; color: var(--c-fg-muted); letter-spacing: 1px; }
   .mp__more summary::-webkit-details-marker { display: none; }
-  .mp__more div { position: absolute; right: 0; top: 56px; z-index: 5; min-width: 200px; padding: 6px; border: 1px solid var(--c-ink-600); border-radius: var(--r-md); background: #0c0d10; }
-  .mp__more button { width: 100%; padding: 10px 12px; border: 0; background: none; color: #f0b4b4; text-align: left; font: inherit; font-size: 14px; border-radius: 6px; cursor: pointer; }
-  .mp__more button:hover { background: #16181c; }
-  .mp__connect { margin-top: 28px; }
+  .mp__more div { position: absolute; right: 0; top: 56px; z-index: 5; min-width: 200px; padding: 6px; border: 1px solid var(--c-ink-600); border-radius: var(--r-md); background: var(--surface); }
+  .mp__more button { width: 100%; padding: 10px 12px; border: 0; background: none; color: var(--danger); text-align: left; font: inherit; font-size: 14px; border-radius: 6px; cursor: pointer; }
+  .mp__more button:hover, .mp__more-link:hover { background: var(--surface-hover); }
+  .mp__more-link { display: block; padding: 10px 12px; border-radius: 6px; color: var(--text); font-size: 14px; text-decoration: none; }
+  .mp__state { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: var(--r-pill); background: var(--nav-hover); font-size: 13px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
+  .mp__note { margin: 16px 0 0; font-size: 14px; color: var(--text-2); }
+  .mp__more-plain { color: var(--text) !important; }
+  .cdlg { width: min(440px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 18px; background: var(--surface-raised); color: var(--text); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--line-faint); }
+  .cdlg::backdrop { background: rgba(10, 10, 12, 0.36); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .cdlg[open] { animation: cdlg-in .22s var(--ease); }
+  @keyframes cdlg-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+  :global(html:not([data-motion='fluid'])) .cdlg[open] { animation: none; }
+  .cdlg__form { display: flex; flex-direction: column; gap: 16px; padding: 22px; }
+  .cdlg__who { display: flex; align-items: center; gap: 14px; }
+  .cdlg__who b { display: block; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .cdlg__who small { display: block; margin-top: 2px; font-size: 13px; color: var(--text-3); }
+  .cdlg__av { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; }
+  .cdlg__field .textarea { min-height: 112px; padding: 12px 14px; resize: vertical; line-height: 1.5; }
+  .cdlg__count { align-self: flex-end; font-variant-numeric: tabular-nums; }
+  .cdlg__fine { margin: -4px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-3); }
+  .cdlg__row { display: flex; justify-content: flex-end; gap: 8px; }
+  @media (max-width: 520px) { .cdlg__row > * { flex: 1; } }
   .mp__grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: clamp(32px, 6vw, 80px); margin-top: 48px; }
   .mp__sec + .mp__sec { margin-top: 40px; }
   .mp__sec h2 { color: var(--c-fg-faint); margin-bottom: 14px; }
   .mp__bio { white-space: pre-line; font-size: 17px; line-height: 1.65; color: var(--c-fg-muted); max-width: 64ch; }
   .mp__credits li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 14px 0; border-bottom: 1px solid var(--c-line); font-size: 15px; }
   .mp__credits li:first-child { border-top: 1px solid var(--c-line); }
-  .mp__credits a, .mp__links a { color: #fff; }
+  .mp__credits a, .mp__links a { color: var(--text); }
   .mp__credits a:hover, .mp__links a:hover { color: var(--c-accent-strong); }
   .mp__list li { padding: 10px 0 10px 18px; position: relative; color: var(--c-fg-muted); line-height: 1.5; }
   .mp__list li::before { content: ''; position: absolute; left: 0; top: 19px; width: 6px; height: 1px; background: var(--c-fg-faint); }
   .mp__note { margin-top: 10px; font-size: 12px; color: var(--c-fg-ghost); }
   .mp__tags { display: flex; flex-wrap: wrap; gap: 6px; }
   .mp__tags li { padding: 6px 11px; border: 1px solid var(--c-ink-600); border-radius: var(--r-pill); font-size: 13px; color: var(--c-fg-subtle); }
-  .mp__tags li.is-primary { border-color: var(--c-accent-line); color: #fff; }
+  .mp__tags li.is-primary { border-color: var(--c-accent-line); color: var(--text); }
   .mp__links { display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
   @media (max-width: 860px) {
     .mp__head { grid-template-columns: 1fr; align-items: start; margin-top: -56px; gap: 16px; }
@@ -177,13 +248,33 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
 
 <script>
   import { bindForm } from '@/scripts/form';
-  const form = document.querySelector<HTMLFormElement>('[data-connect]');
+  // Connect: a compact dialog with an optional, editable introduction. Nothing is sent until "Send request".
+  const dlg = document.querySelector<HTMLDialogElement>('[data-connect]');
+  const form = dlg?.querySelector<HTMLFormElement>('[data-connect-form]');
   const open = document.querySelector<HTMLButtonElement>('[data-connect-open]');
-  open?.addEventListener('click', () => { if (form) { form.hidden = false; form.querySelector('textarea')?.focus(); } });
-  // Arriving from an Opus World preview's Connect button opens the introduction form directly.
-  if (new URLSearchParams(location.search).get('connect') === '1' && open && form) { form.hidden = false; form.scrollIntoView({ block: 'center' }); form.querySelector('textarea')?.focus({ preventScroll: true }); }
-  document.querySelector('[data-connect-cancel]')?.addEventListener('click', () => { if (form) form.hidden = true; });
-  if (form) bindForm(form, { url: '/api/connections', busyLabel: 'Sending…', onSuccess: () => location.reload() });
+  const intro = dlg?.querySelector<HTMLTextAreaElement>('[data-intro]');
+  const count = dlg?.querySelector<HTMLElement>('[data-intro-count]');
+  intro?.addEventListener('input', () => { if (count) count.textContent = String(intro.value.length); });
+  const openDlg = () => { if (!dlg) return; dlg.showModal(); intro?.focus(); intro?.setSelectionRange(intro.value.length, intro.value.length); };
+  open?.addEventListener('click', openDlg);
+  dlg?.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // click outside the card
+  dlg?.querySelector('[data-connect-cancel]')?.addEventListener('click', () => dlg.close());
+  dlg?.addEventListener('close', () => open?.focus());
+  // Arriving from a World preview's Connect button opens the dialog directly.
+  if (new URLSearchParams(location.search).get('connect') === '1' && open) openDlg();
+  if (form) bindForm(form, { url: '/api/connections', busyLabel: 'Sending…', onSuccess: () => { location.href = location.pathname; } });
+
+  // Cancel, accept, decline and remove, right here on the profile.
+  const cstatus = document.querySelector<HTMLElement>('[data-conn-status]');
+  document.querySelectorAll<HTMLButtonElement>('[data-conn-act]').forEach((b) => b.addEventListener('click', async () => {
+    const act = b.dataset.connAct!;
+    if (act === 'remove' && !confirm('Remove this connection? You can connect again later.')) return;
+    b.disabled = true; if (cstatus) cstatus.textContent = '';
+    const r = await fetch(`/api/connections/${b.dataset.connId}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: act }) });
+    if (r.ok) { location.href = location.pathname; return; }
+    b.disabled = false;
+    if (cstatus) cstatus.textContent = (await r.json().catch(() => ({}))).error ?? 'Something went wrong.';
+  }));
 
   document.querySelector<HTMLButtonElement>('[data-block]')?.addEventListener('click', async (e) => {
     const b = e.currentTarget as HTMLButtonElement;

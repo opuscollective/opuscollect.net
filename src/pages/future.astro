@@ -1,0 +1,247 @@
+---
+/**
+ * Future: My Future and Our Future.
+ * My Future (signed in): events you host, perform at (confirmed), are invited to, or saved, plus studio sessions
+ * and releases with a planned date. Our Future: public member events and Collective events. Nothing is invented:
+ * undated Collective events stay undated, and saving an event is never a ticket or an RSVP.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
+import Icon from '@/components/ui/Icon.astro';
+import PlaceSelect from '@/components/business/PlaceSelect.astro';
+import { futureFor, ourFuture } from '@/server/future';
+import { groupByMonth, KIND_LABEL, type FutureItem } from '@/lib/future';
+import { PLACE_BY_ID } from '@/data/places';
+import { listFollows, type FollowedCity } from '@/server/cities';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const db = Astro.locals.runtime.env.DB;
+const tab = Astro.url.searchParams.get('tab') === 'our' || (!user && Astro.url.searchParams.get('tab') !== 'mine') ? 'our' : 'mine';
+const place = Astro.url.searchParams.get('place') ?? '';
+const placeId = PLACE_BY_ID.has(place) ? place : undefined;
+let items: FutureItem[] = [];
+let failed = false;
+/** Cities the member follows: Our Future can show just those (place=mine). Events are never added to My Future automatically. */
+let myCities: FollowedCity[] = [];
+if (user && tab === 'our') { try { myCities = await listFollows(Astro.locals.runtime.env, user.id); } catch (err) { console.error('Follows failed', err); } }
+const mineOnly = tab === 'our' && place === 'mine' && myCities.length > 0;
+try {
+  if (tab === 'our') items = await ourFuture(db, placeId, mineOnly ? myCities.map((c) => c.id) : undefined);
+  else if (user) items = await futureFor(db, user.id);
+} catch (err) { console.error('Future failed to load', err); failed = true; }
+const today = new Date().toISOString().slice(0, 10);
+const upcoming = items.filter((i) => !i.past);
+const recent = items.filter((i) => i.past).reverse();
+const invites = upcoming.filter((i) => i.tone === 'pending' && i.eventId);
+const months = groupByMonth(upcoming.filter((i) => !(i.tone === 'pending' && i.eventId)), today);
+const FILTERS = [['', 'All'], ['event', 'Events'], ['session', 'Sessions'], ['release', 'Releases']] as const;
+---
+<BaseLayout title={tab === 'our' ? 'Our Future' : 'My Future'} description="Future on Opus: your sessions, planned releases and events in one timeline, and the public events coming up across Opus." noindex={tab === 'mine'}>
+  <ProductNav product="future" current={tab} />
+  <section class="app">
+    <div class="app__wrap app__wrap--wide fut" style="margin-inline:auto">
+      <p class="t-meta app__kicker">Future</p>
+      <h1 class="app__title">{tab === 'our' ? 'What’s coming, for all of us.' : 'What’s ahead for you.'}</h1>
+
+
+      <p class="app__lead">
+        {tab === 'our' ? 'Public events from Opus members and the Collective, soonest first. Add any of them to My Future.'
+          : 'Events you’re hosting, performing at or saved, your studio sessions, and releases with a planned date, in one timeline.'}
+      </p>
+
+      <div class="fut__bar">
+        {tab === 'mine' && user && (
+          <div class="fut__filters" role="radiogroup" aria-label="Show" data-fut-filters>
+            {FILTERS.map(([k, l], i) => <button type="button" role="radio" aria-checked={i === 0 ? 'true' : 'false'} data-kind={k}>{l}</button>)}
+          </div>
+        )}
+        {tab === 'our' && (
+          <form class="fut__place" method="get" data-place-form>
+            <input type="hidden" name="tab" value="our" />
+            <label class="sr-only" for="fut-place">City</label>
+            <PlaceSelect name="place" selected={placeId ?? null} />
+            <noscript><button class="btn-app btn-app--ghost" type="submit">Show</button></noscript>
+          </form>
+        )}
+        {tab === 'our' && myCities.length > 0 && (
+          <a class="fut__mine" href={mineOnly ? '/future?tab=our' : '/future?tab=our&place=mine'} aria-pressed={mineOnly ? 'true' : 'false'}
+            title={myCities.map((c) => c.name).join(', ')}>{mineOnly ? 'Showing your cities' : 'Only my cities'} · {myCities.length}</a>
+        )}
+        {user && <a class="fut__btn" href="/events/new">Create an event</a>}
+      </div>
+
+      {failed && <p class="panel fut__note">Future couldn’t be loaded just now. Please try again in a moment.</p>}
+
+      {tab === 'mine' && !user && (
+        <div class="panel fut__signin">
+          <div><h2>Your timeline</h2><p class="dim">Sign in to see events you saved or host, sessions you book, and release dates you set in Works.</p></div>
+          <a class="fut__btn" href="/sign-in?next=/future">Sign in</a>
+        </div>
+      )}
+
+      {invites.length > 0 && (
+        <div class="panel fut__invites">
+          <h2>Invitations to perform <span class="dim">({invites.length})</span></h2>
+          <p class="dim">You show as performing only after you accept.</p>
+          <ul class="fut__invlist" role="list">{invites.map((i) => (
+            <li data-invite={i.eventId}>
+              <a class="link" href={i.href}><b>{i.title}</b></a><span class="dim">{i.when}</span>
+              <span class="row"><button class="btn-app" type="button" data-respond="accept">Accept</button><button class="btn-app btn-app--ghost" type="button" data-respond="decline">Decline</button></span>
+            </li>
+          ))}</ul>
+        </div>
+      )}
+
+      {!failed && tab === 'mine' && user && months.length === 0 && invites.length === 0 && (
+        <div class="panel fut__note">
+          <h2>Nothing planned yet</h2>
+          <p class="dim">Add events from <a class="link" href="/future?tab=our">Our Future</a>, <a class="link" href="/events/new">create one</a>, book a session in <a class="link" href="/studios">Studios</a>, or set a release date in <a class="link" href="/works">Works</a>.</p>
+        </div>
+      )}
+      {!failed && tab === 'our' && months.length === 0 && (
+        <div class="panel fut__note">
+          <h2>No public events {placeId ? 'here ' : mineOnly ? 'in your cities ' : ''}yet</h2>
+          <p class="dim">{placeId || mineOnly ? <>Try <a class="link" href="/future?tab=our">everywhere</a>, or </> : null}<a class="link" href={user ? '/events/new' : '/sign-in?next=/events/new'}>create the first one</a>.</p>
+        </div>
+      )}
+
+      <div class="fut__months" data-fut-list>
+        {months.map((m) => (
+          <section class="fut__month" aria-labelledby={`fm-${m.key}`} data-month>
+            <h2 class="fut__mlabel" id={`fm-${m.key}`}>{m.key === 'tba' ? 'Dates to be announced' : m.label}</h2>
+            <ol class="fut__list" role="list">
+              {m.items.map((i) => (
+                <li data-kind={i.kind}>
+                  <a class:list={['fut__item', { 'is-canceled': i.tone === 'canceled' }]} href={i.href}>
+                    <span class={`fut__dot fut__dot--${i.kind}`} aria-hidden="true"></span>
+                    {i.image && <span class="fut__thumb" style={`background-image:url(${i.image})`} aria-hidden="true"></span>}
+                    <span class="fut__body">
+                      <span class="fut__when">{i.when}</span>
+                      <span class="fut__title">{i.title}</span>
+                      <span class="fut__detail">{i.eventId ? i.detail : `${KIND_LABEL[i.kind]} · ${i.detail}`}</span>
+                    </span>
+                    {i.status && <span class:list={['fut__status', { 'is-pending': i.status === 'Requested', 'is-canceled': i.tone === 'canceled', 'is-role': i.tone === 'role' }]}>{i.status}</span>}
+                    <Icon name="arrow-right" size={16} class="fut__go" />
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+      <p class="fut__empty dim" data-fut-empty hidden>Nothing of this kind coming up.</p>
+
+      {recent.length > 0 && (
+        <details class="fut__recent">
+          <summary>Recently past <span class="dim">({recent.length})</span></summary>
+          <ol class="fut__list" role="list">{recent.map((i) => (
+            <li data-kind={i.kind}><a class="fut__item" href={i.href}>
+              <span class={`fut__dot fut__dot--${i.kind}`} aria-hidden="true"></span>
+              <span class="fut__body"><span class="fut__when">{i.when}</span><span class="fut__title">{i.title}</span><span class="fut__detail">{i.detail}</span></span>
+              <span class="fut__status">{i.tone === 'canceled' ? 'Canceled' : 'Ended'}</span>
+            </a></li>
+          ))}</ol>
+        </details>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // Our Future: picking a city reloads with ?place=.
+  const pf = document.querySelector<HTMLFormElement>('[data-place-form]');
+  pf?.querySelector('select')?.addEventListener('change', () => pf.submit());
+  // Invitations: accept or decline in place.
+  document.querySelectorAll<HTMLButtonElement>('[data-invite] [data-respond]').forEach((b) => b.addEventListener('click', async () => {
+    const li = b.closest<HTMLElement>('[data-invite]')!;
+    li.querySelectorAll('button').forEach((x) => (x.disabled = true));
+    const r = await fetch(`/api/events/${li.dataset.invite}/performers`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ respond: b.dataset.respond }) });
+    if (r.ok) location.reload(); else li.querySelectorAll('button').forEach((x) => (x.disabled = false));
+  }));
+  const bar = document.querySelector<HTMLElement>('[data-fut-filters]');
+  const list = document.querySelector<HTMLElement>('[data-fut-list]');
+  const empty = document.querySelector<HTMLElement>('[data-fut-empty]');
+  if (bar && list && empty) {
+    const btns = [...bar.querySelectorAll<HTMLButtonElement>('[data-kind]')];
+    const apply = (kind: string) => {
+      btns.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.kind === kind)));
+      list.querySelectorAll<HTMLElement>('li[data-kind]').forEach((li) => { li.hidden = !!kind && li.dataset.kind !== kind; });
+      let shown = 0;
+      list.querySelectorAll<HTMLElement>('[data-month]').forEach((m) => {
+        const any = !!m.querySelector('li[data-kind]:not([hidden])');
+        m.hidden = !any; if (any) shown++;
+      });
+      empty.hidden = shown > 0;
+    };
+    btns.forEach((b) => b.addEventListener('click', () => apply(b.dataset.kind ?? '')));
+    // Arrow keys move between the options, as in any radio group.
+    bar.addEventListener('keydown', (e) => {
+      const i = btns.findIndex((b) => b === document.activeElement);
+      if (i < 0 || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+      e.preventDefault();
+      const n = btns[(i + (e.key === 'ArrowRight' ? 1 : btns.length - 1)) % btns.length]!;
+      n.focus(); n.click();
+    });
+    const k = new URLSearchParams(location.search).get('show');
+    if (k && btns.some((b) => b.dataset.kind === k)) apply(k);
+  }
+</script>
+
+<style>
+  .fut__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; }
+  .fut__bar > .fut__btn:only-child { margin-left: auto; }
+  .fut__place { min-width: min(320px, 100%); }
+  .fut__invites { margin-top: 24px; }
+  .fut__invlist { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .fut__invlist li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .fut__invlist .row { margin-left: auto; }
+  .fut__thumb { flex-shrink: 0; width: 56px; height: 40px; background: var(--surface-sunken) center / cover; }
+  .fut__item.is-canceled .fut__title { text-decoration: line-through; color: var(--text-2); }
+  .fut__status.is-canceled { border-color: var(--danger-line); color: var(--danger); }
+  .fut__status.is-role { border-color: var(--text); color: var(--text); }
+  .fut__recent { margin-top: 40px; }
+  .fut__recent summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-2); }
+  .fut__filters { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); }
+  .fut__filters button { min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: none; color: var(--text-2); font-size: 14px; }
+  .fut__filters button[aria-checked='true'] { background: var(--text); color: var(--bg); }
+  .fut__filters button:focus-visible, .fut__item:focus-visible, .fut__btn:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+  .fut__signin { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; }
+  .fut__mine { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--text-2); font-size: 14px; font-weight: 500; white-space: nowrap;
+    transition: background-color var(--m-control) var(--m-ease), color var(--m-control) var(--m-ease), border-color var(--m-control) var(--m-ease); }
+  .fut__mine:hover { color: var(--text); border-color: var(--line-strong); }
+  .fut__mine[aria-pressed='true'] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .fut__btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: var(--r-pill); background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .fut__note { margin-top: 24px; }
+
+  .fut__months { margin-top: 28px; }
+  .fut__month + .fut__month { margin-top: 32px; }
+  .fut__mlabel { margin: 0 0 8px; font-size: 13px; font-weight: 500; letter-spacing: 0.02em; color: var(--text-3); text-transform: uppercase; font-family: var(--font-mono); }
+  /* A thin line runs down the month; each item hangs a dot on it. */
+  .fut__list { position: relative; margin: 0; padding: 0; list-style: none; border-left: 1px solid var(--line); margin-left: 5px; }
+  .fut__item { position: relative; display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 12px 12px 22px; border-radius: 12px; transition: background var(--dur-fast); }
+  .fut__item:hover { background: var(--surface-hover, var(--surface)); }
+  .fut__dot { position: absolute; left: -6px; top: 50%; width: 11px; height: 11px; margin-top: -5.5px; border-radius: 50%; border: 2px solid var(--bg); background: var(--text-3); }
+  .fut__dot--session { background: var(--text); }
+  .fut__dot--release { background: var(--accent); }
+  .fut__dot--event { background: var(--bg); box-shadow: inset 0 0 0 1.5px var(--text-2); }
+  .fut__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .fut__when { font-size: 13px; color: var(--text-3); }
+  .fut__title { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fut__detail { font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fut__status { flex-shrink: 0; height: 24px; padding: 0 10px; display: inline-flex; align-items: center; border-radius: var(--r-pill); border: 1px solid var(--line-strong); font-size: 12px; color: var(--text-2); }
+  .fut__status.is-pending { border-color: var(--c-accent-line, var(--accent)); color: var(--accent); }
+  .fut__item :global(.fut__go) { flex-shrink: 0; color: var(--text-3); }
+  .fut__empty { margin-top: 24px; }
+
+  @media (max-width: 560px) {
+        .fut__filters { display: flex; width: 100%; }
+    .fut__bar > .fut__btn { width: 100%; justify-content: center; }
+    .fut__thumb { display: none; }
+    .fut__filters button { flex: 1; padding: 0 6px; }
+    .fut__signin { flex-direction: column; align-items: flex-start; }
+    .fut__item :global(.fut__go) { display: none; }
+  }
+</style>

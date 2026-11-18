@@ -6,12 +6,15 @@ type R2Bucket = import('@cloudflare/workers-types').R2Bucket;
 type KVNamespace = import('@cloudflare/workers-types').KVNamespace;
 type Fetcher = import('@cloudflare/workers-types').Fetcher;
 type D1PreparedStatement = import('@cloudflare/workers-types').D1PreparedStatement;
+type DurableObjectNamespace = import('@cloudflare/workers-types').DurableObjectNamespace;
 
 interface Env {
   DB: D1Database;
   MEDIA: R2Bucket;
   WAITLIST: KVNamespace;
   ASSETS: Fetcher;
+  /** The Global Chat room (src/server/chat-room.ts). */
+  CHAT: DurableObjectNamespace;
   /** Cloudflare Email Service binding (optional until the domain is onboarded). */
   EMAIL?: { send(msg: { from: string; to: string; subject: string; html: string; text: string }): Promise<{ messageId: string }> };
   /** Resend API key (optional alternative to Cloudflare Email Service). Set with `wrangler secret put`. */

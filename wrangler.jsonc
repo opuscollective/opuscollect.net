@@ -20,6 +20,9 @@
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "opus-media" }],
   // Existing waitlist storage (moved from Pages Functions).
   "kv_namespaces": [{ "binding": "WAITLIST", "id": "6cfbc14233c141aa9bbc4b3888d6bfeb" }],
+  // Global Chat: one worldwide room (SQLite-backed Durable Object, runs on the Free plan).
+  "durable_objects": { "bindings": [{ "name": "CHAT", "class_name": "GlobalChat" }] },
+  "migrations": [{ "tag": "v1-global-chat", "new_sqlite_classes": ["GlobalChat"] }],
   "vars": { "SITE_ENV": "production", "SHOW_SAMPLE_DATA": "0", "EMAIL_FROM": "Opus Collective <hello@opuscollect.net>" },
 
   // PR preview builds use separate, throwaway data so testing never touches real members.
@@ -29,6 +32,7 @@
     ],
     "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "opus-media-preview" }],
     "kv_namespaces": [{ "binding": "WAITLIST", "id": "bda17c52a1b6484ba1f82fd25057247d" }],
+    "durable_objects": { "bindings": [{ "name": "CHAT", "class_name": "GlobalChat" }] },
     "vars": { "SITE_ENV": "preview", "SHOW_SAMPLE_DATA": "1", "EMAIL_FROM": "Opus Collective <hello@opuscollect.net>" }
   }
 }

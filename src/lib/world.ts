@@ -3,6 +3,7 @@ import { ORG_CATEGORY_LABEL, hasPoint, type Listing, type ListingKind } from '@/
 import { SPECIALTIES, allSpecialties, type Specialty } from '@/data/specialties';
 import { esc } from './html';
 import { imageHtml } from './media';
+import { keywordTokens, matchesKeywords } from './keywords';
 
 export interface WorldFilters {
   kinds: ListingKind[]; // empty = all
@@ -24,12 +25,11 @@ export function matches(l: Listing, f: WorldFilters): boolean {
   if (f.genre && (l.kind !== 'musician' || !l.genres.includes(f.genre))) return false;
   if (f.openToCollab && (l.kind !== 'musician' || !l.openToCollab)) return false;
   if (f.studioType && (l.kind !== 'studio' || l.studioType !== f.studioType)) return false;
-  const q = f.text.trim().toLowerCase();
-  if (q) {
+  const words = keywordTokens(f.text);
+  if (words.length) {
     const hay = [l.name, l.slug, l.location.city, l.metro?.name ?? '', l.location.region ?? '', l.location.country, kindLabel(l), ...(l.kind === 'musician' ? [...l.genres, ...allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s].label)] : l.services)]
-      .join(' ')
-      .toLowerCase();
-    if (!hay.includes(q)) return false;
+      .join(' ');
+    if (!matchesKeywords(hay, words)) return false;
   }
   return true;
 }
@@ -69,7 +69,7 @@ export const initials = (s: string) => {
 };
 
 const SEAL =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M12 1.8l2.3 1.7 2.85-.2.9 2.7 2.35 1.6-.9 2.73.9 2.73-2.35 1.6-.9 2.7-2.85-.2L12 22.2l-2.3-1.7-2.85.2-.9-2.7-2.35-1.6.9-2.73-.9-2.73 2.35-1.6.9-2.7 2.85.2z"/><path class="c" d="M8 12.2l2.6 2.6L16.2 9"/></svg>';
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M14.54 2.53A4.2 4.2 0 0 1 18.93 5.07A4.2 4.2 0 0 1 21.47 9.46A4.2 4.2 0 0 1 21.47 14.54A4.2 4.2 0 0 1 18.93 18.93A4.2 4.2 0 0 1 14.54 21.47A4.2 4.2 0 0 1 9.46 21.47A4.2 4.2 0 0 1 5.07 18.93A4.2 4.2 0 0 1 2.53 14.54A4.2 4.2 0 0 1 2.53 9.46A4.2 4.2 0 0 1 5.07 5.07A4.2 4.2 0 0 1 9.46 2.53A4.2 4.2 0 0 1 14.54 2.53Z"/><path class="c" d="M8.4 12.3l2.4 2.4 4.9-5"/></svg>';
 
 export function badgeHtml(l: Listing): string {
   // Sample listings show the badge only to preview the design, and say so.
@@ -104,8 +104,6 @@ export const mainImage = (l: Listing) => (l.kind === 'musician' ? l.photo : l.co
 export const PIN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
 const STAR = '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
 
-const tags = (xs: string[], n = 3) => (xs.length ? `<ul class="wc__tags">${xs.slice(0, n).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '');
-
 /** Price line for studios. Real prices come from the studio's services; sample rates say so. */
 export function priceHtml(l: Listing): string {
   if (l.kind !== 'studio') return '';
@@ -117,40 +115,24 @@ export function priceHtml(l: Listing): string {
 export const ratingHtml = (l: Listing) =>
   l.kind === 'studio' && l.rating && l.rating.count > 0 ? `<span class="wc__rating">${STAR}${l.rating.value.toFixed(1)} <span>(${l.rating.count})</span></span>` : '';
 
-/** One short line on what you can do now: collaborate, request a session, or nothing (then omitted). */
-export function statusHtml(l: Listing): string {
-  if (l.kind === 'musician') return l.openToCollab ? '<p class="wc__status is-live">Open to collaborate</p>' : '';
-  if (l.kind === 'studio' && l.acceptsBookingRequests && !l.isSample) return '<p class="wc__status is-live">Taking session requests</p>';
-  return '';
-}
-
-/** What they do, in one line: specialty and genres, studio type, or organization category. */
-export function metaText(l: Listing): string {
-  if (l.kind === 'musician') return [kindLabel(l), l.genres.slice(0, 2).join(', ')].filter(Boolean).join(' · ');
-  return kindLabel(l);
-}
-
 /**
- * DirectoryCard. One markup for every view: Split and Map show it compact (square thumbnail),
- * List view lays the same card out as an editorial tile (4:3 image on top).
- * The name is a real button, stretched over the card, so it works with keyboard and screen readers.
+ * Tile: the visual card, used everywhere a member is shown in World.
+ * 'grid': the directory, two to a row (image fills the card, words over it).
+ * 'wide': the same card in the swipeable row over the map on phones.
+ * 'portrait': city guide shelves (image on top, words below). The name is the button.
  */
-export function cardHtml(l: Listing): string {
-  const sample = l.isSample ? '<span class="wc__sample">Sample</span>' : '';
-  const what = metaText(l);
-  const media = imageHtml({ src: mainImage(l), seed: l.id, kind: l.kind, ratio: 'photo', label: l.isSample ? undefined : initials(l.name) });
-  let extra = '';
-  if (l.kind === 'musician') extra = l.highlight ? `<p class="wc__note">${esc(l.highlight)}</p>` : '';
-  if (l.kind === 'studio') extra = `<div class="wc__row">${priceHtml(l)}${ratingHtml(l)}</div>${tags(l.services)}`;
-  if (l.kind === 'organization') extra = `${l.summary ? `<p class="wc__note">${esc(l.summary)}</p>` : ''}${tags(l.services)}`;
-  return `<article class="wc wc--${l.kind}" data-id="${esc(l.id)}">
-  <div class="wc__media">${media}</div>
-  <div class="wc__body">
-    <div class="wc__top"><h3 class="wc__name"><button type="button" class="wc__hit" data-open aria-label="${esc(l.name)}, ${esc(what)}, ${esc(placeText(l))}${l.isSample ? ', sample listing' : ''}. Open preview">${esc(l.name)}</button></h3>${badgeHtml(l)}${sample}</div>
-    <p class="wc__meta">${esc(what)}</p>
-    <p class="wc__where">${PIN}<span>${esc(placeText(l))}</span></p>
-    ${extra}
-    ${statusHtml(l)}
+export function tileHtml(l: Listing, variant: 'wide' | 'portrait' | 'grid'): string {
+  const what = kindLabel(l);
+  const over = variant !== 'portrait';
+  const media = imageHtml({ src: mainImage(l), seed: l.id, kind: l.kind, ratio: variant === 'wide' ? 'photo' : 'portrait', label: l.isSample ? undefined : initials(l.name) });
+  const sample = l.isSample ? '<span class="wt__sample">Sample</span>' : '';
+  const status = l.kind === 'musician' && l.openToCollab ? '<span class="wt__live">Open to collaborate</span>' : '';
+  return `<article class="wt wt--${variant}${variant === 'grid' ? ' wt--wide' : ''} wt--${l.kind}" data-id="${esc(l.id)}">
+  <div class="wt__media">${media}</div>
+  <div class="wt__body">
+    <h3 class="wt__name"><button type="button" class="wt__hit" data-open aria-label="${esc(l.name)}, ${esc(what)}, ${esc(placeText(l))}${l.isSample ? ', sample listing' : ''}. Open preview"><span>${esc(l.name)}</span></button>${badgeHtml(l)}</h3>
+    <p class="wt__meta">${esc(what)}${sample}</p>
+    ${over ? `<p class="wt__where">${esc(placeText(l))}</p>` : status}
   </div>
 </article>`;
 }

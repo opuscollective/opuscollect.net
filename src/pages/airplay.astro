@@ -1,0 +1,17 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
+import ProductPreview from '@/components/layout/ProductPreview.astro';
+---
+<BaseLayout title="Airplay" description="Airplay on Opus: get your music heard. Coming soon.">
+  <ProductNav product="airplay" />
+  <ProductPreview
+    name="Airplay" line="Get your music heard."
+    lead="A direct line between independent artists and the radio hosts, DJs and curators who play new music."
+    does={['Submit a release from Works to the stations and shows that fit it.', 'Curators listen, respond and add plays in one place.', 'Confirmed plays recorded on your Works, next to your credits.']}
+    forWho={['Independent artists with a release ready to share.', 'College, community and online radio, and the DJs behind them.', 'Curators and playlist editors looking for new music.']}
+    coming={['Station and show profiles, reviewed before they’re listed.', 'Submissions from your releases in Works.', 'Plays confirmed by the station, never self-reported.']}
+    availability="Airplay is in development and not open yet. No submissions or plays are recorded today. Get ready by adding your releases and credits in Works."
+    now={[{ label: 'Go to Works', href: '/works' }, { label: 'See releases', href: '/releases' }]}
+  />
+</BaseLayout>

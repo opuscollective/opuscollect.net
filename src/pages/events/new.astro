@@ -1,0 +1,42 @@
+---
+/** Create an event. Needs an account, a confirmed email and a profile, because events show who organizes them. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
+import EventForm from '@/components/events/EventForm.astro';
+import { getMyProfile } from '@/server/profiles';
+import '@/styles/app.css';
+import '@/styles/events.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/events/new');
+const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
+---
+<BaseLayout title="Create an event" description="Create an event on Opus." noindex>
+  <ProductNav product="events" />
+  <section class="app">
+    <div class="app__wrap" style="margin-inline:auto">
+      <p class="t-meta app__kicker"><a class="link" href="/events">Events</a></p>
+      <h1 class="app__title">Make something happen.</h1>
+      <p class="app__lead">Shows, sessions, workshops, listening parties. Public events appear in Our Future for everyone. After you create it, you can add an image and invite the artists who are performing.</p>
+      {!profile ? (
+        <div class="panel" style="margin-top:28px">
+          <h2>Set up your profile first</h2>
+          <p class="dim">Every event shows who is organizing it, so you’ll need an Opus profile. It takes about a minute.</p>
+          <div class="row" style="margin-top:16px"><a class="btn-app" href="/start">Set up your profile</a></div>
+        </div>
+      ) : !user.emailVerified ? (
+        <div class="panel" style="margin-top:28px">
+          <h2>Confirm your email first</h2>
+          <p class="dim">We ask for a confirmed email before you publish events. Check your inbox for the link, or resend it from your account.</p>
+          <div class="row" style="margin-top:16px"><a class="btn-app" href="/account">Go to your account</a></div>
+        </div>
+      ) : (
+        <>
+          {profile.status !== 'published' && <p class="notice notice--warn" style="margin-top:24px"><b>Your profile isn’t published yet.</b> You can create the event now; it becomes visible to others once your profile is published.</p>}
+          <EventForm defaultPlace={profile.placeId ?? null} />
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>

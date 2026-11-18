@@ -42,6 +42,7 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
     const sp = allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s]?.label ?? s);
     roles = `<p class="pv__roles">${sp.map((s, i) => `<span${i === 0 ? ' class="is-primary"' : ''}>${esc(s)}</span>`).join('')}</p>${l.genres.length ? `<p class="pv__genres">${esc(l.genres.join(' · '))}</p>` : ''}`;
     status = l.openToCollab ? '<p class="wc__status is-live">Open to collaborate</p>' : '<p class="wc__status">Not taking new collaborations</p>';
+    if (typeof d.connections === 'number' && !l.isSample) status += `<p class="pv__conns">${d.connections} ${d.connections === 1 ? 'connection' : 'connections'}</p>`;
   } else {
     roles = `<p class="pv__roles"><span class="is-primary">${esc(kindLabel(l))}</span></p>`;
     if (l.kind === 'studio') {
@@ -61,8 +62,10 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
       const t = `<b>${esc(c.title)}</b><small>${esc([c.role, c.artist, c.year].filter(Boolean).join(' · '))}</small>`;
       return `<li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<span>${t}</span>`}</li>`;
     }).join('');
+    const rel = (d.releases ?? []).map((r) => `<li><a href="${esc(r.url)}"><b>${esc(r.title)}</b><small>${esc(r.meta)}</small></a></li>`).join('');
     const links = d.links.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}${EXT}</a></li>`).join('');
     body = section('About', bio)
+      + section('Releases', rel ? `<ul class="pv__list">${rel}</ul>` : '')
       + section('Featured music', featured ? `<ul class="pv__list pv__list--media">${featured}</ul>` : '')
       + section('Selected credits', credits ? `<ul class="pv__list">${credits}</ul>` : '')
       + section('Highlights', d.achievements.length ? `<ul class="pv__bullets">${d.achievements.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : '')

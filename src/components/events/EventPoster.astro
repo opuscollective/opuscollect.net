@@ -1,0 +1,13 @@
+---
+/** The event's image, or, without one, a typographic poster with the date. Never a stock photo. */
+import { partsIn } from '@/lib/booking-time';
+interface Props { image: string | null; startAt: number; timezone: string; category: string; small?: boolean }
+const { image, startAt, timezone, category, small = false } = Astro.props;
+const p = partsIn(startAt, timezone);
+const mon = new Intl.DateTimeFormat('en-US', { timeZone: timezone, month: 'short', weekday: 'short' }).formatToParts(new Date(startAt));
+const label = `${mon.find((x) => x.type === 'weekday')?.value}, ${mon.find((x) => x.type === 'month')?.value}`;
+---
+<div class:list={['ev-poster', { 'ev-poster--img': image, 'ev-poster--sm': small }]} style={image ? `background-image:url(${image})` : undefined} aria-hidden="true">
+  <span class="ev-poster__cat">{category}</span>
+  <span class="ev-poster__date"><span class="ev-poster__day">{p.d}</span><span class="ev-poster__mon">{label}</span></span>
+</div>

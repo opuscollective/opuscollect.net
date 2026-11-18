@@ -1,0 +1,25 @@
+---
+/** Edit an event. Organizer only; canceled and finished events can't be edited. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import EventForm from '@/components/events/EventForm.astro';
+import { getEvent } from '@/server/events';
+import '@/styles/app.css';
+import '@/styles/events.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const id = Astro.params.id ?? '';
+if (!user) return Astro.redirect(`/sign-in?next=${encodeURIComponent(`/events/${id}/edit`)}`);
+const e = await getEvent(Astro.locals.runtime.env.DB, id);
+if (!e || e.organizer.userId !== user.id || e.status === 'canceled' || e.past) return Astro.redirect(e ? `/events/${e.id}` : '/events');
+---
+<BaseLayout title={`Edit ${e.title}`} description="Edit your event." noindex>
+  <section class="app">
+    <div class="app__wrap" style="margin-inline:auto">
+      <p class="t-meta app__kicker"><a class="link" href={e.href}>{e.title}</a></p>
+      <h1 class="app__title">Edit event</h1>
+      <p class="app__lead">If you change the date or time, everyone who saved it sees the new one in My Future.</p>
+      <EventForm event={e} />
+    </div>
+  </section>
+</BaseLayout>

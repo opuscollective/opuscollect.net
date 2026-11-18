@@ -1,0 +1,355 @@
+---
+/**
+ * Add Work: one sheet, four essentials (artwork, title, type, your role). Everything else is behind "More details",
+ * and the full builder (tracks, credits, links, sound) is one tap away afterwards.
+ *
+ * Opens from any [data-add-work] control on the page, or on arrival with ?add=1 (so a visitor who signed in to add
+ * a work lands back in the sheet). Creating uses the existing release API: create, upload artwork, then publish to
+ * the profile when the profile is public. Nothing is faked: if a step fails, the sheet says exactly what was saved.
+ */
+import { CREDIT_ROLES, CREDIT_ROLE_KEYS, RELEASE_KINDS } from '@/data/music';
+import '@/styles/app.css';
+import '@/styles/product.css';
+
+interface Props { profile: { handle: string; status: string } | null }
+const { profile } = Astro.props;
+const today = new Date().toISOString().slice(0, 10);
+---
+<dialog class="aw" data-aw aria-labelledby="aw-title" data-profile={profile ? profile.status : 'none'} data-handle={profile?.handle ?? ''}>
+  <div class="aw__panel">
+    <header class="aw__head">
+      <h2 id="aw-title" data-aw-heading>Add Work</h2>
+      <button type="button" class="aw__close" data-aw-close aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </header>
+
+    {!profile ? (
+      <div class="aw__body">
+        <p class="aw__note">Your works live on your Opus profile, so set that up first. It takes about a minute, and you’ll come straight back here.</p>
+        <div class="px-ctas" style="margin-top:20px"><a class="px-btn px-btn--go" href="/start">Set up your profile</a></div>
+      </div>
+    ) : (
+      <>
+        <form class="aw__body" data-aw-form novalidate>
+          <div class="aw__top">
+            <label class="aw__art" data-aw-art>
+              <input type="file" accept="image/jpeg,image/png,image/webp" data-aw-file aria-describedby="aw-art-hint" />
+              <span class="aw__artempty" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Artwork</span>
+              </span>
+              <img alt="" data-aw-preview hidden />
+              <span class="sr-only">Artwork (required)</span>
+            </label>
+            <div class="aw__fields">
+              <label class="field" data-f="title"><span>Title</span><input class="input" name="title" maxlength="120" autocomplete="off" required /></label>
+              <fieldset class="aw__seg" data-f="kind"><legend class="sr-only">Type</legend>
+                {Object.entries(RELEASE_KINDS).map(([k, l], i) => <label><input type="radio" name="kind" value={k} checked={i === 0} /><span>{l}</span></label>)}
+              </fieldset>
+            </div>
+          </div>
+          <p class="aw__hint" id="aw-art-hint">Square artwork you have the rights to use. JPEG, PNG or WebP.</p>
+
+          <label class="field" data-f="role"><span>Your role</span>
+            <select class="select" name="role">{CREDIT_ROLE_KEYS.map((k) => <option value={k}>{CREDIT_ROLES[k].label}</option>)}</select>
+          </label>
+          <label class="field" data-f="artist" data-aw-artist hidden><span>Artist</span><input class="input" name="artist" maxlength="80" autocomplete="off" /><small>Whose work it is. They’re listed by name; you can link their Opus profile from the full editor.</small></label>
+
+          <details class="aw__more" data-aw-more>
+            <summary>More details <span class="px-meta">Release date, description</span></summary>
+            <div class="aw__morebody">
+              <label class="check"><input type="checkbox" name="past" /> <span>This is already out</span></label>
+              <label class="field" data-f="releaseDate"><span data-aw-date-label>Planned release date</span><input class="input" type="date" name="releaseDate" data-aw-date data-max={today} /></label>
+              <label class="field" data-f="description"><span>About this work</span><textarea class="textarea" name="description" maxlength="1500" rows="3"></textarea></label>
+              <p class="px-meta">Tracks, credits for everyone who worked on it, sound and streaming links are in the full editor after you add it.</p>
+            </div>
+          </details>
+
+          <p class="aw__err" data-aw-error role="alert" hidden></p>
+          <div class="aw__actions">
+            <button type="button" class="px-btn px-btn--line" data-aw-close>Cancel</button>
+            <button type="submit" class="px-btn px-btn--go" data-aw-submit>Add Work</button>
+          </div>
+        </form>
+
+        <div class="aw__body aw__done" data-aw-done hidden tabindex="-1">
+          <div class="aw__result">
+            <span class="px-art aw__resultart" data-aw-done-art></span>
+            <div>
+              <p class="px-meta" data-aw-done-meta></p>
+              <p class="aw__resulttitle" data-aw-done-title></p>
+              <p class="aw__resultstate" data-aw-done-state></p>
+            </div>
+          </div>
+          <div class="aw__next">
+            <a class="px-btn px-btn--go" data-aw-view href="#">View on your profile</a>
+            <button type="button" class="px-btn px-btn--line" data-aw-share>Share</button>
+          </div>
+          <a class="aw__nextstep" data-aw-edit href="#"><b>Next: credit the people who made it</b><span>Add tracks and credits. Members you credit confirm it themselves.</span></a>
+          <p class="aw__share" data-aw-share-status role="status"></p>
+          <button type="button" class="px-btn px-btn--text aw__again" data-aw-again>Add another work</button>
+        </div>
+      </>
+    )}
+  </div>
+</dialog>
+
+<script>
+  import { prepareImage } from '@/scripts/image';
+  import { dur } from '@/lib/motion';
+
+  const dlg = document.querySelector<HTMLDialogElement>('[data-aw]');
+  if (dlg) init(dlg);
+
+  function init(dlg: HTMLDialogElement) {
+    const form = dlg.querySelector<HTMLFormElement>('[data-aw-form]');
+    const done = dlg.querySelector<HTMLElement>('[data-aw-done]');
+    const heading = dlg.querySelector<HTMLElement>('[data-aw-heading]')!;
+    let opener: HTMLElement | null = null;
+
+    const open = (from?: HTMLElement | null) => {
+      opener = from ?? null;
+      if (!dlg.open) dlg.showModal();
+      requestAnimationFrame(() => dlg.classList.add('is-in'));
+      (form && !form.hidden ? form.querySelector<HTMLInputElement>('[name="title"]') : dlg.querySelector<HTMLElement>('a, button'))?.focus();
+    };
+    const close = () => {
+      dlg.classList.remove('is-in');
+      window.setTimeout(() => { dlg.close(); opener?.focus(); }, dur(200));
+    };
+    document.addEventListener('click', (e) => {
+      const t = (e.target as HTMLElement).closest<HTMLElement>('[data-add-work]');
+      if (!t) return;
+      e.preventDefault(); open(t);
+    });
+    dlg.querySelectorAll('[data-aw-close]').forEach((b) => b.addEventListener('click', close));
+    dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) close(); });
+
+    // Arriving with ?add=1 (e.g. after signing in to add a work): open once, and tidy the URL.
+    const url = new URL(location.href);
+    if (url.searchParams.get('add') === '1') {
+      url.searchParams.delete('add');
+      history.replaceState(history.state, '', url.pathname + (url.search || '') + url.hash);
+      open(null);
+    }
+    if (!form || !done) return;
+
+    // ----- artwork -----
+    const file = form.querySelector<HTMLInputElement>('[data-aw-file]')!;
+    const preview = form.querySelector<HTMLImageElement>('[data-aw-preview]')!;
+    const art = form.querySelector<HTMLElement>('[data-aw-art]')!;
+    let picked: File | null = null;
+    let previewUrl = '';
+    const setArt = (f: File | null) => {
+      picked = f;
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = f ? URL.createObjectURL(f) : '';
+      preview.hidden = !f; if (f) preview.src = previewUrl;
+      art.classList.toggle('has-art', !!f);
+      art.classList.remove('has-error');
+    };
+    file.addEventListener('change', () => setArt(file.files?.[0] ?? null));
+    art.addEventListener('dragover', (e) => { e.preventDefault(); art.classList.add('is-drop'); });
+    art.addEventListener('dragleave', () => art.classList.remove('is-drop'));
+    art.addEventListener('drop', (e) => {
+      e.preventDefault(); art.classList.remove('is-drop');
+      const f = e.dataTransfer?.files?.[0];
+      if (f && /^image\/(jpeg|png|webp)$/.test(f.type)) setArt(f);
+    });
+
+    // ----- role → artist -----
+    const role = form.querySelector<HTMLSelectElement>('[name="role"]')!;
+    const artistField = form.querySelector<HTMLElement>('[data-aw-artist]')!;
+    role.addEventListener('change', () => { artistField.hidden = role.value === 'primary-artist'; });
+
+    // ----- already out → date -----
+    const past = form.querySelector<HTMLInputElement>('[name="past"]')!;
+    const date = form.querySelector<HTMLInputElement>('[data-aw-date]')!;
+    past.addEventListener('change', () => {
+      form.querySelector('[data-aw-date-label]')!.textContent = past.checked ? 'Release date' : 'Planned release date';
+      if (past.checked) date.max = date.dataset.max!; else date.removeAttribute('max');
+    });
+
+    // ----- errors -----
+    const errBox = form.querySelector<HTMLElement>('[data-aw-error]')!;
+    const clearErrors = () => {
+      errBox.hidden = true; errBox.textContent = '';
+      form.querySelectorAll('.has-error').forEach((n) => n.classList.remove('has-error'));
+      form.querySelectorAll('.field__error').forEach((n) => n.remove());
+      art.classList.remove('has-error');
+    };
+    const fieldError = (name: string, msg: string) => {
+      if (name === 'artwork') { art.classList.add('has-error'); return; }
+      const f = form.querySelector<HTMLElement>(`[data-f="${name}"]`);
+      if (!f) return;
+      if (name === 'releaseDate') (form.querySelector('[data-aw-more]') as HTMLDetailsElement).open = true;
+      f.classList.add('has-error');
+      f.append(Object.assign(document.createElement('small'), { className: 'field__error', textContent: msg }));
+    };
+    const showError = (msg: string) => { errBox.textContent = msg; errBox.hidden = false; };
+
+    // ----- submit -----
+    const submit = form.querySelector<HTMLButtonElement>('[data-aw-submit]')!;
+    const post = async (path: string, body: unknown, type = 'application/json') => {
+      const r = await fetch(path, { method: 'POST', headers: { 'content-type': type }, body: type === 'application/json' ? JSON.stringify(body) : (body as Blob) });
+      const d = (await r.json().catch(() => ({}))) as Record<string, any>;
+      if (!r.ok) throw Object.assign(new Error(d.error ?? 'Something went wrong. Please try again.'), { field: d.field as string | undefined, status: r.status });
+      return d;
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors();
+      const fd = new FormData(form);
+      const v = {
+        title: String(fd.get('title') ?? '').trim(), kind: String(fd.get('kind') ?? 'single'), role: role.value,
+        artist: String(fd.get('artist') ?? '').trim(), past: past.checked, releaseDate: String(fd.get('releaseDate') ?? ''), description: String(fd.get('description') ?? '').trim(),
+      };
+      const problems: [string, string][] = [];
+      if (!picked) problems.push(['artwork', 'Add the artwork.']);
+      if (!v.title) problems.push(['title', 'Give your work a title.']);
+      if (v.role !== 'primary-artist' && v.artist.length < 2) problems.push(['artist', 'Add the artist’s name.']);
+      if (v.past && !v.releaseDate) problems.push(['releaseDate', 'Add the date it came out.']);
+      if (problems.length) {
+        problems.forEach(([n, m]) => fieldError(n, m));
+        showError(problems.length === 1 ? problems[0]![1] : `To add this work: ${problems.map(([, m]) => m.replace(/\.$/, '').toLowerCase()).join(', ')}.`);
+        (problems[0]![0] === 'artwork' ? file : form.querySelector<HTMLElement>(`[data-f="${problems[0]![0]}"] input, [data-f="${problems[0]![0]}"] select`))?.focus();
+        return;
+      }
+
+      submit.disabled = true;
+      let id = '';
+      let published = false;
+      let note = '';
+      try {
+        submit.textContent = 'Preparing artwork…';
+        const blob = await prepareImage(picked!, 1600, 'square');
+        submit.textContent = 'Adding…';
+        const created = await post('/api/releases', { quick: true, ...v });
+        id = created.id;
+        submit.textContent = 'Uploading artwork…';
+        try { await post(`/api/releases/${id}/cover`, blob, blob.type); }
+        catch (err) { note = `Your work was saved as a draft, but the artwork didn’t upload (${(err as Error).message}). Add it from the editor.`; }
+        if (!note && created.profilePublished) {
+          try { await post(`/api/releases/${id}`, { action: 'publish' }); published = true; }
+          catch (err) { note = `Saved as a draft: ${(err as Error).message}`; }
+        }
+        showDone({ id, title: v.title, kind: v.kind, past: v.past, date: v.releaseDate, art: note.includes('artwork') ? '' : previewUrl, published, note, profilePublished: !!created.profilePublished, handle: created.handle });
+      } catch (err) {
+        const ex = err as Error & { field?: string };
+        if (ex.field) fieldError(ex.field, ex.message);
+        showError(ex.message);
+      } finally {
+        submit.disabled = false; submit.textContent = 'Add Work';
+      }
+    });
+
+    // ----- done -----
+    const KIND: Record<string, string> = { single: 'Single', ep: 'EP', album: 'Album', mixtape: 'Mixtape' };
+    let shareUrl = '';
+    let shareTitle = '';
+    function showDone(w: { id: string; title: string; kind: string; past: boolean; date: string; art: string; published: boolean; note: string; profilePublished: boolean; handle: string }) {
+      form!.hidden = true; done!.hidden = false;
+      heading.textContent = 'Added to your Works';
+      const artEl = done!.querySelector<HTMLElement>('[data-aw-done-art]')!;
+      artEl.style.backgroundImage = w.art ? `url(${w.art})` : '';
+      done!.querySelector('[data-aw-done-title]')!.textContent = w.title;
+      done!.querySelector('[data-aw-done-meta]')!.textContent = [KIND[w.kind], w.date ? w.date.slice(0, 4) : null].filter(Boolean).join(' · ');
+      done!.querySelector('[data-aw-done-state]')!.textContent = w.published
+        ? 'It’s on your profile now, with its own page you can share.'
+        : w.note || (w.profilePublished ? 'Saved as a draft.' : 'Saved as a draft. It shows on your profile once your profile is published.');
+      const view = done!.querySelector<HTMLAnchorElement>('[data-aw-view]')!;
+      if (w.published && w.handle) { view.href = `/m/${w.handle}#works`; view.textContent = 'View on your profile'; }
+      else { view.href = `/r/${w.id}`; view.textContent = 'Preview your work'; }
+      done!.querySelector<HTMLAnchorElement>('[data-aw-edit]')!.href = `/works/${w.id}#credits`;
+      const share = done!.querySelector<HTMLButtonElement>('[data-aw-share]')!;
+      share.hidden = !w.published;
+      shareUrl = `${location.origin}/r/${w.id}`; shareTitle = w.title;
+      done!.querySelector('[data-aw-share-status]')!.textContent = '';
+      done!.focus();
+      document.dispatchEvent(new CustomEvent('opus:work-added', { detail: { id: w.id, published: w.published } }));
+    }
+    done.querySelector('[data-aw-share]')!.addEventListener('click', async () => {
+      const status = done.querySelector<HTMLElement>('[data-aw-share-status]')!;
+      try {
+        if (navigator.share) { await navigator.share({ title: shareTitle, url: shareUrl }); return; }
+        await navigator.clipboard.writeText(shareUrl);
+        status.textContent = 'Link copied.';
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') status.textContent = shareUrl;
+      }
+    });
+    done.querySelector('[data-aw-again]')!.addEventListener('click', () => {
+      form.reset(); setArt(null); artistField.hidden = true; clearErrors();
+      done.hidden = true; form.hidden = false; heading.textContent = 'Add Work';
+      form.querySelector<HTMLInputElement>('[name="title"]')!.focus();
+    });
+    // Closing after adding refreshes the page behind, so the new work is in the list.
+    dlg.addEventListener('close', () => { if (!done.hidden) location.reload(); });
+  }
+</script>
+
+<style>
+  .aw { width: min(560px, calc(100vw - 32px)); max-height: calc(100svh - 48px); margin: auto; padding: 0; border: 0; border-radius: 6px; background: var(--surface); color: var(--text);
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--line-faint); overflow: auto; overscroll-behavior: contain;
+    opacity: 0; transform: translateY(10px) scale(0.985); transition: opacity var(--m-modal) var(--m-ease), transform var(--m-modal) var(--m-spring); }
+  .aw.is-in { opacity: 1; transform: none; }
+  .aw::backdrop { background: rgba(10, 10, 12, 0.42); opacity: 0; transition: opacity var(--m-modal) var(--m-ease); }
+  .aw.is-in::backdrop { opacity: 1; }
+  :global(html:not([data-motion='fluid'])) .aw { transform: none; }
+  .aw__head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 12px 24px; background: var(--surface); }
+  .aw__head h2 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -0.03em; }
+  .aw__close { display: grid; place-items: center; width: 36px; height: 36px; margin-right: -6px; border: 0; border-radius: 50%; background: none; color: var(--text-2); }
+  .aw__close:hover { background: var(--surface-hover); color: var(--text); }
+  .aw__body { display: flex; flex-direction: column; gap: 16px; padding: 4px 24px 24px; }
+  .aw__body:focus { outline: none; }
+  .aw__note { margin: 0; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+  .aw__top { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .aw__art { position: relative; display: grid; place-items: center; aspect-ratio: 1; border: 1px dashed var(--line-strong); border-radius: 2px; background: var(--surface-sunken); color: var(--text-3); cursor: pointer; overflow: hidden;
+    transition: border-color var(--m-hover) var(--m-ease), background-color var(--m-hover) var(--m-ease); }
+  .aw__art:hover, .aw__art.is-drop { border-color: var(--text-2); color: var(--text); }
+  .aw__art:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .aw__art.has-art { border-style: solid; border-color: transparent; }
+  .aw__art.has-error { border-color: var(--danger); color: var(--danger); }
+  .aw__art input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .aw__artempty { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; pointer-events: none; }
+  .aw__art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .aw__fields { display: flex; flex-direction: column; gap: 14px; }
+  .aw__hint { margin: -6px 0 0; font-size: 12px; color: var(--text-3); }
+  .aw__seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 0; padding: 3px; border: 0; border-radius: var(--r-pill); background: var(--surface-sunken); }
+  .aw__seg label { position: relative; }
+  .aw__seg input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .aw__seg span { display: grid; place-items: center; height: 36px; border-radius: var(--r-pill); font-size: 13px; color: var(--text-2); transition: background-color var(--m-control) var(--m-ease), color var(--m-control) var(--m-ease); }
+  .aw__seg input:checked + span { background: var(--surface-raised); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+  .aw__seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .aw__more { border-top: 1px solid var(--line-faint); padding-top: 4px; }
+  .aw__more summary { display: flex; align-items: baseline; gap: 10px; min-height: 44px; align-items: center; font-size: 15px; font-weight: 500; cursor: pointer; list-style: none; }
+  .aw__more summary::-webkit-details-marker { display: none; }
+  .aw__more summary::before { content: '+'; width: 14px; color: var(--text-3); }
+  .aw__more[open] summary::before { content: '−'; }
+  .aw__morebody { display: flex; flex-direction: column; gap: 14px; padding: 6px 0 4px; }
+  .aw__err { margin: 0; padding: 10px 12px; border-radius: 4px; background: var(--danger-soft, rgba(200, 60, 60, 0.08)); color: var(--danger); font-size: 14px; line-height: 1.45; }
+  .aw__actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+  .aw__done { gap: 18px; }
+  .aw__result { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: center; }
+  .aw__resultart { width: 96px; }
+  .aw__resulttitle { margin: 2px 0 0; font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
+  .aw__resultstate { margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+  .aw__next { display: flex; flex-wrap: wrap; gap: 10px; }
+  .aw__nextstep { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-radius: 6px; background: var(--surface-sunken); font-size: 14px; color: var(--text-2); transition: background-color var(--m-hover) var(--m-ease); }
+  .aw__nextstep b { color: var(--text); font-weight: 500; }
+  .aw__nextstep:hover { background: var(--surface-hover); }
+  .aw__share { margin: 0; font-size: 13px; color: var(--text-3); word-break: break-all; }
+  .aw__share:empty { display: none; }
+  .aw__again { align-self: flex-start; }
+  @media (max-width: 560px) {
+    .aw { width: 100vw; max-width: 100vw; max-height: 92svh; margin: auto 0 0; border-radius: 10px 10px 0 0; transform: translateY(24px); }
+    .aw__top { grid-template-columns: 104px minmax(0, 1fr); gap: 14px; }
+    .aw__seg span { font-size: 12px; }
+    .aw__body { padding: 4px 18px 22px; }
+    .aw__head { padding: 16px 14px 10px 18px; }
+    .aw__actions .px-btn { flex: 1; }
+  }
+</style>

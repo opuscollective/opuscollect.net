@@ -21,7 +21,7 @@ const TABS = [
   { key: 'past', label: 'Past', empty: 'Finished, declined, cancelled and expired bookings show here.' },
 ] as const;
 const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project');
-const SOURCE: Record<string, string> = { directory: 'Opus World', link: 'Booking link', direct: 'Direct' };
+const SOURCE: Record<string, string> = { directory: 'World', link: 'Booking link', direct: 'Direct' };
 ---
 <BusinessShell title="Bookings" section="bookings" studio={studio} pending={pending}
   lead="Accept or decline requests. The customer gets an email either way. Nothing is charged until online payments are switched on.">

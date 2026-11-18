@@ -1,0 +1,243 @@
+---
+/**
+ * Event page, shareable by URL. Anyone can read a public or unlisted event. Signed-in members add it to
+ * My Future and say if they are interested or going (their own note, never a ticket or RSVP).
+ * The organizer edits, cancels, adds an image and invites artists here; invited artists accept or decline.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
+import EventPoster from '@/components/events/EventPoster.astro';
+import { canView, getEvent, getSave, listPerformers } from '@/server/events';
+import { getMyProfile } from '@/server/profiles';
+import { RELATIONS } from '@/lib/events';
+import '@/styles/app.css';
+import '@/styles/events.css';
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.DB;
+const user = Astro.locals.user;
+const e = await getEvent(db, Astro.params.id ?? '');
+if (!e || !canView(e, user?.id ?? null)) {
+  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Event not found · Opus</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:#f2efea;font-family:system-ui,sans-serif;text-align:center"><div><p style="color:#8a858c;letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This event isn’t available.</h1><p style="color:#a39da5">The link may be wrong, or the organizer’s profile isn’t public.</p><p><a href="/future?tab=our" style="color:#f2efea">See Our Future</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+
+const isOrganizer = user?.id === e.organizer.userId;
+const performers = await listPerformers(db, e.id, isOrganizer);
+const confirmed = performers.filter((p) => p.status === 'confirmed');
+const me = user && !isOrganizer ? await getMyProfile(db, user.id) : null;
+const myInvite = me ? (await db.prepare('SELECT status FROM event_performers WHERE event_id = ? AND profile_id = ?').bind(e.id, me.id).first<{ status: string }>())?.status ?? null : null;
+const save = user && !isOrganizer ? await getSave(db, user.id, e.id) : null;
+const canceled = e.status === 'canceled';
+const closed = canceled || e.past;
+const flash = Astro.url.searchParams.has('created') ? 'Your event is live. Share the link, or invite the artists who are performing.' : Astro.url.searchParams.has('saved') ? 'Changes saved.' : '';
+const STATUS_TEXT = { invited: 'Invitation sent', confirmed: 'Confirmed', declined: 'Declined' } as const;
+const description = `${e.when} · ${e.venue}${e.place ? `, ${e.place}` : ''}. ${e.description}`.slice(0, 160);
+---
+<BaseLayout title={e.title} description={description} noindex={e.visibility === 'unlisted' || canceled}>
+  <ProductNav product="events" />
+  <section class="app">
+    <div class:list={['app__wrap app__wrap--wide', { 'ev-canceled': canceled }]} style="margin-inline:auto">
+      <p class="t-meta app__kicker"><a class="link" href="/future?tab=our">Our Future</a> · Event</p>
+      {flash && <p class="notice notice--ok" role="status" style="margin-top:16px">{flash}</p>}
+      {canceled && <p class="notice notice--error" style="margin-top:16px"><b>This event was canceled</b> by the organizer.</p>}
+      {!canceled && e.past && <p class="notice" style="margin-top:16px"><b>This event has ended.</b></p>}
+      {isOrganizer && e.visibility === 'unlisted' && !closed && <p class="notice" style="margin-top:16px"><b>Unlisted.</b> Only people with the link can open this page. It isn’t listed in Our Future.</p>}
+      {isOrganizer && !e.organizer.published && <p class="notice notice--warn" style="margin-top:16px"><b>Only you can see this event</b> until your profile is published. <a class="link" href="/account/profile">Publish your profile</a></p>}
+
+      <div class="ev">
+        <div>
+          <EventPoster image={e.image} startAt={e.startAt} timezone={e.timezone} category={e.categoryLabel} />
+          <h1 class="ev__title">{e.title}</h1>
+          <p class="ev__when"><time datetime={new Date(e.startAt).toISOString()}>{e.when}</time></p>
+          <p class="ev__where">{e.venue}{e.place && <> · {e.place}</>}</p>
+          {e.description && <div class="ev__desc">{e.description}</div>}
+
+          <div class="ev__people">
+            <h2>Hosted by</h2>
+            <a class="ev-person" href={e.organizer.published ? `/m/${e.organizer.handle}` : undefined}>
+              <span class="ev-person__ph" style={e.organizer.photo ? `background-image:url(${e.organizer.photo})` : ''}></span>
+              <span>{e.organizer.name}<small>Organizer</small></span>
+            </a>
+          </div>
+          {confirmed.length > 0 && (
+            <div class="ev__people">
+              <h2>Featuring</h2>
+              {confirmed.map((p) => (
+                <a class="ev-person" href={`/m/${p.handle}`}>
+                  <span class="ev-person__ph" style={p.photo ? `background-image:url(${p.photo})` : ''}></span>
+                  <span>{p.name}<small>Performing · confirmed by the artist</small></span>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <aside class="ev__side">
+          <div class="panel ev__act" data-save-panel data-id={e.id}>
+            {isOrganizer ? (
+              <>
+                <span class="ev__badge">{canceled ? 'Canceled' : 'You’re hosting'}</span>
+                {!closed && <div class="row"><a class="btn-app" href={`/events/${e.id}/edit`}>Edit event</a><button class="btn-app btn-app--ghost" type="button" data-cancel>Cancel event</button></div>}
+                <p class="ev__fine">It’s in your My Future as Hosting.</p>
+              </>
+            ) : !user ? (
+              <>
+                {!closed && <a class="btn-app btn-app--block" href={`/sign-in?next=${encodeURIComponent(`/events/${e.id}`)}`}>Sign in to add to My Future</a>}
+                <p class="ev__fine">Saving keeps it in your timeline. It isn’t a ticket or an RSVP.</p>
+              </>
+            ) : save ? (
+              <>
+                <span class="ev__badge" data-save-badge>In My Future</span>
+                <div class="ev__seg" role="group" aria-label="Your plans">
+                  {Object.entries(RELATIONS).map(([k, v]) => <button type="button" data-rel={k} aria-pressed={save === k ? "true" : "false"}>{v}</button>)}
+                </div>
+                <button class="btn-app btn-app--ghost" type="button" data-unsave>Remove from My Future</button>
+                <p class="ev__fine">Only you see this. It isn’t a ticket or an RSVP{e.link ? '; use the organizer’s link for that' : ''}.</p>
+              </>
+            ) : closed ? (
+              <p class="ev__fine">{canceled ? 'Canceled events can’t be saved.' : 'This event has ended.'}</p>
+            ) : (
+              <>
+                <button class="btn-app btn-app--block" type="button" data-save>Add to My Future</button>
+                <p class="ev__fine">Keeps it in your timeline. It isn’t a ticket or an RSVP.</p>
+              </>
+            )}
+            <p class="dim mu-err" data-act-status role="alert"></p>
+          </div>
+
+          {myInvite === 'invited' && !closed && (
+            <div class="panel ev__act" data-invite>
+              <h2 style="margin:0">You’re invited to perform</h2>
+              <p class="dim" style="margin:0">{e.organizer.name} wants to feature you. Accept and you’ll be listed as performing, and it goes into your My Future.</p>
+              <div class="row"><button class="btn-app" type="button" data-respond="accept">Accept</button><button class="btn-app btn-app--ghost" type="button" data-respond="decline">Decline</button></div>
+            </div>
+          )}
+          {myInvite === 'confirmed' && (
+            <div class="panel ev__act" data-invite>
+              <span class="ev__badge">You’re performing</span>
+              {!closed && <button class="btn-app btn-app--ghost" type="button" data-respond="decline">Withdraw</button>}
+            </div>
+          )}
+
+          <div class="panel ev__act">
+            {e.link && !canceled && <a class="btn-app btn-app--ghost" href={e.link} target="_blank" rel="noopener nofollow ugc">Details or tickets ↗</a>}
+            <button class="btn-app btn-app--ghost" type="button" data-share>Share</button>
+            <p class="ev__fine" data-share-status role="status"></p>
+            {e.link && !canceled && <p class="ev__fine">Opens the organizer’s link. Opus doesn’t sell tickets.</p>}
+          </div>
+
+          {isOrganizer && !closed && (
+            <div class="panel ev__act" data-organizer>
+              <h2 style="margin:0">Image</h2>
+              <p class="ev__fine">Optional. JPEG or WebP; location data is removed.</p>
+              <div class="row">
+                <label class="btn-app btn-app--ghost">{e.image ? 'Replace image' : 'Add an image'}<input type="file" accept="image/jpeg,image/webp,image/png,image/heic" hidden data-image /></label>
+                {e.image && <button class="btn-app btn-app--ghost" type="button" data-image-remove>Remove</button>}
+              </div>
+              <p class="ev__fine" data-image-status role="status"></p>
+
+              <h2 style="margin:12px 0 0">Featured artists</h2>
+              <p class="ev__fine">Invite artists by their Opus username. They show as performing only after they accept.</p>
+              <form class="ev-inline" data-invite-form>
+                <input class="input" name="handle" placeholder="username" autocomplete="off" aria-label="Artist’s Opus username" />
+                <button class="btn-app" type="submit">Invite</button>
+              </form>
+              <p class="ev__fine" data-invite-status role="status"></p>
+              {performers.length > 0 && (
+                <ul class="ev-perf" role="list">{performers.map((p) => (
+                  <li data-pid={p.profileId}><span>{p.name} <span class="dim">· {STATUS_TEXT[p.status]}</span></span><button type="button" data-remove-perf>Remove</button></li>
+                ))}</ul>
+              )}
+            </div>
+          )}
+        </aside>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { prepareImage } from '@/scripts/image';
+  const panel = document.querySelector<HTMLElement>('[data-save-panel]')!;
+  const id = panel.dataset.id!;
+  const msg = document.querySelector<HTMLElement>('[data-act-status]')!;
+  const call = async (url: string, method: string, body?: unknown) => {
+    const r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error ?? 'Something went wrong.');
+    return d;
+  };
+  const run = (btns: HTMLButtonElement[], fn: () => Promise<unknown>, out: HTMLElement = msg) => async () => {
+    btns.forEach((b) => (b.disabled = true)); out.textContent = '';
+    try { await fn(); } catch (e) { out.textContent = e instanceof Error ? e.message : 'Something went wrong.'; btns.forEach((b) => (b.disabled = false)); }
+  };
+
+  const saveBtn = panel.querySelector<HTMLButtonElement>('[data-save]');
+  saveBtn?.addEventListener('click', run([saveBtn], async () => { await call(`/api/events/${id}/save`, 'PUT', { relation: 'saved' }); location.reload(); }));
+
+  const seg = [...panel.querySelectorAll<HTMLButtonElement>('[data-rel]')];
+  seg.forEach((b) => b.addEventListener('click', async () => {
+    if (b.getAttribute('aria-pressed') === 'true') return;
+    const prev = seg.find((x) => x.getAttribute('aria-pressed') === 'true');
+    seg.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    msg.textContent = '';
+    try { await call(`/api/events/${id}/save`, 'PUT', { relation: b.dataset.rel }); }
+    catch (e) { seg.forEach((x) => x.setAttribute('aria-pressed', String(x === prev))); msg.textContent = e instanceof Error ? e.message : 'Something went wrong.'; }
+  }));
+
+  const unsave = panel.querySelector<HTMLButtonElement>('[data-unsave]');
+  unsave?.addEventListener('click', run([unsave], async () => { await call(`/api/events/${id}/save`, 'DELETE'); location.reload(); }));
+
+  const cancel = panel.querySelector<HTMLButtonElement>('[data-cancel]');
+  cancel?.addEventListener('click', () => {
+    if (!confirm('Cancel this event? Everyone who saved it will see it as canceled. This can’t be undone.')) return;
+    run([cancel], async () => { await call(`/api/events/${id}`, 'POST', { action: 'cancel' }); location.reload(); })();
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-respond]').forEach((b) => b.addEventListener('click', run([b], async () => {
+    await call(`/api/events/${id}/performers`, 'POST', { respond: b.dataset.respond }); location.reload();
+  })));
+
+  // Share: the system share sheet where there is one, otherwise copy the link.
+  const share = document.querySelector<HTMLButtonElement>('[data-share]')!;
+  const shareOut = document.querySelector<HTMLElement>('[data-share-status]')!;
+  share.addEventListener('click', async () => {
+    const url = location.origin + location.pathname;
+    try {
+      if (navigator.share) { await navigator.share({ title: document.title, url }); return; }
+      await navigator.clipboard.writeText(url); shareOut.textContent = 'Link copied.';
+    } catch { /* closed the share sheet */ }
+  });
+
+  // Organizer tools.
+  const org = document.querySelector<HTMLElement>('[data-organizer]');
+  if (org) {
+    const imgOut = org.querySelector<HTMLElement>('[data-image-status]')!;
+    org.querySelector<HTMLInputElement>('[data-image]')!.addEventListener('change', async (ev) => {
+      const input = ev.target as HTMLInputElement; const file = input.files?.[0]; if (!file) return;
+      imgOut.textContent = 'Preparing image…';
+      try {
+        const blob = await prepareImage(file, 2400, 'free');
+        imgOut.textContent = 'Uploading…';
+        const r = await fetch(`/api/events/${id}/image`, { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error ?? 'Upload failed.');
+        location.reload();
+      } catch (e) { imgOut.textContent = e instanceof Error ? e.message : 'Upload failed.'; input.value = ''; }
+    });
+    const rm = org.querySelector<HTMLButtonElement>('[data-image-remove]');
+    rm?.addEventListener('click', run([rm], async () => { await call(`/api/events/${id}/image`, 'DELETE'); location.reload(); }, imgOut));
+
+    const form = org.querySelector<HTMLFormElement>('[data-invite-form]')!;
+    const invOut = org.querySelector<HTMLElement>('[data-invite-status]')!;
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const btn = form.querySelector('button')!; btn.disabled = true; invOut.textContent = '';
+      try { await call(`/api/events/${id}/performers`, 'POST', { handle: (form.elements.namedItem('handle') as HTMLInputElement).value }); location.reload(); }
+      catch (e) { invOut.textContent = e instanceof Error ? e.message : 'Something went wrong.'; btn.disabled = false; }
+    });
+    org.querySelectorAll<HTMLButtonElement>('[data-remove-perf]').forEach((b) => b.addEventListener('click', run([b], async () => {
+      await call(`/api/events/${id}/performers`, 'POST', { remove: b.closest<HTMLElement>('[data-pid]')!.dataset.pid }); location.reload();
+    }, invOut)));
+  }
+</script>

@@ -8,7 +8,12 @@ import cloudflare from '@astrojs/cloudflare';
 export default defineConfig({
   site: 'https://opuscollect.net',
   output: 'static',
-  adapter: cloudflare({ imageService: 'passthrough', platformProxy: { enabled: true } }),
+  adapter: cloudflare({
+    imageService: 'passthrough',
+    platformProxy: { enabled: true },
+    // Custom entry so the Global Chat room (a Durable Object) ships with the Worker.
+    workerEntryPoint: { path: 'src/worker.ts', namedExports: ['GlobalChat'] },
+  }),
   build: { format: 'directory' },
   trailingSlash: 'ignore',
   security: { checkOrigin: true },

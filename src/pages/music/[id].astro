@@ -1,0 +1,5 @@
+---
+/** Music is now Works (2026-11-14). Old release-builder links keep working. */
+export const prerender = false;
+return Astro.redirect(`/works/${encodeURIComponent(Astro.params.id ?? '')}${Astro.url.search}`, 301);
+---

@@ -2,32 +2,13 @@
 import Button from '../ui/Button.astro';
 ---
 <section class="section join" aria-labelledby="join-title">
-  <div class="container">
-    <div class="join__panel" data-reveal>
-      <p class="t-meta join__kicker">Don’t create in isolation.</p>
-      <h2 id="join-title" class="join__title">Claim your place in the directory.</h2>
-      <div class="join__foot">
-        <p>Build a professional profile, show your work, and get discovered by the people shaping independent music. Membership opens soon. Join now to be among the first.</p>
-        <div class="join__ctas">
-          <Button href="/sign-up" variant="inverse" size="lg" arrow="right">Join Opus</Button>
-          <a class="join__alt" href="https://discord.gg/QudUMNB5yP" target="_blank" rel="noopener">Join the Discord ↗</a>
-        </div>
-      </div>
-    </div>
+  <div class="container join__inner">
+    <h2 id="join-title" class="join__title" data-reveal>Claim your place<br /><span class="dim">in World.</span></h2>
+    <div data-reveal style="--d:.06s"><Button href="/sign-up" variant="primary" size="lg" arrow="right">Join Opus</Button></div>
   </div>
 </section>
 
 <style>
-  .join__panel {
-    background: var(--c-white); color: var(--c-black); border-radius: var(--r-lg);
-    padding: clamp(36px, 7vw, 112px); display: flex; flex-direction: column; gap: clamp(24px, 3vw, 40px);
-  }
-  .join__kicker { color: #77727a; }
-  .join__title { max-width: 11ch; font-size: clamp(2.6rem, 1rem + 6.4vw, 8rem); line-height: 0.92; letter-spacing: -0.06em; font-weight: 500; }
-  .join__foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 28px 48px; padding-top: 28px; border-top: 1px solid #dcd8dd; }
-  .join__foot p { max-width: 520px; font-size: var(--t-lead); line-height: 1.55; color: #4a464c; }
-  .join__ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; }
-  .join__alt { font-size: 15px; font-weight: 500; min-height: 44px; display: inline-flex; align-items: center; }
-  .join__alt:hover { text-decoration: underline; text-underline-offset: 6px; }
-  .join :focus-visible { outline-color: var(--c-black); }
+  .join__inner { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 32px 48px; padding-top: clamp(40px, 5vw, 72px); border-top: 1px solid var(--line); }
+  .join__title { font-size: clamp(2.5rem, 1rem + 4.6vw, 5.75rem); line-height: 0.95; letter-spacing: -0.055em; font-weight: 500; }
 </style>

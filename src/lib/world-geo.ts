@@ -1,5 +1,5 @@
 /**
- * LocationCluster: hierarchical aggregation for the Opus World map.
+ * LocationCluster: hierarchical aggregation for the World map.
  * Country → State/Region → Metro area → City/Suburb.
  *
  * Every point used here is already public (a city or metro centre from the places table),

@@ -1,0 +1,69 @@
+---
+/**
+ * My Events: events the member hosts, performs at, is invited to or saved, upcoming first, then the last 30 days.
+ * Same records as My Future, focused on events only.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import EventPoster from '@/components/events/EventPoster.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
+import { myEvents, ROLE_LABEL, type MyEvent } from '@/server/events';
+import '@/styles/app.css';
+import '@/styles/events.css';
+import '@/styles/product.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/events/mine');
+let all: MyEvent[] = [];
+let failed = false;
+try { all = await myEvents(Astro.locals.runtime.env.DB, user.id); } catch (e) { console.error('my events', e); failed = true; }
+const cut = Date.now() - 3 * 3600_000;
+const upcoming = all.filter((m) => m.event.startAt >= cut);
+const past = all.filter((m) => m.event.startAt < cut).reverse();
+const hosting = upcoming.filter((m) => m.role === 'hosting').length;
+---
+<BaseLayout title="My Events" description="Your events on Opus." noindex>
+  <ProductNav product="events" current="mine" />
+  <section class="px-sec px-sec--tight">
+    <div class="px-wrap">
+      <div class="px-rowhead">
+        <div>
+          <h1 class="px-title">My Events</h1>
+          <p class="me-sub">{upcoming.length} coming up{hosting ? ` · hosting ${hosting}` : ''}</p>
+        </div>
+        <div class="px-ctas"><a class="px-btn px-btn--go" href="/events/new">Create Event</a><a class="px-btn px-btn--line" href="/future?tab=mine">My Future</a></div>
+      </div>
+      {failed ? <div class="px-state px-state--error"><h3>Your events couldn’t be loaded just now.</h3><p>Please try again in a moment.</p></div>
+      : upcoming.length === 0 ? (
+        <div class="px-state">
+          <h3>Nothing coming up</h3>
+          <p>Events you create, perform at or save show here. Find one to save, or start your own.</p>
+          <div class="px-ctas"><a class="px-btn px-btn--go px-btn--sm" href="/events/new">Create Event</a><a class="px-btn px-btn--line px-btn--sm" href="/events">Discover events</a></div>
+        </div>
+      ) : (
+        <div class="ev-grid">{upcoming.map(({ event: e, role }) => (
+          <a class="ev-card" href={e.href}>
+            <EventPoster image={e.image} startAt={e.startAt} timezone={e.timezone} category={e.categoryLabel} small />
+            <span class="ev-card__body"><span class="ev-card__when">{e.when}</span><span class="ev-card__title">{e.title}</span><span class="ev-card__where">{e.venue} · {e.place.split(',')[0]}</span><span class="me-role">{ROLE_LABEL[role]}</span></span>
+          </a>
+        ))}</div>
+      )}
+      {past.length > 0 && (
+        <>
+          <h2 class="px-h3 me-past">Last 30 days</h2>
+          <div class="ev-grid">{past.map(({ event: e, role }) => (
+            <a class="ev-card me-ended" href={e.href}>
+              <span class="ev-card__body"><span class="ev-card__when">{e.when}</span><span class="ev-card__title">{e.title}</span><span class="me-role">{ROLE_LABEL[role]}</span></span>
+            </a>
+          ))}</div>
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+<style>
+  .me-sub { margin: 10px 0 0; font-size: 15px; color: var(--text-2); }
+  .me-role { align-self: flex-start; margin-top: 6px; padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); font-size: 12px; color: var(--text-2); }
+  .me-past { margin: 48px 0 16px; }
+  .me-ended { opacity: 0.8; }
+</style>

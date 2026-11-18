@@ -1,0 +1,12 @@
+---
+/** Opus Collective page carried over from the v23 site. Content lives in src/legacy/about.html. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import html from '@/legacy/about.html?raw';
+import '@/styles/legacy.css';
+---
+<BaseLayout title="About" description="Opus Collective is a creative community for independent artists, producers, engineers, designers and filmmakers. Founded by Bogo in Birmingham, AL." image="/images/amazing-cover.jpg">
+  <div class="legacy"><Fragment set:html={html} /></div>
+</BaseLayout>
+<script>
+  import '@/scripts/legacy-site.js';
+</script>

@@ -1,5 +1,5 @@
 /**
- * Opus World data model.
+ * World data model.
  * Every listing on the map is one of three kinds. The shapes are designed to map
  * onto Cloudflare D1 tables (profiles, studios, organizations) in Phase 3.
  *

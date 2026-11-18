@@ -294,7 +294,7 @@ export async function uploadImage(env: Env, user: SessionUser, request: Request,
 }
 
 /** Reads an uploaded image, checks its real bytes, and strips all metadata (including GPS). */
-async function cleanUpload(request: Request): Promise<{ clean: Uint8Array; ext: string; type: string }> {
+export async function cleanUpload(request: Request): Promise<{ clean: Uint8Array; ext: string; type: string }> {
   const len = Number(request.headers.get('content-length') || 0);
   if (len > MAX_BYTES) throw new HttpError(413, 'Images must be 5 MB or smaller.');
   const type = (request.headers.get('content-type') || '').split(';')[0]!.trim();

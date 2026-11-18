@@ -1,0 +1,66 @@
+---
+/**
+ * Global Chat moderation queue: reported, held and flagged messages.
+ * Moderators are admins plus the chat_moderators list. Every action is written to the audit log.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { isModerator, moderationQueue } from '@/server/chat';
+import '@/styles/app.css';
+export const prerender = false;
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/account/moderation');
+const db = Astro.locals.runtime.env.DB;
+if (!(await isModerator(db, user.id, user.role))) return Astro.redirect('/account');
+const items = await moderationQueue(db);
+const when = (t: number) => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+---
+<BaseLayout title="Moderation" noindex>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+      <p class="t-meta app__kicker"><a href="/account">Account</a> / Moderation</p>
+      <h1 class="app__title">Global Chat moderation</h1>
+      <p class="app__lead">Messages members reported, messages hidden after three reports, and messages the rules flagged as borderline. Oldest first.</p>
+      <div class="panel" style="margin-top:32px">
+        {items.length === 0 ? <p class="dim">Nothing waiting. Good.</p> : (
+          <ul class="mq" role="list">{items.map((m) => (
+            <li class="mq__item" data-id={m.id}>
+              <p class="mq__who"><b>{m.author.handle ? <a href={`/m/${m.author.handle}`}>{m.author.name}</a> : m.author.name}</b> <span class="dim">{when(m.at)}</span>
+                {m.status === 'held' && <span class="mq__tag">Hidden after reports</span>}
+                {m.reports > 0 && <span class="mq__tag">{m.reports} {m.reports === 1 ? 'report' : 'reports'}: {m.reasons.join(', ')}</span>}
+                {m.flagged && <span class="mq__tag">Flagged: {m.flagReason}</span>}
+                {m.banned && <span class="mq__tag">Banned</span>}
+              </p>
+              <p class="mq__body">{m.body}</p>
+              <div class="row">
+                <button class="btn-app btn-app--ghost" data-act="dismiss">{m.status === 'held' ? 'Restore' : 'Keep'}</button>
+                <button class="btn-app btn-app--ghost" data-act="remove">Remove</button>
+                <button class="btn-app btn-app--ghost" data-act="timeout" data-min="60">Time out 1 hour</button>
+                {m.banned ? <button class="btn-app btn-app--ghost" data-act="unban">Lift ban</button> : <button class="btn-app btn-app--ghost" data-act="ban">Ban from chat</button>}
+              </div>
+            </li>
+          ))}</ul>
+        )}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.mq [data-act]').forEach((b) => b.addEventListener('click', async () => {
+    const li = b.closest<HTMLElement>('[data-id]')!;
+    li.querySelectorAll('button').forEach((x) => (x.disabled = true));
+    const r = await fetch('/api/chat/moderate', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: b.dataset.act, messageId: Number(li.dataset.id), minutes: Number(b.dataset.min) || undefined }) });
+    if (r.ok) li.remove(); else { li.querySelectorAll('button').forEach((x) => (x.disabled = false)); }
+  }));
+</script>
+
+<style>
+  .mq { list-style: none; margin: 0; padding: 0; }
+  .mq__item { padding: 16px 0; border-bottom: 1px solid var(--line-faint); }
+  .mq__item:last-child { border-bottom: 0; }
+  .mq__who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 0; font-size: 14px; }
+  .mq__who a { color: var(--text); }
+  .mq__tag { padding: 2px 8px; border-radius: var(--r-pill); background: var(--bg); color: var(--text-2); font-size: 12px; }
+  .mq__body { margin: 8px 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
