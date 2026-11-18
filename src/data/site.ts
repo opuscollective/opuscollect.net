@@ -45,12 +45,13 @@ export const NAV: NavItem[] = [
     ],
   },
   {
-    label: 'Works', href: '/works', line: 'Your work speaks for itself.',
+    label: 'Works', href: '/works', line: 'Everything you’ve created. One place.',
     groups: [{ links: [
-      { label: 'My works', href: '/works' },
-      { label: 'Start a release', href: '/start' },
-      { label: 'Portfolio and achievements', href: '/account/profile' },
-      { label: 'Releases on Opus', href: '/releases' },
+      { label: 'Overview', href: '/works' },
+      { label: 'Explore Works', href: '/works/explore' },
+      { label: 'My Works', href: '/works/mine' },
+      { label: 'Add Work', href: '/works?add=1' },
+      { label: 'Opus Collective catalog', href: '/releases' },
     ] }],
   },
   {
@@ -80,7 +81,7 @@ export const NAV: NavItem[] = [
     label: 'Airplay', href: '/airplay', line: 'Get your music heard.', soon: true,
     groups: [{ links: [
       { label: 'What’s coming', href: '/airplay' },
-      { label: 'Get your releases ready', href: '/works' },
+      { label: 'Get your works ready', href: '/works' },
     ] }],
   },
   {
@@ -120,7 +121,7 @@ export const NAV: NavItem[] = [
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
 export const ACCOUNT_MENU = [
   { label: 'Your profile', href: '/account/profile' },
-  { label: 'Your works', href: '/works' },
+  { label: 'Your works', href: '/works/mine' },
   { label: 'My Future', href: '/future' },
   { label: 'My Network', href: '/network' },
   { label: 'Bookings', href: '/account/bookings' },

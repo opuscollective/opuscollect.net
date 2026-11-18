@@ -5,6 +5,7 @@
  * Signed out: what following does, and the way in.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
 import { listFollows, type FollowedCity } from '@/server/cities';
 import { guideFor, photoSrc, photoSrcset } from '@/data/city-guides';
 import '@/styles/app.css';
@@ -17,6 +18,7 @@ if (user) { try { cities = await listFollows(Astro.locals.runtime.env, user.id);
 const SUGGEST = [['Birmingham', 'birmingham'], ['Atlanta', 'atlanta'], ['Nashville', 'nashville'], ['London', 'london'], ['Lagos', 'lagos'], ['Los Angeles', 'los-angeles']] as const;
 ---
 <BaseLayout title="My Cities · World" description="The cities you follow on Opus World." noindex>
+  <ProductNav product="world" current="cities" />
   <section class="app">
     <div class="app__wrap app__wrap--wide mc" style="margin-inline:auto">
       <p class="t-meta app__kicker"><a href="/world" class="mc__back">World</a></p>

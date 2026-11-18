@@ -1,10 +1,12 @@
 ---
 /** Opus Collective page carried over from the v23 site. Content lives in src/legacy/community.html. */
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
 import html from '@/legacy/community.html?raw';
 import '@/styles/legacy.css';
 ---
 <BaseLayout title="Community" description="Opus Collective community programs: feedback sessions, live reviews, collective calls and Opus Sessions for independent creatives." image="/images/community-logo.jpg">
+  <ProductNav product="collective" current="community" />
   <div class="legacy"><Fragment set:html={html} /></div>
 </BaseLayout>
 <script>

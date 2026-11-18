@@ -5,6 +5,7 @@
  * Program details stay on /community and /events; Discord is one way in, not the headline.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
 import Icon from '@/components/ui/Icon.astro';
 import { SOCIALS } from '@/data/site';
 
@@ -25,6 +26,7 @@ const WAYS = [
 ];
 ---
 <BaseLayout title="Opus Collective" description="Opus Collective: a collective of artists, minds, and visionaries shaping what's next. Community, creative culture, workshops, live reviews and gatherings." image="/images/community-logo.jpg" overlayHeader>
+  <ProductNav product="collective" current="about" />
   <section class="ch tone-dark" aria-labelledby="ch-title">
     <div class="ch__media" aria-hidden="true"><img src="/images/scenic-room.jpg" alt="" decoding="async" width="1600" height="2400" /></div>
     <div class="container ch__inner">

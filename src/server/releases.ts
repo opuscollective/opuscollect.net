@@ -29,6 +29,8 @@ export interface Track { id: string; position: number; title: string }
 export interface Credit {
   id: string; trackId: string | null; role: CreditRole | string; name: string; status: CreditStatus; note: string;
   userId: string | null; handle: string | null; photoKey: string | null;
+  /** Who added the credit. A member crediting themselves is self-reported; see creditTrust in src/lib/credits.ts. */
+  createdBy: string | null;
 }
 export interface Release {
   id: string; ownerUserId: string; title: string; kind: ReleaseKind; releaseDate: string | null; released: boolean;
@@ -68,7 +70,7 @@ export const artistLine = (r: Pick<ReleaseFull, 'credits' | 'ownerName'>) => {
 async function hydrate(db: D1Database, row: Row): Promise<ReleaseFull> {
   const [tracks, credits, owner] = await db.batch([
     db.prepare('SELECT id, position, title FROM release_tracks WHERE release_id = ? ORDER BY position').bind(row.id),
-    db.prepare(`SELECT c.id, c.track_id, c.role, c.name, c.status, c.note, c.user_id, p.handle, p.photo_key, p.status AS pstatus
+    db.prepare(`SELECT c.id, c.track_id, c.role, c.name, c.status, c.note, c.user_id, c.created_by, p.handle, p.photo_key, p.status AS pstatus
                 FROM release_credits c
                 LEFT JOIN profiles p ON p.owner_user_id = c.user_id AND p.kind = 'musician'
                 WHERE c.release_id = ? ORDER BY c.created_at`).bind(row.id),
@@ -78,9 +80,9 @@ async function hydrate(db: D1Database, row: Row): Promise<ReleaseFull> {
   return {
     ...toRelease(row),
     tracks: tracks!.results as unknown as Track[],
-    credits: (credits!.results as { id: string; track_id: string | null; role: string; name: string; status: CreditStatus; note: string; user_id: string | null; handle: string | null; photo_key: string | null; pstatus: string | null }[])
+    credits: (credits!.results as { id: string; track_id: string | null; role: string; name: string; status: CreditStatus; note: string; user_id: string | null; created_by: string | null; handle: string | null; photo_key: string | null; pstatus: string | null }[])
       .map((c) => ({
-        id: c.id, trackId: c.track_id, role: c.role, name: c.name, status: c.status, note: c.note, userId: c.user_id,
+        id: c.id, trackId: c.track_id, role: c.role, name: c.name, status: c.status, note: c.note, userId: c.user_id, createdBy: c.created_by,
         // Link to a profile only while it's published.
         handle: c.pstatus === 'published' ? c.handle : null, photoKey: c.pstatus === 'published' ? c.photo_key : null,
       })),
@@ -176,25 +178,74 @@ async function myMusicianProfile(db: D1Database, userId: string) {
     .first<{ id: string; handle: string; display_name: string; status: string }>();
 }
 
-export async function createRelease(env: Env, user: SessionUser, body: { past?: unknown; title?: unknown }) {
+export interface CreateReleaseInput {
+  past?: unknown; title?: unknown;
+  /** Add Work (2026-11-18): the four essentials in one step, plus optional details. */
+  quick?: unknown; kind?: unknown; role?: unknown; artist?: unknown; releaseDate?: unknown; description?: unknown;
+}
+
+export async function createRelease(env: Env, user: SessionUser, body: CreateReleaseInput) {
   const db = env.DB;
+  const quick = body.quick === true;
+  const past = body.past === true;
+  const title = str(body.title, 120) || (quick ? '' : 'Untitled');
+  if (!title) throw new HttpError(400, 'Give your work a title.', 'title');
+  const kind: ReleaseKind = typeof body.kind === 'string' && body.kind in RELEASE_KINDS ? (body.kind as ReleaseKind) : 'single';
+  const role: CreditRole = isCreditRole(body.role) ? body.role : 'primary-artist';
+  const artist = str(body.artist, 80);
+  if (quick && role !== 'primary-artist' && artist.length < 2) throw new HttpError(400, 'Add the artist’s name, so the work is credited to them.', 'artist');
+  const date = str(body.releaseDate, 10);
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new HttpError(400, 'Use a full date (year, month and day).', 'releaseDate');
+  if (past && quick && !date) throw new HttpError(400, 'Add the date it came out.', 'releaseDate');
+  if (past && date && date > new Date(now() + DAY).toISOString().slice(0, 10)) throw new HttpError(400, 'Work that’s already out needs a date in the past.', 'releaseDate');
+  const description = str(body.description, 1500);
+
   await limit(db, `release-create:${user.id}`, 30, DAY);
   const me = await myMusicianProfile(db, user.id);
-  if (!me) throw new HttpError(403, 'Set up your Opus profile first, so your releases have a home.');
+  if (!me) throw new HttpError(403, 'Set up your Opus profile first, so your work has a home.');
   const n = await db.prepare('SELECT COUNT(*) AS n FROM releases WHERE owner_user_id = ?').bind(user.id).first<{ n: number }>();
-  if ((n?.n ?? 0) >= LIMITS.releases) throw new HttpError(400, `You can keep up to ${LIMITS.releases} releases.`);
-  const past = body.past === true;
+  if ((n?.n ?? 0) >= LIMITS.releases) throw new HttpError(400, `You can keep up to ${LIMITS.releases} works.`);
   const id = randomId();
   const t = now();
-  const title = str(body.title, 120) || 'Untitled';
-  // The person building the release is credited as its primary artist to start; they can change that.
-  await db.batch([
-    db.prepare('INSERT INTO releases (id, owner_user_id, title, released, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').bind(id, user.id, title, past ? 1 : 0, t, t),
-    db.prepare("INSERT INTO release_credits (id, release_id, role, user_id, name, status, created_by, created_at, responded_at) VALUES (?, ?, 'primary-artist', ?, ?, 'confirmed', ?, ?, ?)")
-      .bind(randomId(), id, user.id, me.display_name, user.id, t, t),
+  // The member adding the work is credited in the role they chose (Primary Artist unless they say otherwise).
+  // That credit is self-reported. When they worked on someone else's release, the artist is named, unlinked.
+  const stmts = [
+    db.prepare('INSERT INTO releases (id, owner_user_id, title, kind, release_date, released, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, user.id, title, kind, date || null, past ? 1 : 0, description, t, t),
+    db.prepare("INSERT INTO release_credits (id, release_id, role, user_id, name, status, created_by, created_at, responded_at) VALUES (?, ?, ?, ?, ?, 'confirmed', ?, ?, ?)")
+      .bind(randomId(), id, role, user.id, me.display_name, user.id, t, t),
+  ];
+  if (role !== 'primary-artist' && artist && artist.toLowerCase() !== me.display_name.toLowerCase()) {
+    stmts.push(db.prepare("INSERT INTO release_credits (id, release_id, role, user_id, name, status, created_by, created_at) VALUES (?, ?, 'primary-artist', NULL, ?, 'unlinked', ?, ?)")
+      .bind(randomId(), id, artist, user.id, t));
+  }
+  await db.batch(stmts);
+  await audit(db, user.id, 'release.created', { id, past, quick });
+  return { id, handle: me.handle, profilePublished: me.status === 'published' };
+}
+
+export interface PublicWork { id: string; title: string; kind: ReleaseKind; releaseDate: string | null; released: boolean; coverKey: string | null; artist: string; ownerName: string; ownerHandle: string; credits: number }
+
+/** Published works from published profiles, newest first. Real records only; the count is the real total. */
+export async function listPublicWorks(db: D1Database, opts: { kind?: string | null; limit?: number; offset?: number } = {}): Promise<{ works: PublicWork[]; total: number }> {
+  const kind = opts.kind && opts.kind in RELEASE_KINDS ? opts.kind : null;
+  const lim = Math.min(Math.max(opts.limit ?? 24, 1), 60);
+  const off = Math.max(opts.offset ?? 0, 0);
+  const from = `FROM releases r JOIN profiles p ON p.owner_user_id = r.owner_user_id AND p.kind = 'musician' AND p.status = 'published'
+    WHERE r.status = 'published' AND (?1 IS NULL OR r.kind = ?1)`;
+  const [rows, count] = await db.batch([
+    db.prepare(`SELECT r.id, r.title, r.kind, r.release_date, r.released, r.cover_key, p.display_name AS owner_name, p.handle AS owner_handle,
+        (SELECT group_concat(c.name, ', ') FROM release_credits c WHERE c.release_id = r.id AND c.role = 'primary-artist' AND c.track_id IS NULL AND c.status IN ('confirmed', 'unlinked', 'pending')) AS artist,
+        (SELECT COUNT(*) FROM release_credits c WHERE c.release_id = r.id AND c.status IN ('confirmed', 'unlinked')) AS credits
+      ${from} ORDER BY coalesce(r.published_at, r.updated_at) DESC LIMIT ?2 OFFSET ?3`).bind(kind, lim, off),
+    db.prepare(`SELECT COUNT(*) AS n ${from}`).bind(kind),
   ]);
-  await audit(db, user.id, 'release.created', { id, past });
-  return { id };
+  type R = { id: string; title: string; kind: ReleaseKind; release_date: string | null; released: number; cover_key: string | null; owner_name: string; owner_handle: string; artist: string | null; credits: number };
+  return {
+    works: (rows!.results as R[]).map((r) => ({ id: r.id, title: r.title, kind: r.kind, releaseDate: r.release_date, released: !!r.released, coverKey: r.cover_key,
+      artist: r.artist || r.owner_name, ownerName: r.owner_name, ownerHandle: r.owner_handle, credits: r.credits })),
+    total: (count!.results[0] as { n: number } | undefined)?.n ?? 0,
+  };
 }
 
 const pickList = (v: unknown, allowed: readonly string[], max: number) =>
@@ -354,7 +405,7 @@ export async function addCredit(env: Env, user: SessionUser, releaseId: string, 
         `${me?.display_name ?? 'An Opus member'} credited you on “${row.title}”`,
         'You’ve been credited',
         `${me?.display_name ?? 'An Opus member'} credited you as ${CREDIT_ROLES[role].label} on ${track ? `“${track}” from ` : ''}“${row.title}”.${note ? ` They wrote: “${note}”` : ''} Confirm it to add the release to your Opus profile, or decline if it isn’t right.`,
-        'Review credit', `${origin}/music`, 'Credits only appear on your profile after you confirm them.'));
+        'Review credit', `${origin}/works/mine`, 'Credits only appear on your profile after you confirm them.'));
     }
   } catch (e) { console.error('credit email', e); }
   return { id, status: 'pending' as const };

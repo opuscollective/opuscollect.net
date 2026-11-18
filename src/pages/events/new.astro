@@ -1,6 +1,7 @@
 ---
 /** Create an event. Needs an account, a confirmed email and a profile, because events show who organizes them. */
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
 import EventForm from '@/components/events/EventForm.astro';
 import { getMyProfile } from '@/server/profiles';
 import '@/styles/app.css';
@@ -12,6 +13,7 @@ if (!user) return Astro.redirect('/sign-in?next=/events/new');
 const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
 ---
 <BaseLayout title="Create an event" description="Create an event on Opus." noindex>
+  <ProductNav product="events" />
   <section class="app">
     <div class="app__wrap" style="margin-inline:auto">
       <p class="t-meta app__kicker"><a class="link" href="/events">Events</a></p>

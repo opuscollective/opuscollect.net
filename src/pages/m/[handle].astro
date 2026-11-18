@@ -125,15 +125,15 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
         <div class="mp__main">
           {p.bio && <section class="mp__sec"><h2 class="t-meta">About</h2><p class="mp__bio">{p.bio}</p></section>}
           {(record.length > 0 || isOwner) && (
-            <section class="mp__sec"><h2 class="t-meta">Releases</h2>
+            <section class="mp__sec" id="works"><h2 class="t-meta">Works</h2>
               {record.length === 0 ? (
-                <p class="dim" style="font-size:14px">Add your releases and past work in <a class="link" href="/works">Works</a>. Credits from other members show here once you confirm them.</p>
+                <p class="dim" style="font-size:14px">Add your work in <a class="link" href="/works?add=1">Works</a>. Credits from other members show here once you confirm them.</p>
               ) : (
                 <ul class="pr-list" role="list">{record.map((x) => (
                   <li><a class="pr-item" href={`/r/${x.id}`}>
                     <span class="pr-item__cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : ''}></span>
                     <b>{x.title}</b>
-                    <small>{[x.artist && !x.own ? x.artist : null, x.roles.length ? x.roles.join(', ') : null, RELEASE_KINDS[x.kind], x.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ')}</small>
+                    <small>{[x.artist && (!x.own || !x.roles.includes('Primary Artist')) ? x.artist : null, x.roles.length ? x.roles.join(', ') : null, RELEASE_KINDS[x.kind], x.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ')}</small>
                   </a></li>
                 ))}</ul>
               )}

@@ -1,8 +1,10 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
 import ProductPreview from '@/components/layout/ProductPreview.astro';
 ---
 <BaseLayout title="Airplay" description="Airplay on Opus: get your music heard. Coming soon.">
+  <ProductNav product="airplay" />
   <ProductPreview
     name="Airplay" line="Get your music heard."
     lead="A direct line between independent artists and the radio hosts, DJs and curators who play new music."

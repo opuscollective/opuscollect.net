@@ -1,0 +1,138 @@
+---
+/**
+ * My Works: everything a member manages in Works. Credits waiting for them, drafts, works on their profile,
+ * and the way into the full editor for each. Moved from /works on 2026-11-18 (the overview lives there now).
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
+import AddWork from '@/components/works/AddWork.astro';
+import WorkCard from '@/components/works/WorkCard.astro';
+import { roleLabel } from '@/data/music';
+import { listMyReleases, myCreditRequests } from '@/server/releases';
+import { mediaUrl } from '@/server/profiles';
+import '@/styles/app.css';
+import '@/styles/music.css';
+import '@/styles/product.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect(`/sign-in?next=${encodeURIComponent('/works/mine')}`);
+const db = Astro.locals.runtime.env.DB;
+const profile = await db.prepare("SELECT handle, status FROM profiles WHERE owner_user_id = ? AND kind = 'musician'").bind(user.id).first<{ handle: string; status: string }>();
+let failed = false;
+let releases: Awaited<ReturnType<typeof listMyReleases>> = [];
+let requests: Awaited<ReturnType<typeof myCreditRequests>> = [];
+try { [releases, requests] = await Promise.all([listMyReleases(db, user.id), myCreditRequests(db, user.id)]); }
+catch (e) { console.error('my works', e); failed = true; }
+const building = releases.filter((r) => r.status === 'draft');
+const out = releases.filter((r) => r.status === 'published');
+---
+<BaseLayout title="My Works" description="Your works on Opus." noindex>
+  <ProductNav product="works" current="mine" />
+  <section class="px-sec px-sec--tight">
+    <div class="px-wrap">
+      <div class="px-rowhead">
+        <div>
+          <h1 class="px-title">My Works</h1>
+          <p class="mw-sub">{out.length} on your profile · {building.length} {building.length === 1 ? 'draft' : 'drafts'}</p>
+        </div>
+        <div class="px-ctas">
+          <a class="px-btn px-btn--go" href="/works?add=1" data-add-work>Add Work</a>
+          {profile?.status === 'published' && <a class="px-btn px-btn--line" href={`/m/${profile.handle}#works`}>View profile</a>}
+        </div>
+      </div>
+
+      {!profile && (
+        <div class="px-state">
+          <h3>Set up your profile first</h3>
+          <p>Works and credits live on your Opus profile, so start there. It takes about a minute.</p>
+          <div class="px-ctas"><a class="px-btn px-btn--go px-btn--sm" href="/start">Set up your profile</a></div>
+        </div>
+      )}
+      {profile && profile.status !== 'published' && (
+        <p class="notice" style="margin-bottom:24px"><b>Your profile isn’t published yet.</b> Works stay as drafts until it is. <a class="link" href="/account/profile">Finish your profile</a></p>
+      )}
+      {failed && <div class="px-state px-state--error"><h3>Your works couldn’t be loaded just now.</h3><p>Please try again in a moment.</p></div>}
+
+      {requests.length > 0 && (
+        <section class="mw-block" id="requests" aria-labelledby="mw-req">
+          <h2 class="px-h3" id="mw-req">Credits waiting for you <span class="mw-n">{requests.length}</span></h2>
+          <p class="mw-help">Confirm to add the work to your profile as a confirmed credit. Decline if it isn’t right.</p>
+          <ul class="mu-req" role="list">{requests.map((r) => (
+            <li data-credit={r.id}>
+              <a class="mu-req__cover" href={`/r/${r.releaseId}`} style={r.coverKey ? `background-image:url(${mediaUrl(r.coverKey)})` : ''} aria-label={r.releaseTitle}></a>
+              <div class="mu-req__body">
+                <p><b>{roleLabel(r.role)}</b> on {r.trackTitle ? <>“{r.trackTitle}” from </> : null}<a class="link" href={`/r/${r.releaseId}`}>{r.releaseTitle}</a></p>
+                <p class="dim">From {r.fromHandle ? <a class="link" href={`/m/${r.fromHandle}`}>{r.from}</a> : r.from}{r.releaseStatus !== 'published' && ' · not released yet'}</p>
+                {r.note && <p class="mu-req__note">“{r.note}”</p>}
+                <div class="row"><button class="btn-app" data-answer="confirm">Confirm</button><button class="btn-app btn-app--ghost" data-answer="decline">Decline</button></div>
+                <p class="mw-err" data-answer-err role="alert"></p>
+              </div>
+            </li>
+          ))}</ul>
+        </section>
+      )}
+
+      {profile && !failed && releases.length === 0 && (
+        <div class="px-state">
+          <h3>Add your first work</h3>
+          <p>Artwork, a title, the type and your role are all it takes. Credits, tracks and links can come later.</p>
+          <div class="px-ctas"><a class="px-btn px-btn--go px-btn--sm" href="/works?add=1" data-add-work>Add Your First Work</a><a class="px-btn px-btn--line px-btn--sm" href="/works">How Works works</a></div>
+        </div>
+      )}
+
+      {building.length > 0 && (
+        <section class="mw-block" aria-labelledby="mw-drafts">
+          <h2 class="px-h3" id="mw-drafts">Drafts <span class="mw-n">{building.length}</span></h2>
+          <p class="mw-help">Only you and the people you credit can see these.</p>
+          <ul class="px-grid" role="list">{building.map((r) => (
+            <li><WorkCard href={`/works/${r.id}`} title={r.title} by={r.artist || undefined} kind={r.kind} year={r.releaseDate?.slice(0, 4)} coverKey={r.coverKey} status={r.pending ? `Draft · ${r.pending} waiting` : 'Draft'} statusTone="draft" /></li>
+          ))}</ul>
+        </section>
+      )}
+
+      {out.length > 0 && (
+        <section class="mw-block" aria-labelledby="mw-out">
+          <h2 class="px-h3" id="mw-out">On your profile <span class="mw-n">{out.length}</span></h2>
+          <p class="mw-help">Open a work to edit it, add credits or unpublish it.</p>
+          <ul class="px-grid" role="list">{out.map((r) => (
+            <li><WorkCard href={`/works/${r.id}`} title={r.title} by={r.artist || undefined} kind={r.kind} year={r.releaseDate?.slice(0, 4)} coverKey={r.coverKey} status={r.pending ? `${r.pending} waiting` : undefined} statusTone="wait" /></li>
+          ))}</ul>
+        </section>
+      )}
+
+      {profile && (
+        <section class="mw-block mw-more" aria-labelledby="mw-port">
+          <h2 class="px-h3" id="mw-port">Portfolio, collaborations and achievements</h2>
+          <p class="mw-help">Selected work, the people you’ve worked with and milestones you can point to live on your profile, next to your works and confirmed credits.</p>
+          <a class="px-btn px-btn--line px-btn--sm" href="/account/profile">Edit your profile</a>
+        </section>
+      )}
+    </div>
+  </section>
+  <AddWork profile={profile ?? null} />
+</BaseLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-answer]').forEach((b) => b.addEventListener('click', async () => {
+    const li = b.closest<HTMLElement>('[data-credit]')!;
+    const err = li.querySelector<HTMLElement>('[data-answer-err]')!;
+    li.querySelectorAll('button').forEach((x) => (x.disabled = true));
+    err.textContent = '';
+    const r = await fetch(`/api/credits/${li.dataset.credit}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: b.dataset.answer }) });
+    if (r.ok) location.reload();
+    else { li.querySelectorAll('button').forEach((x) => (x.disabled = false)); err.textContent = (await r.json().catch(() => ({}))).error ?? 'Something went wrong.'; }
+  }));
+</script>
+
+<style>
+  .mw-sub { margin: 10px 0 0; font-size: 15px; color: var(--text-2); }
+  .mw-block { margin-top: clamp(32px, 4vw, 48px); }
+  .mw-block .px-grid { margin-top: 20px; }
+  .mw-n { margin-left: 6px; font-size: 0.7em; font-weight: 500; color: var(--text-3); }
+  .mw-help { margin: 6px 0 0; font-size: 14px; color: var(--text-2); }
+  .mw-more { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 28px; border-top: 1px solid var(--line); }
+  .mw-err { margin: 6px 0 0; font-size: 13px; color: var(--danger); }
+  .mw-err:empty { display: none; }
+  #requests .mu-req { margin-top: 16px; }
+</style>

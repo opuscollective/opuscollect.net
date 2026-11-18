@@ -1,0 +1,32 @@
+---
+/** One work: artwork, title, who it's by, type and year. Used in Explore, My Works and the Works overview. */
+import { RELEASE_KINDS, type ReleaseKind } from '@/data/music';
+import { mediaUrl } from '@/server/profiles';
+
+interface Props { href: string; title: string; by?: string; kind: ReleaseKind; year?: string | null; coverKey?: string | null; cover?: string; status?: string; statusTone?: 'draft' | 'live' | 'wait'; sizes?: string }
+const { href, title, by, kind, year, coverKey, cover, status, statusTone } = Astro.props;
+const img = cover ?? (coverKey ? mediaUrl(coverKey) : null);
+---
+<a class="wc" href={href}>
+  <span class="px-art wc__art">
+    {img ? <img src={img} alt="" loading="lazy" decoding="async" /> : <span class="wc__none" aria-hidden="true">{title.slice(0, 1)}</span>}
+    {status && <span class:list={['wc__status', statusTone && `wc__status--${statusTone}`]}>{status}</span>}
+  </span>
+  <span class="wc__title">{title}</span>
+  <span class="wc__meta">{[by, RELEASE_KINDS[kind], year].filter(Boolean).join(' · ')}</span>
+</a>
+
+<style>
+  .wc { display: flex; flex-direction: column; gap: 4px; min-width: 0; color: var(--text); }
+  .wc__art { margin-bottom: 8px; transition: transform var(--m-card) var(--m-ease), box-shadow var(--m-card) var(--m-ease); }
+  .wc__art img { transition: opacity var(--m-card) var(--m-ease); }
+  @media (hover: hover) { .wc:hover .wc__art { transform: translateY(-3px); box-shadow: 0 16px 30px -20px rgba(0, 0, 0, 0.45); } }
+  .wc:focus-visible { outline: none; }
+  .wc:focus-visible .wc__art { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .wc__none { display: grid; place-items: center; width: 100%; height: 100%; font-size: 40px; font-weight: 600; letter-spacing: -0.04em; color: var(--text-3); }
+  .wc__title { font-size: 15px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wc__meta { font-size: 13px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wc__status { position: absolute; left: 8px; top: 8px; padding: 3px 8px; border-radius: var(--r-pill); background: rgba(13, 13, 15, 0.78); color: #f4f2ee; font-size: 11px; font-weight: 500; }
+  .wc__status--wait { background: #f4f2ee; color: #1a1a1c; }
+  .wc__status--live { background: rgba(0, 113, 227, 0.92); color: #fff; }
+</style>

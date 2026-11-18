@@ -5,6 +5,7 @@
  * every count here is a count of rows, never an estimate.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
 import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import { listConnections, type ConnItem } from '@/server/connections';
 import { mediaUrl } from '@/server/profiles';
@@ -37,6 +38,7 @@ const COUNT = { connections: connected.length, received: incoming.length, sent: 
 const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' };
 ---
 <BaseLayout title={user ? 'My Network' : 'Network'} description="Network on Opus: turn discovery into working relationships. Connect with an introduction, then message your connections." noindex={!!user}>
+  <ProductNav product="network" current="connections" />
   <section class="app">
     <div class="app__wrap app__wrap--wide nw" style="margin-inline:auto">
       <p class="t-meta app__kicker">Network</p>

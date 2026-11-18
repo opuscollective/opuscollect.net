@@ -1,0 +1,336 @@
+---
+/**
+ * Works overview (2026-11-18). Three states on one page:
+ * - Visitors: the story, real public works, and Add Work that signs in first and comes back to the sheet.
+ * - New members (no works yet): the same story, led by Add Your First Work.
+ * - Returning members: their works and the things waiting on them first; the story stays below.
+ * Artwork in the hero is the Opus Collective catalog (credited). Example UI is labelled as an example.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
+import AddWork from '@/components/works/AddWork.astro';
+import WorkCard from '@/components/works/WorkCard.astro';
+import { CATALOG } from '@/data/catalog';
+import { listMyReleases, listPublicWorks, myCreditRequests, type ReleaseCard, type PublicWork } from '@/server/releases';
+import '@/styles/product.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const db = Astro.locals.runtime.env.DB;
+const profile = user
+  ? await db.prepare("SELECT handle, status FROM profiles WHERE owner_user_id = ? AND kind = 'musician'").bind(user.id).first<{ handle: string; status: string }>()
+  : null;
+let mine: ReleaseCard[] = [];
+let waiting = 0;
+if (user) {
+  try { [mine, waiting] = await Promise.all([listMyReleases(db, user.id), myCreditRequests(db, user.id).then((r) => r.length)]); }
+  catch (e) { console.error('works: mine', e); }
+}
+let pub: { works: PublicWork[]; total: number } = { works: [], total: 0 };
+let pubFailed = false;
+try { pub = await listPublicWorks(db, { limit: 8 }); } catch (e) { console.error('works: public', e); pubFailed = true; }
+
+const returning = !!user && mine.length > 0;
+const signedOutAdd = `/sign-in?next=${encodeURIComponent('/works?add=1')}`;
+const addHref = user ? '/works?add=1' : signedOutAdd;
+const addAttrs = user ? { 'data-add-work': '' } : {};
+const addLabel = user && !returning ? 'Add Your First Work' : 'Add Work';
+const recent = mine.slice(0, 4);
+const drafts = mine.filter((r) => r.status === 'draft').length;
+const live = mine.length - drafts;
+const pendingOut = mine.reduce((n, r) => n + r.pending, 0);
+const [c0, c1, c2, c3, c4, c5] = CATALOG;
+---
+<BaseLayout title="Works" description="Works on Opus. Everything you’ve created, in one place: your music, your credits, your story." noindex={!!user}>
+  <ProductNav product="works" current="overview" />
+
+  {returning && (
+    <section class="px-sec px-sec--tight wk-mine" aria-labelledby="wk-mine-title">
+      <div class="px-wrap">
+        <div class="px-rowhead">
+          <div>
+            <h1 class="px-title" id="wk-mine-title">Your Works</h1>
+            <p class="wk-mine__counts">{live} on your profile · {drafts} {drafts === 1 ? 'draft' : 'drafts'}{pendingOut > 0 && ` · ${pendingOut} ${pendingOut === 1 ? 'credit' : 'credits'} waiting on others`}</p>
+          </div>
+          <div class="px-ctas">
+            <a class="px-btn px-btn--go" href="/works?add=1" data-add-work>Add Work</a>
+            <a class="px-btn px-btn--line" href="/works/mine">Manage all</a>
+          </div>
+        </div>
+        {waiting > 0 && (
+          <a class="wk-alert" href="/works/mine#requests"><b>{waiting} {waiting === 1 ? 'credit is' : 'credits are'} waiting for you to confirm.</b><span>Review them →</span></a>
+        )}
+        <ul class="px-grid wk-mine__grid" role="list">
+          {recent.map((r) => (
+            <li><WorkCard href={`/works/${r.id}`} title={r.title} by={r.artist || undefined} kind={r.kind} year={r.releaseDate?.slice(0, 4)} coverKey={r.coverKey}
+              status={r.status === 'draft' ? 'Draft' : r.pending ? `${r.pending} waiting` : undefined} statusTone={r.status === 'draft' ? 'draft' : 'wait'} /></li>
+          ))}
+        </ul>
+        {profile?.status === 'published' && <p class="wk-mine__foot"><a class="px-btn px-btn--text" href={`/m/${profile.handle}#works`}>See your works on your profile</a></p>}
+      </div>
+    </section>
+  )}
+
+  <section class:list={['wk-hero', returning && 'wk-hero--below']} aria-labelledby="wk-hero-title">
+    <div class="px-wrap wk-hero__in">
+      <div class="wk-hero__copy">
+        <p class="px-kicker">{returning ? 'About Works' : 'Works'}</p>
+        {returning
+          ? <h2 class="px-display" id="wk-hero-title">Everything you’ve created. One place.</h2>
+          : <h1 class="px-display" id="wk-hero-title">Everything you’ve created. One place.</h1>}
+        <p class="px-lead">Your music. Your credits. Your story.</p>
+        {!returning && (
+          <div class="px-ctas wk-hero__ctas">
+            <a class="px-btn px-btn--go" href={addHref} {...addAttrs}>{addLabel}</a>
+            <a class="px-btn px-btn--line" href="/works/explore">Explore Works</a>
+          </div>
+        )}
+        {user && !returning && <p class="wk-hero__intro">Start with one work. Artwork, a title, the type and your role are all it takes. Credits, tracks and links can come later.</p>}
+      </div>
+
+      <div class="wk-collage" aria-label="Releases from the Opus Collective catalog">
+        <figure class="wk-c wk-c--a"><img src={c0!.cover} alt={`${c0!.title} by ${c0!.artist}`} width="900" height="900" fetchpriority="high" decoding="async" /><figcaption><b>{c0!.title}</b> {c0!.artist}</figcaption></figure>
+        <figure class="wk-c wk-c--b"><img src={c2!.cover} alt={`${c2!.title} by ${c2!.artist}`} width="900" height="900" decoding="async" /><figcaption><b>{c2!.title}</b> {c2!.artist}</figcaption></figure>
+        <figure class="wk-c wk-c--c"><img src={c1!.cover} alt={`${c1!.title} by ${c1!.artist}`} width="900" height="900" decoding="async" /><figcaption><b>{c1!.title}</b> {c1!.artist}</figcaption></figure>
+        <figure class="wk-c wk-c--d"><img src={c4!.cover} alt={`${c4!.title} by ${c4!.artist}`} width="900" height="900" decoding="async" loading="lazy" /><figcaption><b>{c4!.title}</b> {c4!.artist}</figcaption></figure>
+        <div class="wk-c wk-c--card" aria-hidden="true">
+          <p class="px-eyebrow">Credits <span class="px-tag px-tag--example">Example</span></p>
+          <ul role="list">
+            <li><span>Primary Artist</span><span class="px-tag">Self-reported</span></li>
+            <li><span>Producer</span><span class="px-tag px-tag--confirmed">Confirmed</span></li>
+            <li><span>Mix Engineer</span><span class="px-tag px-tag--pending">Awaiting</span></li>
+          </ul>
+        </div>
+        <p class="wk-collage__note">Artwork: releases from the Opus Collective catalog.</p>
+      </div>
+    </div>
+  </section>
+
+  {!returning && (
+    <section class="px-sec px-sec--tight wk-public" aria-labelledby="wk-pub-title">
+      <div class="px-wrap">
+        <div class="px-rowhead">
+          <h2 class="px-h3" id="wk-pub-title">New on Opus</h2>
+          {pub.total > 0 && <a class="px-btn px-btn--text" href="/works/explore">Explore all {pub.total}</a>}
+        </div>
+        {pubFailed ? (
+          <div class="px-state px-state--error"><h3>Works couldn’t be loaded just now.</h3><p>Please try again in a moment.</p></div>
+        ) : pub.works.length ? (
+          <ul class="px-grid" role="list">{pub.works.map((w) => <li><WorkCard href={`/r/${w.id}`} title={w.title} by={w.artist} kind={w.kind} year={w.releaseDate?.slice(0, 4)} coverKey={w.coverKey} /></li>)}</ul>
+        ) : (
+          <div class="px-state">
+            <h3>No member has published a work yet.</h3>
+            <p>Works appear here as members publish them. Until then, browse the Opus Collective catalog, or be the first.</p>
+            <div class="px-ctas"><a class="px-btn px-btn--go px-btn--sm" href={addHref} {...addAttrs}>{addLabel}</a><a class="px-btn px-btn--line px-btn--sm" href="/releases">Opus Collective catalog</a></div>
+          </div>
+        )}
+      </div>
+    </section>
+  )}
+
+  <!-- A. Your work deserves to be seen. -->
+  <section class="px-sec wk-a" aria-labelledby="wk-a-title">
+    <div class="px-wrap px-split">
+      <div class="px-copy">
+        <p class="px-eyebrow">Portfolio</p>
+        <h2 class="px-title" id="wk-a-title">Your work deserves to be seen.</h2>
+        <p class="px-body">Every single, EP, album and mixtape you add gets its own page and a place on your profile, with the artwork up front and the details a collaborator or a booker needs.</p>
+      </div>
+      <div class="wk-frame" aria-hidden="true">
+        <div class="wk-frame__bar"><span></span><span></span><span></span><em>opuscollect.net/m/…</em></div>
+        <div class="wk-frame__body">
+          <p class="px-eyebrow">Works <span class="px-tag px-tag--example">Example</span></p>
+          <div class="wk-frame__grid">
+            {[c0, c1, c2].map((c) => <div><span class="px-art"><img src={c!.cover} alt="" loading="lazy" decoding="async" /></span><b>{c!.title}</b><small>{c!.artist}</small></div>)}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- B. Every contribution matters. -->
+  <section class="px-sec px-tone-ink wk-b" aria-labelledby="wk-b-title">
+    <div class="px-wrap px-split px-split--flip">
+      <div class="px-copy">
+        <p class="px-eyebrow">Credits</p>
+        <h2 class="px-title" id="wk-b-title">Every contribution matters.</h2>
+        <p class="px-body">Credit the producer, the writers, the engineers and the designer. When you credit a member, they confirm it themselves, and only then does it count on their profile.</p>
+        <dl class="wk-legend">
+          <div><dt><span class="px-tag px-tag--confirmed">Confirmed</span></dt><dd>Confirmed on Opus by the person credited.</dd></div>
+          <div><dt><span class="px-tag">Self-reported</span></dt><dd>Added by the member about their own role.</dd></div>
+          <div><dt><span class="px-tag px-tag--pending">Awaiting confirmation</span></dt><dd>Sent, not answered yet. Not on their profile.</dd></div>
+        </dl>
+      </div>
+      <div class="wk-credits" aria-hidden="true">
+        <div class="wk-credits__head"><span class="px-art"><img src={c3!.cover} alt="" loading="lazy" decoding="async" /></span><div><p class="px-eyebrow">Credits <span class="px-tag px-tag--example">Example</span></p><b>A single, credited properly</b></div></div>
+        <ul role="list">
+          <li><span class="wk-credits__av">Y</span><span><b>You</b><small>Primary Artist</small></span><span class="px-tag">Self-reported</span></li>
+          <li><span class="wk-credits__av">P</span><span><b>A producer on Opus</b><small>Producer</small></span><span class="px-tag px-tag--confirmed">Confirmed</span></li>
+          <li><span class="wk-credits__av">S</span><span><b>A songwriter on Opus</b><small>Songwriter</small></span><span class="px-tag px-tag--confirmed">Confirmed</span></li>
+          <li><span class="wk-credits__av">M</span><span><b>A mix engineer on Opus</b><small>Mixing Engineer</small></span><span class="px-tag px-tag--pending">Awaiting</span></li>
+          <li><span class="wk-credits__av">D</span><span><b>A designer, not on Opus yet</b><small>Artwork &amp; Design</small></span><span class="px-tag">Not on Opus</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- C. One portfolio, your entire creative journey. -->
+  <section class="px-sec px-tone-cream wk-c-sec" aria-labelledby="wk-c-title">
+    <div class="px-wrap">
+      <div class="wk-c-sec__copy">
+        <p class="px-eyebrow">Your record</p>
+        <h2 class="px-title" id="wk-c-title">One portfolio, your entire creative journey.</h2>
+        <p class="px-body">What you released, what you worked on for others, what’s coming next. Past work and upcoming releases sit in one record, newest first, so your story reads the way it happened.</p>
+      </div>
+      <ol class="wk-line" role="list" aria-label="Example record">
+        <li class="wk-line__item wk-line__item--next"><span class="wk-line__year">Next</span><span class="px-art wk-line__slot">Your next work</span><b>Planned release</b><small>Shows a date once you set one</small></li>
+        <li class="wk-line__item"><span class="wk-line__year">2026</span><span class="px-art"><img src={c0!.cover} alt="" loading="lazy" decoding="async" /></span><b>Released work</b><small>Primary Artist</small></li>
+        <li class="wk-line__item"><span class="wk-line__year">2025</span><span class="px-art"><img src={c5!.cover} alt="" loading="lazy" decoding="async" /></span><b>A credit you confirmed</b><small>Producer, on someone else’s release</small></li>
+        <li class="wk-line__item"><span class="wk-line__year">Earlier</span><span class="px-art"><img src={c4!.cover} alt="" loading="lazy" decoding="async" /></span><b>Past release</b><small>Added after the fact</small></li>
+      </ol>
+      <p class="wk-c-sec__note"><span class="px-tag px-tag--example">Example</span> Artwork from the Opus Collective catalog, shown to illustrate a record.</p>
+    </div>
+  </section>
+
+  <!-- D. Built to be shared. -->
+  <section class="px-sec wk-d" aria-labelledby="wk-d-title">
+    <div class="px-wrap px-split">
+      <div class="px-copy">
+        <p class="px-eyebrow">Sharing</p>
+        <h2 class="px-title" id="wk-d-title">Built to be shared.</h2>
+        <p class="px-body">Each published work has a clean link that previews with its artwork wherever you paste it, and a Share button on your phone. Streaming links you add sit on the page, next to the credits.</p>
+      </div>
+      <div class="wk-share" aria-hidden="true">
+        <div class="wk-share__msg">
+          <p class="wk-share__bubble">new one’s out 🎧</p>
+          <div class="wk-share__card">
+            <span class="px-art"><img src={c2!.cover} alt="" loading="lazy" decoding="async" /></span>
+            <div><b>{c2!.title}</b><small>{c2!.artist} · Opus</small><em>opuscollect.net/r/…</em></div>
+          </div>
+        </div>
+        <div class="wk-share__bar"><span class="px-btn px-btn--go px-btn--sm">Share</span><span class="px-btn px-btn--line px-btn--sm">Copy link</span><span class="px-tag px-tag--example">Example</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- E. Start creating. -->
+  <section class="px-sec px-tone-ink wk-e" aria-labelledby="wk-e-title">
+    <div class="px-wrap wk-e__in">
+      <h2 class="px-display" id="wk-e-title">Start creating.</h2>
+      <p class="px-lead">Add a work in under a minute. Credit everyone who made it.</p>
+      <div class="px-ctas">
+        <a class="px-btn px-btn--go" href={addHref} {...addAttrs}>{user && !returning ? 'Add Your First Work' : 'Add Work'}</a>
+        <a class="px-btn px-btn--line" href="/works/explore">Explore Works</a>
+      </div>
+    </div>
+  </section>
+
+  {user && <AddWork profile={profile ?? null} />}
+</BaseLayout>
+
+<style>
+  /* Returning members: their works first. */
+  .wk-mine { background: var(--bg); }
+  .wk-mine__counts { margin: 10px 0 0; font-size: 15px; color: var(--text-2); }
+  .wk-alert { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; margin-bottom: 20px; padding: 14px 18px; border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 15px; color: var(--text); }
+  .wk-alert b { font-weight: 500; }
+  .wk-alert span { color: var(--text-2); }
+  .wk-alert:hover span { color: var(--text); }
+  .wk-mine__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .wk-mine__foot { margin: 20px 0 0; }
+  @media (max-width: 760px) { .wk-mine__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* Hero: cream paper, editorial collage. */
+  .wk-hero { background: var(--px-cream); color: var(--px-cream-ink); --text: #1a1a1c; --text-2: #4a464c; --text-3: #65606a; --line-strong: #bdb5a8; --surface: #f8f5ef; --line-faint: #e0d9cd; overflow: hidden; }
+  .wk-hero__in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 80px); align-items: center; padding-block: clamp(56px, 8vw, 120px); }
+  .wk-hero--below .wk-hero__in { padding-block: clamp(64px, 8vw, 112px); }
+  .wk-hero__copy { display: flex; flex-direction: column; gap: 20px; }
+  .wk-hero__ctas { margin-top: 12px; }
+  .wk-hero__intro { margin: 4px 0 0; max-width: 42ch; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+  .wk-collage { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: repeat(12, minmax(0, 1fr)); aspect-ratio: 1 / 0.92; }
+  .wk-c { margin: 0; position: relative; }
+  .wk-c img { width: 100%; height: 100%; object-fit: cover; border-radius: 2px; box-shadow: 0 24px 50px -30px rgba(30, 20, 10, 0.55); }
+  .wk-c figcaption { position: absolute; left: 0; top: calc(100% + 8px); font-size: 12px; color: var(--text-3); white-space: nowrap; }
+  .wk-c figcaption b { font-weight: 500; color: var(--text); margin-right: 4px; }
+  .wk-c--a { grid-column: 1 / 8; grid-row: 1 / 8; z-index: 2; }
+  .wk-c--b { grid-column: 8 / 13; grid-row: 2 / 7; }
+  .wk-c--c { grid-column: 5 / 9; grid-row: 9 / 13; z-index: 3; }
+  .wk-c--d { grid-column: 10 / 13; grid-row: 8 / 11; }
+  .wk-c--card { grid-column: 1 / 5; grid-row: 9 / 13; align-self: start; z-index: 4; padding: 14px 14px 10px; border-radius: 6px; background: #fff; box-shadow: 0 18px 40px -26px rgba(30, 20, 10, 0.5), 0 0 0 1px rgba(26, 26, 28, 0.06); }
+  .wk-c--card .px-eyebrow { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 10px; }
+  .wk-c--card ul { margin: 8px 0 0; padding: 0; }
+  .wk-c--card li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; border-top: 1px solid #ece6dc; font-size: 12px; color: #1a1a1c; }
+  .wk-c--card .px-tag { height: 20px; font-size: 10px; padding: 0 6px; }
+  .wk-collage__note { position: absolute; right: 0; bottom: -34px; margin: 0; font-size: 11px; color: var(--text-3); }
+  @media (max-width: 960px) {
+    .wk-hero__in { grid-template-columns: 1fr; gap: 56px; padding-bottom: 88px; }
+    .wk-collage { max-width: 620px; width: 100%; }
+  }
+  @media (max-width: 520px) {
+    .wk-c figcaption { font-size: 11px; }
+    .wk-c--card { grid-column: 1 / 6; padding: 10px 10px 6px; }
+    .wk-c--card li { font-size: 11px; }
+    .wk-c--card li:nth-child(3) { display: none; }
+    .wk-c--d figcaption { display: none; }
+    .wk-collage__note { left: 0; right: auto; bottom: -44px; }
+  }
+
+  /* A: portfolio frame */
+  .wk-frame { border-radius: 6px; background: var(--surface); box-shadow: 0 0 0 1px var(--line), 0 30px 60px -40px rgba(0, 0, 0, 0.35); overflow: hidden; }
+  .wk-frame__bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line-faint); }
+  .wk-frame__bar span { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+  .wk-frame__bar em { margin-left: 10px; font-style: normal; font-size: 12px; color: var(--text-3); }
+  .wk-frame__body { padding: clamp(18px, 3vw, 32px); }
+  .wk-frame__body .px-eyebrow { display: flex; align-items: center; gap: 10px; }
+  .wk-frame__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(10px, 1.6vw, 18px); margin-top: 16px; }
+  .wk-frame__grid div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .wk-frame__grid .px-art { margin-bottom: 8px; }
+  .wk-frame__grid b { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wk-frame__grid small { font-size: 12px; color: var(--text-3); }
+
+  /* B: credits */
+  .wk-legend { display: flex; flex-direction: column; gap: 12px; margin: 10px 0 0; }
+  .wk-legend div { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: center; }
+  .wk-legend dt { margin: 0; }
+  .wk-legend dd { margin: 0; font-size: 14px; color: var(--text-2); }
+  @media (max-width: 520px) { .wk-legend div { grid-template-columns: 1fr; gap: 6px; } }
+  .wk-credits { border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); padding: clamp(18px, 3vw, 28px); }
+  .wk-credits__head { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 14px; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .wk-credits__head .px-eyebrow { display: flex; align-items: center; gap: 8px; }
+  .wk-credits__head b { display: block; margin-top: 4px; font-size: 17px; font-weight: 500; }
+  .wk-credits ul { margin: 0; padding: 0; }
+  .wk-credits li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line-faint); }
+  .wk-credits li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .wk-credits__av { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-hover); font-size: 13px; color: var(--text-2); }
+  .wk-credits b { display: block; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wk-credits small { display: block; font-size: 12px; color: var(--text-3); }
+
+  /* C: record */
+  .wk-c-sec__copy { display: flex; flex-direction: column; gap: 18px; max-width: 760px; }
+  .wk-line { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(14px, 2vw, 24px); margin: clamp(40px, 5vw, 64px) 0 0; padding: 0; }
+  .wk-line__item { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding-top: 14px; border-top: 1px solid var(--line-strong); }
+  .wk-line__year { margin-bottom: 12px; font-size: 13px; font-weight: 500; color: var(--text); }
+  .wk-line__item .px-art { margin-bottom: 10px; }
+  .wk-line__slot { display: grid; place-items: center; border: 1px dashed var(--line-strong); background: transparent; font-size: 13px; color: var(--text-3); }
+  .wk-line__item b { font-size: 15px; font-weight: 500; }
+  .wk-line__item small { font-size: 13px; color: var(--text-3); }
+  .wk-c-sec__note { display: flex; align-items: center; gap: 10px; margin: 24px 0 0; font-size: 12px; color: var(--text-3); }
+  @media (max-width: 760px) { .wk-line { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 28px; } }
+
+  /* D: share */
+  .wk-share { display: flex; flex-direction: column; gap: 16px; padding: clamp(20px, 4vw, 40px); border-radius: 6px; background: var(--surface-sunken); }
+  .wk-share__msg { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .wk-share__bubble { margin: 0; padding: 9px 14px; border-radius: 18px 18px 4px 18px; background: var(--px-go); color: #fff; font-size: 15px; }
+  .wk-share__card { display: grid; grid-template-columns: 88px minmax(0, 1fr); width: min(360px, 100%); overflow: hidden; border-radius: 14px 14px 4px 14px; background: var(--surface); box-shadow: 0 0 0 1px var(--line-faint); }
+  .wk-share__card .px-art { border-radius: 0; }
+  .wk-share__card div { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 14px; min-width: 0; }
+  .wk-share__card b { font-size: 15px; font-weight: 500; }
+  .wk-share__card small { font-size: 12px; color: var(--text-2); }
+  .wk-share__card em { font-style: normal; font-size: 12px; color: var(--text-3); }
+  .wk-share__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+  /* E */
+  .wk-e__in { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
+  .wk-e__in .px-lead { max-width: 34ch; }
+  .wk-e__in .px-ctas { justify-content: center; margin-top: 8px; }
+</style>

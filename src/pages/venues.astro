@@ -1,8 +1,10 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
 import ProductPreview from '@/components/layout/ProductPreview.astro';
 ---
 <BaseLayout title="Venues" description="Venues on Opus: find your stage. Coming soon.">
+  <ProductNav product="venues" />
   <ProductPreview
     name="Venues" line="Find your stage."
     lead="Rooms, stages and spaces for live music, on the World map next to the people who play them."

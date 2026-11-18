@@ -9,6 +9,8 @@ import { artistLine, formatDate, getVisibleRelease, releaseMeta, type Credit } f
 import { mediaUrl } from '@/server/profiles';
 import '@/styles/app.css';
 import '@/styles/music.css';
+import '@/styles/product.css';
+import { creditTrust, TRUST_HELP, TRUST_LABEL } from '@/lib/credits';
 export const prerender = false;
 
 const viewer = Astro.locals.user;
@@ -19,7 +21,8 @@ if (!found) {
 const { release: r, isOwner, myCredits } = found;
 // Declined credits never show. Pending ones show as a plain name until confirmed.
 const shown = r.credits.filter((c) => c.status !== 'declined');
-const wholeCredits = shown.filter((c) => !c.trackId && c.role !== 'primary-artist');
+// Every whole-release credit, artists first, each with how it was confirmed.
+const wholeCredits = [...shown.filter((c) => !c.trackId && c.role === 'primary-artist'), ...shown.filter((c) => !c.trackId && c.role !== 'primary-artist')];
 const primary = shown.filter((c) => !c.trackId && c.role === 'primary-artist');
 const byTrack = (id: string) => shown.filter((c) => c.trackId === id);
 const linked = (c: Credit) => c.status === 'confirmed' && c.handle;
@@ -76,7 +79,7 @@ const by = artistLine(r);
         {wholeCredits.length > 0 && (
           <section class="rp__sec"><h2 class="t-meta">Credits</h2>
             <ul class="rp__credits" role="list">{wholeCredits.map((c) => (
-              <li>{linked(c) ? <a class="rp__person" href={`/m/${c.handle}`}>{c.name}</a> : <span>{c.name}</span>}<span class="dim">{roleLabel(c.role)}</span></li>
+              <li>{linked(c) ? <a class="rp__person" href={`/m/${c.handle}`}>{c.name}</a> : <span>{c.name}</span>}<span class="dim">{roleLabel(c.role)}</span>{(() => { const t = creditTrust(c); return <span class:list={['px-tag', t === 'confirmed' && 'px-tag--confirmed', t === 'pending' && 'px-tag--pending']} title={TRUST_HELP[t]}>{TRUST_LABEL[t]}</span>; })()}</li>
             ))}</ul>
           </section>
         )}
@@ -91,7 +94,7 @@ const by = artistLine(r);
           <section class="rp__sec"><h2 class="t-meta">Sound</h2><ul class="rp__tags" role="list">{[...r.genres, ...r.moods].map((g) => <li>{g}</li>)}</ul></section>
         )}
         {!r.released && r.releaseDate && <section class="rp__sec"><h2 class="t-meta">Release date</h2><p>{formatDate(r.releaseDate)}</p></section>}
-        <section class="rp__sec"><p class="dim" style="font-size:13px;line-height:1.55">Linked names are confirmed by the people credited. Others are listed by {r.ownerName}.</p></section>
+        <section class="rp__sec"><p class="dim" style="font-size:13px;line-height:1.55"><b>Confirmed</b> credits were confirmed on Opus by the person credited. <b>Self-reported</b> credits were added by the member themselves. Names marked <b>Not on Opus</b> are listed by {r.ownerName}.</p></section>
       </aside>
     </div>
   </article>

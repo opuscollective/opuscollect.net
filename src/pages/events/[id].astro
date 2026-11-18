@@ -5,6 +5,7 @@
  * The organizer edits, cancels, adds an image and invites artists here; invited artists accept or decline.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
 import EventPoster from '@/components/events/EventPoster.astro';
 import { canView, getEvent, getSave, listPerformers } from '@/server/events';
 import { getMyProfile } from '@/server/profiles';
@@ -33,6 +34,7 @@ const STATUS_TEXT = { invited: 'Invitation sent', confirmed: 'Confirmed', declin
 const description = `${e.when} · ${e.venue}${e.place ? `, ${e.place}` : ''}. ${e.description}`.slice(0, 160);
 ---
 <BaseLayout title={e.title} description={description} noindex={e.visibility === 'unlisted' || canceled}>
+  <ProductNav product="events" />
   <section class="app">
     <div class:list={['app__wrap app__wrap--wide', { 'ev-canceled': canceled }]} style="margin-inline:auto">
       <p class="t-meta app__kicker"><a class="link" href="/future?tab=our">Our Future</a> · Event</p>

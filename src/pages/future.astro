@@ -6,6 +6,7 @@
  * undated Collective events stay undated, and saving an event is never a ticket or an RSVP.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
 import Icon from '@/components/ui/Icon.astro';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import { futureFor, ourFuture } from '@/server/future';
@@ -39,6 +40,7 @@ const FILTERS = [['', 'All'], ['event', 'Events'], ['session', 'Sessions'], ['re
 const TABS = [['mine', 'My Future'], ['our', 'Our Future']] as const;
 ---
 <BaseLayout title={tab === 'our' ? 'Our Future' : 'My Future'} description="Future on Opus: your sessions, planned releases and events in one timeline, and the public events coming up across Opus." noindex={tab === 'mine'}>
+  <ProductNav product="future" current={tab} />
   <section class="app">
     <div class="app__wrap app__wrap--wide fut" style="margin-inline:auto">
       <p class="t-meta app__kicker">Future</p>
