@@ -37,7 +37,6 @@ const recent = items.filter((i) => i.past).reverse();
 const invites = upcoming.filter((i) => i.tone === 'pending' && i.eventId);
 const months = groupByMonth(upcoming.filter((i) => !(i.tone === 'pending' && i.eventId)), today);
 const FILTERS = [['', 'All'], ['event', 'Events'], ['session', 'Sessions'], ['release', 'Releases']] as const;
-const TABS = [['mine', 'My Future'], ['our', 'Our Future']] as const;
 ---
 <BaseLayout title={tab === 'our' ? 'Our Future' : 'My Future'} description="Future on Opus: your sessions, planned releases and events in one timeline, and the public events coming up across Opus." noindex={tab === 'mine'}>
   <ProductNav product="future" current={tab} />
@@ -46,9 +45,6 @@ const TABS = [['mine', 'My Future'], ['our', 'Our Future']] as const;
       <p class="t-meta app__kicker">Future</p>
       <h1 class="app__title">{tab === 'our' ? 'What’s coming, for all of us.' : 'What’s ahead for you.'}</h1>
 
-      <nav class="fut__tabs" aria-label="Future">
-        {TABS.map(([k, l]) => <a href={k === 'our' ? '/future?tab=our' : '/future?tab=mine'} aria-current={tab === k ? 'page' : undefined}>{l}</a>)}
-      </nav>
 
       <p class="app__lead">
         {tab === 'our' ? 'Public events from Opus members and the Collective, soonest first. Add any of them to My Future.'
@@ -194,11 +190,6 @@ const TABS = [['mine', 'My Future'], ['our', 'Our Future']] as const;
 </script>
 
 <style>
-  .fut__tabs { display: inline-flex; gap: 4px; margin-top: 24px; padding: 4px; border-radius: var(--r-pill); background: var(--surface-sunken); }
-  .fut__tabs a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 20px; border-radius: var(--r-pill); color: var(--text-2); font-size: 15px; font-weight: 500; }
-  .fut__tabs a { transition: background-color var(--m-control) var(--m-ease), color var(--m-control) var(--m-ease), box-shadow var(--m-control) var(--m-ease); }
-  .fut__tabs a[aria-current='page'] { background: var(--surface-raised); color: var(--text); box-shadow: 0 1px 3px var(--shadow-c); }
-  .fut__tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .fut__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; }
   .fut__bar > .fut__btn:only-child { margin-left: auto; }
   .fut__place { min-width: min(320px, 100%); }
@@ -246,9 +237,7 @@ const TABS = [['mine', 'My Future'], ['our', 'Our Future']] as const;
   .fut__empty { margin-top: 24px; }
 
   @media (max-width: 560px) {
-    .fut__tabs { display: flex; width: 100%; }
-    .fut__tabs a { flex: 1; justify-content: center; padding: 0 8px; }
-    .fut__filters { display: flex; width: 100%; }
+        .fut__filters { display: flex; width: 100%; }
     .fut__bar > .fut__btn { width: 100%; justify-content: center; }
     .fut__thumb { display: none; }
     .fut__filters button { flex: 1; padding: 0 6px; }

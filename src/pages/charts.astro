@@ -1,9 +1,17 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ProductNav from '@/components/product/ProductNav.astro';
-import ComingSoon from '@/components/layout/ComingSoon.astro';
+import ProductPreview from '@/components/layout/ProductPreview.astro';
 ---
-<BaseLayout title="Opus Charts" description="Public, city-based charts of rising independent artists." noindex>
+<BaseLayout title="Charts" description="Opus Charts: every city has a sound. Public, city-based charts of rising independent artists. Coming soon." noindex>
   <ProductNav product="charts" />
-  <ComingSoon kicker="Opus Charts" phase="In development" title="Rising artists, city by city." body="Public charts for every city, built only from published platform statistics. Membership, payment and verification never change a rank. Artists don’t need an account to appear." />
+  <ProductPreview
+    name="Charts" line="Every city has a sound."
+    lead="Public charts of rising independent artists, city by city, built only from published Opus activity."
+    does={['A chart for each city, so you can see who is rising where you are.', 'Rankings anyone can read, with or without an account.', 'A clear note on every chart explaining what it counts.']}
+    forWho={['Artists who want to see their city’s scene.', 'Curators, bookers and radio looking for who’s next.', 'Fans who follow a city’s sound.']}
+    coming={['Charts calculated only from real, published platform statistics.', 'No pay-to-rank: membership, payment and verification never change a position.', 'Artists don’t need an account to appear.']}
+    availability="Charts is in development and not open yet. There are no rankings on Opus today, so nothing here is a real chart. Build your record in Works in the meantime."
+    now={[{ label: 'Go to Works', href: '/works' }, { label: 'Explore World', href: '/world' }]}
+  />
 </BaseLayout>

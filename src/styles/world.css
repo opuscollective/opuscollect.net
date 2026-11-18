@@ -8,7 +8,7 @@
   display: grid;
   /* The directory is always on the left, the map on the right: the same on every Opus World page and on the homepage. */
   grid-template-columns: var(--panel-w) minmax(0, 1fr);
-  height: calc(100svh - 72px);
+  height: calc(100svh - var(--hdr-h, 72px) - var(--pnav-h, 0px));
   min-height: 560px;
   background: var(--c-bg);
   border-top: 1px solid var(--c-hairline);
@@ -442,7 +442,7 @@
   }
   .world[data-view='list'] .wp__results[hidden] { display: none; }
   .world[data-view='list'] .wp__foot { border-top: 1px solid var(--c-hairline); padding-bottom: 32px; }
-  .world[data-view='list'] .world__preview, .world[data-view='list'] .world__scrim { position: fixed; top: 72px; }
+  .world[data-view='list'] .world__preview, .world[data-view='list'] .world__scrim { position: fixed; top: calc(var(--hdr-h, 72px) + var(--pnav-h, 0px)); }
 }
 
 html:not([data-motion='fluid']) .wc--skeleton span, html:not([data-motion='fluid']) .im.is-skel, html:not([data-motion='fluid']) .pv__skel { animation: none; }
@@ -451,7 +451,7 @@ html:not([data-motion='fluid']) .wc--skeleton span, html:not([data-motion='fluid
 
 /* ---------- Phones: Map view = full-screen map + bottom sheet; List view = full-screen list ---------- */
 @media (max-width: 860px) {
-  .world { --peek: 152px; display: block; height: calc(100svh - 64px); min-height: 460px; overflow: hidden; }
+  .world { --peek: 152px; display: block; height: calc(100svh - var(--hdr-h, 64px) - var(--pnav-h, 0px)); min-height: 460px; overflow: hidden; }
   .world .world__map { position: absolute; inset: 0; z-index: 0; } /* beats .maplibregl-map { position: relative } */
   .world__panel {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; height: calc(100% - 8px);
