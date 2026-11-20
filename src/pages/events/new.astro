@@ -4,6 +4,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import ProductNav from '@/components/product/ProductNav.astro';
 import EventForm from '@/components/events/EventForm.astro';
 import { getMyProfile } from '@/server/profiles';
+import { clansIAdmin } from '@/server/clans';
 import '@/styles/app.css';
 import '@/styles/events.css';
 export const prerender = false;
@@ -11,6 +12,11 @@ export const prerender = false;
 const user = Astro.locals.user;
 if (!user) return Astro.redirect('/sign-in?next=/events/new');
 const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
+// Clans this member manages can host too (?host=<clan id> preselects one, from a Clan page).
+const clans = profile ? await clansIAdmin(Astro.locals.runtime.env.DB, user.id) : [];
+const hosts = profile ? [{ id: profile.id, name: profile.displayName, label: 'You' }, ...clans.map((c) => ({ id: c.id, name: c.name, label: c.typeLabel }))] : [];
+const defaultHost = clans.find((c) => c.id === Astro.url.searchParams.get('host'))?.id ?? profile?.id ?? null;
+const hostClan = clans.find((c) => c.id === defaultHost);
 ---
 <BaseLayout title="Create an event" description="Create an event on Opus." noindex>
   <ProductNav product="events" />
@@ -34,7 +40,7 @@ const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
       ) : (
         <>
           {profile.status !== 'published' && <p class="notice notice--warn" style="margin-top:24px"><b>Your profile isn’t published yet.</b> You can create the event now; it becomes visible to others once your profile is published.</p>}
-          <EventForm defaultPlace={profile.placeId ?? null} />
+          <EventForm defaultPlace={hostClan?.placeId ?? profile.placeId ?? null} hosts={hosts} defaultHost={defaultHost} />
         </>
       )}
     </div>

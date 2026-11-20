@@ -1,0 +1,94 @@
+/* Clans: create flow, the public Clan page, its roster and the admins' tools. Tokens only; light and dark follow the theme. */
+.cl { max-width: 1080px; margin: 0 auto; padding: clamp(32px, 6vw, 72px) var(--gutter) 96px; }
+.cl-sample { margin-bottom: 20px; }
+.cl__head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: clamp(16px, 3vw, 28px); align-items: end; }
+.cl__photo { width: clamp(96px, 14vw, 148px); aspect-ratio: 1; border-radius: var(--r-lg); background: var(--surface-sunken) center / cover no-repeat; border: 1px solid var(--line); display: grid; place-items: center;
+  font-size: clamp(32px, 5vw, 52px); font-weight: 600; letter-spacing: -0.04em; color: var(--text-3); }
+.cl__type { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.cl__name { margin: 6px 0 0; font-size: clamp(2rem, 1.4rem + 2.4vw, 3.4rem); line-height: 1; letter-spacing: -0.045em; font-weight: 500; }
+.cl__meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 14px; color: var(--text-2); }
+.cl__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.cl__bio { margin-top: 28px; max-width: 64ch; white-space: pre-line; font-size: 17px; line-height: 1.65; color: var(--text-2); }
+.cl__grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: clamp(32px, 6vw, 72px); margin-top: 48px; align-items: start; }
+.cl__sec + .cl__sec { margin-top: 44px; }
+.cl__sec > h2 { margin: 0 0 14px; font-size: 13px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.cl__empty { font-size: 14px; color: var(--text-3); line-height: 1.55; }
+
+/* Roster */
+.cl-roster { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-faint); }
+.cl-roster li { border-bottom: 1px solid var(--line-faint); }
+.cl-m { display: flex; align-items: center; gap: 14px; min-height: 68px; padding: 10px 0; color: var(--text); }
+a.cl-m:hover .cl-m__name { color: var(--accent); }
+.cl-m__ph { flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; display: grid; place-items: center; font-size: 15px; font-weight: 600; color: var(--text-3); }
+.cl-m__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cl-m__name { font-size: 17px; font-weight: 500; letter-spacing: -0.01em; transition: color var(--m-hover) var(--m-ease); }
+.cl-m__roles { font-size: 14px; color: var(--text-2); }
+.cl-m__tag { margin-left: auto; flex-shrink: 0; font-size: 12px; color: var(--text-3); }
+
+/* Admin tools */
+.cl-admin { margin-top: 36px; }
+.cl-admin .panel + .panel { margin-top: 12px; }
+.cl-step { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; font-size: 13px; color: var(--text-3); }
+.cl-step b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--text); color: var(--bg); font-size: 12px; font-weight: 600; }
+.cl-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 16px; }
+.cl-add .field--wide { grid-column: 1 / -1; }
+.cl-add .row { grid-column: 1 / -1; }
+.cl-rolepick { display: flex; flex-wrap: wrap; gap: 6px; }
+.cl-rolepick button { min-height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: none; color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; }
+.cl-rolepick button:hover { border-color: var(--line-strong); color: var(--text); }
+.cl-spots { margin: 18px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line-faint); }
+.cl-spot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line-faint); }
+.cl-spot__who b { display: block; font-size: 15px; font-weight: 500; }
+.cl-spot__who small { display: block; margin-top: 2px; font-size: 13px; color: var(--text-3); }
+.cl-spot__st { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; margin-top: 6px; border-radius: var(--r-pill); background: var(--nav-hover); font-size: 12px; color: var(--text-2); }
+.cl-spot__acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.cl-spot__acts button, .cl-spot__acts a { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: none; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; }
+.cl-spot__acts button:hover { background: var(--surface-hover); }
+.cl-spot__acts [data-remove] { color: var(--danger); }
+.cl-link { grid-column: 1 / -1; display: flex; gap: 8px; }
+.cl-link input { flex: 1; min-height: 40px; font-size: 13px; }
+.cl-works { display: flex; flex-direction: column; margin-top: 14px; }
+.cl-works label { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: var(--text); border-bottom: 1px solid var(--line-faint); }
+.cl-works small { color: var(--text-3); }
+
+/* Invitations */
+.cl-invite { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; justify-content: space-between; margin-bottom: 24px; }
+.cl-invite p { margin: 0; font-size: 15px; color: var(--text-2); }
+.cl-invite b { color: var(--text); font-weight: 500; }
+
+/* Create */
+.clc-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; border: 0; padding: 0; margin: 0; }
+.clc-type { position: relative; }
+.clc-type input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.clc-type span { display: flex; flex-direction: column; gap: 4px; min-height: 76px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); transition: border-color var(--m-control) var(--m-ease), background var(--m-control) var(--m-ease); }
+.clc-type b { font-size: 15px; font-weight: 500; color: var(--text); }
+.clc-type small { font-size: 13px; color: var(--text-3); line-height: 1.4; }
+.clc-type input:checked + span { border-color: var(--accent); background: var(--accent-soft); }
+.clc-type input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.clc-steps { display: flex; gap: 18px; margin-top: 20px; font-size: 13px; color: var(--text-3); }
+.clc-steps span { display: inline-flex; align-items: center; gap: 8px; }
+.clc-steps b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-strong); font-size: 12px; font-weight: 600; color: var(--text-2); }
+.clc-steps .is-on { color: var(--text); }
+.clc-steps .is-on b { background: var(--text); color: var(--bg); border-color: var(--text); }
+.clc-photo { display: flex; align-items: center; gap: 14px; }
+.clc-photo__pv { width: 72px; height: 72px; border-radius: var(--r-md); background: var(--surface-sunken) center / cover no-repeat; border: 1px solid var(--line); }
+
+/* Clans on a member's profile */
+.cl-aff { display: flex; flex-direction: column; gap: 4px; }
+.cl-aff a { display: flex; align-items: center; gap: 12px; min-height: 52px; color: var(--text); }
+.cl-aff a:hover b { color: var(--accent); }
+.cl-aff__ph { flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--r-sm); background: var(--surface-sunken) center / cover no-repeat; }
+.cl-aff b { display: block; font-size: 15px; font-weight: 500; }
+.cl-aff small { display: block; font-size: 13px; color: var(--text-3); }
+
+@media (max-width: 860px) {
+  .cl__head { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+  .cl__actions { grid-column: 1 / -1; }
+  .cl__grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .cl-add { grid-template-columns: 1fr; }
+  .clc-types { grid-template-columns: 1fr; }
+  .cl-spot { grid-template-columns: 1fr; }
+  .cl-spot__acts { justify-content: flex-start; }
+}

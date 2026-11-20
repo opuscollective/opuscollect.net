@@ -14,7 +14,7 @@ export interface GuideCounts { name: string; total: number; musicians: number; s
 /** "12 professionals · 3 studios · 1 organization", or an honest line when nobody has published yet. */
 export function countsLine(g: GuideCounts): string {
   const parts = [g.musicians && plural(g.musicians, 'professional', 'professionals'), g.studios && plural(g.studios, 'studio', 'studios'),
-    g.organizations && plural(g.organizations, 'organization', 'organizations')].filter(Boolean);
+    g.organizations && plural(g.organizations, 'Clan', 'Clans')].filter(Boolean);
   return parts.length ? `${parts.join(' · ')} on Opus` : `No one in ${g.name} has published a profile yet`;
 }
 

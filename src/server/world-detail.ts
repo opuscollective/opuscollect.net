@@ -9,7 +9,8 @@ import type { Listing } from '@/types/directory';
 import { profileReleases } from './releases';
 import { RELEASE_KINDS } from '@/data/music';
 import { LINK_KEYS, listGallery, mediaUrl, type Credit, type PortfolioItem } from './profiles';
-import { publicMusicians, publicStudios } from './directory';
+import { publicClans, publicMusicians, publicStudios } from './directory';
+import { roster } from './clans';
 import { money } from '@/lib/booking-time';
 
 export interface PreviewLink { key: string; label: string; url: string }
@@ -89,6 +90,15 @@ async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | n
       },
     };
   }
+  if (l.kind === 'organization') {
+    // Clan: its accepted members and their roles. Open spots and invitations never leave the server.
+    const members = await roster(db, { id: l.id, ownerUserId: r.owner_user_id }).catch(() => []);
+    return {
+      ...base,
+      projects: members.slice(0, 8).map((x) => x.name + (x.roles.length ? ' · ' + x.roles.join(', ') : '')),
+      actions: { primary: { label: 'See the roster', href: l.href }, profile: { label: 'View full page', href: l.href } },
+    };
+  }
   // Studio: services with prices, gallery and equipment. Requests are made on the studio page.
   const [svc, gallery] = await Promise.all([
     db.prepare('SELECT name, description, mode, duration_min, price_cents, currency FROM services WHERE profile_id = ? AND active = 1 ORDER BY sort, created_at LIMIT 6')
@@ -153,8 +163,8 @@ export async function worldDetail(env: Env, id: string): Promise<{ listing: List
     const l = SAMPLE_LISTINGS.find((x) => x.id === id);
     return l ? { listing: l, detail: sampleDetail(l) } : null;
   }
-  const [m, s] = await Promise.all([publicMusicians(env.DB, id), publicStudios(env.DB, id)]);
-  const l: Listing | undefined = m[0] ?? s[0];
+  const [m, s, c] = await Promise.all([publicMusicians(env.DB, id), publicStudios(env.DB, id), publicClans(env.DB, id).catch(() => [])]);
+  const l: Listing | undefined = m[0] ?? s[0] ?? c[0];
   if (!l) return null;
   const detail = await realDetail(env.DB, l);
   return detail ? { listing: l, detail } : null;

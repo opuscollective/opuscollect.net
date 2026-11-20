@@ -10,7 +10,7 @@
  *   a "region" member gets no coordinates and no city; a "hidden" member gets no location at all.
  */
 import { MIN_LOCALITY_GROUP } from '@/data/places';
-import type { MusicianListing, StudioListing, Listing, StudioType, StudioVerification, GeoPoint, LocationVisibility } from '@/types/directory';
+import type { MusicianListing, StudioListing, OrganizationListing, Listing, StudioType, StudioVerification, GeoPoint, LocationVisibility } from '@/types/directory';
 import { money } from '@/lib/booking-time';
 import type { Specialty } from '@/data/specialties';
 import { mediaUrl } from './profiles';
@@ -145,9 +145,46 @@ export async function publicStudios(db: D1Database, onlyId?: string): Promise<St
   });
 }
 
+interface ClanRow extends PlaceCols { id: string; handle: string; display_name: string; photo_key: string | null; bio: string; show_on_map: number; group_type: 'band' | 'collective' | 'crew' | 'label'; is_sample: number }
+
+/** Published Clans (bands, collectives, crews, labels) with a city. Shown as organizations, at their city point. */
+export async function publicClans(db: D1Database, onlyId?: string): Promise<OrganizationListing[]> {
+  const { results } = await db.prepare(`
+    WITH pub AS (
+      SELECT p.id, p.handle, p.display_name, p.photo_key, p.bio, p.show_on_map, p.place_id, p.updated_at, p.location_visibility, d.group_type, d.is_sample
+      FROM profiles p JOIN clan_details d ON d.profile_id = p.id
+      WHERE p.status = 'published' AND p.kind = 'organization' AND p.place_id IS NOT NULL
+        AND EXISTS (SELECT 1 FROM clan_members c WHERE c.clan_id = p.id AND c.status = 'active')
+    ),
+    counts AS (SELECT place_id, COUNT(*) AS n FROM pub GROUP BY place_id)
+    SELECT pub.*, ${PLACE_SELECT}
+    FROM pub
+    JOIN places pl ON pl.id = pub.place_id
+    JOIN places m ON m.id = pl.metro_id
+    LEFT JOIN counts ON counts.place_id = pub.place_id
+    ${onlyId ? 'WHERE pub.id = ?1' : ''}
+    ORDER BY pub.updated_at DESC
+    LIMIT 2000`).bind(...(onlyId ? [onlyId] : [])).all<ClanRow>();
+  return results.map((r) => ({
+    id: r.id,
+    kind: 'organization',
+    slug: r.handle,
+    name: r.display_name,
+    href: `/c/${r.handle}`,
+    photo: mediaUrl(r.photo_key) ?? undefined,
+    // A Clan is a group, not a person: it shows at its city (or the metro, for a small suburb), never more precisely.
+    ...publicPlace({ ...r, location_visibility: 'city' }, r.show_on_map !== 0),
+    category: r.group_type === 'band' ? 'band' : r.group_type === 'crew' ? 'crew' : r.group_type,
+    services: [],
+    verified: false,
+    summary: r.bio ? r.bio.split(/(?<=[.!?])\s/)[0]!.slice(0, 160) : undefined,
+    ...(r.is_sample ? { isSample: true } : {}),
+  }) satisfies OrganizationListing);
+}
+
 export async function directory(env: Env): Promise<{ listings: Listing[]; includesSample: boolean }> {
-  const [musicians, studios] = await Promise.all([publicMusicians(env.DB), publicStudios(env.DB)]);
-  const real: Listing[] = [...musicians, ...studios];
+  const [musicians, studios, clans] = await Promise.all([publicMusicians(env.DB), publicStudios(env.DB), publicClans(env.DB).catch(() => [])]);
+  const real: Listing[] = [...musicians, ...studios, ...clans];
   // Sample listings are only ever added outside production, and each one is labeled "Sample".
   if (env.SHOW_SAMPLE_DATA === '1' && env.SITE_ENV !== 'production') {
     const { SAMPLE_LISTINGS } = await import('@/data/sample-world');

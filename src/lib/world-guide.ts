@@ -52,7 +52,7 @@ export function cityGuide(all: Listing[], place: GuidePlace, km = GUIDE_KM): Cit
   for (const [s, ls] of rest) shelves.push(shelf(`spec-${s}`, SPECIALTIES[s].plural, ls, { kind: 'musician', specialty: s }));
   const collab = musicians.filter((l) => l.kind === 'musician' && l.openToCollab);
   if (collab.length >= 2) shelves.push(shelf('collab', 'Open to collaborate', collab, { kind: 'musician', collab: true }));
-  if (orgs.length) shelves.push(shelf('orgs', 'Labels and organizations', orgs, { kind: 'organization' }));
+  if (orgs.length) shelves.push(shelf('orgs', 'Bands, crews and Clans', orgs, { kind: 'organization' }));
 
   return { name: place.name, total: here.length, musicians: musicians.length, studios: studios.length, organizations: orgs.length, shelves };
 }

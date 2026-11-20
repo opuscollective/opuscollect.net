@@ -640,6 +640,12 @@ html:not([data-motion='fluid']) .wc--skeleton span, html:not([data-motion='fluid
 }
 @media (max-width: 860px) { .wg__photo { margin: 0 14px; } .wg__titlerow { align-items: flex-start; flex-direction: column; gap: 12px; } }
 .wg__shelf { margin-top: 26px; }
+.wg-ev { display: flex; flex-direction: column; gap: 3px; padding: 10px 0 0; }
+.wg-ev__item { display: flex; flex-direction: column; gap: 3px; padding: 14px 18px; background: var(--surface); color: var(--text); transition: background var(--m-hover) var(--m-ease); }
+.wg-ev__item:hover { background: var(--surface-hover); }
+.wg-ev__item b { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; }
+.wg-ev__when { font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); }
+.wg-ev__item small { font-size: 13px; color: var(--text-2); }
 .wg__shead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 18px; }
 .wg__shead h3 { margin: 0; font-size: 17px; font-weight: 500; letter-spacing: -0.02em; color: var(--c-text); }
 .wg__all { flex-shrink: 0; min-height: 32px; padding: 0; border: 0; background: none; color: var(--c-fg-muted); font-size: 13px; font-weight: 500; cursor: pointer; transition: color var(--dur-fast); }

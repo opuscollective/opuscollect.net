@@ -1,0 +1,280 @@
+---
+/**
+ * A Clan's public page, shareable by URL: roster (accepted members only), selected Works and upcoming Events.
+ * Admins see their tools on the same page: add band members (existing Opus members or an invite link), edit roles,
+ * link Works and host an event as the Clan. Open spots and invitations are only ever rendered for admins.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PlaceSelect from '@/components/business/PlaceSelect.astro';
+import EventPoster from '@/components/events/EventPoster.astro';
+import { GROUP_TYPES, ROLE_SUGGESTIONS, clanWorks, eligibleWorks, getClanByHandle, isClanAdmin, roster } from '@/server/clans';
+import { listHostedEvents } from '@/server/events';
+import { RELEASE_KINDS } from '@/data/music';
+import '@/styles/app.css';
+import '@/styles/events.css';
+import '@/styles/music.css';
+import '@/styles/clans.css';
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.DB;
+const viewer = Astro.locals.user;
+const clan = await getClanByHandle(db, Astro.params.handle ?? '');
+const admin = clan ? await isClanAdmin(db, clan, viewer?.id) : false;
+if (!clan || (clan.status !== 'published' && !admin)) {
+  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Not found · Opus</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:#f2efea;font-family:system-ui,sans-serif;text-align:center"><div><p style="color:#8a858c;letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This page isn’t available.</h1><p style="color:#a39da5">The link may be wrong, or the page was taken down.</p><p><a href="/clans" style="color:#f2efea">Explore Clans</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+if (clan.handle !== Astro.params.handle) return Astro.redirect(clan.href, 301);
+
+const [members, works, events] = await Promise.all([roster(db, clan, admin), clanWorks(db, clan.id), listHostedEvents(db, clan.id)]);
+const active = members.filter((m) => m.status === 'active');
+const pendingSpots = members.filter((m) => m.status === 'open' || m.status === 'invited' || m.status === 'declined');
+const eligible = admin ? await eligibleWorks(db, clan.id) : [];
+const myInvite = viewer && !admin ? await db.prepare("SELECT id, roles FROM clan_members WHERE clan_id = ? AND user_id = ? AND status = 'invited'").bind(clan.id, viewer.id).first<{ id: string; roles: string }>() : null;
+const amMember = viewer ? !!(await db.prepare("SELECT 1 AS x FROM clan_members WHERE clan_id = ? AND user_id = ? AND status = 'active'").bind(clan.id, viewer.id).first()) : false;
+const T = GROUP_TYPES[clan.groupType];
+const setup = admin && Astro.url.searchParams.has('setup');
+const initials = (s: string) => s.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+const STATUS = { open: 'Invite link not used yet', invited: 'Invited, waiting for an answer', declined: 'Declined' } as Record<string, string>;
+const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}` : ''} on Opus.`;
+---
+<BaseLayout title={clan.name} description={desc} image={clan.photo ?? undefined}>
+  <article class="cl" data-clan={clan.id}>
+    {clan.isSample && <p class="notice notice--warn cl-sample"><b>Development data.</b> This Clan and its roster are sample records for the preview build, not real members.</p>}
+    {myInvite && (
+      <div class="panel cl-invite" data-invite={myInvite.id}>
+        <p><b>{clan.name} invited you to join</b>{JSON.parse(myInvite.roles).length ? ` as ${JSON.parse(myInvite.roles).join(', ')}` : ''}. Only you and the {clan.typeLabel.toLowerCase()}’s admins can see this.</p>
+        <div class="row"><button class="btn-app" type="button" data-respond="accept">Accept</button><button class="btn-app btn-app--ghost" type="button" data-respond="decline">Decline</button></div>
+      </div>
+    )}
+    <header class="cl__head">
+      <div class="cl__photo" style={clan.photo ? `background-image:url(${clan.photo})` : ''} role="img" aria-label={`${clan.name} photo`}>{!clan.photo && initials(clan.name)}</div>
+      <div>
+        <p class="cl__type">{clan.typeLabel}</p>
+        <h1 class="cl__name">{clan.name}</h1>
+        <p class="cl__meta">
+          {clan.place && <span>{clan.place}</span>}
+          <span>{active.length} {active.length === 1 ? 'member' : 'members'}</span>
+        </p>
+      </div>
+      <div class="cl__actions">
+        <button class="btn-app btn-app--ghost" type="button" data-share>Share</button>
+        {admin && <a class="btn-app" href={`/events/new?host=${clan.id}`}>Create event</a>}
+        {amMember && !admin && <button class="btn-app btn-app--ghost" type="button" data-leave>Leave {clan.typeLabel.toLowerCase()}</button>}
+      </div>
+    </header>
+    {clan.bio && <p class="cl__bio">{clan.bio}</p>}
+    <p class="dim mu-err" data-page-status role="alert"></p>
+
+    {admin && (
+      <section class="cl-admin" id="members" aria-label="Admin tools">
+        <div class="panel">
+          {setup && <p class="cl-step"><b>2</b>Step 2 of 2</p>}
+          <h2>{T.membersStep}</h2>
+          <p class="dim">List each member with their role. If they’re on Opus, add their username and they’ll get an invitation in their account. If they’re new, you’ll get an invite link for their spot to send them. Nobody shows on the public page until they accept.</p>
+          <form class="cl-add" data-add-form novalidate>
+            <label class="field"><span>Display name *</span><input class="input" name="name" maxlength="80" autocomplete="off" placeholder="Their name" /></label>
+            <label class="field"><span>Opus username</span><input class="input" name="handle" maxlength="60" autocomplete="off" placeholder="Leave empty if they’re new" /></label>
+            <label class="field field--wide"><span>Role in the {clan.typeLabel.toLowerCase()}</span><input class="input" name="roles" maxlength="160" placeholder={T.rolePlaceholder} data-roles />
+              <span class="cl-rolepick">{ROLE_SUGGESTIONS.map((r) => <button type="button" data-role={r}>{r}</button>)}</span>
+              <small>One or more roles, separated by commas.</small>
+            </label>
+            <div data-status class="form-status field--wide"></div>
+            <div class="row"><button class="btn-app" type="submit">Add to roster</button></div>
+          </form>
+          {pendingSpots.length > 0 && (
+            <ul class="cl-spots" role="list" aria-label="Not public yet">
+              {pendingSpots.map((m) => (
+                <li class="cl-spot" data-spot={m.id}>
+                  <div class="cl-spot__who"><b>{m.name}</b><small>{m.roles.join(', ') || 'No role yet'}{m.handle && ` · @${m.handle}`}</small><span class="cl-spot__st">{STATUS[m.status]}</span></div>
+                  <div class="cl-spot__acts">
+                    <button type="button" data-edit-roles={m.roles.join(', ')}>Edit role</button>
+                    {m.status === 'open' && <button type="button" data-renew>New invite link</button>}
+                    <button type="button" data-remove>{m.status === 'declined' ? 'Clear' : 'Withdraw'}</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p class="cl__empty" style="margin-top:14px">Only admins see this list. Invite links work once, for that spot.</p>
+        </div>
+
+        <div class="panel">
+          <h2>Works</h2>
+          <p class="dim">Pick the Works to show on the page. Any published Work by, or crediting, someone on the roster can be added.</p>
+          {eligible.length ? (
+            <div class="cl-works">{eligible.map((w) => (
+              <label><input type="checkbox" data-link-work={w.id} /> {w.title} <small>{[w.artist, RELEASE_KINDS[w.kind as keyof typeof RELEASE_KINDS], w.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ')}</small></label>
+            ))}</div>
+          ) : <p class="cl__empty" style="margin-top:12px">Nothing to add yet. Published Works from members show here.</p>}
+        </div>
+
+        <details class="panel">
+          <summary style="cursor:pointer;font-size:18px;font-weight:500">Edit details</summary>
+          <form class="form" data-edit-form novalidate style="margin-top:18px">
+            <label class="field"><span>{clan.groupType === 'band' ? 'Band name' : 'Name'}</span><input class="input" name="name" maxlength="80" value={clan.name} /></label>
+            <label class="field"><span>Type</span><select class="select" name="groupType">{Object.entries(GROUP_TYPES).map(([k, v]) => <option value={k} selected={k === clan.groupType}>{v.label}</option>)}</select></label>
+            <label class="field"><span>City</span><PlaceSelect selected={clan.placeId} /></label>
+            <label class="field"><span>Short bio</span><textarea class="textarea" name="bio" maxlength="600" rows="4">{clan.bio}</textarea></label>
+            <div class="field"><span>Photo</span><label class="btn-app btn-app--ghost" style="align-self:flex-start">Change photo<input type="file" accept="image/*" hidden data-photo /></label></div>
+            <div data-status class="form-status"></div>
+            <div class="row"><button class="btn-app" type="submit">Save</button></div>
+          </form>
+        </details>
+      </section>
+    )}
+
+    <div class="cl__grid">
+      <div>
+        <section class="cl__sec" aria-labelledby="cl-roster">
+          <h2 id="cl-roster">{clan.groupType === 'band' ? 'Band members' : 'Members'}</h2>
+          {active.length ? (
+            <ul class="cl-roster" role="list">
+              {active.map((m) => {
+                const inner = <>
+                  <span class="cl-m__ph" style={m.photo ? `background-image:url(${m.photo})` : ''}>{!m.photo && initials(m.name)}</span>
+                  <span class="cl-m__txt"><span class="cl-m__name">{m.name}</span>{m.roles.length > 0 && <span class="cl-m__roles">{m.roles.join(', ')}</span>}</span>
+                  {admin && (m.isOwner ? <span class="cl-m__tag">Owner</span> : <span class="cl-m__tag"><button class="link" style="background:none;border:0;font:inherit;color:var(--text-3);cursor:pointer" type="button" data-spot-remove={m.id}>Remove</button></span>)}
+                </>;
+                return <li>{m.handle && m.profilePublished ? <a class="cl-m" href={`/m/${m.handle}`}>{inner}</a> : <div class="cl-m">{inner}</div>}</li>;
+              })}
+            </ul>
+          ) : <p class="cl__empty">No one has joined yet.</p>}
+        </section>
+
+        <section class="cl__sec" aria-labelledby="cl-works">
+          <h2 id="cl-works">Works</h2>
+          {works.length ? (
+            <ul class="pr-list" role="list">{works.map((w) => (
+              <li><a class="pr-item" href={`/r/${w.id}`}>
+                <span class="pr-item__cover" style={w.cover ? `background-image:url(${w.cover})` : ''}></span>
+                <b>{w.title}</b>
+                <small>{[w.artist, RELEASE_KINDS[w.kind as keyof typeof RELEASE_KINDS], w.released ? w.releaseDate?.slice(0, 4) : 'Coming'].filter(Boolean).join(' · ')}</small>
+              </a>{admin && <button type="button" class="link" style="background:none;border:0;font-size:12px;color:var(--text-3);cursor:pointer;padding:4px 0" data-unlink-work={w.id}>Remove from page</button>}</li>
+            ))}</ul>
+          ) : <p class="cl__empty">No Works on the page yet.</p>}
+        </section>
+      </div>
+
+      <aside>
+        <section class="cl__sec" aria-labelledby="cl-events">
+          <h2 id="cl-events">Upcoming</h2>
+          {events.length ? (
+            <div class="ev-grid" style="grid-template-columns:1fr;margin-top:0">
+              {events.map((e) => (
+                <a class="ev-card" href={e.href}>
+                  <EventPoster image={e.image} startAt={e.startAt} timezone={e.timezone} category={e.categoryLabel} small />
+                  <span class="ev-card__body">
+                    <span class="ev-card__when">{e.when}</span>
+                    <span class="ev-card__title">{e.title}</span>
+                    <span class="ev-card__where">{e.venue}{e.place && ` · ${e.place.split(',')[0]}`}</span>
+                  </span>
+                </a>
+              ))}
+            </div>
+          ) : <p class="cl__empty">Nothing on the calendar yet.{admin && <> <a class="link" href={`/events/new?host=${clan.id}`}>Create an event</a></>}</p>}
+        </section>
+      </aside>
+    </div>
+  </article>
+</BaseLayout>
+
+<script>
+  import { bindForm, status, values } from '@/scripts/form';
+  import { prepareImage } from '@/scripts/image';
+  const root = document.querySelector<HTMLElement>('[data-clan]')!;
+  const id = root.dataset.clan!;
+  const pageStatus = root.querySelector<HTMLElement>('[data-page-status]')!;
+  const say = (m: string) => { pageStatus.textContent = m; };
+  async function act(body: Record<string, unknown>, url = `/api/clans/${id}`) {
+    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
+    const d = await r.json().catch(() => ({})) as Record<string, unknown>;
+    if (!r.ok) throw new Error(String(d.error ?? 'Something went wrong. Please try again.'));
+    return d;
+  }
+  const reload = () => location.reload();
+
+  root.querySelector('[data-share]')?.addEventListener('click', async () => {
+    const url = location.origin + location.pathname;
+    try { if (navigator.share) await navigator.share({ title: document.title, url }); else { await navigator.clipboard.writeText(url); say('Link copied.'); } } catch { /* dismissed */ }
+  });
+  root.querySelectorAll<HTMLButtonElement>('[data-respond]').forEach((b) => b.addEventListener('click', async () => {
+    try { await act({ spotId: b.closest<HTMLElement>('[data-invite]')!.dataset.invite, action: b.dataset.respond }, '/api/clans/respond'); reload(); } catch (e) { say((e as Error).message); }
+  }));
+  root.querySelector('[data-leave]')?.addEventListener('click', async () => {
+    if (!confirm('Leave this roster? Your profile and your Works stay exactly as they are.')) return;
+    try { await act({ action: 'leave' }); reload(); } catch (e) { say((e as Error).message); }
+  });
+
+  const add = root.querySelector<HTMLFormElement>('[data-add-form]');
+  if (add) {
+    const roles = add.querySelector<HTMLInputElement>('[data-roles]')!;
+    add.querySelectorAll<HTMLButtonElement>('[data-role]').forEach((b) => b.addEventListener('click', () => {
+      const cur = roles.value.split(',').map((s) => s.trim()).filter(Boolean);
+      if (!cur.some((c) => c.toLowerCase() === b.dataset.role!.toLowerCase())) cur.push(b.dataset.role!);
+      roles.value = cur.join(', ');
+    }));
+    bindForm(add, {
+      url: `/api/clans/${id}`,
+      body: (f) => ({ action: 'add-spot', ...values(f) }),
+      busyLabel: 'Adding…',
+      onSuccess: (d) => {
+        if (d.link) {
+          // Show the invite link once, ready to send. It is not stored anywhere readable.
+          const box = document.createElement('div');
+          box.className = 'notice notice--ok field--wide';
+          box.innerHTML = '<b></b><div class="cl-link" style="margin-top:10px"><input class="input" readonly /><button class="btn-app" type="button">Copy</button></div><p style="margin:8px 0 0;font-size:13px">Send this to them. It works once, for this spot. Their spot stays private until they accept.</p>';
+          box.querySelector('b')!.textContent = `Invite link for ${String(d.name)}`;
+          const inp = box.querySelector('input')!; inp.value = String(d.link);
+          box.querySelector('button')!.addEventListener('click', async () => { inp.select(); try { await navigator.clipboard.writeText(inp.value); } catch { document.execCommand('copy'); } box.querySelector('button')!.textContent = 'Copied'; });
+          add.querySelector('.form-status')!.replaceWith(box);
+          add.reset();
+          box.insertAdjacentHTML('afterend', '<div class="row field--wide"><button class="btn-app btn-app--ghost" type="button" data-done>Done</button></div>');
+          add.querySelector('[data-done]')!.addEventListener('click', reload);
+        } else reload();
+      },
+    });
+  }
+  root.querySelectorAll<HTMLElement>('[data-spot]').forEach((li) => {
+    const spotId = li.dataset.spot;
+    li.querySelector('[data-remove]')?.addEventListener('click', async () => { try { await act({ action: 'remove-spot', spotId }); reload(); } catch (e) { say((e as Error).message); } });
+    li.querySelector<HTMLElement>('[data-edit-roles]')?.addEventListener('click', async (ev) => {
+      const v = prompt('Role in the group (comma separated)', (ev.currentTarget as HTMLElement).dataset.editRoles ?? '');
+      if (v === null) return;
+      try { await act({ action: 'edit-spot', spotId, roles: v }); reload(); } catch (e) { say((e as Error).message); }
+    });
+    li.querySelector('[data-renew]')?.addEventListener('click', async () => {
+      try {
+        const d = await act({ action: 'renew-link', spotId });
+        const row = document.createElement('div'); row.className = 'cl-link';
+        row.innerHTML = '<input class="input" readonly /><button class="btn-app" type="button">Copy</button>';
+        const inp = row.querySelector('input')!; inp.value = String(d.link);
+        row.querySelector('button')!.addEventListener('click', async () => { try { await navigator.clipboard.writeText(inp.value); } catch { inp.select(); document.execCommand('copy'); } row.querySelector('button')!.textContent = 'Copied'; });
+        li.append(row);
+      } catch (e) { say((e as Error).message); }
+    });
+  });
+  root.querySelectorAll<HTMLButtonElement>('[data-spot-remove]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Remove this member from the roster? Their own profile and Works are not affected.')) return;
+    try { await act({ action: 'remove-spot', spotId: b.dataset.spotRemove }); reload(); } catch (e) { say((e as Error).message); }
+  }));
+  root.querySelectorAll<HTMLInputElement>('[data-link-work]').forEach((c) => c.addEventListener('change', async () => {
+    try { await act({ action: c.checked ? 'link-work' : 'unlink-work', releaseId: c.dataset.linkWork }); } catch (e) { c.checked = !c.checked; say((e as Error).message); }
+  }));
+  root.querySelectorAll<HTMLButtonElement>('[data-unlink-work]').forEach((b) => b.addEventListener('click', async () => {
+    try { await act({ action: 'unlink-work', releaseId: b.dataset.unlinkWork }); reload(); } catch (e) { say((e as Error).message); }
+  }));
+  const edit = root.querySelector<HTMLFormElement>('[data-edit-form]');
+  if (edit) {
+    bindForm(edit, { url: `/api/clans/${id}`, body: (f) => ({ action: 'update', ...values(f) }), busyLabel: 'Saving…', onSuccess: reload });
+    edit.querySelector<HTMLInputElement>('[data-photo]')!.addEventListener('change', async (e) => {
+      const f = (e.target as HTMLInputElement).files?.[0];
+      if (!f) return;
+      try {
+        const blob = await prepareImage(f, 1200, 'square');
+        const r = await fetch(`/api/clans/${id}/image`, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: blob, credentials: 'same-origin' });
+        if (!r.ok) throw new Error(String(((await r.json().catch(() => ({}))) as { error?: string }).error ?? 'Upload failed.'));
+        reload();
+      } catch (err) { status(edit, (err as Error).message); }
+    });
+  }
+</script>
