@@ -12,7 +12,7 @@ export const prerender = false;
 const user = Astro.locals.user;
 if (!user) return Astro.redirect('/sign-in?next=/events/new');
 const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
-// Clans this member manages can host too (?host=<clan id> preselects one, from a Clan page).
+// groups this member manages can host too (?host=<clan id> preselects one, from a group page).
 const clans = profile ? await clansIAdmin(Astro.locals.runtime.env.DB, user.id) : [];
 const hosts = profile ? [{ id: profile.id, name: profile.displayName, label: 'You' }, ...clans.map((c) => ({ id: c.id, name: c.name, label: c.typeLabel }))] : [];
 const defaultHost = clans.find((c) => c.id === Astro.url.searchParams.get('host'))?.id ?? profile?.id ?? null;

@@ -1,17 +1,22 @@
 import type { APIRoute } from 'astro';
-import { addSpot, leaveClan, linkWork, removeSpot, renewLink, unlinkWork, updateClan, updateSpot } from '@/server/clans';
+import { addClanAdmin, removeClanAdmin, addMeAsMember, addSpot, groupInviteLink, leaveClan, linkWork, removeSpot, renewLink, unlinkWork, updateClan, updateSpot } from '@/server/clans';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
 export const prerender = false;
 
 /**
- * POST { action, ... } on one Clan. Every admin action re-checks admin rights in src/server/clans.ts.
+ * POST { action, ... } on one group. Every admin action re-checks admin rights in src/server/clans.ts.
  *   update      { name, groupType, placeId, bio }
  *   add-spot    { name, roles, handle? }   handle = invite an existing member; without = open spot + invite link
  *   edit-spot   { spotId, name?, roles? }
  *   renew-link  { spotId }
  *   remove-spot { spotId }
  *   link-work / unlink-work { releaseId }
+ *   add-me      { roles? }   the admin shows their own profile on the roster
+ *   invite-link { renew? }   the group's reusable invite link (managers only)
+
+ *   admin-add   { handle }   give an Opus member admin access (not a roster spot)
+ *   admin-remove { userId }  owner removes an admin, or an admin steps down
  *   leave       (a member leaves; their profile is untouched)
  */
 export const POST: APIRoute = async ({ locals, request, params, url }) => {
@@ -28,7 +33,11 @@ export const POST: APIRoute = async ({ locals, request, params, url }) => {
       case 'remove-spot': await removeSpot(env, user, id, b.spotId); return json({ ok: true });
       case 'link-work': await linkWork(env, user, id, b.releaseId); return json({ ok: true });
       case 'unlink-work': await unlinkWork(env, user, id, b.releaseId); return json({ ok: true });
-      case 'leave': await leaveClan(env, user, id); return json({ ok: true });
+      case 'add-me': return json(await addMeAsMember(env, user, id, b));
+      case 'invite-link': return json(await groupInviteLink(env, user, id, url.origin, b.renew === true));
+      case 'admin-add': return json(await addClanAdmin(env, user, id, b.handle));
+      case 'admin-remove': return json(await removeClanAdmin(env, user, id, b.userId));
+      case 'leave': return json(await leaveClan(env, user, id));
       default: throw new HttpError(400, 'Invalid request.');
     }
   } catch (e) { return fail(e); }

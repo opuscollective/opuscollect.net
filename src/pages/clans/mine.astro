@@ -1,5 +1,5 @@
 ---
-/** My Clans: invitations waiting for an answer (private to this member) and the Clans they're in. */
+/** My groups: invitations waiting for an answer (private to this member) and the groups they're in. */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { membershipsOf, myInvites } from '@/server/clans';
 import '@/styles/app.css';
@@ -11,14 +11,14 @@ if (!user) return Astro.redirect('/sign-in?next=/clans/mine');
 const db = Astro.locals.runtime.env.DB;
 const [invites, mine] = await Promise.all([myInvites(db, user.id), membershipsOf(db, user.id, false)]);
 ---
-<BaseLayout title="My Clans" description="Your bands, collectives, crews and labels on Opus." noindex>
+<BaseLayout title="My groups" description="Your bands, collectives, crews and labels on Opus." noindex>
   <section class="app">
     <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
       <div class="row" style="justify-content:space-between">
-        <h1 class="app__title">My Clans</h1>
-        <a class="btn-app" href="/clans/new">Create a Clan</a>
+        <h1 class="app__title">My groups</h1>
+        <a class="btn-app" href="/clans/new">Create a group</a>
       </div>
-      <p class="app__lead">Bands, collectives, crews and labels you’re part of. Being in a Clan never changes your own profile or work.</p>
+      <p class="app__lead">Bands, collectives, crews and labels you’re part of. Being in a group never changes your own profile or work.</p>
 
       {invites.length > 0 && (
         <div class="panel" style="margin-top:28px">
@@ -37,17 +37,20 @@ const [invites, mine] = await Promise.all([myInvites(db, user.id), membershipsOf
       )}
 
       <div class="panel" style="margin-top:16px">
-        <h2>Your Clans</h2>
+        <h2>Your groups</h2>
         {mine.length ? (
           <div class="cl-aff" style="margin-top:12px">
             {mine.map((m) => (
-              <a href={m.clan.href}>
-                <span class="cl-aff__ph" style={m.clan.photo ? `background-image:url(${m.clan.photo})` : ''}></span>
-                <span><b>{m.clan.name}</b><small>{[m.clan.typeLabel, m.roles.join(', '), m.isAdmin && 'Admin'].filter(Boolean).join(' · ')}</small></span>
-              </a>
+              <div class="cl-aff__row" data-membership={m.clan.id}>
+                <a href={m.clan.href}>
+                  <span class="cl-aff__ph" style={m.clan.photo ? `background-image:url(${m.clan.photo})` : ''}></span>
+                  <span><b>{m.clan.name}</b><small>{[m.clan.typeLabel, m.roles.join(', '), m.isAdmin && 'Admin'].filter(Boolean).join(' · ')}</small></span>
+                </a>
+                <button type="button" class="link" data-leave style="background:none;border:0;font:inherit;color:var(--text-3);cursor:pointer">Leave group</button>
+              </div>
             ))}
           </div>
-        ) : <p class="dim">You’re not in a Clan yet. Start one for your band or crew, or accept an invitation.</p>}
+        ) : <p class="dim">You’re not in a group yet. Start one for your band or crew, or accept an invitation.</p>}
       </div>
     </div>
   </section>
@@ -61,5 +64,11 @@ const [invites, mine] = await Promise.all([myInvites(db, user.id), membershipsOf
     const d = await r.json().catch(() => ({})) as { href?: string; error?: string };
     if (!r.ok) { document.querySelector('[data-err]')!.textContent = d.error ?? 'Something went wrong.'; b.disabled = false; return; }
     if (b.dataset.respond === 'accept' && d.href) location.href = d.href; else location.reload();
+  }));
+  document.querySelectorAll<HTMLButtonElement>('[data-leave]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Leave this group? You’ll come off its member list right away. Your profile and credits stay as they are.')) return;
+    b.disabled = true;
+    const r = await fetch(`/api/clans/${b.closest<HTMLElement>('[data-membership]')!.dataset.membership}`, { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'leave' }) });
+    if (r.ok) location.reload(); else { b.disabled = false; document.querySelector('[data-err]')?.replaceChildren('Something went wrong.'); }
   }));
 </script>

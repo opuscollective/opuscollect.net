@@ -26,7 +26,7 @@ const canonical = new URL(Astro.url.pathname, SITE.url).href;
 const ogImage = new URL(image, SITE.url).href;
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-theme-pref="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -41,16 +41,17 @@ const ogImage = new URL(image, SITE.url).href;
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="theme-color" content="#f2efea" />
+    <meta name="theme-color" content="#141416" />
     <script is:inline>
       // Apply the saved theme before first paint (System, Light or Dark). See src/scripts/theme.ts.
       (function () {
-        var p = 'system';
-        try { p = localStorage.getItem('opus.theme') || 'system'; } catch (e) {}
+        // Dark is the default for visitors who haven't chosen; a saved Light, Dark or System choice wins.
+        var p = 'dark';
+        try { p = localStorage.getItem('opus.theme') || 'dark'; } catch (e) {}
         var t = p === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : p;
         var d = document.documentElement;
         d.dataset.theme = t; d.dataset.themePref = p;
-        if (t === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#141416');
+        if (t !== 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f2efea');
       })();
     </script>
     <link rel="icon" href="/favicon.ico" sizes="any" />

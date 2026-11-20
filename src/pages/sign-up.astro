@@ -1,38 +1,103 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import { readInvite } from '@/server/clans';
 import '@/styles/app.css';
 export const prerender = false;
 const raw = Astro.url.searchParams.get('next') ?? '';
 const next = /^\/(?!\/)[\w\-/?=&%.]*$/.test(raw) ? raw : '';
-if (Astro.locals.user) return Astro.redirect(next || '/account');
+const setup = Astro.url.searchParams.get('setup');
+// What the person is setting up decides where they land after the account exists. It never locks the account to a type.
+const GOALS: Record<string, string> = { individual: '/start', group: '/clans/new' };
+const goal = setup && setup in GOALS ? setup : '';
+// An invite link: "Create account & join" carries the token here and the Worker adds the membership after sign-up.
+const inviteToken = /^[\w-]{8,64}$/.test(Astro.url.searchParams.get('invite') ?? '') ? Astro.url.searchParams.get('invite')! : '';
+const inviteClan = inviteToken ? await readInvite(Astro.locals.runtime.env.DB, inviteToken) : null;
+const joining = !!inviteClan && Astro.url.searchParams.get('join') === '1';
+const after = next || (goal ? GOALS[goal] : '/start');
+if (Astro.locals.user) return Astro.redirect(inviteClan ? `/clans/invite/${inviteToken}` : next || (goal ? GOALS[goal] : '/account'));
+const choosing = !next && !goal && !joining;
+const signInHref = joining ? `/sign-in?next=${encodeURIComponent(`/clans/invite/${inviteToken}`)}` : after && after !== '/start' ? `/sign-in?next=${encodeURIComponent(after)}` : '/sign-in';
+const OPTIONS = [
+  { key: 'individual', title: 'Individual', line: 'For solo artists, musicians, producers, engineers, and songwriters.', href: '/sign-up?setup=individual' },
+  { key: 'group', title: 'Group', line: 'For bands, duos, and collectives.', href: '/sign-up?setup=group' },
+  { key: 'label', title: 'Label', line: 'For record labels and their rosters.', href: '', soon: true },
+];
 ---
-<BaseLayout title="Join Opus" description="Create your Opus account to build your profile and connect with musicians around the world." noindex>
+<BaseLayout title="Join Opus" description="Create your Opus account to build your profile and connect with musicians around the world." noindex assistant={false} messages={false}>
   <section class="app app--center">
-    <div class="app__wrap">
-      <p class="t-meta app__kicker">Join Opus</p>
-      <h1 class="app__title">Create your account.</h1>
-      <p class="app__lead">Browsing World is open to everyone. An account takes a minute: your name, what you do and where. Then start a release or add your past work.</p>
+    <div class="app__wrap su">
+      {choosing ? (
+        <>
+          <h1 class="su__title">What are you setting up on Opus?</h1>
+          <p class="su__lead">This decides what you set up first. You can add the rest any time.</p>
+          <ul class="su__opts" role="list">
+            {OPTIONS.map((o) => (
+              <li>
+                {o.soon ? (
+                  <div class="su__opt is-soon" aria-disabled="true">
+                    <span class="su__txt"><b>{o.title}</b><small>{o.line}</small></span>
+                    <span class="su__soon">Coming soon</span>
+                  </div>
+                ) : (
+                  <a class="su__opt" href={o.href}>
+                    <span class="su__txt"><b>{o.title}</b><small>{o.line}</small></span>
+                    <svg width="9" height="16" viewBox="0 0 9 16" fill="none" aria-hidden="true"><path d="M1 1l7 7-7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p class="app__alt">Already a member? <a href="/sign-in">Sign in</a></p>
+        </>
+      ) : (
+        <>
+          <p class="t-meta app__kicker"><a class="link" href={joining ? `/clans/invite/${inviteToken}` : '/sign-up'}>← {joining ? 'Back' : 'Change'}</a></p>
+          <h1 class="su__title">Create your account.</h1>
+          <p class="su__lead">{joining ? `You’ll join ${inviteClan!.name} as soon as your account is ready.` : goal === 'group' ? 'One account, one email. Next, you’ll set up your group.' : 'Your name, what you do and where. It takes a minute.'}</p>
 
-      <form class="form" data-signup data-next={next} novalidate>
-        <label class="field"><span>Email</span>
-          <input class="input" name="email" type="email" autocomplete="email" required inputmode="email" />
-        </label>
-        <label class="field"><span>Password</span>
-          <input class="input" name="password" type="password" autocomplete="new-password" required minlength="10" />
-          <small>At least 10 characters. A short phrase works well.</small>
-        </label>
-        <label class="field check"><input type="checkbox" name="agree" required />
-          <span>I agree to the <a class="link" href="/legal#terms" target="_blank">Terms</a> and <a class="link" href="/legal#privacy" target="_blank">Privacy Policy</a>.</span>
-        </label>
-        <div data-status class="form-status"></div>
-        <button class="btn-app btn-app--block" type="submit">Create account</button>
-      </form>
-      <p class="app__alt">Already a member? <a href="/sign-in">Sign in</a></p>
+          <form class="form" data-signup data-next={after} data-invite={joining ? inviteToken : ''} novalidate>
+            <label class="field"><span>Email</span>
+              <input class="input" name="email" type="email" autocomplete="email" required inputmode="email" />
+            </label>
+            <label class="field"><span>Password</span>
+              <input class="input" name="password" type="password" autocomplete="new-password" required minlength="10" />
+              <small>At least 10 characters. A short phrase works well.</small>
+            </label>
+            <label class="field check"><input type="checkbox" name="agree" required />
+              <span>I agree to the <a class="link" href="/legal#terms" target="_blank">Terms</a> and <a class="link" href="/legal#privacy" target="_blank">Privacy Policy</a>.</span>
+            </label>
+            <div data-status class="form-status"></div>
+            <button class="btn-app btn-app--block" type="submit">Create account</button>
+          </form>
+          <p class="app__alt">Already a member? <a href={signInHref}>Sign in</a></p>
+        </>
+      )}
     </div>
   </section>
 </BaseLayout>
 <script>
-  import { bindForm } from '@/scripts/form';
-  const form = document.querySelector<HTMLFormElement>('[data-signup]')!;
-  bindForm(form, { url: '/api/auth/register', busyLabel: 'Creating account…', onSuccess: () => { location.href = form.dataset.next || '/start'; } });
+  import { bindForm, values } from '@/scripts/form';
+  const form = document.querySelector<HTMLFormElement>('[data-signup]');
+  if (form) bindForm(form, {
+    url: '/api/auth/register',
+    body: (f) => ({ ...values(f), ...(form.dataset.invite ? { invite: form.dataset.invite, join: true } : {}) }),
+    busyLabel: 'Creating account…',
+    onSuccess: (d) => { location.href = (d.joined as { href?: string } | null)?.href || (form.dataset.invite ? `/clans/invite/${form.dataset.invite}` : form.dataset.next || '/start'); },
+  });
 </script>
+<style>
+  .su { max-width: 560px; }
+  .su__title { margin: 0; font-size: clamp(2rem, 1.5rem + 2.2vw, 3rem); line-height: 1.05; letter-spacing: -0.045em; font-weight: 500; text-wrap: balance; }
+  .su__lead { margin: 14px 0 32px; font-size: 17px; line-height: 1.5; color: var(--text-2); }
+  .su__opts { display: flex; flex-direction: column; gap: 6px; margin: 0 -16px; padding: 0; list-style: none; }
+  .su__opt { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 96px; padding: 20px 16px; border-radius: var(--r-lg); color: var(--text); transition: background var(--m-hover) var(--m-ease); }
+  a.su__opt:hover { background: var(--surface); }
+  a.su__opt:active { background: var(--surface-hover); }
+  a.su__opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; background: var(--surface); }
+  .su__txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .su__txt b { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; }
+  .su__txt small { font-size: 15px; line-height: 1.45; color: var(--text-2); }
+  .su__opt svg { flex-shrink: 0; color: var(--text-3); }
+  .su__opt.is-soon .su__txt { opacity: 0.6; }
+  .su__soon { flex-shrink: 0; font-size: 13px; color: var(--text-3); }
+</style>

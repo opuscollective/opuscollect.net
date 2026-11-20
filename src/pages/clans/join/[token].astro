@@ -1,7 +1,7 @@
 ---
 /**
  * An invite link for one roster spot. Whoever opens it signs up or signs in, then accepts or declines.
- * The page shows only the Clan's public details and the spot's name and role; the token is never stored in clear.
+ * The page shows only the group's public details and the spot's name and role; the token is never stored in clear.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { readClaim } from '@/server/clans';
@@ -18,14 +18,14 @@ const here = `/clans/join/${token}`;
 const profile = user ? await getMyProfile(db, user.id) : null;
 Astro.response.headers.set('referrer-policy', 'no-referrer');
 ---
-<BaseLayout title={claim ? `Join ${claim.clan.name}` : 'Invite link'} description="An invitation to join a Clan on Opus." noindex>
+<BaseLayout title={claim ? `Join ${claim.clan.name}` : 'Invite link'} description="An invitation to join a group on Opus." noindex>
   <section class="app app--center">
     <div class="app__wrap">
       {!claim ? (
         <>
           <h1 class="app__title">This invite link isn’t active.</h1>
           <p class="app__lead">It was already used, or the admin made a new one. Ask them to send you a fresh link.</p>
-          <p class="app__alt"><a href="/clans">Explore Clans</a></p>
+          <p class="app__alt"><a href="/clans">Explore groups</a></p>
         </>
       ) : (
         <>

@@ -15,7 +15,7 @@ export function getPref(): ThemePref {
     const v = localStorage.getItem(KEY);
     if (v === 'light' || v === 'dark' || v === 'system') return v;
   } catch { /* storage blocked: follow the device */ }
-  return 'system';
+  return 'dark';   // default for visitors who haven't chosen
 }
 
 export const resolve = (p: ThemePref): Theme => (p === 'system' ? (media().matches ? 'dark' : 'light') : p);
@@ -35,7 +35,7 @@ function apply(p: ThemePref) {
 }
 
 export function setPref(p: ThemePref) {
-  try { if (p === 'system') localStorage.removeItem(KEY); else localStorage.setItem(KEY, p); } catch { /* not saved; still applied */ }
+  try { localStorage.setItem(KEY, p); } catch { /* not saved; still applied */ }
   apply(p);
 }
 

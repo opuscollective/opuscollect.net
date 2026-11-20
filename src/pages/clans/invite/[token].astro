@@ -1,0 +1,82 @@
+---
+/**
+ * A group's reusable invite link. It names the group first, then asks the visitor to continue.
+ * New people: "Create account & join" (membership is added by the Worker once the account exists) or "Create account only".
+ * Existing members sign in and come back here to choose Join. Joining is idempotent and only ever grants member access.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { readInvite } from '@/server/clans';
+import '@/styles/app.css';
+import '@/styles/clans.css';
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.DB;
+const user = Astro.locals.user;
+const token = Astro.params.token ?? '';
+const clan = await readInvite(db, token);
+const here = `/clans/invite/${token}`;
+const already = clan && user ? !!(await db.prepare("SELECT 1 AS x FROM clan_members WHERE clan_id = ? AND user_id = ? AND status = 'active'").bind(clan.id, user.id).first()) : false;
+Astro.response.headers.set('referrer-policy', 'no-referrer');
+---
+<BaseLayout title={clan ? `Join ${clan.name}` : 'Invite link'} description="An invitation to join a group on Opus." noindex assistant={false} messages={false}>
+  <section class="app app--center">
+    <div class="app__wrap iv">
+      {!clan ? (
+        <>
+          <h1 class="iv__title">This invite isn’t active.</h1>
+          <p class="iv__lead">The link may have been replaced. Ask the group for a new one.</p>
+          <p class="app__alt"><a href="/clans">Explore groups</a></p>
+        </>
+      ) : (
+        <>
+          <div class:list={['iv__ph', { 'iv__ph--none': !clan.photo }]} style={clan.photo ? `background-image:url(${clan.photo})` : ''} aria-hidden="true">{!clan.photo && clan.name.slice(0, 1)}</div>
+          <p class="iv__kicker">You’re invited to join</p>
+          <h1 class="iv__title">{clan.name}</h1>
+          <p class="iv__lead">{[clan.typeLabel, clan.place].filter(Boolean).join(' · ')}</p>
+          {already ? (
+            <div class="iv__acts"><a class="btn-app btn-app--block" href={clan.href}>You’re already a member. View page</a></div>
+          ) : user ? (
+            <div class="iv__acts" data-join={token}>
+              <button class="btn-app btn-app--block" type="button" data-go>Join {clan.name}</button>
+              <a class="iv__alt" href="/">Not now</a>
+              <p class="dim mu-err" data-err role="alert"></p>
+            </div>
+          ) : (
+            <div class="iv__acts">
+              <a class="btn-app btn-app--block" href={`/sign-up?invite=${token}&join=1`}>Create account &amp; join</a>
+              <a class="btn-app btn-app--ghost btn-app--block" href="/sign-up?next=/start">Create account only</a>
+              <a class="iv__signin" href={`/sign-in?next=${encodeURIComponent(here)}`}>Sign in to join</a>
+            </div>
+          )}
+          <p class="iv__fine">Joining adds you to the member list. You can leave any time.</p>
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const box = document.querySelector<HTMLElement>('[data-join]');
+  box?.querySelector('[data-go]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    b.disabled = true;
+    const r = await fetch('/api/clans/invite', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ token: box.dataset.join }) });
+    const d = await r.json().catch(() => ({})) as { href?: string; error?: string };
+    if (!r.ok) { box.querySelector('[data-err]')!.textContent = d.error ?? 'Something went wrong.'; b.disabled = false; return; }
+    location.href = d.href ?? '/clans/mine';
+  });
+</script>
+<style>
+  .iv { max-width: 440px; text-align: left; }
+  .iv__ph { width: 100%; aspect-ratio: 1; margin: 0 0 28px; border-radius: var(--r-lg); background: var(--surface-sunken) center/cover; display: grid; place-items: center; }
+  .iv__ph--none { aspect-ratio: 16 / 10; background: var(--surface); font-size: clamp(3rem, 2rem + 6vw, 5rem); font-weight: 600; letter-spacing: -0.04em; color: var(--text-3); }
+  .iv__kicker { margin: 0 0 8px; font-size: 14px; color: var(--text-2); }
+  .iv__title { margin: 0; font-size: clamp(2.2rem, 1.6rem + 3vw, 3.4rem); line-height: 1.04; letter-spacing: -0.045em; font-weight: 500; text-wrap: balance; overflow-wrap: anywhere; }
+  .iv__lead { margin: 14px 0 0; font-size: 17px; color: var(--text-2); }
+  .iv__acts { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
+  .iv__signin { align-self: center; margin-top: 4px; padding: 10px 12px; font-size: 15px; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; }
+  .iv__signin:hover { color: var(--text); }
+  .iv__signin:focus-visible { outline: 2px solid var(--accent); border-radius: 4px; }
+  .iv__alt { margin: 6px 0 0; font-size: 15px; color: var(--text-2); }
+  .iv__fine { margin: 32px 0 0; font-size: 13px; color: var(--text-3); }
+</style>

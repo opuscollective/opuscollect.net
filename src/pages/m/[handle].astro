@@ -37,7 +37,7 @@ const rel = viewer ? await relationship(db, viewer.id, ownerId) : null;
 const connections = await connectionCount(db, ownerId);
 // The member's record: releases they put out, plus releases where they confirmed a credit.
 const record = await profileReleases(db, ownerId);
-// Bands and other Clans this member accepted. Invitations are shown to the member only.
+// Bands and other groups this member accepted. Invitations are shown to the member only.
 const clans = await membershipsOf(db, ownerId).catch(() => []);
 const invites = isOwner ? await myInvites(db, ownerId).catch(() => []) : [];
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
@@ -97,7 +97,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           )}
         </div>
       </header>
-      {invites.length > 0 && <p class="notice" style="margin-top:20px"><b>{invites.length === 1 ? `${invites[0]!.clan.name} invited you to join.` : `${invites.length} Clan invitations.`}</b> Only you can see this. <a class="link" href="/clans/mine">Answer in My Clans</a></p>}
+      {invites.length > 0 && <p class="notice" style="margin-top:20px"><b>{invites.length === 1 ? `${invites[0]!.clan.name} invited you to join.` : `${invites.length} Clan invitations.`}</b> Only you can see this. <a class="link" href="/clans/mine">Answer in My groups</a></p>}
       {rel?.state === 'received' && <p class="mp__note" data-conn-note>{p.displayName} asked to connect with you. You can also answer in <a class="link" href="/network?tab=received">My Network</a>.</p>}
       <p class="dim mu-err" data-conn-status role="alert"></p>
 
