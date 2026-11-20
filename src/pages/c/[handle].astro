@@ -7,7 +7,7 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import EventPoster from '@/components/events/EventPoster.astro';
-import { GROUP_TYPES, ROLE_SUGGESTIONS, clanWorks, eligibleWorks, getClanByHandle, isClanAdmin, roster } from '@/server/clans';
+import { clanAdmins, GROUP_TYPES, ROLE_SUGGESTIONS, clanWorks, eligibleWorks, getClanByHandle, isClanAdmin, roster } from '@/server/clans';
 import { listHostedEvents } from '@/server/events';
 import { getMyProfile } from '@/server/profiles';
 import { RELEASE_KINDS } from '@/data/music';
@@ -33,6 +33,8 @@ const eligible = admin ? await eligibleWorks(db, clan.id) : [];
 const myInvite = viewer && !admin ? await db.prepare("SELECT id, roles FROM clan_members WHERE clan_id = ? AND user_id = ? AND status = 'invited'").bind(clan.id, viewer.id).first<{ id: string; roles: string }>() : null;
 const amMember = viewer ? !!(await db.prepare("SELECT 1 AS x FROM clan_members WHERE clan_id = ? AND user_id = ? AND status = 'active'").bind(clan.id, viewer.id).first()) : false;
 const myProfile = admin && viewer ? await getMyProfile(db, viewer.id) : null;
+const admins = admin ? await clanAdmins(db, clan) : [];
+const isOwner = !!viewer && clan.ownerUserId === viewer.id;
 const T = GROUP_TYPES[clan.groupType];
 const initials = (s: string) => s.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 const onRoster = !!viewer && active.some((m) => m.userId === viewer.id);
@@ -132,13 +134,34 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
 
     {admin && (
       <section class="cl-admin" id="manage" aria-label="Manage this group">
-        <h2 class="cl-admin__h">Manage</h2>
+        <h2 class="cl-admin__h">Manage {clan.name}</h2>
+        <nav class="cl-admin__nav" aria-label="Manage sections">
+          <a href="#invite">Invites</a><a href="#admins">Admins</a><a href="#members">Members</a><a href="#works">Shared work</a><a href="#edit" data-open="edit">Edit page</a>
+        </nav>
         <div class="panel" id="invite">
           <h2>Invite link</h2>
           <p class="dim">Anyone with this link can join as a member. They’ll see {clan.name} first, and can create an account along the way. Members never get admin access.</p>
           <div class="cl-link" style="margin-top:12px"><input class="input" readonly data-invite-url placeholder="Loading…" aria-label="Invite link" /><button class="btn-app" type="button" data-invite-copy>Copy link</button></div>
           <p style="margin:10px 0 0"><button type="button" class="link" style="background:none;border:0;font:inherit;color:var(--text-3);cursor:pointer" data-invite-renew>Replace link</button> <span class="dim" style="font-size:13px">The old link stops working.</span></p>
         </div>
+        <div class="panel" id="admins">
+          <h2>Admins</h2>
+          <p class="dim">Admins can edit the page, the roster and invites. This is separate from the public member list: leaving the roster never removes admin access.</p>
+          <ul class="cl-spots" role="list">
+            {admins.map((a) => (
+              <li class="cl-spot" data-admin={a.userId}>
+                <div class="cl-spot__who"><b>{a.name}</b><small>{a.isOwner ? 'Owner' : 'Admin'}{a.userId === viewer?.id && ' · You'} · {a.onRoster ? 'Shown as a member' : 'Not on the public roster'}</small></div>
+                {!a.isOwner && (isOwner || a.userId === viewer?.id) && <div class="cl-spot__acts"><button type="button" data-admin-remove>{a.userId === viewer?.id ? 'Step down' : 'Remove'}</button></div>}
+              </li>
+            ))}
+          </ul>
+          <form class="cl-add" data-admin-form novalidate style="margin-top:14px">
+            <label class="field"><span>Add an admin</span><input class="input" name="handle" maxlength="60" autocomplete="off" placeholder="Their Opus username" /></label>
+            <div data-status class="form-status field--wide"></div>
+            <div class="row"><button class="btn-app btn-app--ghost" type="submit">Make admin</button></div>
+          </form>
+        </div>
+
         <div class="panel" id="members">
           <h2>{T.membersStep}</h2>
           <p class="dim">List each member with their role. If they’re on Opus, add their username and they’ll get an invitation in their account. If they’re new, you’ll get an invite link for their spot to send them. Nobody shows on the public page until they accept.</p>
@@ -239,6 +262,13 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
     });
     root.querySelector('[data-invite-renew]')?.addEventListener('click', () => { if (confirm('Replace the invite link? The current one will stop working.')) load(true); });
   }
+  const adminForm = root.querySelector<HTMLFormElement>('[data-admin-form]');
+  if (adminForm) bindForm(adminForm, { url: `/api/clans/${id}`, body: (f) => ({ action: 'admin-add', ...values(f) }), busyLabel: 'Adding…', onSuccess: reload });
+  root.querySelectorAll<HTMLElement>('[data-admin]').forEach((li) => li.querySelector('[data-admin-remove]')?.addEventListener('click', async (ev) => {
+    const self = (ev.currentTarget as HTMLElement).textContent === 'Step down';
+    if (!confirm(self ? 'Step down as admin? You’ll no longer be able to manage this group.' : 'Remove this admin? They’ll stay on the roster if they’re a member.')) return;
+    try { await act({ action: 'admin-remove', userId: li.dataset.admin }); if (self) location.href = '/clans/mine'; else reload(); } catch (e) { say((e as Error).message); }
+  }));
   const me = root.querySelector<HTMLFormElement>('[data-me-form]');
   if (me) bindForm(me, { url: `/api/clans/${id}`, body: (f) => ({ action: 'add-me', ...values(f) }), busyLabel: 'Adding…', onSuccess: reload });
   root.querySelector('[data-share]')?.addEventListener('click', async () => {

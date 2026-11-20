@@ -77,13 +77,12 @@ export async function getClan(db: D1Database, id: string) {
   return r ? clanView(r) : null;
 }
 
-/** Owner, a profile_managers admin, or a roster admin. */
+/** Owner or a profile_managers admin. Admin access is separate from the public roster (clan_members). */
 export async function isClanAdmin(db: D1Database, clan: Pick<Clan, 'id' | 'ownerUserId'>, userId: string | null | undefined) {
   if (!userId) return false;
   if (clan.ownerUserId === userId) return true;
-  const r = await db.prepare(`SELECT 1 AS ok FROM profile_managers WHERE profile_id = ? AND user_id = ? AND role = 'admin'
-    UNION SELECT 1 FROM clan_members WHERE clan_id = ? AND user_id = ? AND status = 'active' AND is_admin = 1 LIMIT 1`)
-    .bind(clan.id, userId, clan.id, userId).first<{ ok: number }>();
+  const r = await db.prepare("SELECT 1 AS ok FROM profile_managers WHERE profile_id = ? AND user_id = ? AND role = 'admin'")
+    .bind(clan.id, userId).first<{ ok: number }>();
   return !!r;
 }
 
@@ -98,7 +97,6 @@ async function adminClan(db: D1Database, user: SessionUser, id: unknown) {
 export async function clansIAdmin(db: D1Database, userId: string): Promise<Clan[]> {
   const { results } = await db.prepare(`${CLAN_SELECT} WHERE p.owner_user_id = ?1
       OR EXISTS (SELECT 1 FROM profile_managers m WHERE m.profile_id = p.id AND m.user_id = ?1 AND m.role = 'admin')
-      OR EXISTS (SELECT 1 FROM clan_members c WHERE c.clan_id = p.id AND c.user_id = ?1 AND c.status = 'active' AND c.is_admin = 1)
     ORDER BY p.display_name`).bind(userId).all<ClanRow>();
   return results.map(clanView);
 }
@@ -117,12 +115,13 @@ export async function roster(db: D1Database, clan: Pick<Clan, 'id' | 'ownerUserI
     WHERE c.clan_id = ? ${withPrivate ? '' : "AND c.status = 'active'"}
     ORDER BY CASE c.status WHEN 'active' THEN 0 WHEN 'invited' THEN 1 WHEN 'open' THEN 2 ELSE 3 END, c.sort, c.created_at`)
     .bind(clan.id).all<MemberRow>();
+  const admins = new Set((await db.prepare("SELECT user_id FROM profile_managers WHERE profile_id = ? AND role = 'admin'").bind(clan.id).all<{ user_id: string }>()).results.map((a) => a.user_id));
   return results.map((r) => {
     const published = r.pstatus === 'published';
     // Once a member accepts, the roster uses the name on their own profile.
     const name = r.status === 'active' && r.pname ? r.pname : r.display_name;
     return {
-      id: r.id, name, roles: parse<string[]>(r.roles, []), status: r.status, isAdmin: !!r.is_admin || r.user_id === clan.ownerUserId,
+      id: r.id, name, roles: parse<string[]>(r.roles, []), status: r.status, isAdmin: (!!r.user_id && admins.has(r.user_id)) || r.user_id === clan.ownerUserId,
       isOwner: r.user_id === clan.ownerUserId, userId: withPrivate ? r.user_id : null,
       handle: published || withPrivate ? r.handle : null, photo: published || withPrivate ? mediaUrl(r.photo_key) : null, profilePublished: published,
     };
@@ -300,7 +299,7 @@ export async function removeSpot(env: Env, user: SessionUser, clanId: unknown, s
   if (s.status === 'open' || s.status === 'invited' || s.status === 'declined') {
     await db.prepare('DELETE FROM clan_members WHERE id = ?').bind(s.id).run();
   } else {
-    await db.prepare("UPDATE clan_members SET status = 'removed', is_admin = 0, claim_hash = NULL, updated_at = ? WHERE id = ?").bind(now(), s.id).run();
+    await db.prepare("UPDATE clan_members SET status = 'removed', claim_hash = NULL, updated_at = ? WHERE id = ?").bind(now(), s.id).run();
   }
   await audit(db, user.id, 'clan.remove', { clan: clan.id, spot: s.id });
 }
@@ -321,10 +320,11 @@ export interface Membership { clan: Clan; roles: string[]; isAdmin: boolean }
 
 /** groups a member is active in. Public when the group is published (shown on their profile). */
 export async function membershipsOf(db: D1Database, userId: string, publicOnly = true): Promise<Membership[]> {
-  const { results } = await db.prepare(`SELECT c.roles, c.is_admin, p.id, p.handle, p.display_name, p.bio, p.place_id, p.photo_key, p.status, p.owner_user_id, d.group_type, d.is_sample
+  const { results } = await db.prepare(`SELECT c.roles, p.id, p.handle, p.display_name, p.bio, p.place_id, p.photo_key, p.status, p.owner_user_id, d.group_type, d.is_sample
     FROM clan_members c JOIN profiles p ON p.id = c.clan_id JOIN clan_details d ON d.profile_id = p.id
-    WHERE c.user_id = ? AND c.status = 'active' ${publicOnly ? "AND p.status = 'published'" : ''} ORDER BY c.created_at`).bind(userId).all<ClanRow & { roles: string; is_admin: number }>();
-  return results.map((r) => ({ clan: clanView(r), roles: parse<string[]>(r.roles, []), isAdmin: !!r.is_admin || r.owner_user_id === userId }));
+    WHERE c.user_id = ? AND c.status = 'active' ${publicOnly ? "AND p.status = 'published'" : ''} ORDER BY c.created_at`).bind(userId).all<ClanRow & { roles: string }>();
+  const mgr = new Set((await db.prepare("SELECT profile_id FROM profile_managers WHERE user_id = ? AND role = 'admin'").bind(userId).all<{ profile_id: string }>()).results.map((a) => a.profile_id));
+  return results.map((r) => ({ clan: clanView(r), roles: parse<string[]>(r.roles, []), isAdmin: mgr.has(r.id) || r.owner_user_id === userId }));
 }
 
 /** Accept or decline an invitation addressed to this user. */
@@ -348,7 +348,7 @@ export async function leaveClan(env: Env, user: SessionUser, clanId: unknown) {
   if (!clan) throw new HttpError(404, 'That group doesn’t exist.');
   // Leaving the public roster is immediate and needs nobody's approval. It never touches ownership or the
   // member's own profile and credits, so an owner can step off the roster and keep managing the page.
-  const r = await db.prepare("UPDATE clan_members SET status = 'left', is_admin = 0, updated_at = ? WHERE clan_id = ? AND user_id = ? AND status = 'active' RETURNING id")
+  const r = await db.prepare("UPDATE clan_members SET status = 'left', updated_at = ? WHERE clan_id = ? AND user_id = ? AND status = 'active' RETURNING id")
     .bind(now(), clan.id, user.id).first<{ id: string }>();
   if (!r) return { ok: true, left: false };   // already off the roster: repeating is harmless
   await audit(db, user.id, 'clan.leave', { clan: clan.id });
@@ -494,4 +494,45 @@ export async function clansForWork(db: D1Database, releaseId: string) {
     JOIN profiles p ON p.id = w.clan_id JOIN clan_details d ON d.profile_id = p.id WHERE w.release_id = ? AND p.status = 'published' LIMIT 6`)
     .bind(releaseId).all<{ handle: string; display_name: string; group_type: GroupType }>();
   return results.map((r) => ({ name: r.display_name, href: `/c/${r.handle}`, typeLabel: GROUP_TYPES[r.group_type]?.label ?? 'Group' }));
+}
+
+// ---------- admin access (separate from the public roster) ----------
+export interface ClanAdmin { userId: string; name: string; isOwner: boolean; onRoster: boolean }
+
+/** The people who manage the group: the owner and any admins, whether or not they show as members. */
+export async function clanAdmins(db: D1Database, clan: Pick<Clan, 'id' | 'ownerUserId'>): Promise<ClanAdmin[]> {
+  const { results } = await db.prepare(`SELECT u.id AS user_id, p.display_name AS name, p.handle,
+      EXISTS (SELECT 1 FROM clan_members c WHERE c.clan_id = ?1 AND c.user_id = u.id AND c.status = 'active') AS on_roster
+    FROM users u LEFT JOIN profiles p ON p.owner_user_id = u.id AND p.kind = 'musician'
+    WHERE u.id = ?2 OR u.id IN (SELECT user_id FROM profile_managers WHERE profile_id = ?1 AND role = 'admin')`)
+    .bind(clan.id, clan.ownerUserId).all<{ user_id: string; name: string | null; handle: string | null; on_roster: number }>();
+  return results.map((r) => ({ userId: r.user_id, name: r.name ?? 'Opus member', isOwner: r.user_id === clan.ownerUserId, onRoster: !!r.on_roster }))
+    .sort((a, b) => Number(b.isOwner) - Number(a.isOwner) || a.name.localeCompare(b.name));
+}
+
+/** An admin gives another Opus member (by username) admin access. It never adds them to the public roster. */
+export async function addClanAdmin(env: Env, user: SessionUser, clanId: unknown, handleIn: unknown) {
+  const db = env.DB;
+  const clan = await adminClan(db, user, clanId);
+  const handle = str(handleIn, 60).replace(/^@/, '').toLowerCase();
+  if (!handle) throw new HttpError(400, 'Enter their Opus username.', 'handle');
+  const p = await db.prepare("SELECT owner_user_id, display_name FROM profiles WHERE handle = ? AND kind = 'musician' AND status = 'published'").bind(handle)
+    .first<{ owner_user_id: string; display_name: string }>();
+  if (!p || (await isBlockedEitherWay(db, user.id, p.owner_user_id))) throw new HttpError(404, 'We couldn’t find a published Opus profile with that username.', 'handle');
+  if (await isClanAdmin(db, clan, p.owner_user_id)) throw new HttpError(400, `${p.display_name} already manages this group.`, 'handle');
+  await db.prepare("INSERT OR IGNORE INTO profile_managers (profile_id, user_id, role, created_at) VALUES (?, ?, 'admin', ?)").bind(clan.id, p.owner_user_id, now()).run();
+  await audit(db, user.id, 'clan.admin-add', { clan: clan.id, to: p.owner_user_id });
+  return { ok: true };
+}
+
+/** The owner can remove any admin; an admin can step down themselves. The owner's access can't be removed here. */
+export async function removeClanAdmin(env: Env, user: SessionUser, clanId: unknown, targetId: unknown) {
+  const db = env.DB;
+  const clan = await adminClan(db, user, clanId);
+  const target = str(targetId, 60);
+  if (target === clan.ownerUserId) throw new HttpError(400, 'The owner always manages the group.');
+  if (target !== user.id && clan.ownerUserId !== user.id) throw new HttpError(403, 'Only the owner can remove another admin.');
+  await db.prepare("DELETE FROM profile_managers WHERE profile_id = ? AND user_id = ? AND role = 'admin'").bind(clan.id, target).run();
+  await audit(db, user.id, 'clan.admin-remove', { clan: clan.id, target });
+  return { ok: true };
 }

@@ -113,3 +113,7 @@ a.cl-m:hover .cl-m__name { color: var(--accent); }
 .cl-aff__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .cl-aff__row a { flex: 1; min-width: 0; }
 .cl-aff__row [data-leave] { flex-shrink: 0; font-size: 14px; }
+
+.cl-admin__nav { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 18px; }
+.cl-admin__nav a { font-size: 14px; color: var(--text-2); text-decoration: none; padding: 4px 0; border-bottom: 1px solid transparent; }
+.cl-admin__nav a:hover { color: var(--text); border-bottom-color: var(--line-strong); }
