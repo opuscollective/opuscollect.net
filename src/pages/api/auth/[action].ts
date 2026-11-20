@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { ctxFrom, login, register, requestReset, resendVerification, resetPassword } from '@/server/auth';
+import { joinByInvite } from '@/server/clans';
 import { destroySession } from '@/server/session';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
@@ -12,8 +13,14 @@ export const POST: APIRoute = async ({ params, request, cookies, locals }) => {
   try {
     switch (params.action) {
       case 'register': {
-        const r = await register(ctx, await readJson(request));
-        return json({ ok: true, emailStatus: r.email_status });
+        const body = await readJson(request);
+        const r = await register(ctx, body);
+        // "Create account & join": the membership is created here, in the Worker, once the account exists.
+        let joined: { href: string; name: string } | null = null;
+        if (body.join === true && typeof body.invite === 'string') {
+          try { const j = await joinByInvite(env, r.id, body.invite); joined = { href: j.clan.href, name: j.clan.name }; } catch { /* the account is made; they can retry from the invite link */ }
+        }
+        return json({ ok: true, emailStatus: r.email_status, joined });
       }
       case 'login':
         await login(ctx, await readJson(request));

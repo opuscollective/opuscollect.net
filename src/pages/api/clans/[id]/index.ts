@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { addMeAsMember, addSpot, leaveClan, linkWork, removeSpot, renewLink, unlinkWork, updateClan, updateSpot } from '@/server/clans';
+import { addMeAsMember, addSpot, groupInviteLink, leaveClan, linkWork, removeSpot, renewLink, unlinkWork, updateClan, updateSpot } from '@/server/clans';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
 export const prerender = false;
@@ -13,6 +13,7 @@ export const prerender = false;
  *   remove-spot { spotId }
  *   link-work / unlink-work { releaseId }
  *   add-me      { roles? }   the admin shows their own profile on the roster
+ *   invite-link { renew? }   the group's reusable invite link (managers only)
  *   leave       (a member leaves; their profile is untouched)
  */
 export const POST: APIRoute = async ({ locals, request, params, url }) => {
@@ -30,7 +31,8 @@ export const POST: APIRoute = async ({ locals, request, params, url }) => {
       case 'link-work': await linkWork(env, user, id, b.releaseId); return json({ ok: true });
       case 'unlink-work': await unlinkWork(env, user, id, b.releaseId); return json({ ok: true });
       case 'add-me': return json(await addMeAsMember(env, user, id, b));
-      case 'leave': await leaveClan(env, user, id); return json({ ok: true });
+      case 'invite-link': return json(await groupInviteLink(env, user, id, url.origin, b.renew === true));
+      case 'leave': return json(await leaveClan(env, user, id));
       default: throw new HttpError(400, 'Invalid request.');
     }
   } catch (e) { return fail(e); }

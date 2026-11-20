@@ -41,10 +41,13 @@ const [invites, mine] = await Promise.all([myInvites(db, user.id), membershipsOf
         {mine.length ? (
           <div class="cl-aff" style="margin-top:12px">
             {mine.map((m) => (
-              <a href={m.clan.href}>
-                <span class="cl-aff__ph" style={m.clan.photo ? `background-image:url(${m.clan.photo})` : ''}></span>
-                <span><b>{m.clan.name}</b><small>{[m.clan.typeLabel, m.roles.join(', '), m.isAdmin && 'Admin'].filter(Boolean).join(' · ')}</small></span>
-              </a>
+              <div class="cl-aff__row" data-membership={m.clan.id}>
+                <a href={m.clan.href}>
+                  <span class="cl-aff__ph" style={m.clan.photo ? `background-image:url(${m.clan.photo})` : ''}></span>
+                  <span><b>{m.clan.name}</b><small>{[m.clan.typeLabel, m.roles.join(', '), m.isAdmin && 'Admin'].filter(Boolean).join(' · ')}</small></span>
+                </a>
+                <button type="button" class="link" data-leave style="background:none;border:0;font:inherit;color:var(--text-3);cursor:pointer">Leave group</button>
+              </div>
             ))}
           </div>
         ) : <p class="dim">You’re not in a group yet. Start one for your band or crew, or accept an invitation.</p>}
@@ -61,5 +64,11 @@ const [invites, mine] = await Promise.all([myInvites(db, user.id), membershipsOf
     const d = await r.json().catch(() => ({})) as { href?: string; error?: string };
     if (!r.ok) { document.querySelector('[data-err]')!.textContent = d.error ?? 'Something went wrong.'; b.disabled = false; return; }
     if (b.dataset.respond === 'accept' && d.href) location.href = d.href; else location.reload();
+  }));
+  document.querySelectorAll<HTMLButtonElement>('[data-leave]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Leave this group? You’ll come off its member list right away. Your profile and credits stay as they are.')) return;
+    b.disabled = true;
+    const r = await fetch(`/api/clans/${b.closest<HTMLElement>('[data-membership]')!.dataset.membership}`, { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'leave' }) });
+    if (r.ok) location.reload(); else { b.disabled = false; document.querySelector('[data-err]')?.replaceChildren('Something went wrong.'); }
   }));
 </script>

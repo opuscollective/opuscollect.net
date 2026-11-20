@@ -346,11 +346,67 @@ export async function leaveClan(env: Env, user: SessionUser, clanId: unknown) {
   const db = env.DB;
   const clan = await getClan(db, str(clanId, 40));
   if (!clan) throw new HttpError(404, 'That group doesn’t exist.');
-  if (clan.ownerUserId === user.id) throw new HttpError(400, 'You own this group, so you can’t leave it yet. Owners can’t hand a group over in this version.');
+  // Leaving the public roster is immediate and needs nobody's approval. It never touches ownership or the
+  // member's own profile and credits, so an owner can step off the roster and keep managing the page.
   const r = await db.prepare("UPDATE clan_members SET status = 'left', is_admin = 0, updated_at = ? WHERE clan_id = ? AND user_id = ? AND status = 'active' RETURNING id")
     .bind(now(), clan.id, user.id).first<{ id: string }>();
-  if (!r) throw new HttpError(404, 'You’re not on this roster.');
+  if (!r) return { ok: true, left: false };   // already off the roster: repeating is harmless
   await audit(db, user.id, 'clan.leave', { clan: clan.id });
+  return { ok: true, left: true };
+}
+
+// ---------- the group's reusable invite link ----------
+export async function groupInviteLink(env: Env, user: SessionUser, clanId: unknown, origin: string, renew = false) {
+  const db = env.DB;
+  const clan = await adminClan(db, user, clanId);
+  let row = renew ? null : await db.prepare('SELECT token FROM clan_invite_links WHERE clan_id = ?').bind(clan.id).first<{ token: string }>();
+  if (!row) {
+    const token = randomId(24);
+    await db.prepare(`INSERT INTO clan_invite_links (clan_id, token, created_by, created_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(clan_id) DO UPDATE SET token = excluded.token, created_by = excluded.created_by, created_at = excluded.created_at`)
+      .bind(clan.id, token, user.id, now()).run();
+    await audit(db, user.id, renew ? 'clan.invite-link.renew' : 'clan.invite-link', { clan: clan.id });
+    row = { token };
+  }
+  return { link: `${origin}/clans/invite/${row.token}` };
+}
+
+export async function readInvite(db: D1Database, token: string): Promise<Clan | null> {
+  if (!token || token.length > 64) return null;
+  const r = await db.prepare('SELECT clan_id FROM clan_invite_links WHERE token = ?').bind(token).first<{ clan_id: string }>();
+  const clan = r ? await getClan(db, r.clan_id) : null;
+  return clan && clan.status === 'published' ? clan : null;
+}
+
+/**
+ * Joins the group as a plain member. Safe to repeat: opening or retrying the link never creates a second
+ * membership (the partial unique index on clan_members also guards it). Never grants admin access.
+ */
+export async function joinByInvite(env: Env, userId: string, token: unknown) {
+  const db = env.DB;
+  await limit(db, `clan-invite:${userId}`, 30, 3_600_000);
+  const clan = await readInvite(db, str(token, 64));
+  if (!clan) throw new HttpError(404, 'This invite link isn’t active. Ask the group for a new one.');
+  const t = now();
+  const prior = await db.prepare("SELECT id, status FROM clan_members WHERE clan_id = ? AND user_id = ? ORDER BY updated_at DESC").bind(clan.id, userId)
+    .all<{ id: string; status: MemberStatus }>();
+  if (prior.results.some((m) => m.status === 'active')) return { clan, joined: false, href: clan.href };
+  if (prior.results[0]?.status === 'removed') throw new HttpError(403, 'A manager removed you from this group. Ask them to add you back.');
+  const invited = prior.results.find((m) => m.status === 'invited');
+  if (invited) {
+    // They already had a personal invitation: accepting by link answers it.
+    await db.prepare("UPDATE clan_members SET status = 'active', responded_at = ?, updated_at = ? WHERE id = ? AND status = 'invited'").bind(t, t, invited.id).run();
+  } else {
+    const me = await getMyProfile(db, userId);
+    const u = await db.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first<{ email: string }>();
+    const n = await db.prepare('SELECT COUNT(*) AS n FROM clan_members WHERE clan_id = ? AND status IN (\'open\', \'invited\', \'active\')').bind(clan.id).first<{ n: number }>();
+    if ((n?.n ?? 0) >= MAX_ROSTER) throw new HttpError(400, `This group’s roster is full (${MAX_ROSTER} people).`);
+    await db.prepare(`INSERT OR IGNORE INTO clan_members (id, clan_id, display_name, roles, user_id, status, is_admin, sort, created_at, updated_at, responded_at)
+      VALUES (?, ?, ?, '[]', ?, 'active', 0, ?, ?, ?, ?)`)
+      .bind(randomId(), clan.id, me?.displayName || (u?.email ?? 'Member').split('@')[0], userId, (n?.n ?? 0) + 1, t, t, t).run();
+  }
+  await audit(db, userId, 'clan.join-link', { clan: clan.id });
+  return { clan, joined: true, href: clan.href };
 }
 
 // ---------- invite links ----------

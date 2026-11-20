@@ -75,7 +75,7 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
       <div class="cl__actions">
         <button class="btn-app" type="button" data-share>Share</button>
         {admin && <a class="btn-app btn-app--ghost" href="#manage" data-open="manage">Manage</a>}
-        {amMember && !admin && <button class="cl__leave" type="button" data-leave>Leave group</button>}
+        {amMember && <button class="cl__leave" type="button" data-leave>Leave group</button>}
       </div>
     </header>
 
@@ -133,6 +133,12 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
     {admin && (
       <section class="cl-admin" id="manage" aria-label="Manage this group">
         <h2 class="cl-admin__h">Manage</h2>
+        <div class="panel" id="invite">
+          <h2>Invite link</h2>
+          <p class="dim">Anyone with this link can join as a member. They’ll see {clan.name} first, and can create an account along the way. Members never get admin access.</p>
+          <div class="cl-link" style="margin-top:12px"><input class="input" readonly data-invite-url placeholder="Loading…" aria-label="Invite link" /><button class="btn-app" type="button" data-invite-copy>Copy link</button></div>
+          <p style="margin:10px 0 0"><button type="button" class="link" style="background:none;border:0;font:inherit;color:var(--text-3);cursor:pointer" data-invite-renew>Replace link</button> <span class="dim" style="font-size:13px">The old link stops working.</span></p>
+        </div>
         <div class="panel" id="members">
           <h2>{T.membersStep}</h2>
           <p class="dim">List each member with their role. If they’re on Opus, add their username and they’ll get an invitation in their account. If they’re new, you’ll get an invite link for their spot to send them. Nobody shows on the public page until they accept.</p>
@@ -168,7 +174,7 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
               ))}
             </ul>
           )}
-          <p class="cl__empty" style="margin-top:14px">Only admins see this list. Invite links work once, for that spot.</p>
+          <p class="cl__empty" style="margin-top:14px">Only admins see this list. Spot links work once, for that spot.</p>
         </div>
 
         <div class="panel" id="works">
@@ -221,6 +227,18 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
     if (t instanceof HTMLDetailsElement) t.open = true;
     t.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
+  const inviteUrl = root.querySelector<HTMLInputElement>('[data-invite-url]');
+  if (inviteUrl) {
+    const load = async (renew: boolean) => { try { inviteUrl.value = String((await act({ action: 'invite-link', renew })).link); } catch (e) { say((e as Error).message); } };
+    load(false);
+    const copy = root.querySelector<HTMLButtonElement>('[data-invite-copy]')!;
+    copy.addEventListener('click', async () => {
+      if (!inviteUrl.value) return;
+      try { await navigator.clipboard.writeText(inviteUrl.value); } catch { inviteUrl.select(); document.execCommand('copy'); }
+      copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy link'; }, 2000);
+    });
+    root.querySelector('[data-invite-renew]')?.addEventListener('click', () => { if (confirm('Replace the invite link? The current one will stop working.')) load(true); });
+  }
   const me = root.querySelector<HTMLFormElement>('[data-me-form]');
   if (me) bindForm(me, { url: `/api/clans/${id}`, body: (f) => ({ action: 'add-me', ...values(f) }), busyLabel: 'Adding…', onSuccess: reload });
   root.querySelector('[data-share]')?.addEventListener('click', async () => {
@@ -231,7 +249,7 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
     try { await act({ spotId: b.closest<HTMLElement>('[data-invite]')!.dataset.invite, action: b.dataset.respond }, '/api/clans/respond'); reload(); } catch (e) { say((e as Error).message); }
   }));
   root.querySelector('[data-leave]')?.addEventListener('click', async () => {
-    if (!confirm('Leave this roster? Your profile and your Works stay exactly as they are.')) return;
+    if (!confirm('Leave this group? You’ll come off its member list right away. Your profile and credits stay as they are.')) return;
     try { await act({ action: 'leave' }); reload(); } catch (e) { say((e as Error).message); }
   });
 

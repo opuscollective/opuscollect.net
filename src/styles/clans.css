@@ -110,3 +110,6 @@ a.cl-m:hover .cl-m__name { color: var(--accent); }
   .cl-spot { grid-template-columns: 1fr; }
   .cl-spot__acts { justify-content: flex-start; }
 }
+.cl-aff__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cl-aff__row a { flex: 1; min-width: 0; }
+.cl-aff__row [data-leave] { flex-shrink: 0; font-size: 14px; }
