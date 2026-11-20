@@ -15,6 +15,7 @@ import { PLACE_BY_ID, placeLabel } from '@/data/places';
 import { isDay, isTimeZone, localDay, zonedToUtc } from '@/lib/booking-time';
 import { CATEGORIES, eventEndsAt, formatEventWhen, isCategory, isRelation, RELATIONS, type EventCategory, type EventRelation } from '@/lib/events';
 import type { SessionUser } from './session';
+import { getClan, isClanAdmin } from './clans';
 
 const MAX_PERFORMERS = 20;
 const MAX_SPAN_MS = 14 * 86_400_000;
@@ -24,7 +25,7 @@ interface Row {
   id: string; organizer_user_id: string; organizer_profile_id: string; title: string; description: string; category: EventCategory;
   start_at: number; end_at: number | null; timezone: string; place_id: string; venue: string; link: string | null; image_key: string | null;
   visibility: 'public' | 'unlisted'; status: 'scheduled' | 'canceled'; canceled_at: number | null; created_at: number; updated_at: number;
-  org_name?: string; org_handle?: string; org_status?: string; org_photo?: string | null;
+  org_name?: string; org_handle?: string; org_status?: string; org_photo?: string | null; org_kind?: string;
 }
 
 export interface Performer { profileId: string; handle: string; name: string; photo: string | null; status: 'invited' | 'confirmed' | 'declined' }
@@ -34,11 +35,11 @@ export interface EventView {
   startAt: number; endAt: number | null; timezone: string; when: string; day: string;
   placeId: string; place: string; venue: string; link: string | null; image: string | null; imageKey: string | null;
   visibility: 'public' | 'unlisted'; status: 'scheduled' | 'canceled'; past: boolean;
-  organizer: { userId: string; profileId: string; name: string; handle: string; published: boolean; photo: string | null };
+  organizer: { userId: string; profileId: string; name: string; handle: string; published: boolean; photo: string | null; /** A Clan hosts (organization profile) or a member does. */ isClan: boolean; href: string };
   href: string;
 }
 
-const SELECT = `SELECT e.*, p.display_name AS org_name, p.handle AS org_handle, p.status AS org_status, p.photo_key AS org_photo
+const SELECT = `SELECT e.*, p.display_name AS org_name, p.handle AS org_handle, p.status AS org_status, p.photo_key AS org_photo, p.kind AS org_kind
   FROM events e JOIN profiles p ON p.id = e.organizer_profile_id`;
 
 function view(r: Row, at = now()): EventView {
@@ -48,7 +49,8 @@ function view(r: Row, at = now()): EventView {
     startAt: r.start_at, endAt: r.end_at, timezone: r.timezone, when: formatEventWhen(r.start_at, r.end_at, r.timezone, at), day: localDay(r.start_at, r.timezone),
     placeId: r.place_id, place: place ? placeLabel(place) : '', venue: r.venue, link: r.link, image: mediaUrl(r.image_key), imageKey: r.image_key,
     visibility: r.visibility, status: r.status, past: eventEndsAt(r.start_at, r.end_at) < at,
-    organizer: { userId: r.organizer_user_id, profileId: r.organizer_profile_id, name: r.org_name ?? 'An Opus member', handle: r.org_handle ?? '', published: r.org_status === 'published', photo: mediaUrl(r.org_photo ?? null) },
+    organizer: { userId: r.organizer_user_id, profileId: r.organizer_profile_id, name: r.org_name ?? 'An Opus member', handle: r.org_handle ?? '', published: r.org_status === 'published', photo: mediaUrl(r.org_photo ?? null),
+      isClan: r.org_kind === 'organization', href: r.org_kind === 'organization' ? `/c/${r.org_handle ?? ''}` : `/m/${r.org_handle ?? ''}` },
     href: `/events/${r.id}`,
   };
 }
@@ -129,6 +131,13 @@ export async function listPublicEvents(db: D1Database, opts: { placeId?: string;
   return results.map((r) => view(r, at));
 }
 
+/** Upcoming public events hosted by one profile (a Clan page). */
+export async function listHostedEvents(db: D1Database, profileId: string, at = now()) {
+  const { results } = await db.prepare(`${SELECT} WHERE e.organizer_profile_id = ? AND e.visibility = 'public' AND e.status = 'scheduled'
+    AND COALESCE(e.end_at, e.start_at + 10800000) >= ? ORDER BY e.start_at LIMIT 20`).bind(profileId, at).all<Row>();
+  return results.map((r) => view(r, at));
+}
+
 /** Can this viewer open the event page? Unlisted events open for anyone with the link; a hidden organizer profile hides the event. */
 export function canView(e: EventView, viewerId: string | null) {
   return e.organizer.published || e.organizer.userId === viewerId;
@@ -143,7 +152,9 @@ export async function getSave(db: D1Database, userId: string, eventId: string) {
 async function owned(db: D1Database, user: SessionUser, id: string) {
   const e = await getEvent(db, str(id, 40));
   if (!e) throw new HttpError(404, 'That event doesn’t exist.');
-  if (e.organizer.userId !== user.id) throw new HttpError(403, 'Only the organizer can change this event.');
+  const clan = e.organizer.userId !== user.id && e.organizer.isClan ? await getClan(db, e.organizer.profileId) : null;
+  if (e.organizer.userId !== user.id && !(clan && await isClanAdmin(db, clan, user.id)))
+    throw new HttpError(403, 'Only the organizer can change this event.');
   return e;
 }
 
@@ -154,11 +165,19 @@ export async function createEvent(env: Env, user: SessionUser, body: Record<stri
   if (!profile) throw new HttpError(400, 'Set up your profile first. Events show who is organizing them.');
   await limit(db, `event-create:${user.id}`, 20, 86_400_000);
   const v = validateEvent(body);
+  // A Clan admin can host as the Clan ("Hosted by Opus Collective"). Checked here, not trusted from the form.
+  let hostId = profile.id;
+  const host = str(body.hostId, 40);
+  if (host && host !== profile.id) {
+    const clan = await db.prepare("SELECT p.id, p.owner_user_id FROM profiles p JOIN clan_details d ON d.profile_id = p.id WHERE p.id = ?").bind(host).first<{ id: string; owner_user_id: string }>();
+    if (!clan || !(await isClanAdmin(db, { id: clan.id, ownerUserId: clan.owner_user_id }, user.id))) throw new HttpError(403, 'You can only host as a Clan you manage.', 'hostId');
+    hostId = clan.id;
+  }
   const id = randomId(9);
   const t = now();
   await db.prepare(`INSERT INTO events (id, organizer_user_id, organizer_profile_id, title, description, category, start_at, end_at, timezone, place_id, venue, link, visibility, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?)`)
-    .bind(id, user.id, profile.id, v.title, v.description, v.category, v.startAt, v.endAt, v.timezone, v.placeId, v.venue, v.link, v.visibility, t, t).run();
+    .bind(id, user.id, hostId, v.title, v.description, v.category, v.startAt, v.endAt, v.timezone, v.placeId, v.venue, v.link, v.visibility, t, t).run();
   await audit(db, user.id, 'event.create', { id });
   return { id, href: `/events/${id}` };
 }
@@ -276,11 +295,11 @@ export async function myEvents(db: D1Database, userId: string, at = now()): Prom
   const ended = 'COALESCE(e.end_at, e.start_at + 10800000) >= ?';
   const [hosting, perf, saved] = await Promise.all([
     db.prepare(`${SELECT} WHERE e.organizer_user_id = ? AND ${ended}`).bind(userId, since).all<Row>(),
-    db.prepare(`SELECT e.*, p.display_name AS org_name, p.handle AS org_handle, p.status AS org_status, p.photo_key AS org_photo, ep.status AS perf_status
+    db.prepare(`SELECT e.*, p.display_name AS org_name, p.handle AS org_handle, p.status AS org_status, p.photo_key AS org_photo, p.kind AS org_kind, ep.status AS perf_status
       FROM event_performers ep JOIN profiles me ON me.id = ep.profile_id AND me.owner_user_id = ?
       JOIN events e ON e.id = ep.event_id JOIN profiles p ON p.id = e.organizer_profile_id
       WHERE ep.status IN ('invited', 'confirmed') AND ${ended}`).bind(userId, since).all<Row & { perf_status: string }>(),
-    db.prepare(`SELECT e.*, p.display_name AS org_name, p.handle AS org_handle, p.status AS org_status, p.photo_key AS org_photo, s.relation
+    db.prepare(`SELECT e.*, p.display_name AS org_name, p.handle AS org_handle, p.status AS org_status, p.photo_key AS org_photo, p.kind AS org_kind, s.relation
       FROM event_saves s JOIN events e ON e.id = s.event_id JOIN profiles p ON p.id = e.organizer_profile_id
       WHERE s.user_id = ? AND ${ended}`).bind(userId, since).all<Row & { relation: EventRelation }>(),
   ]);

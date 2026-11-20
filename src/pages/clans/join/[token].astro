@@ -1,0 +1,68 @@
+---
+/**
+ * An invite link for one roster spot. Whoever opens it signs up or signs in, then accepts or declines.
+ * The page shows only the Clan's public details and the spot's name and role; the token is never stored in clear.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { readClaim } from '@/server/clans';
+import { getMyProfile } from '@/server/profiles';
+import '@/styles/app.css';
+import '@/styles/clans.css';
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.DB;
+const user = Astro.locals.user;
+const token = Astro.params.token ?? '';
+const claim = await readClaim(db, token);
+const here = `/clans/join/${token}`;
+const profile = user ? await getMyProfile(db, user.id) : null;
+Astro.response.headers.set('referrer-policy', 'no-referrer');
+---
+<BaseLayout title={claim ? `Join ${claim.clan.name}` : 'Invite link'} description="An invitation to join a Clan on Opus." noindex>
+  <section class="app app--center">
+    <div class="app__wrap">
+      {!claim ? (
+        <>
+          <h1 class="app__title">This invite link isn’t active.</h1>
+          <p class="app__lead">It was already used, or the admin made a new one. Ask them to send you a fresh link.</p>
+          <p class="app__alt"><a href="/clans">Explore Clans</a></p>
+        </>
+      ) : (
+        <>
+          <p class="t-meta app__kicker">{claim.clan.typeLabel} invitation</p>
+          <div class="cl__head" style="grid-template-columns:auto 1fr;align-items:center;margin-bottom:20px">
+            <div class="cl__photo" style={`width:72px;font-size:24px;${claim.clan.photo ? `background-image:url(${claim.clan.photo})` : ''}`}>{!claim.clan.photo && claim.clan.name.slice(0, 1)}</div>
+            <div><h1 class="app__title" style="font-size:28px">{claim.clan.name}</h1>{claim.clan.place && <p class="cl__meta" style="margin-top:6px">{claim.clan.place}</p>}</div>
+          </div>
+          <p class="app__lead">You’ve been added to the roster as <b>{claim.name}</b>{claim.roles.length > 0 && <> ({claim.roles.join(', ')})</>}. Accept and you’ll show on the {claim.clan.typeLabel.toLowerCase()}’s page, linked to your own Opus profile. You keep your profile and your work, and you can leave any time.</p>
+          {!user ? (
+            <div class="row" style="margin-top:28px">
+              <a class="btn-app" href={`/sign-up?next=${encodeURIComponent(here)}`}>Join Opus to accept</a>
+              <a class="btn-app btn-app--ghost" href={`/sign-in?next=${encodeURIComponent(here)}`}>Sign in</a>
+            </div>
+          ) : (
+            <div data-claim={token}>
+              <div class="row" style="margin-top:28px">
+                <button class="btn-app" type="button" data-act="accept">Accept and join</button>
+                <button class="btn-app btn-app--ghost" type="button" data-act="decline">Not me</button>
+              </div>
+              {!profile && <p class="app__alt">Tip: <a href="/start">set up your profile</a> after accepting, so your name on the roster links to it.</p>}
+              <p class="dim mu-err" data-err role="alert" style="margin-top:12px"></p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const box = document.querySelector<HTMLElement>('[data-claim]');
+  box?.querySelectorAll<HTMLButtonElement>('[data-act]').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true;
+    const r = await fetch('/api/clans/respond', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ token: box.dataset.claim, action: b.dataset.act }) });
+    const d = await r.json().catch(() => ({})) as { href?: string; error?: string };
+    if (!r.ok) { box.querySelector('[data-err]')!.textContent = d.error ?? 'Something went wrong.'; b.disabled = false; return; }
+    location.href = d.href ?? '/clans/mine';
+  }));
+</script>

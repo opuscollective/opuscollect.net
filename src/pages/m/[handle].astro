@@ -9,7 +9,9 @@ import { relationship, DEFAULT_INTRO, INTRO_MAX } from '@/server/connections';
 import { connectionCount } from '@/server/messages';
 import { profileReleases } from '@/server/releases';
 import { RELEASE_KINDS } from '@/data/music';
+import { membershipsOf, myInvites } from '@/server/clans';
 import '@/styles/app.css';
+import '@/styles/clans.css';
 import '@/styles/music.css';
 export const prerender = false;
 
@@ -35,6 +37,9 @@ const rel = viewer ? await relationship(db, viewer.id, ownerId) : null;
 const connections = await connectionCount(db, ownerId);
 // The member's record: releases they put out, plus releases where they confirmed a credit.
 const record = await profileReleases(db, ownerId);
+// Bands and other Clans this member accepted. Invitations are shown to the member only.
+const clans = await membershipsOf(db, ownerId).catch(() => []);
+const invites = isOwner ? await myInvites(db, ownerId).catch(() => []) : [];
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
 const links = Object.entries(p.links).filter(([, v]) => !!v);
 const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${where ? ` · ${where}` : ''} on Opus.`;
@@ -92,6 +97,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           )}
         </div>
       </header>
+      {invites.length > 0 && <p class="notice" style="margin-top:20px"><b>{invites.length === 1 ? `${invites[0]!.clan.name} invited you to join.` : `${invites.length} Clan invitations.`}</b> Only you can see this. <a class="link" href="/clans/mine">Answer in My Clans</a></p>}
       {rel?.state === 'received' && <p class="mp__note" data-conn-note>{p.displayName} asked to connect with you. You can also answer in <a class="link" href="/network?tab=received">My Network</a>.</p>}
       <p class="dim mu-err" data-conn-status role="alert"></p>
 
@@ -169,6 +175,16 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           )}
         </div>
         <aside class="mp__side">
+          {clans.length > 0 && (
+            <section class="mp__sec"><h2 class="t-meta">Member of</h2>
+              <div class="cl-aff">{clans.map((m) => (
+                <a href={m.clan.href}>
+                  <span class="cl-aff__ph" style={m.clan.photo ? `background-image:url(${m.clan.photo})` : ''}></span>
+                  <span><b>{m.clan.name}</b><small>{[m.clan.typeLabel, m.roles.join(', ')].filter(Boolean).join(' · ')}</small></span>
+                </a>
+              ))}</div>
+            </section>
+          )}
           {p.genres.length > 0 && <section class="mp__sec"><h2 class="t-meta">Genres</h2><ul class="mp__tags" role="list">{p.genres.map((g) => <li>{g}</li>)}</ul></section>}
           {roles.length > 0 && <section class="mp__sec"><h2 class="t-meta">Specialties</h2><ul class="mp__tags" role="list">{roles.map((r, i) => <li class:list={{ 'is-primary': i === 0 }}>{r}</li>)}</ul></section>}
           {links.length > 0 && (

@@ -1,0 +1,65 @@
+---
+/** My Clans: invitations waiting for an answer (private to this member) and the Clans they're in. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { membershipsOf, myInvites } from '@/server/clans';
+import '@/styles/app.css';
+import '@/styles/clans.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/clans/mine');
+const db = Astro.locals.runtime.env.DB;
+const [invites, mine] = await Promise.all([myInvites(db, user.id), membershipsOf(db, user.id, false)]);
+---
+<BaseLayout title="My Clans" description="Your bands, collectives, crews and labels on Opus." noindex>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+      <div class="row" style="justify-content:space-between">
+        <h1 class="app__title">My Clans</h1>
+        <a class="btn-app" href="/clans/new">Create a Clan</a>
+      </div>
+      <p class="app__lead">Bands, collectives, crews and labels you’re part of. Being in a Clan never changes your own profile or work.</p>
+
+      {invites.length > 0 && (
+        <div class="panel" style="margin-top:28px">
+          <h2>Invitations</h2>
+          <p class="dim">Only you can see these.</p>
+          <ul class="cl-spots" role="list">
+            {invites.map((i) => (
+              <li class="cl-spot" data-invite={i.spotId}>
+                <div class="cl-spot__who"><b><a class="link" href={i.clan.href}>{i.clan.name}</a></b><small>{[i.clan.typeLabel, i.roles.join(', '), i.invitedBy && `from ${i.invitedBy}`].filter(Boolean).join(' · ')}</small></div>
+                <div class="cl-spot__acts"><button type="button" data-respond="accept">Accept</button><button type="button" data-respond="decline">Decline</button></div>
+              </li>
+            ))}
+          </ul>
+          <p class="dim mu-err" data-err role="alert"></p>
+        </div>
+      )}
+
+      <div class="panel" style="margin-top:16px">
+        <h2>Your Clans</h2>
+        {mine.length ? (
+          <div class="cl-aff" style="margin-top:12px">
+            {mine.map((m) => (
+              <a href={m.clan.href}>
+                <span class="cl-aff__ph" style={m.clan.photo ? `background-image:url(${m.clan.photo})` : ''}></span>
+                <span><b>{m.clan.name}</b><small>{[m.clan.typeLabel, m.roles.join(', '), m.isAdmin && 'Admin'].filter(Boolean).join(' · ')}</small></span>
+              </a>
+            ))}
+          </div>
+        ) : <p class="dim">You’re not in a Clan yet. Start one for your band or crew, or accept an invitation.</p>}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-respond]').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true;
+    const spotId = b.closest<HTMLElement>('[data-invite]')!.dataset.invite;
+    const r = await fetch('/api/clans/respond', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ spotId, action: b.dataset.respond }) });
+    const d = await r.json().catch(() => ({})) as { href?: string; error?: string };
+    if (!r.ok) { document.querySelector('[data-err]')!.textContent = d.error ?? 'Something went wrong.'; b.disabled = false; return; }
+    if (b.dataset.respond === 'accept' && d.href) location.href = d.href; else location.reload();
+  }));
+</script>

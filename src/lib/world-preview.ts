@@ -80,7 +80,7 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
   } else {
     body = section('About', bio)
       + section('Services', chips(l.services))
-      + section('Selected projects', d.projects.length ? `<ul class="pv__bullets">${d.projects.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : '');
+      + section(l.href?.startsWith('/c/') ? 'Members' : 'Selected projects', d.projects.length ? `<ul class="pv__bullets">${d.projects.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : '');
   }
 
   return `<article class="pv pv--${l.kind}" aria-labelledby="pv-name">

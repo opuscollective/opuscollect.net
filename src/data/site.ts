@@ -32,7 +32,7 @@ export const NAV: NavItem[] = [
       { title: 'Explore', links: [
         { label: 'Open the map', href: '/world' },
         { label: 'People', href: '/musicians' },
-        { label: 'Organizations', href: '/organizations' },
+        { label: 'Clans', href: '/clans' },
         { label: 'Verified members', href: '/world?verified=1' },
       ] },
       { title: 'Cities', links: [
@@ -119,8 +119,16 @@ export const NAV: NavItem[] = [
 ];
 
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
+/** The Create menu (signed in): start something new. First in the account menu on desktop and phones. */
+export const CREATE_MENU = [
+  { label: 'Create a Clan', href: '/clans/new' },
+  { label: 'Create an event', href: '/events/new' },
+  { label: 'Add Work', href: '/works?add=1' },
+];
+
 export const ACCOUNT_MENU = [
   { label: 'Your profile', href: '/account/profile' },
+  { label: 'My Clans', href: '/clans/mine' },
   { label: 'Your works', href: '/works/mine' },
   { label: 'My Future', href: '/future' },
   { label: 'My Network', href: '/network' },

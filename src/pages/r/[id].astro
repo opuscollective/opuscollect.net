@@ -7,6 +7,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { RELEASE_LINK_LABEL, roleLabel, type ReleaseLinkKey } from '@/data/music';
 import { artistLine, formatDate, getVisibleRelease, releaseMeta, type Credit } from '@/server/releases';
 import { mediaUrl } from '@/server/profiles';
+import { clansForWork } from '@/server/clans';
 import '@/styles/app.css';
 import '@/styles/music.css';
 import '@/styles/product.css';
@@ -29,6 +30,8 @@ const linked = (c: Credit) => c.status === 'confirmed' && c.handle;
 const links = Object.entries(r.links).filter(([, v]) => !!v) as [ReleaseLinkKey, string][];
 const pendingMine = myCredits.filter((c) => c.status === 'pending');
 const by = artistLine(r);
+// Clans that feature this Work on their page (bands, collectives, crews, labels).
+const fromClans = r.status === 'published' ? await clansForWork(Astro.locals.runtime.env.DB, r.id).catch(() => []) : [];
 ---
 <BaseLayout title={`${r.title} · ${by}`} description={`${r.title} by ${by}${r.description ? `. ${r.description.slice(0, 140)}` : ''}`} image={r.coverKey ? mediaUrl(r.coverKey)! : undefined} noindex={r.status !== 'published'}>
   {r.status !== 'published' && (
@@ -46,6 +49,7 @@ const by = artistLine(r);
         <p class="rp__by">{primary.length
           ? primary.map((c, i) => <>{i > 0 && ', '}{linked(c) ? <a class="rp__person" href={`/m/${c.handle}`}>{c.name}</a> : c.name}</>)
           : r.ownerHandle ? <a class="rp__person" href={`/m/${r.ownerHandle}`}>{r.ownerName}</a> : r.ownerName}</p>
+        {fromClans.length > 0 && <p class="rp__desc" style="margin-top:8px">From {fromClans.map((c, i) => <>{i > 0 && ', '}<a class="link" href={c.href}>{c.name}</a></>)}</p>}
         {r.description && <p class="rp__desc">{r.description}</p>}
         {isOwner && <div class="row" style="margin-top:20px"><a class="btn-app btn-app--ghost" href={`/works/${r.id}`}>Edit release</a></div>}
       </div>

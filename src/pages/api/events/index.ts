@@ -8,7 +8,7 @@ export const prerender = false;
 export const GET: APIRoute = async ({ locals, url }) => {
   try {
     const events = await listPublicEvents(locals.runtime.env.DB, { placeId: str(url.searchParams.get('place'), 80) || undefined });
-    return json({ events: events.map(({ imageKey, ...e }) => ({ ...e, organizer: { name: e.organizer.name, handle: e.organizer.handle } })) });
+    return json({ events: events.map(({ imageKey, ...e }) => ({ ...e, organizer: { name: e.organizer.name, handle: e.organizer.handle, href: e.organizer.href, isClan: e.organizer.isClan } })) });
   } catch (e) { return fail(e); }
 };
 

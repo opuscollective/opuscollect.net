@@ -50,13 +50,14 @@ const description = `${e.when} · ${e.venue}${e.place ? `, ${e.place}` : ''}. ${
           <h1 class="ev__title">{e.title}</h1>
           <p class="ev__when"><time datetime={new Date(e.startAt).toISOString()}>{e.when}</time></p>
           <p class="ev__where">{e.venue}{e.place && <> · {e.place}</>}</p>
+          <p class="ev__host">Hosted by {e.organizer.published ? <a class="link" href={e.organizer.href} data-hosted-by>{e.organizer.name}</a> : e.organizer.name}</p>
           {e.description && <div class="ev__desc">{e.description}</div>}
 
           <div class="ev__people">
             <h2>Hosted by</h2>
-            <a class="ev-person" href={e.organizer.published ? `/m/${e.organizer.handle}` : undefined}>
+            <a class="ev-person" href={e.organizer.published ? e.organizer.href : undefined}>
               <span class="ev-person__ph" style={e.organizer.photo ? `background-image:url(${e.organizer.photo})` : ''}></span>
-              <span>{e.organizer.name}<small>Organizer</small></span>
+              <span>{e.organizer.name}<small>{e.organizer.isClan ? 'Organizer · See who’s in it' : 'Organizer'}</small></span>
             </a>
           </div>
           {confirmed.length > 0 && (

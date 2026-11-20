@@ -94,7 +94,7 @@ export function initWorld(root: HTMLElement) {
   if (st0 === 'commercial' || st0 === 'home' || st0 === 'remote') f.studioType = st0;
   q.value = f.text;
 
-  const KIND_PATH = { '': '/world', musician: '/musicians', studio: '/studios', organization: '/organizations' } as const;
+  const KIND_PATH = { '': '/world', musician: '/musicians', studio: '/studios', organization: '/clans' } as const;
   function writeUrl() {
     const u = new URL(location.href);
     const set = (k: string, v?: string | null) => (v ? u.searchParams.set(k, v) : u.searchParams.delete(k));
@@ -389,6 +389,7 @@ export function initWorld(root: HTMLElement) {
       guideShelves = g.shelves;
       const region = ed?.region ?? (known ? [known.city.region, known.city.countryName].filter(Boolean).join(', ') : '');
       guide.innerHTML = cityGuideHeader(g, { region, entry: ed, followId: known?.id })
+        + (known ? `<section class="wg__shelf wg__events" data-guide-events="${esc(known.id)}" aria-labelledby="wg-ev" hidden><div class="wg__shead"><h3 id="wg-ev">What’s Happening</h3><a class="wg__all" href="/future?tab=our">All events</a></div><div class="wg-ev" role="list"></div></section>` : '')
         + g.shelves.map((sh, i) => `<section class="wg__shelf" style="--i:${i}" aria-labelledby="wg-s${i}">
   <div class="wg__shead"><h3 id="wg-s${i}">${esc(sh.title)}</h3>${sh.total > 2 ? `<button type="button" class="wg__all" data-shelf="${i}">See all ${sh.total}</button>` : ''}</div>
   <div class="wg__track" role="list">${sh.items.map((l) => tileHtml(l, 'grid')).join('')}</div>
@@ -396,9 +397,27 @@ export function initWorld(root: HTMLElement) {
         + (g.total ? `<button type="button" class="wg__everyone" data-guide-list>See everyone in ${esc(g.name)} as a list</button>` : '');
       if (motion() === 'fluid') { guide.classList.remove('is-entering'); void guide.offsetWidth; guide.classList.add('is-entering'); }
       initFollowButtons(guide);
+      if (known) loadHappening(known.id);
     }
     guide.hidden = false;
     return true;
+  }
+  // What's Happening: upcoming public events in the city (real events only; nothing shows when there are none).
+  type Happening = { title: string; when: string; venue: string; href: string; organizer: { name: string } };
+  const happening = new Map<string, Happening[]>();
+  async function loadHappening(id: string) {
+    let list: Happening[] = happening.get(id) ?? [];
+    if (!happening.has(id)) {
+      try {
+        const r = await fetch(`/api/events?place=${encodeURIComponent(id)}`, { credentials: 'same-origin' });
+        list = r.ok ? ((await r.json()) as { events: Happening[] }).events.slice(0, 4) : [];
+      } catch { list = []; }
+      happening.set(id, list);
+    }
+    const sec = guide.querySelector<HTMLElement>(`[data-guide-events="${CSS.escape(id)}"]`);
+    if (!sec || !list.length) return;
+    sec.querySelector('.wg-ev')!.innerHTML = list.map((e) => `<a class="wg-ev__item" role="listitem" href="${esc(e.href)}"><span class="wg-ev__when">${esc(e.when)}</span><b>${esc(e.title)}</b><small>${esc(e.venue)} · Hosted by ${esc(e.organizer.name)}</small></a>`).join('');
+    sec.hidden = false;
   }
   guide.addEventListener('click', (e) => {
     const t = e.target as Element;
@@ -787,7 +806,7 @@ export function initWorld(root: HTMLElement) {
     for (const l of ls) n[l.kind]++;
     const plural = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
     return [n.musician && plural(n.musician, 'professional', 'professionals'), n.studio && plural(n.studio, 'studio', 'studios'),
-      n.organization && plural(n.organization, 'organization', 'organizations')].filter(Boolean).join(' · ');
+      n.organization && plural(n.organization, 'Clan', 'Clans')].filter(Boolean).join(' · ');
   }
 
   // ---------- The entrance question ----------
@@ -1029,7 +1048,7 @@ export function initWorld(root: HTMLElement) {
       const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
       const parts = [
         s.musicians && plural(s.musicians, 'professional', 'professionals'), s.studios && plural(s.studios, 'studio', 'studios'),
-        s.organizations && plural(s.organizations, 'organization', 'organizations'), s.countries && plural(s.countries, 'country', 'countries'),
+        s.organizations && plural(s.organizations, 'Clan', 'Clans'), s.countries && plural(s.countries, 'country', 'countries'),
       ].filter(Boolean);
       $('[data-stats-line]').textContent = parts.join(' · ');
       $('[data-stats]').hidden = ALL.length === 0;

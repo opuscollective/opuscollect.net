@@ -1,5 +1,5 @@
 ---
-import { NAV, ACCOUNT, ACCOUNT_MENU, SITE } from '@/data/site';
+import { NAV, ACCOUNT, ACCOUNT_MENU, CREATE_MENU, SITE } from '@/data/site';
 import Icon from '../ui/Icon.astro';
 import ThemeSwitch from '../ui/ThemeSwitch.astro';
 interface Props { overlay?: boolean }
@@ -88,6 +88,10 @@ const OVERFLOW = new Set(['Airplay', 'Charts', 'Collective']);
           <Icon name="user" size={18} /><span class="sr-only">Account menu</span><Icon name="chevron-down" size={14} class="acct__chev" />
         </button>
         <div class="acct__menu" id="acct-menu" hidden data-acct-menu>
+          <p class="acct__group">Create</p>
+          <ul role="list" class="acct__create">
+            {CREATE_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+          </ul>
           <ul role="list">
             {ACCOUNT_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           </ul>
@@ -117,6 +121,7 @@ const OVERFLOW = new Set(['Airplay', 'Charts', 'Collective']);
       </ul>
       <div class="mmenu__actions">
         <ul role="list" class="mmenu__acct" data-auth-in hidden>
+          {CREATE_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           {ACCOUNT_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           <li><button type="button" data-logout>Sign out</button></li>
         </ul>
@@ -372,6 +377,8 @@ const OVERFLOW = new Set(['Airplay', 'Charts', 'Collective']);
   .acct__btn[aria-expanded='true'] :global(.acct__chev) { transform: rotate(180deg); }
   .acct__menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; padding: 6px; border-radius: var(--r-md); background: var(--surface-raised); box-shadow: var(--shadow-pop); z-index: 10; }
   .acct__menu ul { margin: 0; }
+  .acct__group { margin: 4px 12px 2px; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+  .acct__create { padding-bottom: 6px !important; margin-bottom: 6px !important; border-bottom: 1px solid var(--line-faint); }
   .acct__menu a, .acct__out { display: flex; width: 100%; align-items: center; min-height: 40px; padding: 0 12px; border-radius: var(--r-sm); font-size: 14px; color: var(--text); background: none; border: 0; text-align: left; }
   .acct__menu a:hover, .acct__out:hover { background: var(--surface-hover); }
   .acct__out { margin-top: 4px; border-top: 1px solid var(--line-faint); border-radius: 0 0 var(--r-sm) var(--r-sm); color: var(--text-2); }

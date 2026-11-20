@@ -91,7 +91,7 @@ export interface StudioListing extends ListingBase {
   rating?: Rating;
 }
 
-export type OrganizationCategory = 'label' | 'management' | 'collective' | 'marketing' | 'other';
+export type OrganizationCategory = 'label' | 'management' | 'collective' | 'marketing' | 'other' | 'band' | 'crew';
 
 export interface OrganizationListing extends ListingBase {
   kind: 'organization';
@@ -107,5 +107,5 @@ export type Listing = MusicianListing | StudioListing | OrganizationListing;
 
 /** Display labels for organization categories. */
 export const ORG_CATEGORY_LABEL: Record<OrganizationCategory, string> = {
-  label: 'Label', management: 'Management', collective: 'Collective', marketing: 'Agency', other: 'Organization',
+  label: 'Label', management: 'Management', collective: 'Collective', marketing: 'Agency', other: 'Organization', band: 'Band', crew: 'Production crew',
 };

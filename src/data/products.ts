@@ -15,7 +15,7 @@ export const PRODUCTS: Record<string, ProductDef> = {
     items: [
       { key: 'map', label: 'Map', href: '/world' },
       { key: 'people', label: 'People', href: '/musicians' },
-      { key: 'organizations', label: 'Organizations', href: '/organizations' },
+      { key: 'clans', label: 'Clans', href: '/clans' },
       { key: 'cities', label: 'My Cities', href: '/world/cities' },
     ],
     cta: { label: 'Explore World', href: '/world' },
