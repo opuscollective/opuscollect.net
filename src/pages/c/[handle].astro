@@ -35,6 +35,7 @@ const amMember = viewer ? !!(await db.prepare("SELECT 1 AS x FROM clan_members W
 const myProfile = admin && viewer ? await getMyProfile(db, viewer.id) : null;
 const admins = admin ? await clanAdmins(db, clan) : [];
 const isOwner = !!viewer && clan.ownerUserId === viewer.id;
+const featured = works.find((w) => w.cover) ?? works[0] ?? null;
 const T = GROUP_TYPES[clan.groupType];
 const initials = (s: string) => s.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 const onRoster = !!viewer && active.some((m) => m.userId === viewer.id);
@@ -71,18 +72,26 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
       </aside>
     )}
 
-    <header class="cl__head">
-      <p class="cl__type">{[clan.typeLabel, clan.place].filter(Boolean).join(' · ')}</p>
-      <h1 class="cl__name">{clan.name}</h1>
-      <div class="cl__actions">
-        <button class="btn-app" type="button" data-share>Share</button>
-        {admin && <a class="btn-app btn-app--ghost" href="#manage" data-open="manage">Manage</a>}
-        {amMember && <button class="cl__leave" type="button" data-leave>Leave group</button>}
+    <header class:list={['cl__open', { 'has-art': !!clan.photo }]}>
+      {clan.photo && <div class="cl__art" style={`background-image:url(${clan.photo})`} role="img" aria-label={clan.name}></div>}
+      <div class="cl__intro">
+        <p class="cl__type">{[clan.typeLabel, clan.place].filter(Boolean).join(' · ')}</p>
+        <h1 class="cl__name">{clan.name}</h1>
+        {clan.bio && <p class="cl__bio">{clan.bio}</p>}
+        {featured && (
+          <a class="cl-feat" href={`/r/${featured.id}`}>
+            <span class="cl-feat__cover" style={featured.cover ? `background-image:url(${featured.cover})` : ''}></span>
+            <span class="cl-feat__txt"><small>{featured.released ? 'Latest' : 'Coming'}</small><b>{featured.title}</b></span>
+            <span class="cl-feat__go">Listen</span>
+          </a>
+        )}
+        <div class="cl__actions">
+          {admin && <a class="btn-app btn-app--ghost" href="#manage" data-open="manage">Manage</a>}
+          <button class="cl__quiet" type="button" data-share>Share</button>
+          {amMember && <button class="cl__quiet" type="button" data-leave>Leave group</button>}
+        </div>
       </div>
     </header>
-
-    {clan.photo && <div class="cl__hero" style={`background-image:url(${clan.photo})`} role="img" aria-label={`${clan.name}`}></div>}
-    {clan.bio && <p class="cl__bio">{clan.bio}</p>}
     <p class="dim mu-err" data-page-status role="alert"></p>
 
     {active.length > 0 && (
@@ -92,10 +101,14 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
           {active.map((m) => {
             const inner = <>
               <span class="cl-m__ph" style={m.photo ? `background-image:url(${m.photo})` : ''}>{!m.photo && initials(m.name)}</span>
-              <span class="cl-m__txt"><span class="cl-m__name">{m.name}</span>{m.roles.length > 0 && <span class="cl-m__roles">{m.roles.join(', ')}</span>}</span>
-              {admin && (m.isOwner ? <span class="cl-m__tag">Owner</span> : <span class="cl-m__tag"><button class="link" style="background:none;border:0;font:inherit;color:var(--text-3);cursor:pointer" type="button" data-spot-remove={m.id}>Remove</button></span>)}
+              <span class="cl-m__name">{m.name}</span>{m.roles.length > 0 && <span class="cl-m__roles">{m.roles.join(', ')}</span>}
             </>;
-            return <li>{m.handle && m.profilePublished ? <a class="cl-m" href={`/m/${m.handle}`}>{inner}</a> : <div class="cl-m">{inner}</div>}</li>;
+            return (
+              <li>
+                {m.handle && m.profilePublished ? <a class="cl-m" href={`/m/${m.handle}`}>{inner}</a> : <div class="cl-m">{inner}</div>}
+                {admin && (m.isOwner ? <span class="cl-m__tag">Owner</span> : <button class="cl-m__tag" type="button" data-spot-remove={m.id}>Remove</button>)}
+              </li>
+            );
           })}
         </ul>
       </section>

@@ -23,7 +23,7 @@ const OPTIONS = [
   { key: 'label', title: 'Label', line: 'For record labels and their rosters.', href: '', soon: true },
 ];
 ---
-<BaseLayout title="Join Opus" description="Create your Opus account to build your profile and connect with musicians around the world." noindex>
+<BaseLayout title="Join Opus" description="Create your Opus account to build your profile and connect with musicians around the world." noindex assistant={false} messages={false}>
   <section class="app app--center">
     <div class="app__wrap su">
       {choosing ? (
@@ -89,14 +89,13 @@ const OPTIONS = [
   .su { max-width: 560px; }
   .su__title { margin: 0; font-size: clamp(2rem, 1.5rem + 2.2vw, 3rem); line-height: 1.05; letter-spacing: -0.045em; font-weight: 500; text-wrap: balance; }
   .su__lead { margin: 14px 0 32px; font-size: 17px; line-height: 1.5; color: var(--text-2); }
-  .su__opts { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
-  .su__opts li { border-bottom: 1px solid var(--line); }
-  .su__opt { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 96px; padding: 20px 4px; color: var(--text); }
-  a.su__opt { transition: padding var(--m-hover) var(--m-ease); }
-  a.su__opt:hover { padding-inline: 12px 4px; }
-  a.su__opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .su__opts { display: flex; flex-direction: column; gap: 6px; margin: 0 -16px; padding: 0; list-style: none; }
+  .su__opt { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 96px; padding: 20px 16px; border-radius: var(--r-lg); color: var(--text); transition: background var(--m-hover) var(--m-ease); }
+  a.su__opt:hover { background: var(--surface); }
+  a.su__opt:active { background: var(--surface-hover); }
+  a.su__opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; background: var(--surface); }
   .su__txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .su__txt b { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+  .su__txt b { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; }
   .su__txt small { font-size: 15px; line-height: 1.45; color: var(--text-2); }
   .su__opt svg { flex-shrink: 0; color: var(--text-3); }
   .su__opt.is-soon .su__txt { opacity: 0.6; }
