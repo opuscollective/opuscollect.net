@@ -1,104 +1,67 @@
 ---
 /**
- * Create a Clan: a shared home for a band, collective, production crew or label.
- * Step 1 here (type, name, photo, city, bio). Step 2 ("Add band members") opens on the Clan page.
- * Needs an account, a confirmed email and a profile: the creator is the first member on the roster.
+ * Create a group: a shared home for a band, collective, production crew or label.
+ * Only the essentials here (type, name, city). Photo, bio and members are set up on the page itself.
+ * Needs an account and a confirmed email. No individual profile needed: the creator owns the page and can add themselves as a member later.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
-import { getMyProfile } from '@/server/profiles';
 import { GROUP_TYPES } from '@/server/clans';
 import '@/styles/app.css';
 import '@/styles/clans.css';
 export const prerender = false;
 
 const user = Astro.locals.user;
-if (!user) return Astro.redirect('/sign-in?next=/clans/new');
-const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
+if (!user) return Astro.redirect('/sign-up?setup=group');
 const preset = Astro.url.searchParams.get('type');
-const type = preset && preset in GROUP_TYPES ? preset : 'band';
+const CREATE_TYPES = Object.entries(GROUP_TYPES).filter(([k]) => k !== 'label'); // label pages aren't available yet
+const type = preset && preset in GROUP_TYPES && preset !== 'label' ? preset : 'band';
 ---
-<BaseLayout title="Create a Clan" description="A shared home for your band, collective, crew or label." noindex>
+<BaseLayout title="Create a group" description="A public page for your band, duo or collective." noindex>
   <section class="app">
-    <div class="app__wrap app__wrap--wide" style="margin-inline:auto;max-width:640px">
-      <p class="t-meta app__kicker"><a class="link" href="/clans/mine">My Clans</a></p>
-      <h1 class="app__title">Create a Clan</h1>
-      <p class="app__lead">A shared home for your band, collective, crew or label: the roster, the work you made together and what’s next. Everyone keeps their own Opus profile.</p>
-      {!profile ? (
-        <div class="panel" style="margin-top:28px">
-          <h2>Set up your profile first</h2>
-          <p class="dim">You’ll be the first member on the roster, so you’ll need an Opus profile. It takes about a minute.</p>
-          <div class="row" style="margin-top:16px"><a class="btn-app" href="/start">Set up your profile</a></div>
-        </div>
-      ) : !user.emailVerified ? (
+    <div class="app__wrap" style="margin-inline:auto;max-width:560px">
+      <h1 class="cn__title">Set up your group.</h1>
+      <p class="cn__lead">Start with a name. You’ll add the photo, bio and members on the page.</p>
+      {!user.emailVerified ? (
         <div class="panel" style="margin-top:28px">
           <h2>Confirm your email first</h2>
           <p class="dim">We ask for a confirmed email before you create a public page. Check your inbox for the link, or resend it from your account.</p>
           <div class="row" style="margin-top:16px"><a class="btn-app" href="/account">Go to your account</a></div>
         </div>
       ) : (
-        <>
-          <div class="clc-steps" aria-hidden="true"><span class="is-on"><b>1</b>Details</span><span><b>2</b><span data-step2>{GROUP_TYPES[type as keyof typeof GROUP_TYPES].membersStep}</span></span></div>
-          <form class="form" data-clan-form novalidate>
-            <fieldset class="field">
-              <legend>What kind of group? *</legend>
-              <div class="clc-types">
-                {Object.entries(GROUP_TYPES).map(([k, v]) => (
-                  <label class="clc-type"><input type="radio" name="groupType" value={k} checked={k === type} data-step={v.membersStep} data-roles={v.rolePlaceholder} /><span><b>{v.label}</b><small>{v.line}</small></span></label>
-                ))}
-              </div>
-            </fieldset>
-            <label class="field"><span data-name-label>{type === 'band' ? 'Band name *' : 'Name *'}</span><input class="input" name="name" maxlength="80" required autocomplete="off" /></label>
-            <div class="field">
-              <span>Photo</span>
-              <div class="clc-photo"><span class="clc-photo__pv" data-photo-pv></span><label class="btn-app btn-app--ghost">Choose photo<input type="file" accept="image/*" hidden data-photo /></label></div>
-              <small>A square crop of the group or its artwork. JPEG or PNG, location data is removed.</small>
+        <form class="form" data-clan-form novalidate style="margin-top:28px">
+          <fieldset class="field">
+            <legend>What kind of group?</legend>
+            <div class="cn__types">
+              {CREATE_TYPES.map(([k, v]) => (
+                <label class="cn__type"><input type="radio" name="groupType" value={k} checked={k === type} /><span><b>{v.label}</b></span></label>
+              ))}
             </div>
-            <label class="field"><span>City</span><PlaceSelect selected={profile.placeId} /><small>Shown as the city only. It puts the Clan on World.</small></label>
-            <label class="field"><span>Short bio</span><textarea class="textarea" name="bio" maxlength="600" rows="4" placeholder="Who you are, how you started, what you’re working on."></textarea></label>
-            <label class="field"><span>Your role</span><input class="input" name="myRoles" maxlength="120" data-my-roles placeholder="Lead vocals, guitar" /><small>Shown next to your name on the roster. Separate roles with commas.</small></label>
-            <div data-status class="form-status"></div>
-            <div class="row"><button class="btn-app" type="submit">Create and <span data-btn-step>{GROUP_TYPES[type as keyof typeof GROUP_TYPES].membersStep.toLowerCase()}</span></button></div>
-          </form>
-        </>
+          </fieldset>
+          <label class="field"><span>Name</span><input class="input" name="name" maxlength="80" required autocomplete="off" /></label>
+          <label class="field"><span>City <em class="cn__opt">Optional</em></span><PlaceSelect selected={null} /><small>Only the city is shown. It puts your group on World.</small></label>
+          <div data-status class="form-status"></div>
+          <button class="btn-app btn-app--block" type="submit">Create group</button>
+        </form>
       )}
     </div>
   </section>
 </BaseLayout>
 
 <script>
-  import { bindForm, status, values } from '@/scripts/form';
-  import { prepareImage } from '@/scripts/image';
+  import { bindForm, values } from '@/scripts/form';
   const form = document.querySelector<HTMLFormElement>('[data-clan-form]');
-  if (form) {
-    let photo: Blob | null = null;
-    const step = () => {
-      const r = form.querySelector<HTMLInputElement>('[name="groupType"]:checked');
-      if (!r) return;
-      document.querySelector('[data-step2]')!.textContent = r.dataset.step!;
-      form.querySelector('[data-btn-step]')!.textContent = r.dataset.step!.toLowerCase();
-      form.querySelector('[data-name-label]')!.textContent = r.value === 'band' ? 'Band name *' : 'Name *';
-      form.querySelector<HTMLInputElement>('[data-my-roles]')!.placeholder = r.dataset.roles!;
-    };
-    form.addEventListener('change', (e) => { if ((e.target as HTMLInputElement).name === 'groupType') step(); });
-    step();
-    form.querySelector<HTMLInputElement>('[data-photo]')!.addEventListener('change', async (e) => {
-      const f = (e.target as HTMLInputElement).files?.[0];
-      if (!f) return;
-      try {
-        photo = await prepareImage(f, 1200, 'square');
-        form.querySelector<HTMLElement>('[data-photo-pv]')!.style.backgroundImage = `url(${URL.createObjectURL(photo)})`;
-      } catch (err) { status(form, (err as Error).message); }
-    });
-    bindForm(form, {
-      url: '/api/clans',
-      body: (f) => values(f),
-      busyLabel: 'Creating…',
-      onSuccess: async (d) => {
-        // The photo goes up once the Clan exists. A failed upload never loses the Clan; it can be added on the page.
-        if (photo) await fetch(`/api/clans/${d.id}/image`, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: photo, credentials: 'same-origin' }).catch(() => null);
-        location.href = `${d.href}?setup=1#members`;
-      },
-    });
-  }
+  if (form) bindForm(form, { url: '/api/clans', body: (f) => values(f), busyLabel: 'Creating…', onSuccess: (d) => { location.href = `${d.href}?setup=1`; } });
 </script>
+<style>
+  .cn__title { margin: 0; font-size: clamp(2rem, 1.5rem + 2.2vw, 3rem); line-height: 1.05; letter-spacing: -0.045em; font-weight: 500; }
+  .cn__lead { margin: 14px 0 0; font-size: 17px; line-height: 1.5; color: var(--text-2); }
+  .cn__types { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 0; }
+  .cn__type { position: relative; }
+  .cn__type input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+  .cn__type span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: var(--r-pill); font-size: 15px; color: var(--text-2); transition: border-color var(--m-control) var(--m-ease), background var(--m-control) var(--m-ease); }
+  .cn__type b { font-weight: 500; }
+  .cn__type input:checked + span { border-color: var(--text); color: var(--text); background: var(--surface); }
+  .cn__type input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cn__opt { font-style: normal; font-size: 12px; color: var(--text-3); margin-left: 6px; }
+</style>

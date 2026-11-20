@@ -1,18 +1,39 @@
 /* Clans: create flow, the public Clan page, its roster and the admins' tools. Tokens only; light and dark follow the theme. */
-.cl { max-width: 1080px; margin: 0 auto; padding: clamp(32px, 6vw, 72px) var(--gutter) 96px; }
+.cl { max-width: 960px; margin: 0 auto; padding: clamp(32px, 6vw, 72px) var(--gutter) 96px; }
 .cl-sample { margin-bottom: 20px; }
-.cl__head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: clamp(16px, 3vw, 28px); align-items: end; }
-.cl__photo { width: clamp(96px, 14vw, 148px); aspect-ratio: 1; border-radius: var(--r-lg); background: var(--surface-sunken) center / cover no-repeat; border: 1px solid var(--line); display: grid; place-items: center;
-  font-size: clamp(32px, 5vw, 52px); font-weight: 600; letter-spacing: -0.04em; color: var(--text-3); }
-.cl__type { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
-.cl__name { margin: 6px 0 0; font-size: clamp(2rem, 1.4rem + 2.4vw, 3.4rem); line-height: 1; letter-spacing: -0.045em; font-weight: 500; }
-.cl__meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 14px; color: var(--text-2); }
-.cl__actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.cl__bio { margin-top: 28px; max-width: 64ch; white-space: pre-line; font-size: 17px; line-height: 1.65; color: var(--text-2); }
-.cl__grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: clamp(32px, 6vw, 72px); margin-top: 48px; align-items: start; }
-.cl__sec + .cl__sec { margin-top: 44px; }
-.cl__sec > h2 { margin: 0 0 14px; font-size: 13px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.cl__head { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding-top: clamp(8px, 3vw, 32px); }
+.cl__type { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.01em; color: var(--text-3); }
+.cl__name { margin: 0; max-width: 16ch; font-size: clamp(2.5rem, 1rem + 6.4vw, 6rem); line-height: 0.98; letter-spacing: -0.055em; font-weight: 600; text-wrap: balance; overflow-wrap: anywhere; hyphens: auto; }
+.cl__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 10px; }
+.cl__leave { background: none; border: 0; padding: 8px 4px; font: inherit; font-size: 14px; color: var(--text-3); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.cl__leave:hover { color: var(--text); }
+.cl__hero { margin-top: clamp(28px, 5vw, 48px); aspect-ratio: 16 / 9; border-radius: var(--r-lg); background: var(--surface-sunken) center / cover no-repeat; }
+.cl__bio { margin: clamp(28px, 5vw, 44px) 0 0; max-width: 34em; white-space: pre-line; font-size: clamp(1.125rem, 1rem + 0.5vw, 1.375rem); line-height: 1.55; letter-spacing: -0.01em; color: var(--text); }
+.cl__sec { margin-top: clamp(48px, 8vw, 88px); }
+.cl__sec > h2 { margin: 0 0 18px; font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); font-weight: 600; letter-spacing: -0.03em; color: var(--text); text-transform: none; }
 .cl__empty { font-size: 14px; color: var(--text-3); line-height: 1.55; }
+.cl-ev { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin-top: 0; }
+
+/* Shared work */
+.cl-works-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px 18px; margin: 0; padding: 0; list-style: none; }
+.cl-w { display: flex; flex-direction: column; gap: 4px; color: var(--text); }
+.cl-w__cover { aspect-ratio: 1; margin-bottom: 8px; border-radius: var(--r-md); background: var(--surface-sunken) center / cover no-repeat; border: 1px solid var(--line-faint); }
+.cl-w b { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; }
+.cl-w small { font-size: 13px; color: var(--text-3); }
+.cl-w__rm { background: none; border: 0; padding: 6px 0 0; font: inherit; font-size: 12px; color: var(--text-3); cursor: pointer; }
+
+/* Private setup prompt and manage tools */
+.cl-todo { margin-bottom: 8px; padding: 16px 20px; border: 1px dashed var(--line-strong); border-radius: var(--r-md); }
+.cl-todo__h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; margin: 0 0 8px; font-size: 14px; }
+.cl-todo__h span { color: var(--text-3); }
+.cl-todo ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cl-todo__a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+.cl-todo__a:hover { border-color: var(--text); }
+.cl-admin__h { margin: 0 0 14px; font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); font-weight: 600; letter-spacing: -0.03em; }
+.cl-me { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px 12px; align-items: center; margin: 16px 0 0; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface-sunken); }
+.cl-me p { margin: 0; font-size: 14px; }
+.cl-me .form-status { grid-column: 1 / -1; }
+@media (max-width: 700px) { .cl-me { grid-template-columns: 1fr; } }
 
 /* Roster */
 .cl-roster { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line-faint); }
@@ -26,7 +47,7 @@ a.cl-m:hover .cl-m__name { color: var(--accent); }
 .cl-m__tag { margin-left: auto; flex-shrink: 0; font-size: 12px; color: var(--text-3); }
 
 /* Admin tools */
-.cl-admin { margin-top: 36px; }
+.cl-admin { margin-top: clamp(56px, 9vw, 96px); padding-top: 32px; border-top: 1px solid var(--line); }
 .cl-admin .panel + .panel { margin-top: 12px; }
 .cl-step { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; font-size: 13px; color: var(--text-3); }
 .cl-step b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--text); color: var(--bg); font-size: 12px; font-weight: 600; }
@@ -82,9 +103,6 @@ a.cl-m:hover .cl-m__name { color: var(--accent); }
 .cl-aff small { display: block; font-size: 13px; color: var(--text-3); }
 
 @media (max-width: 860px) {
-  .cl__head { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
-  .cl__actions { grid-column: 1 / -1; }
-  .cl__grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   .cl-add { grid-template-columns: 1fr; }

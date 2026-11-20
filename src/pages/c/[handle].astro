@@ -2,13 +2,14 @@
 /**
  * A Clan's public page, shareable by URL: roster (accepted members only), selected Works and upcoming Events.
  * Admins see their tools on the same page: add band members (existing Opus members or an invite link), edit roles,
- * link Works and host an event as the Clan. Open spots and invitations are only ever rendered for admins.
+ * link Works and host an event as the group. Open spots and invitations are only ever rendered for admins.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import EventPoster from '@/components/events/EventPoster.astro';
 import { GROUP_TYPES, ROLE_SUGGESTIONS, clanWorks, eligibleWorks, getClanByHandle, isClanAdmin, roster } from '@/server/clans';
 import { listHostedEvents } from '@/server/events';
+import { getMyProfile } from '@/server/profiles';
 import { RELEASE_KINDS } from '@/data/music';
 import '@/styles/app.css';
 import '@/styles/events.css';
@@ -21,7 +22,7 @@ const viewer = Astro.locals.user;
 const clan = await getClanByHandle(db, Astro.params.handle ?? '');
 const admin = clan ? await isClanAdmin(db, clan, viewer?.id) : false;
 if (!clan || (clan.status !== 'published' && !admin)) {
-  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Not found · Opus</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:#f2efea;font-family:system-ui,sans-serif;text-align:center"><div><p style="color:#8a858c;letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This page isn’t available.</h1><p style="color:#a39da5">The link may be wrong, or the page was taken down.</p><p><a href="/clans" style="color:#f2efea">Explore Clans</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Not found · Opus</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:#f2efea;font-family:system-ui,sans-serif;text-align:center"><div><p style="color:#8a858c;letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This page isn’t available.</h1><p style="color:#a39da5">The link may be wrong, or the page was taken down.</p><p><a href="/clans" style="color:#f2efea">Explore groups</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
 }
 if (clan.handle !== Astro.params.handle) return Astro.redirect(clan.href, 301);
 
@@ -31,46 +32,118 @@ const pendingSpots = members.filter((m) => m.status === 'open' || m.status === '
 const eligible = admin ? await eligibleWorks(db, clan.id) : [];
 const myInvite = viewer && !admin ? await db.prepare("SELECT id, roles FROM clan_members WHERE clan_id = ? AND user_id = ? AND status = 'invited'").bind(clan.id, viewer.id).first<{ id: string; roles: string }>() : null;
 const amMember = viewer ? !!(await db.prepare("SELECT 1 AS x FROM clan_members WHERE clan_id = ? AND user_id = ? AND status = 'active'").bind(clan.id, viewer.id).first()) : false;
+const myProfile = admin && viewer ? await getMyProfile(db, viewer.id) : null;
 const T = GROUP_TYPES[clan.groupType];
-const setup = admin && Astro.url.searchParams.has('setup');
 const initials = (s: string) => s.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+const onRoster = !!viewer && active.some((m) => m.userId === viewer.id);
+// Private to managers: what's still missing. Public sections with nothing in them simply don't render.
+const todo = admin ? [
+  !clan.photo && { key: 'photo', label: 'Add a photo' },
+  !clan.bio && { key: 'bio', label: 'Write a short bio' },
+  !onRoster && { key: 'members', label: myProfile ? 'Add yourself as a member' : 'Add members' },
+  works.length === 0 && eligible.length > 0 && { key: 'works', label: 'Choose shared work' },
+].filter(Boolean) as { key: string; label: string }[] : [];
 const STATUS = { open: 'Invite link not used yet', invited: 'Invited, waiting for an answer', declined: 'Declined' } as Record<string, string>;
 const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}` : ''} on Opus.`;
 ---
 <BaseLayout title={clan.name} description={desc} image={clan.photo ?? undefined}>
   <article class="cl" data-clan={clan.id}>
-    {clan.isSample && <p class="notice notice--warn cl-sample"><b>Development data.</b> This Clan and its roster are sample records for the preview build, not real members.</p>}
+    {clan.isSample && <p class="notice notice--warn cl-sample"><b>Development data.</b> This group and its members are sample records for the preview build, not real people.</p>}
     {myInvite && (
       <div class="panel cl-invite" data-invite={myInvite.id}>
-        <p><b>{clan.name} invited you to join</b>{JSON.parse(myInvite.roles).length ? ` as ${JSON.parse(myInvite.roles).join(', ')}` : ''}. Only you and the {clan.typeLabel.toLowerCase()}’s admins can see this.</p>
+        <p><b>{clan.name} invited you to join</b>{JSON.parse(myInvite.roles).length ? ` as ${JSON.parse(myInvite.roles).join(', ')}` : ''}. Only you and the group’s managers can see this.</p>
         <div class="row"><button class="btn-app" type="button" data-respond="accept">Accept</button><button class="btn-app btn-app--ghost" type="button" data-respond="decline">Decline</button></div>
       </div>
     )}
+
+    {admin && todo.length > 0 && (
+      <aside class="cl-todo" aria-label="Finish your page">
+        <p class="cl-todo__h"><b>Finish your page</b><span>Only you can see this</span></p>
+        <ul role="list">
+          {todo.map((t) => (
+            <li>{t.key === 'photo'
+              ? <label class="cl-todo__a">{t.label}<input type="file" accept="image/*" hidden data-photo /></label>
+              : <button type="button" class="cl-todo__a" data-open={t.key === 'bio' ? 'edit' : t.key}>{t.label}</button>}</li>
+          ))}
+        </ul>
+      </aside>
+    )}
+
     <header class="cl__head">
-      <div class="cl__photo" style={clan.photo ? `background-image:url(${clan.photo})` : ''} role="img" aria-label={`${clan.name} photo`}>{!clan.photo && initials(clan.name)}</div>
-      <div>
-        <p class="cl__type">{clan.typeLabel}</p>
-        <h1 class="cl__name">{clan.name}</h1>
-        <p class="cl__meta">
-          {clan.place && <span>{clan.place}</span>}
-          <span>{active.length} {active.length === 1 ? 'member' : 'members'}</span>
-        </p>
-      </div>
+      <p class="cl__type">{[clan.typeLabel, clan.place].filter(Boolean).join(' · ')}</p>
+      <h1 class="cl__name">{clan.name}</h1>
       <div class="cl__actions">
-        <button class="btn-app btn-app--ghost" type="button" data-share>Share</button>
-        {admin && <a class="btn-app" href={`/events/new?host=${clan.id}`}>Create event</a>}
-        {amMember && !admin && <button class="btn-app btn-app--ghost" type="button" data-leave>Leave {clan.typeLabel.toLowerCase()}</button>}
+        <button class="btn-app" type="button" data-share>Share</button>
+        {admin && <a class="btn-app btn-app--ghost" href="#manage" data-open="manage">Manage</a>}
+        {amMember && !admin && <button class="cl__leave" type="button" data-leave>Leave group</button>}
       </div>
     </header>
+
+    {clan.photo && <div class="cl__hero" style={`background-image:url(${clan.photo})`} role="img" aria-label={`${clan.name}`}></div>}
     {clan.bio && <p class="cl__bio">{clan.bio}</p>}
     <p class="dim mu-err" data-page-status role="alert"></p>
 
+    {active.length > 0 && (
+      <section class="cl__sec" aria-labelledby="cl-roster">
+        <h2 id="cl-roster">Members</h2>
+        <ul class="cl-roster" role="list">
+          {active.map((m) => {
+            const inner = <>
+              <span class="cl-m__ph" style={m.photo ? `background-image:url(${m.photo})` : ''}>{!m.photo && initials(m.name)}</span>
+              <span class="cl-m__txt"><span class="cl-m__name">{m.name}</span>{m.roles.length > 0 && <span class="cl-m__roles">{m.roles.join(', ')}</span>}</span>
+              {admin && (m.isOwner ? <span class="cl-m__tag">Owner</span> : <span class="cl-m__tag"><button class="link" style="background:none;border:0;font:inherit;color:var(--text-3);cursor:pointer" type="button" data-spot-remove={m.id}>Remove</button></span>)}
+            </>;
+            return <li>{m.handle && m.profilePublished ? <a class="cl-m" href={`/m/${m.handle}`}>{inner}</a> : <div class="cl-m">{inner}</div>}</li>;
+          })}
+        </ul>
+      </section>
+    )}
+
+    {works.length > 0 && (
+      <section class="cl__sec" aria-labelledby="cl-works">
+        <h2 id="cl-works">Shared work</h2>
+        <ul class="cl-works-grid" role="list">{works.map((w) => (
+          <li><a class="cl-w" href={`/r/${w.id}`}>
+            <span class="cl-w__cover" style={w.cover ? `background-image:url(${w.cover})` : ''}></span>
+            <b>{w.title}</b>
+            <small>{[RELEASE_KINDS[w.kind as keyof typeof RELEASE_KINDS], w.released ? w.releaseDate?.slice(0, 4) : 'Coming'].filter(Boolean).join(' · ')}</small>
+          </a>{admin && <button type="button" class="cl-w__rm" data-unlink-work={w.id}>Remove from page</button>}</li>
+        ))}</ul>
+      </section>
+    )}
+
+    {events.length > 0 && (
+      <section class="cl__sec" aria-labelledby="cl-events">
+        <h2 id="cl-events">Upcoming</h2>
+        <div class="ev-grid cl-ev">
+          {events.map((e) => (
+            <a class="ev-card" href={e.href}>
+              <EventPoster image={e.image} startAt={e.startAt} timezone={e.timezone} category={e.categoryLabel} small />
+              <span class="ev-card__body">
+                <span class="ev-card__when">{e.when}</span>
+                <span class="ev-card__title">{e.title}</span>
+                <span class="ev-card__where">{e.venue}{e.place && ` · ${e.place.split(',')[0]}`}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
     {admin && (
-      <section class="cl-admin" id="members" aria-label="Admin tools">
-        <div class="panel">
-          {setup && <p class="cl-step"><b>2</b>Step 2 of 2</p>}
+      <section class="cl-admin" id="manage" aria-label="Manage this group">
+        <h2 class="cl-admin__h">Manage</h2>
+        <div class="panel" id="members">
           <h2>{T.membersStep}</h2>
           <p class="dim">List each member with their role. If they’re on Opus, add their username and they’ll get an invitation in their account. If they’re new, you’ll get an invite link for their spot to send them. Nobody shows on the public page until they accept.</p>
+          {!onRoster && (myProfile ? (
+            <form class="cl-me" data-me-form novalidate>
+              <p><b>Show yourself as a member</b><br /><span class="dim">You manage this group either way. This adds your own profile to the public roster.</span></p>
+              <input class="input" name="roles" maxlength="120" placeholder={T.rolePlaceholder} aria-label="Your role" />
+              <button class="btn-app btn-app--ghost" type="submit">Add me</button>
+              <div data-status class="form-status"></div>
+            </form>
+          ) : <p class="dim cl-me">Want to appear as a member? <a class="link" href="/start">Create your profile</a> first. Managing the group doesn’t need one.</p>)}
           <form class="cl-add" data-add-form novalidate>
             <label class="field"><span>Display name *</span><input class="input" name="name" maxlength="80" autocomplete="off" placeholder="Their name" /></label>
             <label class="field"><span>Opus username</span><input class="input" name="handle" maxlength="60" autocomplete="off" placeholder="Leave empty if they’re new" /></label>
@@ -98,8 +171,8 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
           <p class="cl__empty" style="margin-top:14px">Only admins see this list. Invite links work once, for that spot.</p>
         </div>
 
-        <div class="panel">
-          <h2>Works</h2>
+        <div class="panel" id="works">
+          <h2>Shared work</h2>
           <p class="dim">Pick the Works to show on the page. Any published Work by, or crediting, someone on the roster can be added.</p>
           {eligible.length ? (
             <div class="cl-works">{eligible.map((w) => (
@@ -108,7 +181,7 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
           ) : <p class="cl__empty" style="margin-top:12px">Nothing to add yet. Published Works from members show here.</p>}
         </div>
 
-        <details class="panel">
+        <details class="panel" id="edit">
           <summary style="cursor:pointer;font-size:18px;font-weight:500">Edit details</summary>
           <form class="form" data-edit-form novalidate style="margin-top:18px">
             <label class="field"><span>{clan.groupType === 'band' ? 'Band name' : 'Name'}</span><input class="input" name="name" maxlength="80" value={clan.name} /></label>
@@ -123,58 +196,6 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
       </section>
     )}
 
-    <div class="cl__grid">
-      <div>
-        <section class="cl__sec" aria-labelledby="cl-roster">
-          <h2 id="cl-roster">{clan.groupType === 'band' ? 'Band members' : 'Members'}</h2>
-          {active.length ? (
-            <ul class="cl-roster" role="list">
-              {active.map((m) => {
-                const inner = <>
-                  <span class="cl-m__ph" style={m.photo ? `background-image:url(${m.photo})` : ''}>{!m.photo && initials(m.name)}</span>
-                  <span class="cl-m__txt"><span class="cl-m__name">{m.name}</span>{m.roles.length > 0 && <span class="cl-m__roles">{m.roles.join(', ')}</span>}</span>
-                  {admin && (m.isOwner ? <span class="cl-m__tag">Owner</span> : <span class="cl-m__tag"><button class="link" style="background:none;border:0;font:inherit;color:var(--text-3);cursor:pointer" type="button" data-spot-remove={m.id}>Remove</button></span>)}
-                </>;
-                return <li>{m.handle && m.profilePublished ? <a class="cl-m" href={`/m/${m.handle}`}>{inner}</a> : <div class="cl-m">{inner}</div>}</li>;
-              })}
-            </ul>
-          ) : <p class="cl__empty">No one has joined yet.</p>}
-        </section>
-
-        <section class="cl__sec" aria-labelledby="cl-works">
-          <h2 id="cl-works">Works</h2>
-          {works.length ? (
-            <ul class="pr-list" role="list">{works.map((w) => (
-              <li><a class="pr-item" href={`/r/${w.id}`}>
-                <span class="pr-item__cover" style={w.cover ? `background-image:url(${w.cover})` : ''}></span>
-                <b>{w.title}</b>
-                <small>{[w.artist, RELEASE_KINDS[w.kind as keyof typeof RELEASE_KINDS], w.released ? w.releaseDate?.slice(0, 4) : 'Coming'].filter(Boolean).join(' · ')}</small>
-              </a>{admin && <button type="button" class="link" style="background:none;border:0;font-size:12px;color:var(--text-3);cursor:pointer;padding:4px 0" data-unlink-work={w.id}>Remove from page</button>}</li>
-            ))}</ul>
-          ) : <p class="cl__empty">No Works on the page yet.</p>}
-        </section>
-      </div>
-
-      <aside>
-        <section class="cl__sec" aria-labelledby="cl-events">
-          <h2 id="cl-events">Upcoming</h2>
-          {events.length ? (
-            <div class="ev-grid" style="grid-template-columns:1fr;margin-top:0">
-              {events.map((e) => (
-                <a class="ev-card" href={e.href}>
-                  <EventPoster image={e.image} startAt={e.startAt} timezone={e.timezone} category={e.categoryLabel} small />
-                  <span class="ev-card__body">
-                    <span class="ev-card__when">{e.when}</span>
-                    <span class="ev-card__title">{e.title}</span>
-                    <span class="ev-card__where">{e.venue}{e.place && ` · ${e.place.split(',')[0]}`}</span>
-                  </span>
-                </a>
-              ))}
-            </div>
-          ) : <p class="cl__empty">Nothing on the calendar yet.{admin && <> <a class="link" href={`/events/new?host=${clan.id}`}>Create an event</a></>}</p>}
-        </section>
-      </aside>
-    </div>
   </article>
 </BaseLayout>
 
@@ -193,6 +214,15 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
   }
   const reload = () => location.reload();
 
+  root.querySelectorAll<HTMLElement>('[data-open]').forEach((b) => b.addEventListener('click', (ev) => {
+    const t = document.getElementById(b.dataset.open!);
+    if (!t) return;
+    ev.preventDefault();
+    if (t instanceof HTMLDetailsElement) t.open = true;
+    t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+  const me = root.querySelector<HTMLFormElement>('[data-me-form]');
+  if (me) bindForm(me, { url: `/api/clans/${id}`, body: (f) => ({ action: 'add-me', ...values(f) }), busyLabel: 'Adding…', onSuccess: reload });
   root.querySelector('[data-share]')?.addEventListener('click', async () => {
     const url = location.origin + location.pathname;
     try { if (navigator.share) await navigator.share({ title: document.title, url }); else { await navigator.clipboard.writeText(url); say('Link copied.'); } } catch { /* dismissed */ }
@@ -266,15 +296,15 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
   const edit = root.querySelector<HTMLFormElement>('[data-edit-form]');
   if (edit) {
     bindForm(edit, { url: `/api/clans/${id}`, body: (f) => ({ action: 'update', ...values(f) }), busyLabel: 'Saving…', onSuccess: reload });
-    edit.querySelector<HTMLInputElement>('[data-photo]')!.addEventListener('change', async (e) => {
-      const f = (e.target as HTMLInputElement).files?.[0];
-      if (!f) return;
-      try {
-        const blob = await prepareImage(f, 1200, 'square');
-        const r = await fetch(`/api/clans/${id}/image`, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: blob, credentials: 'same-origin' });
-        if (!r.ok) throw new Error(String(((await r.json().catch(() => ({}))) as { error?: string }).error ?? 'Upload failed.'));
-        reload();
-      } catch (err) { status(edit, (err as Error).message); }
-    });
   }
+  root.querySelectorAll<HTMLInputElement>('[data-photo]').forEach((inp) => inp.addEventListener('change', async (e) => {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (!f) return;
+    try {
+      const blob = await prepareImage(f, 1600, 'free');
+      const r = await fetch(`/api/clans/${id}/image`, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: blob, credentials: 'same-origin' });
+      if (!r.ok) throw new Error(String(((await r.json().catch(() => ({}))) as { error?: string }).error ?? 'Upload failed.'));
+      reload();
+    } catch (err) { say((err as Error).message); }
+  }));
 </script>

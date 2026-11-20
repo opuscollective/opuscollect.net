@@ -1,17 +1,18 @@
 import type { APIRoute } from 'astro';
-import { addSpot, leaveClan, linkWork, removeSpot, renewLink, unlinkWork, updateClan, updateSpot } from '@/server/clans';
+import { addMeAsMember, addSpot, leaveClan, linkWork, removeSpot, renewLink, unlinkWork, updateClan, updateSpot } from '@/server/clans';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
 export const prerender = false;
 
 /**
- * POST { action, ... } on one Clan. Every admin action re-checks admin rights in src/server/clans.ts.
+ * POST { action, ... } on one group. Every admin action re-checks admin rights in src/server/clans.ts.
  *   update      { name, groupType, placeId, bio }
  *   add-spot    { name, roles, handle? }   handle = invite an existing member; without = open spot + invite link
  *   edit-spot   { spotId, name?, roles? }
  *   renew-link  { spotId }
  *   remove-spot { spotId }
  *   link-work / unlink-work { releaseId }
+ *   add-me      { roles? }   the admin shows their own profile on the roster
  *   leave       (a member leaves; their profile is untouched)
  */
 export const POST: APIRoute = async ({ locals, request, params, url }) => {
@@ -28,6 +29,7 @@ export const POST: APIRoute = async ({ locals, request, params, url }) => {
       case 'remove-spot': await removeSpot(env, user, id, b.spotId); return json({ ok: true });
       case 'link-work': await linkWork(env, user, id, b.releaseId); return json({ ok: true });
       case 'unlink-work': await unlinkWork(env, user, id, b.releaseId); return json({ ok: true });
+      case 'add-me': return json(await addMeAsMember(env, user, id, b));
       case 'leave': await leaveClan(env, user, id); return json({ ok: true });
       default: throw new HttpError(400, 'Invalid request.');
     }
