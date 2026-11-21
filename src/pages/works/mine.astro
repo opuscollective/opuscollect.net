@@ -2,6 +2,8 @@
 /**
  * My Works: everything a member manages in Works. Credits waiting for them, drafts, works on their profile,
  * and the way into the full editor for each. Moved from /works on 2026-11-18 (the overview lives there now).
+ * Art direction 2026-11-21: signed-in members land here (the overview redirects), so it is a workspace, not a page of marketing:
+ * a compact header, credits waiting, then the artwork grid with an Add tile that never leaves it looking empty.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ProductNav from '@/components/product/ProductNav.astro';
@@ -12,7 +14,9 @@ import { listMyReleases, myCreditRequests } from '@/server/releases';
 import { mediaUrl } from '@/server/profiles';
 import '@/styles/app.css';
 import '@/styles/music.css';
+import WorksFloat from '@/components/works/WorksFloat.astro';
 import '@/styles/product.css';
+import '@/styles/works.css';
 export const prerender = false;
 
 const user = Astro.locals.user;
@@ -26,19 +30,20 @@ try { [releases, requests] = await Promise.all([listMyReleases(db, user.id), myC
 catch (e) { console.error('my works', e); failed = true; }
 const building = releases.filter((r) => r.status === 'draft');
 const out = releases.filter((r) => r.status === 'published');
+const none = !failed && releases.length === 0;
 ---
 <BaseLayout title="My Works" description="Your works on Opus." noindex>
-  <ProductNav product="works" current="mine" />
-  <section class="px-sec px-sec--tight">
-    <div class="px-wrap">
-      <div class="px-rowhead">
+  <ProductNav product="works" current="mine" noCta />
+  <div class="wk wk-mine">
+    <div class="wk-wrap">
+      <div class="wk-mine__head">
         <div>
-          <h1 class="px-title">My Works</h1>
-          <p class="mw-sub">{out.length} on your profile · {building.length} {building.length === 1 ? 'draft' : 'drafts'}</p>
+          <h1>My Works</h1>
+          {releases.length > 0 && <p class="wk-mine__sub">{out.length} on your profile · {building.length} {building.length === 1 ? 'draft' : 'drafts'}</p>}
         </div>
-        <div class="px-ctas">
+        <div class="wk-mine__acts">
+          {profile?.status === 'published' && <a class="px-btn px-btn--text" href={`/m/${profile.handle}#works`}>View profile</a>}
           <a class="px-btn px-btn--go" href="/works?add=1" data-add-work>Add Work</a>
-          {profile?.status === 'published' && <a class="px-btn px-btn--line" href={`/m/${profile.handle}#works`}>View profile</a>}
         </div>
       </div>
 
@@ -55,9 +60,9 @@ const out = releases.filter((r) => r.status === 'published');
       {failed && <div class="px-state px-state--error"><h3>Your works couldn’t be loaded just now.</h3><p>Please try again in a moment.</p></div>}
 
       {requests.length > 0 && (
-        <section class="mw-block" id="requests" aria-labelledby="mw-req">
-          <h2 class="px-h3" id="mw-req">Credits waiting for you <span class="mw-n">{requests.length}</span></h2>
-          <p class="mw-help">Confirm to add the work to your profile as a confirmed credit. Decline if it isn’t right.</p>
+        <section class="wk-sec" id="requests" aria-labelledby="mw-req">
+          <h2 class="wk-label" id="mw-req">Credits waiting for you <span>{requests.length}</span></h2>
+          <p class="wk-help">Confirm to add the work to your profile as a confirmed credit. Decline if it isn’t right.</p>
           <ul class="mu-req" role="list">{requests.map((r) => (
             <li data-credit={r.id}>
               <a class="mu-req__cover" href={`/r/${r.releaseId}`} style={r.coverKey ? `background-image:url(${mediaUrl(r.coverKey)})` : ''} aria-label={r.releaseTitle}></a>
@@ -73,44 +78,45 @@ const out = releases.filter((r) => r.status === 'published');
         </section>
       )}
 
-      {profile && !failed && releases.length === 0 && (
-        <div class="px-state">
-          <h3>Add your first work</h3>
-          <p>Artwork, a title, the type and your role are all it takes. Credits, tracks and links can come later.</p>
-          <div class="px-ctas"><a class="px-btn px-btn--go px-btn--sm" href="/works?add=1" data-add-work>Add Your First Work</a><a class="px-btn px-btn--line px-btn--sm" href="/works">How Works works</a></div>
-        </div>
+      {profile && none && (
+        <section class="wk-sec" aria-labelledby="mw-first">
+          <h2 class="wk-label" id="mw-first">Your record</h2>
+          <ul class="wk-grid" role="list">
+            <li><button class="wk-add" type="button" data-add-work><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Add your first work</span></button></li>
+            <li class="wk-ghost" aria-hidden="true"></li><li class="wk-ghost" aria-hidden="true"></li><li class="wk-ghost" aria-hidden="true"></li>
+          </ul>
+          <p class="wk-hint">Artwork, a title, the type and your role are all it takes. Credits, tracks and links can come later.</p>
+        </section>
       )}
 
       {building.length > 0 && (
-        <section class="mw-block" aria-labelledby="mw-drafts">
-          <h2 class="px-h3" id="mw-drafts">Drafts <span class="mw-n">{building.length}</span></h2>
-          <p class="mw-help">Only you and the people you credit can see these.</p>
-          <ul class="px-grid" role="list">{building.map((r) => (
+        <section class="wk-sec" aria-labelledby="mw-drafts">
+          <h2 class="wk-label" id="mw-drafts">Drafts <span>{building.length}</span></h2>
+          <ul class="wk-grid" role="list">{building.map((r) => (
             <li><WorkCard href={`/works/${r.id}`} title={r.title} by={r.artist || undefined} kind={r.kind} year={r.releaseDate?.slice(0, 4)} coverKey={r.coverKey} status={r.pending ? `Draft · ${r.pending} waiting` : 'Draft'} statusTone="draft" /></li>
           ))}</ul>
         </section>
       )}
 
       {out.length > 0 && (
-        <section class="mw-block" aria-labelledby="mw-out">
-          <h2 class="px-h3" id="mw-out">On your profile <span class="mw-n">{out.length}</span></h2>
-          <p class="mw-help">Open a work to edit it, add credits or unpublish it.</p>
-          <ul class="px-grid" role="list">{out.map((r) => (
+        <section class="wk-sec" aria-labelledby="mw-out">
+          <h2 class="wk-label" id="mw-out">On your profile <span>{out.length}</span></h2>
+          <ul class="wk-grid" role="list">{out.map((r) => (
             <li><WorkCard href={`/works/${r.id}`} title={r.title} by={r.artist || undefined} kind={r.kind} year={r.releaseDate?.slice(0, 4)} coverKey={r.coverKey} status={r.pending ? `${r.pending} waiting` : undefined} statusTone="wait" /></li>
           ))}</ul>
         </section>
       )}
 
       {profile && (
-        <section class="mw-block mw-more" aria-labelledby="mw-port">
-          <h2 class="px-h3" id="mw-port">Portfolio, collaborations and achievements</h2>
-          <p class="mw-help">Selected work, the people you’ve worked with and milestones you can point to live on your profile, next to your works and confirmed credits.</p>
-          <a class="px-btn px-btn--line px-btn--sm" href="/account/profile">Edit your profile</a>
-        </section>
+        <div class="wk-foot">
+          <p>Selected work, collaborations and milestones live on your profile, next to your works and confirmed credits.</p>
+          <a class="px-btn px-btn--text" href="/account/profile">Edit your profile</a>
+        </div>
       )}
     </div>
-  </section>
+  </div>
   <AddWork profile={profile ?? null} />
+  <WorksFloat />
 </BaseLayout>
 
 <script>
@@ -126,13 +132,6 @@ const out = releases.filter((r) => r.status === 'published');
 </script>
 
 <style>
-  .mw-sub { margin: 10px 0 0; font-size: 15px; color: var(--text-2); }
-  .mw-block { margin-top: clamp(32px, 4vw, 48px); }
-  .mw-block .px-grid { margin-top: 20px; }
-  .mw-n { margin-left: 6px; font-size: 0.7em; font-weight: 500; color: var(--text-3); }
-  .mw-help { margin: 6px 0 0; font-size: 14px; color: var(--text-2); }
-  .mw-more { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 28px; border-top: 1px solid var(--line); }
   .mw-err { margin: 6px 0 0; font-size: 13px; color: var(--danger); }
   .mw-err:empty { display: none; }
-  #requests .mu-req { margin-top: 16px; }
 </style>

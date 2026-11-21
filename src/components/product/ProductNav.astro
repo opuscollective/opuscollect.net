@@ -11,7 +11,7 @@ interface Props { product: keyof typeof PRODUCTS | string; current?: string; /**
 const { product, current, noCta } = Astro.props;
 const p = PRODUCTS[product]!;
 const user = Astro.locals.user;
-const items = p.items.filter((i) => !i.members || user);
+const items = p.items.filter((i) => (!i.members || user) && !(i.guest && user));
 const cta = noCta ? undefined : p.cta;
 const ctaHref = cta ? (!user && cta.signedOut ? cta.signedOut : cta.href) : '';
 const ctaAttrs = cta?.action && user ? { [cta.action[0]]: cta.action[1] } : {};

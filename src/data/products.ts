@@ -3,7 +3,7 @@
  * Only routes that exist and work are listed. `members` items show only to signed-in members.
  * The global header stays the way into every product; this bar is the way around inside one.
  */
-export interface ProductNavItem { key: string; label: string; href: string; members?: boolean }
+export interface ProductNavItem { key: string; label: string; href: string; members?: boolean; /** Shown to visitors only (members land on their own works instead). */ guest?: boolean }
 export interface ProductCta { label: string; href: string; /** Where a signed-out visitor goes instead (the intended action is kept in ?next=). */ signedOut?: string; /** Data attribute set on the CTA so an in-page script can take over (e.g. the Add Work sheet). */ action?: [string, string] }
 export interface ProductDef { key: string; name: string; href: string; soon?: boolean; items: ProductNavItem[]; cta?: ProductCta }
 
@@ -23,7 +23,7 @@ export const PRODUCTS: Record<string, ProductDef> = {
   works: {
     key: 'works', name: 'Works', href: '/works',
     items: [
-      { key: 'overview', label: 'Overview', href: '/works' },
+      { key: 'overview', label: 'Overview', href: '/works', guest: true },
       { key: 'explore', label: 'Explore', href: '/works/explore' },
       { key: 'mine', label: 'My Works', href: '/works/mine', members: true },
     ],
