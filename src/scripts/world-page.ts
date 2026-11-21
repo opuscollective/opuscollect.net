@@ -359,7 +359,7 @@ export function initWorld(root: HTMLElement) {
         ]);
       } else {
         const bare = !f.text && filterCount() === 0;
-        showEmpty(bare ? 'Nothing here yet.' : 'No matches.', f.text ? `Nothing in World matches “${f.text}” yet.` : bare ? 'No one has published in this part of World yet. Join Opus to be the first.' : 'Try fewer filters.', [
+        showEmpty(bare ? 'Nothing here yet.' : 'No matches.', f.text ? `Nothing in World matches “${f.text}” yet.` : bare ? (kind() === 'studio' ? 'No studios are listed here yet. Run a studio, home studios included? List yours from the bar above.' : 'No one has published in this part of World yet. Join Opus to be the first.') : 'Try fewer filters.', [
           { label: 'Clear filters', primary: true, run: resetAll },
         ]);
       }

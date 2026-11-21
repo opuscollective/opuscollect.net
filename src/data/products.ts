@@ -36,7 +36,7 @@ export const PRODUCTS: Record<string, ProductDef> = {
       { key: 'sessions', label: 'My Sessions', href: '/account/bookings', members: true },
       { key: 'owners', label: 'For Studios', href: '/business' },
     ],
-    cta: { label: 'Find a studio', href: '/studios' },
+    cta: { label: 'List your studio', href: '/business' },
   },
   venues: {
     key: 'venues', name: 'Venues', href: '/venues', soon: true, items: [],

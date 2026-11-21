@@ -26,7 +26,7 @@ const navCurrent = kind === 'studio' ? 'discover' : kind === 'musician' ? 'peopl
   description={description}
   hideFooter
 >
-  <ProductNav product={navProduct} current={navCurrent} noCta />
+  <ProductNav product={navProduct} current={navCurrent} noCta={kind !== 'studio'} />
   <div class="world" data-world data-view="split" data-default-kind={kind || undefined} data-city={city}>
     <h1 class="sr-only">{title}</h1>
 

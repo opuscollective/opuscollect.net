@@ -1,5 +1,5 @@
 ---
-import { NAV, ACCOUNT, ACCOUNT_MENU, CREATE_MENU, SITE } from '@/data/site';
+import { HEADER_NAV, ACCOUNT, ACCOUNT_MENU, CREATE_MENU, SITE } from '@/data/site';
 import Icon from '../ui/Icon.astro';
 import ThemeSwitch from '../ui/ThemeSwitch.astro';
 interface Props { overlay?: boolean }
@@ -20,7 +20,7 @@ const SECTIONS: Record<string, string[]> = {
 };
 const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/'));
 // On narrower desktops these move into "More" instead of shrinking the type.
-const OVERFLOW = new Set(['Airplay', 'Charts', 'Collective']);
+const OVERFLOW = new Set<string>();
 ---
 <script is:inline>
   // Signed-in hint (not a credential): swap Sign in / Join for the account menu.
@@ -34,7 +34,7 @@ const OVERFLOW = new Set(['Airplay', 'Charts', 'Collective']);
 
     <nav class="hdr__nav" aria-label="Main">
       <ul role="list" class="hdr__list">
-        {NAV.map((item, i) => (
+        {HEADER_NAV().map((item, i) => (
           <li class:list={['hdr__item', { 'hdr__item--more': OVERFLOW.has(item.label) }]} data-nav-item>
             <a class="hdr__link" href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}{item.label === 'Network' && <span class="hdr__count" data-req-count hidden></span>}</a>
             <button class="hdr__disc" type="button" aria-expanded="false" aria-controls={`nav-${i}`} data-nav-disc><span class="sr-only">{item.label} menu</span><Icon name="chevron-down" size={12} /></button>
@@ -62,19 +62,6 @@ const OVERFLOW = new Set(['Airplay', 'Charts', 'Collective']);
             </div>
           </li>
         ))}
-        <li class="hdr__item hdr__more" data-nav-item>
-          <a class="hdr__link" href="/collective" aria-current={['/airplay', '/charts', '/collective'].some((h) => current(h)) ? 'page' : undefined}>More</a>
-          <button class="hdr__disc" type="button" aria-expanded="false" aria-controls="nav-more" data-nav-disc><span class="sr-only">More products</span><Icon name="chevron-down" size={12} /></button>
-          <div class="navp" id="nav-more" data-nav-panel hidden>
-            <div class="navp__card">
-              <ul role="list" class="navp__list">
-                {NAV.filter((n) => OVERFLOW.has(n.label)).map((n) => (
-                  <li><a href={n.href} class="navp__prod"><span class="navp__name">{n.label}{n.soon && <span class="navp__soon">Coming soon</span>}</span><small>{n.line}</small></a></li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </li>
       </ul>
     </nav>
 
@@ -111,7 +98,7 @@ const OVERFLOW = new Set(['Airplay', 'Charts', 'Collective']);
   <div class="mmenu" id="mobile-menu" hidden data-menu>
     <nav class="container" aria-label="Mobile">
       <ul role="list" class="mmenu__list">
-        {NAV.map((item, i) => (
+        {HEADER_NAV().map((item, i) => (
           <li style={`--i:${i}`}>
             <a href={item.href} aria-current={current(item.href) ? 'page' : undefined}>
               <span class="mmenu__name">{item.label}{item.soon && <span class="mmenu__soon">Soon</span>}{item.label === 'Network' && <span class="hdr__count" data-req-count hidden></span>}</span>

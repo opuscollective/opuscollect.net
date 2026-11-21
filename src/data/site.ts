@@ -13,7 +13,7 @@ export const SITE = {
   supporting: 'Create connections that create opportunity.',
   /** Homepage hero, launch pass (brief 2026-11-21): the value of World on the first screen. */
   heroHeadline: 'Discover the people behind the music.',
-  heroLine: 'Find artists, producers, engineers, songwriters, groups and studios in your city. See their work. Connect.',
+  heroLine: 'Find artists, producers and engineers in your city. See their work. Connect.',
   description:
     'Opus Collective is the professional network for independent music. Discover artists, producers, engineers and songwriters, and earn Opus Verified recognition.',
   location: 'Birmingham, AL',
@@ -123,6 +123,9 @@ export const NAV: NavItem[] = [
 
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
 /** The Create menu (signed in): start something new. First in the account menu on desktop and phones. */
+/** The header shows only these two; every other section is reachable from the homepage and the footer. */
+export const HEADER_NAV = (): NavItem[] => NAV.filter((n) => n.label === 'World' || n.label === 'Works');
+
 export const CREATE_MENU = [
   { label: 'Create a group', href: '/clans/new' },
   { label: 'Create an event', href: '/events/new' },
@@ -156,8 +159,15 @@ export const SOCIALS = [
 /** Footer: one short row. Everything else is reachable from the header or from these pages. */
 export const FOOTER_NAV = [
   { label: 'World', href: '/world' },
-  { label: 'Opus Verified', href: '/verified' },
-  { label: 'Opus Collective', href: '/collective' },
+  { label: 'Works', href: '/works' },
+  { label: 'Studios', href: '/studios' },
+  { label: 'Venues', href: '/venues' },
   { label: 'Events', href: '/events' },
+  { label: 'Airplay', href: '/airplay' },
+  { label: 'Future', href: '/future' },
+  { label: 'Charts', href: '/charts' },
+  { label: 'Network', href: '/network' },
+  { label: 'Opus Collective', href: '/collective' },
+  { label: 'Opus Verified', href: '/verified' },
   { label: 'About', href: '/about' },
 ];

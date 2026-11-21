@@ -1,17 +1,73 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ProductNav from '@/components/product/ProductNav.astro';
-import ProductPreview from '@/components/layout/ProductPreview.astro';
+const user = Astro.locals.user;
+const create = user ? '/events/new' : '/sign-in?next=' + encodeURIComponent('/events/new');
 ---
-<BaseLayout title="Venues" description="Venues on Opus: find your stage. Coming soon.">
+<BaseLayout title="Venues" description="Venues on Opus: find the room that fits your sound. Venue pages are coming soon.">
   <ProductNav product="venues" />
-  <ProductPreview
-    name="Venues" line="Find your stage."
-    lead="Rooms, stages and spaces for live music, on the World map next to the people who play them."
-    does={['Venue pages with the stage, capacity, sound and the kind of nights they host.', 'Venues on the World map, found the same way as people and studios.', 'Events at a venue, linked from the venue’s page.']}
-    forWho={['Artists looking for a room that fits their sound and their crowd.', 'Venues and promoters who want to reach the right performers.', 'Organizers planning shows, open mics and showcases.']}
-    coming={['Venue profiles, reviewed by Opus before they are listed.', 'Avails and booking inquiries, without payments to start.', 'Venues linked to Events, so a show shows where it happens.']}
-    availability="Venues is in development and not open yet. There are no venue listings on Opus today, so nothing here is a real listing. You can already create events at any venue in Events."
-    now={[{ label: 'Create an event', href: '/events/new' }, { label: 'Explore World', href: '/world' }]}
-  />
+  <article class="vn">
+    <header class="vn__hero tone-dark">
+      <div class="vn__in">
+        <p class="vn__kicker">Venues <span>Coming soon</span></p>
+        <h1>Find the room<br />that fits your sound.</h1>
+        <p class="vn__lead">Venue pages will show the stage, the capacity and the kind of nights each room hosts, next to the people who play them. There are no venue listings yet.</p>
+        <div class="vn__btns">
+          <a class="vn__btn vn__btn--go" href={create}>Create an event</a>
+          <a class="vn__btn" href="/events">Explore events</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="vn__in vn__spec" aria-labelledby="vn-spec">
+      <h2 id="vn-spec">Every venue page will answer</h2>
+      <dl>
+        <div><dt>Where</dt><dd>The city and neighborhood, on the World map.</dd></div>
+        <div><dt>How big</dt><dd>Capacity, so you know if it fits your crowd.</dd></div>
+        <div><dt>What it’s like</dt><dd>Photos of the stage and room, and the sound you’ll play through.</dd></div>
+        <div><dt>How to book</dt><dd>A booking inquiry or contact, with no payments to start.</dd></div>
+      </dl>
+    </section>
+
+    <section class="vn__in vn__now">
+      <div>
+        <h2>You can already</h2>
+        <p>Create an event at any venue in Events, and it shows where it happens.</p>
+      </div>
+      <div>
+        <h2>Run a room?</h2>
+        <p>Venue listings open later. <a class="vn__link" href={user ? '/account/profile' : '/sign-up'}>{user ? 'Keep your profile up to date' : 'Join Opus'}</a> so you’re ready.</p>
+      </div>
+    </section>
+  </article>
 </BaseLayout>
+
+<style>
+  .vn { padding-bottom: 96px; }
+  .vn__in { max-width: 1120px; margin: 0 auto; padding: 0 var(--gutter, 24px); }
+  .vn__hero { margin: 0 12px; padding: clamp(104px, 12vw, 160px) 0 clamp(56px, 7vw, 104px); color: #f4f2ee; border-radius: 0 0 6px 6px; overflow: hidden;
+    background: radial-gradient(60% 90% at 78% 0%, rgba(255, 236, 205, 0.16), transparent 62%), #0b0b0d; }
+  .vn__kicker { display: flex; align-items: center; gap: 12px; margin: 0; font-size: 15px; font-weight: 500; color: rgba(244, 242, 238, 0.8); }
+  .vn__kicker span { padding: 3px 10px; border: 1px solid rgba(244, 242, 238, 0.4); border-radius: var(--r-pill); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .vn__hero h1 { margin: 18px 0 0; font-size: clamp(2.8rem, 1.4rem + 6vw, 6.6rem); font-weight: 600; letter-spacing: -0.055em; line-height: 0.95; }
+  .vn__lead { margin: 22px 0 0; max-width: 46ch; font-size: clamp(1.1rem, 1rem + 0.4vw, 1.35rem); line-height: 1.5; color: rgba(244, 242, 238, 0.76); }
+  .vn__btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 32px; }
+  .vn__btn { display: inline-flex; align-items: center; min-height: 46px; padding: 0 22px; border-radius: var(--r-pill); border: 1px solid rgba(244, 242, 238, 0.4); color: #f4f2ee; font-size: 15px; font-weight: 500; }
+  .vn__btn--go { background: #f4f2ee; color: #0b0b0d; border-color: #f4f2ee; }
+  .vn__btn:focus-visible, .vn__link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .vn__spec { margin-top: clamp(48px, 6vw, 88px); }
+  .vn h2 { margin: 0 0 16px; font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+  .vn dl { margin: 0; }
+  .vn dl > div { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 24px; padding: 22px 0; border-top: 1px solid var(--line); }
+  .vn dl > div:last-child { border-bottom: 1px solid var(--line); }
+  .vn dt { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.4rem); font-weight: 600; letter-spacing: -0.04em; line-height: 1.1; }
+  .vn dd { margin: 0; align-self: center; max-width: 50ch; font-size: 16px; line-height: 1.5; color: var(--text-2); }
+  .vn__now { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 5vw, 72px); margin-top: clamp(40px, 5vw, 72px); }
+  .vn__now p { margin: 0; max-width: 40ch; font-size: 16px; line-height: 1.55; color: var(--text-2); }
+  .vn__link { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+  @media (max-width: 760px) {
+    .vn__hero { margin: 0; border-radius: 0; }
+    .vn dl > div { grid-template-columns: 1fr; gap: 6px; padding: 18px 0; }
+    .vn__now { grid-template-columns: 1fr; gap: 24px; }
+  }
+</style>
