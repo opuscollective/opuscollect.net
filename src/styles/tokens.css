@@ -212,6 +212,8 @@
   --section-y: clamp(88px, 11vw, 168px);
   --gutter: clamp(20px, 4.5vw, 72px);
   --max-w: 1440px;
+  /* Main navigation: 52px (56px on phones/tablets). Global, so every page (homepage included) gets the same bar. */
+  --hdr-h: 52px;
 
   /* Shape */
   --r-sm: 6px;
@@ -244,6 +246,8 @@
   --z-header: 50;
   --z-menu: 60;
 }
+
+@media (max-width: 960px) { :root { --hdr-h: 56px; } }
 
 /* Motion modes: set on <html data-motion> before first paint (BaseLayout). */
 html[data-motion='reduced'] { --m-scale: 0.5; }

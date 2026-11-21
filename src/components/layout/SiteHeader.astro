@@ -306,18 +306,18 @@ const OVERFLOW = new Set<string>();
   /* backdrop-filter makes the header the containing block for the fixed menu, so drop it while open */
   .hdr.is-open { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
   /* Three zones: logo | links | account. The equal outer columns keep the links centred on the viewport. */
-  .hdr__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 24px; height: var(--hdr-h); }
+  .hdr__inner { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 32px; height: var(--hdr-h); }
   .hdr__brand { display: inline-flex; align-items: center; gap: 12px; flex-shrink: 0; justify-self: start; grid-column: 1; }
   .hdr__nav { grid-column: 2; }
   .hdr__actions { grid-column: 3; justify-self: end; }
-  .hdr__brand img { height: 18px; width: auto; }
+  .hdr__brand img { height: 22px; width: auto; }
 
   /* One row of ten words. Each item fills the bar's height; its panel hangs from it, joined by a bridge. */
   .hdr__nav { align-self: stretch; }
   .hdr__list { display: flex; align-items: center; gap: 2px; height: 100%; margin: 0; }
   .hdr__item { position: relative; display: flex; align-items: center; height: 100%; }
-  .hdr__link { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px;
-    font-size: 13px; letter-spacing: -0.005em; color: var(--text-2); white-space: nowrap; transition: background-color var(--m-hover) var(--m-ease), color var(--m-hover) var(--m-ease); }
+  .hdr__link { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: 9px;
+    font-size: 14px; letter-spacing: -0.005em; color: var(--text-2); white-space: nowrap; transition: background-color var(--m-hover) var(--m-ease), color var(--m-hover) var(--m-ease); }
   /* Hover: a soft neutral surface. Current page: the text in full colour with a quieter mark, so the two never look alike. */
   .hdr__item:hover > .hdr__link, .hdr__item.is-open > .hdr__link { background: var(--nav-hover); color: var(--text); }
   .hdr__link[aria-current] { color: var(--text); font-weight: 500; }
@@ -373,17 +373,17 @@ const OVERFLOW = new Set<string>();
     .hdr__link { padding: 0 9px; }
   }
 
-  .hdr__actions { display: flex; align-items: center; gap: 12px; }
-  .hdr__signin { font-size: 13px; color: var(--text-2); min-height: 32px; display: inline-flex; align-items: center; }
+  .hdr__actions { display: flex; align-items: center; gap: 16px; }
+  .hdr__signin { font-size: 14px; color: var(--text-2); min-height: 36px; padding: 0 4px; display: inline-flex; align-items: center; }
   .hdr__signin:hover { color: var(--text); }
   .hdr__join {
-    display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px; font-size: 13px; border-radius: var(--r-pill);
+    display: inline-flex; align-items: center; min-height: 36px; padding: 0 18px; font-size: 14px; border-radius: var(--r-pill);
     background: var(--text); color: var(--bg); font-weight: 500; white-space: nowrap; transition: opacity var(--dur);
   }
   .hdr__join:hover { opacity: 0.86; }
 
   .acct { position: relative; }
-  .acct__btn { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--text); }
+  .acct__btn { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 10px 0 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--text); }
   .acct__btn:hover { border-color: var(--line-strong); }
   .acct__btn[aria-expanded='true'] :global(.acct__chev) { transform: rotate(180deg); }
   .acct__menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; padding: 6px; border-radius: var(--r-md); background: var(--surface-raised); box-shadow: var(--shadow-pop); z-index: 10; }

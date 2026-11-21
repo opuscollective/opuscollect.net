@@ -9,7 +9,7 @@
   display: grid;
   /* The directory is always on the left, the map on the right: the same on every Opus World page and on the homepage. */
   grid-template-columns: var(--panel-w) minmax(0, 1fr);
-  height: calc(100svh - var(--hdr-h, 48px) - var(--pnav-h, 0px));
+  height: calc(100svh - var(--hdr-h, 52px) - var(--pnav-h, 0px));
   min-height: 480px;
   background: var(--c-bg);
   border-top: 1px solid var(--c-hairline);
@@ -439,7 +439,7 @@
   }
   .world[data-view='list'] .wp__results[hidden] { display: none; }
   .world[data-view='list'] .wp__foot { border-top: 1px solid var(--c-hairline); padding-bottom: 32px; }
-  .world[data-view='list'] .world__preview, .world[data-view='list'] .world__scrim { position: fixed; top: calc(var(--hdr-h, 48px) + var(--pnav-h, 0px)); }
+  .world[data-view='list'] .world__preview, .world[data-view='list'] .world__scrim { position: fixed; top: calc(var(--hdr-h, 52px) + var(--pnav-h, 0px)); }
 }
 
 html:not([data-motion='fluid']) .wc--skeleton span, html:not([data-motion='fluid']) .im.is-skel, html:not([data-motion='fluid']) .pv__skel { animation: none; }
