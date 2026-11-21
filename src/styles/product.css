@@ -9,8 +9,7 @@
  */
 
 :root {
-  /* Density (2026-11-21): navigation 48px, product bar 38px. App chrome supports the work; it never dominates it. */
-  --hdr-h: 48px;
+  /* Product bar 38px (nav height lives in tokens.css). App pages are compact. */
   --pnav-h: 38px;
   /* Type scale for product pages: display, section title, lead, body, meta. */
   --px-display: clamp(2.3rem, 1.4rem + 3.8vw, 4.8rem);
@@ -34,7 +33,7 @@
   --px-go: #0071e3;          /* white on it: 4.7:1 */
   --px-go-hover: #0064c8;
 }
-@media (max-width: 960px) { :root { --hdr-h: 52px; --pnav-h: 44px; } }
+@media (max-width: 960px) { :root { --pnav-h: 44px; } }
 :root[data-theme='dark'] { --px-go: #0a7cf0; --px-go-hover: #2997ff; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --px-go: #0a7cf0; --px-go-hover: #2997ff; } }
 

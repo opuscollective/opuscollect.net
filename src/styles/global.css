@@ -125,3 +125,7 @@ html:not([data-motion='fluid']) .opus-prep, html:not([data-motion='fluid']) .opu
 @media (max-width: 720px) {
   .fl-away .oa-launch, .fl-away .om-launch { opacity: 0; pointer-events: none; transform: translateY(10px); }
 }
+
+/* The homepage invites with its own actions: no floating Messages or Ask Opus for visitors who aren't signed in. */
+html:not(.is-signed-in) body:has([data-hero]) .oa-launch,
+html:not(.is-signed-in) body:has([data-hero]) .om-launch { display: none; }

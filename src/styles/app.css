@@ -1,5 +1,5 @@
 /* Account, onboarding and profile pages. Same palette as Opus World: near-black, graphite, thin borders, icy accent. */
-.app { min-height: calc(100svh - var(--hdr-h, 48px)); padding: clamp(28px, 5vw, 56px) var(--gutter) 64px; }
+.app { min-height: calc(100svh - var(--hdr-h, 52px)); padding: clamp(28px, 5vw, 56px) var(--gutter) 64px; }
 .app--center { display: grid; place-items: start center; }
 .app__wrap { width: 100%; max-width: 440px; }
 .app__wrap--wide { max-width: 760px; }
