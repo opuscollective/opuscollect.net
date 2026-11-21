@@ -18,7 +18,7 @@ const hosts = profile ? [{ id: profile.id, name: profile.displayName, label: 'Yo
 const defaultHost = clans.find((c) => c.id === Astro.url.searchParams.get('host'))?.id ?? profile?.id ?? null;
 const hostClan = clans.find((c) => c.id === defaultHost);
 ---
-<BaseLayout title="Create an event" description="Create an event on Opus." noindex>
+<BaseLayout title="Create an event" description="Create an event on Opus." noindex assistant={false} messages={false}>
   <ProductNav product="events" />
   <section class="app">
     <div class="app__wrap" style="margin-inline:auto">

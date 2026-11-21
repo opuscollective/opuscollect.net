@@ -358,7 +358,8 @@ export function initWorld(root: HTMLElement) {
           ...(filtered ? [{ label: 'Clear filters', run: resetAll }] : []),
         ]);
       } else {
-        showEmpty('No matches.', f.text ? `Nothing in World matches “${f.text}” yet.` : 'Try fewer filters.', [
+        const bare = !f.text && filterCount() === 0;
+        showEmpty(bare ? 'Nothing here yet.' : 'No matches.', f.text ? `Nothing in World matches “${f.text}” yet.` : bare ? 'No one has published in this part of World yet. Join Opus to be the first.' : 'Try fewer filters.', [
           { label: 'Clear filters', primary: true, run: resetAll },
         ]);
       }

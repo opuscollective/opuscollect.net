@@ -340,7 +340,7 @@ export async function uploadCover(env: Env, user: SessionUser, id: string, reque
   await limit(env.DB, `upload:${user.id}`, 30, 60 * 60_000);
   const { clean, ext, type } = await cleanUpload(request);
   const key = `r/${row.id}/cover-${randomId(12)}.${ext}`;
-  await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } });
+  await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } }).then(() => undefined); // R2Object is not serializable through the local dev proxy
   await env.DB.prepare('UPDATE releases SET cover_key = ?, updated_at = ? WHERE id = ?').bind(key, now(), row.id).run();
   if (row.cover_key) await env.MEDIA.delete(row.cover_key);
   return mediaUrl(key)!;
