@@ -39,7 +39,7 @@
 .wk-rec { position: relative; width: min(100%, 640px); margin: 0 auto; padding-top: 40px; }
 .wk-sheet { position: relative; display: grid; grid-template-columns: 46% minmax(0, 1fr); column-gap: clamp(16px, 2.4vw, 32px); padding: clamp(18px, 2.4vw, 30px); border-radius: 10px;
   background: var(--surface); box-shadow: 0 60px 100px -50px var(--wk-shadow), 0 0 0 1px var(--line-faint); }
-.wk-sheet__cover { position: relative; z-index: 2; margin: calc(-40px - clamp(18px, 2.4vw, 30px)) 0 0 calc(-1 * clamp(18px, 2.4vw, 30px) - 22px); align-self: start; width: calc(100% + 22px); }
+.wk-sheet__cover { grid-row: 1 / span 2; position: relative; z-index: 2; margin: calc(-40px - clamp(18px, 2.4vw, 30px)) 0 0 calc(-1 * clamp(18px, 2.4vw, 30px) - 22px); align-self: start; width: calc(100% + 22px); }
 .wk-sheet__cover.wk-art { border-radius: 3px; }
 .wk-sheet__id { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .wk-sheet__id h2 { margin: 0; font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2.2rem); font-weight: 600; letter-spacing: -0.035em; line-height: 1.05; }
@@ -121,7 +121,7 @@
 }
 @media (max-width: 520px) {
   .wk-sheet { grid-template-columns: 38% minmax(0, 1fr); padding: 14px; }
-  .wk-sheet__cover { margin: calc(-40px - 14px) 0 0 calc(-14px - 14px); width: calc(100% + 14px); }
+  .wk-sheet__cover { margin: calc(-40px - 14px) 0 0 calc(-14px - 6px); width: calc(100% + 6px); }
   .wk-sheet__body { margin-top: 10px; }
   .wk-sheet__work b { font-size: 17px; }
   .wk-roles li { padding: 3px 8px; font-size: 11px; }
@@ -142,7 +142,7 @@
 .wk-bar__n { margin-left: auto; font-size: 13px; color: var(--text-3); }
 .wk-grid { display: grid; gap: 22px 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr)); margin: 0; padding: 0; list-style: none; }
 .wk-pages { display: flex; justify-content: space-between; margin-top: 32px; }
-.wk-show { padding-block: 8px var(--wk-sec); }
+.wk-show { padding-block: clamp(32px, 5vw, 56px) var(--wk-sec); }
 .wk-show__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; margin-bottom: 18px; }
 .wk-show__head h2 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 600; letter-spacing: -0.025em; }
 .wk-show__head p { margin: 0; font-size: 14px; color: var(--text-3); }
