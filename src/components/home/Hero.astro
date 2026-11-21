@@ -15,16 +15,16 @@ const topCities = CITIES.slice(0, 8);
 
   <div class="hero__stage" data-hero-stage>
     <!-- The product, presented: name, promise, supporting line, actions. The Earth below is its demonstration. -->
+    <p class="hero__eyebrow hero-in" style="--i:0">{SITE.product}</p>
     <h1 id="hero-title" class="hero__title">
-      <span class="hero__line"><span class="hero-in" style="--i:1">{SITE.product}</span></span>
+      <span class="hero__line"><span class="hero-in" style="--i:1">{SITE.heroHeadline}</span></span>
     </h1>
-    <p class="hero__promise hero-in" style="--i:3">{SITE.promise}</p>
-    <p class="hero__value hero-in" style="--i:4">{SITE.supporting}</p>
+    <p class="hero__value hero-in" style="--i:3">{SITE.heroLine}</p>
 
     <div class="hero__ctas hero-in" style="--i:5">
       <a class="hero__go" href="/world" data-hero-open>Explore World</a>
       <!-- Guests go straight to registration; members finish or open their profile (set from /api/profile below). -->
-      <a class="hero__mark" href="/sign-up?next=/start" data-hero-mark>Join</a>
+      <a class="hero__mark" href="/sign-up?next=/start" data-hero-mark>Join Opus</a>
     </div>
 
     <!-- Accessible fallback, shown when WebGL is not available -->
@@ -60,7 +60,7 @@ const topCities = CITIES.slice(0, 8);
   const globeBox = hero.querySelector<HTMLElement>('[data-hero-globe]')!;
   function placeEarth() {
     if (hero.classList.contains('is-diving')) return;
-    if (innerWidth <= 760) { globeBox.style.top = ''; globeBox.style.bottom = ''; return; }
+    if (innerWidth <= 760 || innerWidth >= 1000) { globeBox.style.top = ''; globeBox.style.bottom = ''; return; }
     const H = hero.clientHeight;
     const h = H * 1.6;
     const r = Math.min(h * 0.371, hero.clientWidth * 0.47);
@@ -327,6 +327,32 @@ const topCities = CITIES.slice(0, 8);
     .hero__ctas { gap: 10px; margin-top: 24px; }
     .hero__go, .hero__mark { min-height: 48px; min-width: 0; padding: 0 22px; font-size: 15px; }
     .hero__veil { background: radial-gradient(80% 30% at 50% 26%, color-mix(in srgb, var(--bg) 65%, transparent) 0%, transparent 100%), linear-gradient(0deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 70%, transparent) 8%, color-mix(in srgb, var(--bg) 30%, transparent) 18%, transparent 30%); }
+  }
+
+  /* Launch layout (brief, 2026-11-21): copy on the left, the globe on the right, on wide screens. Narrower screens
+     keep the stacked composition above, with the same words. */
+  .hero__eyebrow { margin: 0 0 14px; font-size: 15px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(244, 242, 238, 0.7); }
+  .hero__title { text-wrap: balance; }
+  @media (max-width: 999px) {
+    .hero__title { font-size: clamp(2.7rem, 9.2vw, 5.2rem); line-height: 0.98; max-width: 11em; }
+    .hero .hero__value { white-space: normal; max-width: 26em; }
+    .hero__ctas { margin-top: 24px; }
+  }
+  @media (max-width: 760px) {
+    .hero__title { font-size: clamp(2.5rem, 12.4vw, 3.6rem); }
+    .hero__eyebrow { margin-bottom: 10px; font-size: 13px; }
+    .hero__value { font-size: 1.05rem; }
+  }
+  @media (min-width: 1000px) {
+    .hero { align-items: flex-start; justify-content: center; min-height: max(calc(100svh - 12px), 720px); padding: 96px clamp(40px, 6vw, 96px) 72px; }
+    .hero .hero__globe { top: 0; bottom: 0; left: 44%; right: -4%; --globe-r: 0.47; }
+    .hero__stage { align-items: flex-start; text-align: left; width: min(46%, 640px); }
+    .hero .hero__title { font-size: clamp(3.4rem, 5.6vw, 6.4rem); line-height: 0.98; letter-spacing: -0.045em; max-width: none; }
+    .hero .hero__value { white-space: normal; max-width: 30em; font-size: clamp(1.15rem, 0.9rem + 0.45vw, 1.45rem); margin-top: 24px; }
+    .hero__ctas { justify-content: flex-start; margin-top: 36px; }
+    .hero__line { padding-left: 0; padding-right: 0; }
+    .hero__veil { background: linear-gradient(90deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 70%, transparent) 30%, transparent 52%),
+      linear-gradient(0deg, var(--bg) 0%, transparent 14%); }
   }
   :global(html:not([data-motion='fluid'])) .hero__stage { transition: none; }
 </style>

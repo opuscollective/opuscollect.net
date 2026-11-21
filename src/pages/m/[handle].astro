@@ -27,6 +27,7 @@ const { profile: p, isOwner, ownerId } = found;
 if (p.handle !== handle) return Astro.redirect(`/m/${p.handle}`, 301);
 
 // Honour the member's location choice (city, metro area, state/country, or hidden).
+const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
 const where = visibleLabel(p.placeId, p.locationVisibility);
 // Links to the metro area on World, unless the member shows only a region or nothing.
 const metroPlace = p.placeId ? PLACE_BY_ID.get(PLACE_BY_ID.get(p.placeId)?.metroId ?? '') : undefined;
@@ -49,10 +50,10 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
     <div class="mp-preview"><span><b>Preview.</b> Only you can see this draft.</span> <a class="link" href="/account/profile">Back to editing</a></div>
   )}
   <article class="mp">
-    <div class="mp__cover" style={p.coverKey ? `background-image:url(${mediaUrl(p.coverKey)})` : ''} aria-hidden="true"></div>
-    <div class="mp__inner">
-      <header class="mp__head">
-        <div class="mp__photo" style={p.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''} role="img" aria-label={`Photo of ${p.displayName}`}></div>
+    {p.coverKey && <div class="mp__cover" style={`background-image:url(${mediaUrl(p.coverKey)})`} aria-hidden="true"></div>}
+    <div class:list={['mp__inner', { 'has-cover': !!p.coverKey }]}>
+      <header class:list={['mp__head', { 'no-photo': !p.photoKey }]}>
+        <div class="mp__photo" style={p.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''} role="img" aria-label={p.photoKey ? `Photo of ${p.displayName}` : p.displayName}>{!p.photoKey && initials(p.displayName)}</div>
         <div class="mp__id">
           <h1 class="mp__name">{p.displayName}{p.verification === 'verified' && <VerifiedBadge size={22} />}</h1>
           {roles.length > 0 && <p class="mp__roles"><span class="mp__primary">{roles[0]}</span>{roles.slice(1).map((r) => <span>{r}</span>)}</p>}
@@ -97,7 +98,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           )}
         </div>
       </header>
-      {invites.length > 0 && <p class="notice" style="margin-top:20px"><b>{invites.length === 1 ? `${invites[0]!.clan.name} invited you to join.` : `${invites.length} Clan invitations.`}</b> Only you can see this. <a class="link" href="/clans/mine">Answer in My groups</a></p>}
+      {invites.length > 0 && <p class="notice" style="margin-top:20px"><b>{invites.length === 1 ? `${invites[0]!.clan.name} invited you to join.` : `${invites.length} group invitations.`}</b> Only you can see this. <a class="link" href="/clans/mine">Answer in My groups</a></p>}
       {rel?.state === 'received' && <p class="mp__note" data-conn-note>{p.displayName} asked to connect with you. You can also answer in <a class="link" href="/network?tab=received">My Network</a>.</p>}
       <p class="dim mu-err" data-conn-status role="alert"></p>
 
@@ -130,10 +131,13 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
       <div class="mp__grid">
         <div class="mp__main">
           {p.bio && <section class="mp__sec"><h2 class="t-meta">About</h2><p class="mp__bio">{p.bio}</p></section>}
+          {(record.length > 0 || p.credits.length > 0 || isOwner) && (
+            <div class="mp__resume"><h2 class="mp__rtitle">Music résumé</h2><p>Releases and credits, drawn from this profile’s Works.</p></div>
+          )}
           {(record.length > 0 || isOwner) && (
             <section class="mp__sec" id="works"><h2 class="t-meta">Works</h2>
               {record.length === 0 ? (
-                <p class="dim" style="font-size:14px">Add your work in <a class="link" href="/works?add=1">Works</a>. Credits from other members show here once you confirm them.</p>
+                <p class="dim" style="font-size:15px"><b style="color:var(--text);font-weight:500">Start your résumé.</b> Your past work. Your present. Your future. <a class="link" href="/works?add=1">Add a work</a>. Credits from other members show here once you confirm them.</p>
               ) : (
                 <ul class="pr-list" role="list">{record.map((x) => (
                   <li><a class="pr-item" href={`/r/${x.id}`}>
@@ -192,6 +196,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               <ul class="mp__links" role="list">{links.map(([k, v]) => <li><a href={v} target="_blank" rel="noopener nofollow ugc">{LINK_LABEL[k] ?? k} ↗</a></li>)}</ul>
             </section>
           )}
+          {isOwner && <section class="mp__sec"><h2 class="t-meta">Future</h2><p class="dim" style="font-size:14px;line-height:1.5">Your Future is private. Only milestones you choose to share ever appear on this page. <a class="link" href="/future">Open Future</a></p></section>}
           {where && worldCity && <section class="mp__sec"><h2 class="t-meta">Based in</h2><p><a class="link" href={CITIES.some((c) => c.name === worldCity) ? `/world/${citySlug(worldCity)}` : `/world?city=${encodeURIComponent(worldCity)}`}>{where}</a></p></section>}
         </aside>
       </div>
@@ -202,11 +207,20 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
 <style>
   .mp-preview { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunken); font-size: 14px; color: var(--c-fg-subtle); }
   .mp-preview b { color: var(--text); font-weight: 500; }
-  .mp__cover { height: clamp(140px, 22vw, 300px); background: var(--surface-sunken) center / cover no-repeat; border-bottom: 1px solid var(--c-line); }
-  .mp__inner { max-width: 1080px; margin: 0 auto; padding: 0 var(--gutter) 96px; }
-  .mp__head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 24px; align-items: end; margin-top: -64px; }
-  .mp__photo { width: 148px; height: 148px; border-radius: 50%; border: 4px solid var(--c-bg); background: var(--surface-sunken) center / cover no-repeat; }
-  .mp__name { display: flex; align-items: center; gap: 10px; font-size: clamp(2rem, 1.4rem + 2vw, 3.2rem); line-height: 1; letter-spacing: -0.045em; font-weight: 500; }
+  .mp__cover { height: clamp(220px, 34vw, 420px); background: var(--surface-sunken) center / cover no-repeat; mask-image: linear-gradient(#000 40%, transparent); -webkit-mask-image: linear-gradient(#000 40%, transparent); opacity: .55; }
+  .mp__inner { max-width: 1180px; margin: 0 auto; padding: 0 var(--gutter) 96px; }
+  .mp__inner.has-cover { margin-top: calc(-1 * clamp(120px, 20vw, 260px)); position: relative; }
+  .mp__inner:not(.has-cover) { padding-top: clamp(40px, 7vw, 88px); }
+  .mp__head { display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr); grid-template-rows: auto auto; column-gap: clamp(28px, 5vw, 64px); row-gap: 20px; align-items: end; }
+  .mp__photo { grid-row: 1 / 3; width: 100%; aspect-ratio: 4 / 5; border-radius: var(--r-lg, 18px); background: var(--surface-sunken) center / cover no-repeat; box-shadow: 0 30px 70px -30px rgba(0, 0, 0, .6); }
+  .mp__head.no-photo { grid-template-columns: 1fr; }
+  .mp__head.no-photo .mp__photo { grid-row: auto; display: none; }
+  .mp__head > .mp__id { align-self: end; }
+  .mp__head > .mp__actions { align-self: start; }
+  .mp__name { display: flex; align-items: center; gap: 10px; font-size: clamp(2.6rem, 1.4rem + 4.4vw, 5.4rem); line-height: .95; letter-spacing: -0.05em; font-weight: 600; overflow-wrap: break-word; hyphens: auto; }
+  .mp__resume { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--c-line); }
+  .mp__rtitle { font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.4rem); letter-spacing: -0.035em; font-weight: 600; }
+  .mp__resume p { margin-top: 6px; font-size: 14px; color: var(--c-fg-subtle); }
   .mp__roles { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: 15px; color: var(--c-fg-faint); }
   .mp__primary { color: var(--text); }
   .mp__meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 14px; color: var(--c-fg-subtle); }
@@ -256,8 +270,10 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__tags li.is-primary { border-color: var(--c-accent-line); color: var(--text); }
   .mp__links { display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
   @media (max-width: 860px) {
-    .mp__head { grid-template-columns: 1fr; align-items: start; margin-top: -56px; gap: 16px; }
-    .mp__photo { width: 112px; height: 112px; }
+    .mp__head { grid-template-columns: 1fr; align-items: start; row-gap: 16px; }
+    .mp__photo { grid-row: auto; aspect-ratio: 1 / 1; max-height: 380px; }
+    .mp__inner.has-cover { margin-top: -90px; }
+    .mp__name { font-size: clamp(2.1rem, 10vw, 3.2rem); }
     .mp__grid { grid-template-columns: 1fr; }
   }
 </style>

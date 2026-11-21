@@ -11,6 +11,9 @@ export const SITE = {
   /** Homepage hero (Bogo, 2026-11-14 later): the product name, its promise, and one supporting line. */
   promise: 'The world is within reach.',
   supporting: 'Create connections that create opportunity.',
+  /** Homepage hero, launch pass (brief 2026-11-21): the value of World on the first screen. */
+  heroHeadline: 'Discover the people behind the music.',
+  heroLine: 'Find artists, producers, engineers, songwriters, groups and studios in your city. See their work. Connect.',
   description:
     'Opus Collective is the professional network for independent music. Discover artists, producers, engineers and songwriters, and earn Opus Verified recognition.',
   location: 'Birmingham, AL',
