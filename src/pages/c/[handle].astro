@@ -114,7 +114,7 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
       </section>
     )}
 
-    {works.length > 0 && (
+    {(works.length > 1 || (admin && works.length > 0)) && (
       <section class="cl__sec" aria-labelledby="cl-works">
         <h2 id="cl-works">Shared work</h2>
         <ul class="cl-works-grid" role="list">{works.map((w) => (

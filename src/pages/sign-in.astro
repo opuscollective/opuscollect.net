@@ -7,7 +7,7 @@ const raw = Astro.url.searchParams.get('next') ?? '/account';
 const next = /^\/(?!\/)[\w\-/?=&%.]*$/.test(raw) ? raw : '/account';
 if (Astro.locals.user) return Astro.redirect(next);
 ---
-<BaseLayout title="Sign in" noindex>
+<BaseLayout title="Sign in" noindex assistant={false} messages={false}>
   <section class="app app--center">
     <div class="app__wrap">
       <p class="t-meta app__kicker">Members</p>
