@@ -806,7 +806,7 @@ export function initWorld(root: HTMLElement) {
     for (const l of ls) n[l.kind]++;
     const plural = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
     return [n.musician && plural(n.musician, 'professional', 'professionals'), n.studio && plural(n.studio, 'studio', 'studios'),
-      n.organization && plural(n.organization, 'Clan', 'Clans')].filter(Boolean).join(' · ');
+      n.organization && plural(n.organization, 'group', 'groups')].filter(Boolean).join(' · ');
   }
 
   // ---------- The entrance question ----------
@@ -1048,7 +1048,7 @@ export function initWorld(root: HTMLElement) {
       const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
       const parts = [
         s.musicians && plural(s.musicians, 'professional', 'professionals'), s.studios && plural(s.studios, 'studio', 'studios'),
-        s.organizations && plural(s.organizations, 'Clan', 'Clans'), s.countries && plural(s.countries, 'country', 'countries'),
+        s.organizations && plural(s.organizations, 'group', 'groups'), s.countries && plural(s.countries, 'country', 'countries'),
       ].filter(Boolean);
       $('[data-stats-line]').textContent = parts.join(' · ');
       $('[data-stats]').hidden = ALL.length === 0;
