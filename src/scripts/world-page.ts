@@ -164,17 +164,40 @@ export function initWorld(root: HTMLElement) {
     const n = all[(i + d + all.length) % all.length]!;
     n.focus(); n.click();
   });
-  // Map view: the results list opens on request so the map stays the main thing.
-  $('[data-results-toggle]').addEventListener('click', () => {
-    root.toggleAttribute('data-results-open');
-    syncResultsToggle();
-  });
-  function syncResultsToggle() {
-    const open = root.hasAttribute('data-results-open');
-    const b = $<HTMLButtonElement>('[data-results-toggle]');
-    b.setAttribute('aria-expanded', String(open));
-    b.textContent = open ? 'Hide list' : 'Show list';
+  // ---------- Directory width (desktop): resize, collapse ----------
+  // The View switcher already offers Map / Split / List, so there is no separate "Show list" control.
+  const rz = $<HTMLElement>('[data-rz]');
+  const collapseBtn = $<HTMLButtonElement>('[data-collapse]');
+  const RZ_KEY = 'opus.world.panel.v1';
+  const RZ_MIN = 340;
+  const rzMax = () => Math.max(RZ_MIN, Math.min(640, Math.round(innerWidth * 0.5)));
+  let panelW: number | null = null; let collapsed = false;
+  try { const sv = JSON.parse(localStorage.getItem(RZ_KEY) || 'null'); if (sv) { panelW = Number(sv.w) || null; collapsed = !!sv.c; } } catch { /* defaults */ }
+  const saveRz = () => { try { localStorage.setItem(RZ_KEY, JSON.stringify({ w: panelW, c: collapsed })); } catch { /* private mode */ } };
+  function applyRz(resizeMap = true) {
+    if (panelW) root.style.setProperty('--panel-w', `${Math.min(rzMax(), Math.max(RZ_MIN, panelW))}px`); else root.style.removeProperty('--panel-w');
+    root.toggleAttribute('data-collapsed', collapsed);
+    collapseBtn.setAttribute('aria-expanded', String(!collapsed));
+    collapseBtn.setAttribute('aria-label', collapsed ? 'Show directory' : 'Hide directory'); collapseBtn.title = collapsed ? 'Show directory' : 'Hide directory';
+    const pw = panel.offsetWidth;
+    rz.setAttribute('aria-valuenow', String(collapsed ? 0 : pw));
+    if (resizeMap) { requestAnimationFrame(() => map?.resize()); setTimeout(() => { map?.resize(); map?.reframe(); }, 320); }
   }
+  collapseBtn.addEventListener('click', (e) => { e.stopPropagation(); collapsed = !collapsed; saveRz(); applyRz(); });
+  rz.addEventListener('pointerdown', (e) => {
+    if ((e.target as HTMLElement).closest('[data-collapse]') || collapsed || e.button !== 0) return;
+    e.preventDefault(); rz.setPointerCapture(e.pointerId); root.classList.add('is-resizing');
+    const left = root.getBoundingClientRect().left;
+    const move = (ev: PointerEvent) => { panelW = Math.round(ev.clientX - left); applyRz(false); map?.resize(); };
+    const up = () => { rz.removeEventListener('pointermove', move); rz.removeEventListener('pointerup', up); rz.removeEventListener('pointercancel', up); root.classList.remove('is-resizing'); saveRz(); applyRz(); };
+    rz.addEventListener('pointermove', move); rz.addEventListener('pointerup', up); rz.addEventListener('pointercancel', up);
+  });
+  rz.addEventListener('dblclick', (e) => { if ((e.target as HTMLElement).closest('[data-collapse]')) return; panelW = null; saveRz(); applyRz(); });
+  rz.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); panelW = (panelW ?? panel.offsetWidth) + (e.key === 'ArrowRight' ? 24 : -24); saveRz(); applyRz(); }
+    else if (e.key === 'Enter') { e.preventDefault(); collapsed = !collapsed; saveRz(); applyRz(); }
+  });
+  addEventListener('resize', () => { if (panelW) applyRz(false); });
 
   // ---------- Filters panel ----------
   const kind = () => f.kinds[0] ?? '';
@@ -212,7 +235,8 @@ export function initWorld(root: HTMLElement) {
   }
   function renderChips() {
     const c: string[] = [];
-    if (place) c.push(chipHtml('place', `Near ${place.name}`));
+    // The city guide already names the place (and its photo is the way back out), so the chip only shows without it.
+    if (place && !guideMode()) c.push(chipHtml('place', `Near ${place.name}`));
     if (f.specialty) c.push(chipHtml('specialty', SPECIALTIES[f.specialty].plural));
     if (f.genre) c.push(chipHtml('genre', f.genre));
     if (f.studioType) c.push(chipHtml('studioType', { commercial: 'Recording studios', home: 'Home studios', remote: 'Remote services' }[f.studioType]));
@@ -343,7 +367,6 @@ export function initWorld(root: HTMLElement) {
 
     const where = inArea() ? (place ? `near ${place.name}` : 'in this area') : nearPlace() ? `near ${place!.name}` : 'worldwide';
     count.textContent = ALL.length === 0 ? '' : ls.length ? `${tally(ls)} ${where}` : '';
-    $('[data-results-toggle]').hidden = !ls.length;
 
     if (ALL.length === 0) {
       showEmpty('World is just opening.', 'Members appear here as soon as they publish a profile.', [{ label: 'Create your profile', primary: true, run: () => (location.href = '/sign-up') }]);
@@ -994,7 +1017,7 @@ export function initWorld(root: HTMLElement) {
           onMove: () => { if (inView) render(false); },
           onGroup: () => {
             // A grouped marker shows the members in that area: open the list in Map view or the sheet on phones.
-            if (view === 'map' && !mobile.matches) { root.setAttribute('data-results-open', ''); syncResultsToggle(); }
+            if (view === 'map' && !mobile.matches) { root.setAttribute('data-results-open', ''); }
             if (sheetActive()) setSheet('half');
           },
         }, { padBottom: sheetActive() ? peekPx() : 0, inset: mapInset, camera, pad: hand?.pad });
@@ -1074,7 +1097,7 @@ export function initWorld(root: HTMLElement) {
 
   syncControls();
   setView(view, false);
-  syncResultsToggle();
+  applyRz(false);
   if (asking) showWhere();
   load().then(() => { if (view !== 'list') boot(); });
   loadMyCities();

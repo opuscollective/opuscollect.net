@@ -105,6 +105,9 @@ const navCurrent = kind === 'studio' ? 'discover' : kind === 'musician' ? 'peopl
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
           </button>
           <ul id="w-suggest" class="wp__suggest" role="listbox" aria-label="Suggestions" data-suggest hidden></ul>
+          <button type="button" class="wp__filterbtn" data-filters-toggle aria-expanded="false" aria-controls="w-filters" aria-label="Filters" title="Filters">
+            <Fragment set:html={FILTER_ICON} /><span>Filters</span><b class="wp__fcount" data-fcount hidden></b>
+          </button>
         </div>
 
         <div class="wp__row">
@@ -114,9 +117,7 @@ const navCurrent = kind === 'studio' ? 'discover' : kind === 'musician' ? 'peopl
             <button type="button" role="radio" aria-checked="false" data-kind="studio">Studios</button>
             <button type="button" role="radio" aria-checked="false" data-kind="organization">Groups</button>
           </div>
-          <button type="button" class="wp__filterbtn" data-filters-toggle aria-expanded="false" aria-controls="w-filters">
-            <Fragment set:html={FILTER_ICON} /><span>Filters</span><b class="wp__fcount" data-fcount hidden></b>
-          </button>
+          <ViewSwitcher />
         </div>
 
         <div class="wp__filters" id="w-filters" data-filters inert>
@@ -171,8 +172,6 @@ const navCurrent = kind === 'studio' ? 'discover' : kind === 'musician' ? 'peopl
           <span data-where-label>Worldwide</span>
         </button>
         <p class="wp__count" data-count aria-live="polite">Loading World…</p>
-        <button type="button" class="wp__listbtn" data-results-toggle aria-controls="world-results" aria-expanded="false" hidden>Show list</button>
-        <ViewSwitcher />
       </div>
 
       <!-- My Cities: the cities this member follows, one tap into each guide. Only for signed-in members who follow some. -->
@@ -195,6 +194,13 @@ const navCurrent = kind === 'studio' ? 'discover' : kind === 'musician' ? 'peopl
         <p class="wp__sample" data-sample-note hidden>Preview build. Listings marked “Sample” are not real members.</p>
       </footer>
     </aside>
+
+    <!-- Desktop: drag to resize the directory (arrow keys too), double-click to reset, button to hide or show it. -->
+    <div class="world__rz" data-rz role="separator" aria-orientation="vertical" aria-label="Resize directory" tabindex="0" aria-valuemin="340" aria-valuemax="640">
+      <button type="button" class="world__rz-btn" data-collapse aria-label="Hide directory" aria-expanded="true" title="Hide directory">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+      </button>
+    </div>
 
     <ProfilePreview />
     <button type="button" class="world__mode" data-mode hidden></button>
