@@ -16,7 +16,7 @@ const joining = !!inviteClan && Astro.url.searchParams.get('join') === '1';
 const after = next || (goal ? GOALS[goal] : '/start');
 if (Astro.locals.user) return Astro.redirect(inviteClan ? `/clans/invite/${inviteToken}` : next || (goal ? GOALS[goal] : '/account'));
 const choosing = !next && !goal && !joining;
-const signInHref = joining ? `/sign-in?next=${encodeURIComponent(`/clans/invite/${inviteToken}`)}` : after && after !== '/start' ? `/sign-in?next=${encodeURIComponent(after)}` : '/sign-in';
+const signInHref = joining ? `/sign-in?invite=${inviteToken}&join=1` : after && after !== '/start' ? `/sign-in?next=${encodeURIComponent(after)}` : '/sign-in';
 const OPTIONS = [
   { key: 'individual', title: 'Individual', line: 'For solo artists, musicians, producers, engineers, and songwriters.', href: '/sign-up?setup=individual' },
   { key: 'group', title: 'Group', line: 'For bands, duos, and collectives.', href: '/sign-up?setup=group' },

@@ -14,7 +14,6 @@ const db = Astro.locals.runtime.env.DB;
 const user = Astro.locals.user;
 const token = Astro.params.token ?? '';
 const clan = await readInvite(db, token);
-const here = `/clans/invite/${token}`;
 const already = clan && user ? !!(await db.prepare("SELECT 1 AS x FROM clan_members WHERE clan_id = ? AND user_id = ? AND status = 'active'").bind(clan.id, user.id).first()) : false;
 Astro.response.headers.set('referrer-policy', 'no-referrer');
 ---
@@ -45,7 +44,7 @@ Astro.response.headers.set('referrer-policy', 'no-referrer');
             <div class="iv__acts">
               <a class="btn-app btn-app--block" href={`/sign-up?invite=${token}&join=1`}>Create account &amp; join</a>
               <a class="btn-app btn-app--ghost btn-app--block" href="/sign-up?next=/start">Create account only</a>
-              <a class="iv__signin" href={`/sign-in?next=${encodeURIComponent(here)}`}>Sign in to join</a>
+              <a class="iv__signin" href={`/sign-in?invite=${token}&join=1`}>Sign in to join</a>
             </div>
           )}
           <p class="iv__fine">Joining adds you to the member list. You can leave any time.</p>
