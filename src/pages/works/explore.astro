@@ -1,7 +1,8 @@
 ---
 /**
  * Explore Works: every published work from a published profile, newest first, filterable by type.
- * Real records only. With none yet, it says so and points to the Opus Collective catalog.
+ * Real records only. Until members have published, the page shows the Opus Collective catalog as a labelled showcase
+ * (art direction 2026-11-21); it never announces an empty directory.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ProductNav from '@/components/product/ProductNav.astro';
@@ -10,7 +11,9 @@ import WorkCard from '@/components/works/WorkCard.astro';
 import { CATALOG } from '@/data/catalog';
 import { RELEASE_KINDS } from '@/data/music';
 import { listPublicWorks, type PublicWork } from '@/server/releases';
+import WorksFloat from '@/components/works/WorksFloat.astro';
 import '@/styles/product.css';
+import '@/styles/works.css';
 export const prerender = false;
 
 const PER = 24;
@@ -30,69 +33,62 @@ const addHref = user ? '/works?add=1' : `/sign-in?next=${encodeURIComponent('/wo
 ---
 <BaseLayout title="Explore Works" description="Explore works published by Opus members: singles, EPs, albums and mixtapes, with the people who made them.">
   <ProductNav product="works" current="explore" />
-  <section class="px-sec px-sec--tight">
-    <div class="px-wrap">
-      <div class="ex-head">
-        <h1 class="px-title">Explore Works</h1>
-        <p class="px-lead">Music published by Opus members, with credits confirmed by the people who made it.</p>
+  <div class="wk">
+    <div class="wk-wrap">
+      <div class="wk-bar">
+        <h1>Explore</h1>
+        <nav class="wk-chips" aria-label="Type">
+          {filters.map(([k, l]) => <a href={href(k)} aria-current={k === kind ? 'page' : undefined}>{l}</a>)}
+        </nav>
+        {!failed && res.total > 0 && <span class="wk-bar__n" aria-live="polite">{res.total} {res.total === 1 ? 'work' : 'works'}</span>}
       </div>
-      <nav class="ex-filter" aria-label="Type">
-        {filters.map(([k, l]) => <a href={href(k)} aria-current={k === kind ? 'page' : undefined}>{l}</a>)}
-        {!failed && <span class="ex-count" aria-live="polite">{res.total} {res.total === 1 ? 'work' : 'works'}</span>}
-      </nav>
 
-      {failed ? (
-        <div class="px-state px-state--error"><h3>Works couldn’t be loaded just now.</h3><p>Please try again in a moment.</p><div class="px-ctas"><a class="px-btn px-btn--line px-btn--sm" href={href(kind, page)}>Try again</a></div></div>
-      ) : res.works.length ? (
+      {failed && <div class="px-state px-state--error"><h3>Works couldn’t be loaded just now.</h3><p>Please try again in a moment.</p><div class="px-ctas"><a class="px-btn px-btn--line px-btn--sm" href={href(kind, page)}>Try again</a></div></div>}
+
+      {res.works.length > 0 && (
         <>
-          <ul class="px-grid ex-grid" role="list">{res.works.map((w) => <li><WorkCard href={`/r/${w.id}`} title={w.title} by={w.artist} kind={w.kind} year={w.releaseDate?.slice(0, 4)} coverKey={w.coverKey} /></li>)}</ul>
+          <ul class="wk-grid" role="list">{res.works.map((w) => <li><WorkCard href={`/r/${w.id}`} title={w.title} by={w.artist} kind={w.kind} year={w.releaseDate?.slice(0, 4)} coverKey={w.coverKey} /></li>)}</ul>
           {(page > 1 || more) && (
-            <nav class="ex-pages" aria-label="Pages">
+            <nav class="wk-pages" aria-label="Pages">
               {page > 1 ? <a class="px-btn px-btn--line px-btn--sm" href={href(kind, page - 1)}>Newer</a> : <span></span>}
               {more && <a class="px-btn px-btn--line px-btn--sm" href={href(kind, page + 1)}>Older</a>}
             </nav>
           )}
         </>
-      ) : (
-        <div class="px-state">
-          <h3>{kind ? `No ${PLURAL[kind]!.toLowerCase()} published yet.` : 'No member has published a work yet.'}</h3>
-          <p>Works appear here as members publish them.{kind ? ' Try another type, or add yours.' : ' Add yours and it can be the first.'}</p>
-          <div class="px-ctas"><a class="px-btn px-btn--go px-btn--sm" href={addHref} {...(user ? { 'data-add-work': '' } : {})}>Add Work</a>{kind && <a class="px-btn px-btn--line px-btn--sm" href={href(null)}>See all types</a>}</div>
-        </div>
       )}
     </div>
-  </section>
 
-  <section class="px-sec px-sec--tight px-tone-cream ex-cat" aria-labelledby="ex-cat">
-    <div class="px-wrap">
-      <div class="px-rowhead">
-        <div><h2 class="px-h3" id="ex-cat">From the Opus Collective catalog</h2><p class="ex-cat__sub">Releases by Collective artists.</p></div>
-        <a class="px-btn px-btn--text" href="/releases">See the catalog</a>
+    <section class="wk-show" aria-labelledby="wk-show">
+      <div class="wk-wrap">
+        <div class="wk-show__head">
+          <h2 id="wk-show"><span class="wk-ex">Showcase</span> Opus Collective catalog</h2>
+          <p>{res.works.length ? 'Releases by Collective artists.' : 'Releases by Collective artists. Member works appear here as they’re published.'}</p>
+        </div>
+        {res.works.length ? (
+          <ul class="wk-mosaic wk-mosaic--row" role="list">{CATALOG.slice(0, 6).map((c) => (
+            <li><a href={c.href}><span class="wk-art"><img src={c.cover} alt="" loading="lazy" decoding="async" /></span><span><b>{c.title}</b><small>{c.artist}</small></span></a></li>
+          ))}</ul>
+        ) : (
+          <ul class="wk-mosaic" role="list">
+            {CATALOG.map((c, i) => (
+              <li><a href={c.href}><span class:list={['wk-art', i === 0 && 'wk-shadow']}><img src={c.cover} alt="" loading={i < 5 ? 'eager' : 'lazy'} decoding="async" /></span><span><b>{c.title}</b><small>{c.artist}</small></span></a></li>
+            ))}
+            <li>
+              <button class="wk-add" type="button" {...(user ? { 'data-add-work': '' } : {})} data-href={user ? undefined : addHref}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Your work here</span>
+              </button>
+            </li>
+          </ul>
+        )}
       </div>
-      <ul class="ex-cat__row" role="list">{CATALOG.slice(0, 6).map((c) => (
-        <li><a class="ex-cat__item" href={c.href}><span class="px-art"><img src={c.cover} alt="" loading="lazy" decoding="async" /></span><b>{c.title}</b><small>{c.artist}</small></a></li>
-      ))}</ul>
-    </div>
-  </section>
+    </section>
+  </div>
   {user && <AddWork profile={profile ?? null} />}
+  <WorksFloat />
 </BaseLayout>
 
-<style>
-  .ex-head { display: flex; flex-direction: column; gap: 14px; }
-  .ex-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 28px 0 24px; }
-  .ex-filter a { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-pill); font-size: 14px; color: var(--text-2);
-    transition: border-color var(--m-hover) var(--m-ease), color var(--m-hover) var(--m-ease), background-color var(--m-hover) var(--m-ease); }
-  .ex-filter a:hover { border-color: var(--line-strong); color: var(--text); }
-  .ex-filter a[aria-current] { background: var(--text); border-color: var(--text); color: var(--bg); }
-  .ex-filter a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .ex-count { margin-left: auto; font-size: 13px; color: var(--text-3); }
-  .ex-pages { display: flex; justify-content: space-between; margin-top: 36px; }
-  .ex-cat__sub { margin: 6px 0 0; font-size: 14px; color: var(--text-2); }
-  .ex-cat__row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--px-gap); margin: 0; padding: 0; }
-  .ex-cat__item { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .ex-cat__item .px-art { margin-bottom: 8px; }
-  .ex-cat__item b { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ex-cat__item small { font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  @media (max-width: 860px) { .ex-cat__row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  @media (max-width: 480px) { .ex-count { width: 100%; margin: 6px 0 0; } }
-</style>
+<script>
+  // Signed-out visitors: the add tile signs in first and returns to the Add Work sheet.
+  document.querySelectorAll<HTMLButtonElement>('.wk-add[data-href]').forEach((b) => b.addEventListener('click', () => { location.href = b.dataset.href!; }));
+</script>

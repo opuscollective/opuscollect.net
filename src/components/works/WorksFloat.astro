@@ -1,0 +1,21 @@
+---
+/**
+ * Keeps the floating Messages and Ask Opus buttons off the artwork on Works pages: they step aside while the
+ * overview stage is in view and while scrolling down (any screen size), and return on scroll up. Styles: works.css.
+ */
+---
+<script>
+  const root = document.documentElement;
+  let lastY = scrollY, away = false;
+  addEventListener('scroll', () => {
+    const y = scrollY, dy = y - lastY;
+    if (Math.abs(dy) < 8) return;
+    const next = dy > 0 && y > 160;
+    if (next !== away) { away = next; root.classList.toggle('wk-away', away); }
+    lastY = y;
+  }, { passive: true });
+  const stage = document.querySelector('[data-wk-stage]');
+  if (stage && 'IntersectionObserver' in window) {
+    new IntersectionObserver(([e]) => root.classList.toggle('wk-stage-in', !!e?.isIntersecting), { threshold: 0.35 }).observe(stage);
+  }
+</script>
