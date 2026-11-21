@@ -15,7 +15,7 @@ const topCities = CITIES.slice(0, 8);
 
   <div class="hero__stage" data-hero-stage>
     <!-- The product, presented: name, promise, supporting line, actions. The Earth below is its demonstration. -->
-    <p class="hero__eyebrow hero-in" style="--i:0">{SITE.product}</p>
+    <p class="hero__eyebrow hero-in" style="--i:0">{SITE.product} · The network for independent music</p>
     <h1 id="hero-title" class="hero__title">
       <span class="hero__line"><span class="hero-in" style="--i:1">{SITE.heroHeadline}</span></span>
     </h1>
@@ -23,8 +23,6 @@ const topCities = CITIES.slice(0, 8);
 
     <div class="hero__ctas hero-in" style="--i:5">
       <a class="hero__go" href="/world" data-hero-open>Explore World</a>
-      <!-- Guests go straight to registration; members finish or open their profile (set from /api/profile below). -->
-      <a class="hero__mark" href="/sign-up?next=/start" data-hero-mark>Join Opus</a>
     </div>
 
     <!-- Accessible fallback, shown when WebGL is not available -->

@@ -2,10 +2,10 @@
 /**
  * The Opus ecosystem on the homepage, continuing the hero's dark canvas (World is the hero itself).
  * A strict two-column gallery: two equal columns, one gap, one card height, one radius.
+ *   Collective (full width, directly below the hero)
  *   Studios  | Works
  *   Events   | Venues
  *   Airplay  | Charts
- *   Collective (full width, its inner grid splits on the same centerline)
  *   Opus Verified (a slim strip on the same outer edges)
  * Every card shares one composition: a text zone (title, line, action, centered) above a visual zone whose visual is
  * centered on the card. Layout is Grid and Flexbox; nothing is placed by hand-tuned offsets.
@@ -46,6 +46,26 @@ const SEGS: [[number, number], [number, number]][] = [
 ---
 <section class="pt tone-dark" aria-label="What you can do on Opus">
   <div class="pt__grid">
+
+    <article class="tile tile--dark tile--collective tone-dark" aria-labelledby="pt-collective" data-reveal>
+      <div class="tile__text">
+        <h2 class="tile__name" id="pt-collective">Opus Collective</h2>
+        <p class="tile__line">Beyond the platform. The people, the gatherings and the culture behind Opus.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/collective">Explore the Collective</a></div>
+      </div>
+      <!-- Abstract connections: a center, two rings, each joined to the next. Not a map and not real members. -->
+      <div class="tile__media" aria-hidden="true">
+        <svg class="web" viewBox="0 0 400 400">
+          <g class="web__rings"><circle cx="200" cy="200" r="78" /><circle cx="200" cy="200" r="156" /><circle cx="200" cy="200" r="194" /></g>
+          <g class="web__lines">{SEGS.map(([a, b]) => <line x1={a[0].toFixed(1)} y1={a[1].toFixed(1)} x2={b[0].toFixed(1)} y2={b[1].toFixed(1)} />)}</g>
+          <g class="web__nodes">
+            {R2.map(([x, y]) => <circle cx={x.toFixed(1)} cy={y.toFixed(1)} r="3" />)}
+            {R1.map(([x, y]) => <circle class="web__mid" cx={x.toFixed(1)} cy={y.toFixed(1)} r="4.5" />)}
+            <circle class="web__core" cx="200" cy="200" r="7" />
+          </g>
+        </svg>
+      </div>
+    </article>
 
     <article class="tile tile--dark tile--studios tone-dark" aria-labelledby="pt-studios" data-reveal>
       <div class="tile__text">
@@ -94,8 +114,8 @@ const SEGS: [[number, number], [number, number]][] = [
     <article class="tile tile--cream tile--works" aria-labelledby="pt-works" data-reveal style="--d:0.08s">
       <div class="tile__text">
         <h2 class="tile__name" id="pt-works">Works</h2>
-        <p class="tile__line">Your work speaks for itself.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/works">Explore Works</a></div>
+        <p class="tile__line"><strong class="tile__lead">Start your résumé.</strong> Add your releases and credits to your Opus profile, all in one place.</p>
+        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/works">Start your résumé</a></div>
       </div>
       <!-- Real releases from the Opus Collective catalog: Amazing and Scenic by Bogo, luciaism by NUGGET!. -->
       <div class="tile__media covers" aria-hidden="true">
@@ -162,27 +182,6 @@ const SEGS: [[number, number], [number, number]][] = [
       </div>
     </article>
 
-    <article class="tile tile--dark tile--collective tone-dark" aria-labelledby="pt-collective" data-reveal>
-      <div class="tile__text">
-        <p class="tile__kicker">The Opus Collective</p>
-        <h2 class="tile__name" id="pt-collective">Collective</h2>
-        <p class="tile__line">Beyond the platform. The people, the gatherings and the culture behind Opus.</p>
-        <div class="tile__actions"><a class="tile__btn tile__btn--go tile__link" href="/collective">Explore the Collective</a></div>
-      </div>
-      <!-- Abstract connections: a center, two rings, each joined to the next. Not a map and not real members. -->
-      <div class="tile__media" aria-hidden="true">
-        <svg class="web" viewBox="0 0 400 400">
-          <g class="web__rings"><circle cx="200" cy="200" r="78" /><circle cx="200" cy="200" r="156" /><circle cx="200" cy="200" r="194" /></g>
-          <g class="web__lines">{SEGS.map(([a, b]) => <line x1={a[0].toFixed(1)} y1={a[1].toFixed(1)} x2={b[0].toFixed(1)} y2={b[1].toFixed(1)} />)}</g>
-          <g class="web__nodes">
-            {R2.map(([x, y]) => <circle cx={x.toFixed(1)} cy={y.toFixed(1)} r="3" />)}
-            {R1.map(([x, y]) => <circle class="web__mid" cx={x.toFixed(1)} cy={y.toFixed(1)} r="4.5" />)}
-            <circle class="web__core" cx="200" cy="200" r="7" />
-          </g>
-        </svg>
-      </div>
-    </article>
-
     <article class="vstrip tone-dark" aria-labelledby="pt-verified" data-reveal>
       <span class="vstrip__seal" aria-hidden="true"><VerifiedBadge size={44} tone="light" /></span>
       <p class="vstrip__text"><span class="vstrip__name" id="pt-verified">Opus Verified.</span> Earned. Never bought.</p>
@@ -218,6 +217,7 @@ const SEGS: [[number, number], [number, number]][] = [
     .tile--dark:hover, .tile--ink:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 30px 60px -38px rgba(0, 0, 0, 0.55); }
     .tile--paper:hover { box-shadow: inset 0 0 0 1px #e3ddd3, 0 30px 60px -38px rgba(0, 0, 0, 0.55); }
   }
+  .tile__lead { display: block; font-weight: 600; }
   .tile__kicker { margin: 0 0 2px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
 
   .tile__text { z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 10px; }
@@ -346,12 +346,15 @@ const SEGS: [[number, number], [number, number]][] = [
       background: radial-gradient(60% 40% at 50% 72%, rgba(41, 151, 255, 0.10), transparent 70%), #0b0b0d; }
     .tile--collective .tile__text { justify-self: center; align-items: center; }
     .tile--collective .tile__actions { justify-content: center; }
-    .tile--collective .tile__media { margin-top: clamp(28px, 3vw, 40px); }
+    .tile--collective .tile__media { margin-top: clamp(16px, 3vw, 40px); }
     .web { width: min(100%, 300px); }
   }
   @media (max-width: 760px) {
     .pt { --gap: 8px; padding: 8px; }
     .tile { --pad: 44px; --card-h: 520px; }
+    .tile--collective { --pad: 36px; height: auto; padding-bottom: 28px; }
+    .tile--collective .tile__media { margin-top: 8px; }
+    .tile--collective .web { width: min(100%, 250px); }
     .tile__name { font-size: clamp(2.3rem, 10.5vw, 2.9rem); }
     .tile__line { font-size: clamp(1.05rem, 4.6vw, 1.25rem); }
     .vstrip { padding: 32px 20px 36px; gap: 14px; flex-direction: column; }
