@@ -286,7 +286,7 @@ export async function uploadImage(env: Env, user: SessionUser, request: Request,
   if (!profile) throw new HttpError(400, 'Save your profile details before adding photos.');
   const { clean, ext, type } = await cleanUpload(request);
   const key = `p/${profile.id}/${slot}-${randomId(12)}.${ext}`;
-  await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } });
+  await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } }).then(() => undefined); // R2Object is not serializable through the local dev proxy
   const old = slot === 'photo' ? profile.photoKey : profile.coverKey;
   await db.prepare(`UPDATE profiles SET ${slot === 'photo' ? 'photo_key' : 'cover_key'} = ?, updated_at = ? WHERE id = ?`).bind(key, now(), profile.id).run();
   if (old) await env.MEDIA.delete(old);
@@ -324,7 +324,7 @@ export async function addGalleryImage(env: Env, user: SessionUser, request: Requ
   if ((n?.n ?? 0) >= GALLERY_MAX) throw new HttpError(400, `A gallery holds up to ${GALLERY_MAX} photos. Remove one first.`);
   const { clean, ext, type } = await cleanUpload(request);
   const key = `p/${profile.id}/gallery-${randomId(12)}.${ext}`;
-  await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } });
+  await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } }).then(() => undefined); // R2Object is not serializable through the local dev proxy
   const id = randomId();
   await db.prepare('INSERT INTO profile_gallery (id, profile_id, key, sort, created_at) VALUES (?, ?, ?, ?, ?)').bind(id, profile.id, key, (n?.n ?? 0), now()).run();
   return { id, url: mediaUrl(key)! };

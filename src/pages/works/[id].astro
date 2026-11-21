@@ -34,7 +34,7 @@ const STATUS: Record<Credit['status'], [string, string]> = {
 };
 const hasVibe = r.genres.length > 0 || r.moods.length > 0;
 ---
-<BaseLayout title={r.title === 'Untitled' ? 'New release' : r.title} noindex>
+<BaseLayout title={r.title === 'Untitled' ? 'New release' : r.title} noindex assistant={false} messages={false}>
   <section class="app">
     <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
       <p class="t-meta app__kicker"><a href="/works">Works</a> / {r.released ? 'Past release' : 'Release builder'}</p>

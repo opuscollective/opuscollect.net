@@ -23,7 +23,7 @@ const linkFields = [
   ['youtube', 'YouTube', 'youtube.com/@…'], ['instagram', 'Instagram', 'instagram.com/…'], ['tiktok', 'TikTok', 'tiktok.com/@…'], ['website', 'Website', 'yourname.com'],
 ] as const;
 ---
-<BaseLayout title="Edit profile" noindex>
+<BaseLayout title="Edit profile" noindex assistant={false} messages={false}>
   <section class="app">
     <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
       <p class="t-meta app__kicker">{p ? 'Your profile' : 'Step 1 of 1'}</p>
@@ -182,6 +182,7 @@ const linkFields = [
   .pe-rows { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 14px; }
   .pe-rows:empty { margin: 8px 0; }
   .pe-actions { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding: 14px 0; background: linear-gradient(to top, var(--c-bg) 70%, transparent); }
+  @media (max-width: 600px) { .pe-actions { justify-content: stretch; } .pe-actions .btn-app { flex: 1 1 40%; } .pe-actions [data-intent="publish"] { flex-basis: 100%; order: -1; } }
   :global(.pe-row) { display: grid; gap: 8px; grid-template-columns: 1fr auto; align-items: center; }
   :global(.pe-row--credit) { grid-template-columns: 2fr 1.2fr 1.4fr 0.7fr 2fr auto; }
   :global(.pe-row--portfolio) { grid-template-columns: 1fr 2fr auto; }

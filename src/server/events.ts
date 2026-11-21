@@ -206,7 +206,7 @@ export async function uploadEventImage(env: Env, user: SessionUser, id: string, 
   await limit(env.DB, `upload:${user.id}`, 30, 3_600_000);
   const { clean, ext, type } = await cleanUpload(request);
   const key = `e/${e.id}/image-${randomId(12)}.${ext}`;
-  await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } });
+  await env.MEDIA.put(key, clean, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } }).then(() => undefined); // R2Object is not serializable through the local dev proxy
   await env.DB.prepare('UPDATE events SET image_key = ?, updated_at = ? WHERE id = ?').bind(key, now(), e.id).run();
   if (e.imageKey) await env.MEDIA.delete(e.imageKey);
   return mediaUrl(key)!;
