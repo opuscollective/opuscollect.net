@@ -131,7 +131,7 @@
 .cl-feat__go { font-size: 14px; font-weight: 500; color: var(--accent); }
 
 /* Lineup: photo, name, role. Spacing groups people; no rules. */
-.cl-roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 32px 20px; margin: 0; padding: 0; list-style: none; }
+.cl-roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 36px 24px; margin: 0; padding: 0; list-style: none; }
 .cl-roster li { display: flex; flex-direction: column; align-items: flex-start; }
 .cl-m { display: flex; flex-direction: column; gap: 4px; width: 100%; color: var(--text); }
 .cl-m__ph { width: 100%; aspect-ratio: 1; margin-bottom: 10px; border-radius: var(--r-md); background: var(--surface) center / cover no-repeat; display: grid; place-items: center; font-size: clamp(1.5rem, 1rem + 2vw, 2.25rem); font-weight: 500; letter-spacing: -0.03em; color: var(--text-3); transition: opacity var(--m-hover) var(--m-ease); }

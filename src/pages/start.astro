@@ -23,7 +23,7 @@ const metros = PLACES.filter((p) => p.kind === 'metro').sort((a, b) => a.country
 const localitiesOf = (id: string) => PLACES.filter((p) => p.kind === 'locality' && p.metroId === id).sort((a, b) => a.name.localeCompare(b.name));
 const STEPS = ['You', 'Your first release', 'Done'];
 ---
-<BaseLayout title="Set up Opus" noindex>
+<BaseLayout title="Set up Opus" noindex assistant={false} messages={false}>
   <section class="app app--center">
     <div class="app__wrap st">
       <ol class="st__steps" aria-label="Setup steps">

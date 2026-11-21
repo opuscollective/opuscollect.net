@@ -54,7 +54,7 @@ Use design tokens (`tokens.css`, `--m-*` motion tokens) and the shared product s
 ## Design rules
 - "Apple-inspired presentation. Opus-original interaction." Cinematic technology meets editorial minimalism.
 - Premium = **consistency**: World must look and behave identically from every entry point and stay sharp when zoomed. Differentiate from Apple (e.g. Opus OC location marker, not a blue dot).
-- **Light mode is the default.**
+- **Dark is the default theme** for visitors with no saved choice (Bogo 2026-11-20); saved Light/Dark/System choices win. The inline script in `BaseLayout.astro` applies it before paint (no flash). Light keeps its own warm palette.
 - Homepage hero is approved, **do not redesign**: headline "Your world of music." (centered, one line on desktop), sub "Make connections around the world." Buttons: "Explore World →" (primary) and "Join" (straight to registration). Hero text in the lower half; Earth never cut off; globe auto-spins, not draggable. Product tiles: one name, one value line, one primary action, one real visual demo, no redundant secondary buttons.
 - World: directory always on the left (~46% panel), listing-feed cards (Zillow-like): big 3:2 photos, details beneath, ~3px gaps, sharp corners. Desktop profiles slide out as a card to the right of the directory with the map still visible. Homepage card grid capped at 1480px.
 - **Verified** badge: saturated Opus blue seal with white check. Green is only for "Open to collaborate". Verification is earned, never bought. Credits use Confirmed / Self-reported / Awaiting confirmation / Not on Opus, never "verified".

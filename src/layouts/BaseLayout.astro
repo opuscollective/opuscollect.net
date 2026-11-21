@@ -85,6 +85,17 @@ const ogImage = new URL(image, SITE.url).href;
       import { initMotion } from '@/scripts/motion-control';
       import { motion } from '@/lib/motion';
       initMotion();
+      // Phones: the floating Opus and Messages buttons slip away while reading down the page and return on scroll up,
+      // so they never sit on top of content (cards, lineups, forms).
+      const phone = matchMedia('(max-width: 720px)');
+      let lastY = scrollY, away = false;
+      addEventListener('scroll', () => {
+        const y = scrollY, dy = y - lastY;
+        if (Math.abs(dy) < 8) return;
+        const next = phone.matches && dy > 0 && y > 120;
+        if (next !== away) { away = next; document.documentElement.classList.toggle('fl-away', away); }
+        lastY = y;
+      }, { passive: true });
       // Marks [data-reveal] elements as they arrive (a few small details still key off .is-in). Sections themselves
       // no longer animate on scroll. Content is always visible.
       const els = document.querySelectorAll('[data-reveal]');

@@ -17,7 +17,7 @@ const preset = Astro.url.searchParams.get('type');
 const CREATE_TYPES = Object.entries(GROUP_TYPES).filter(([k]) => k !== 'label'); // label pages aren't available yet
 const type = preset && preset in GROUP_TYPES && preset !== 'label' ? preset : 'band';
 ---
-<BaseLayout title="Create a group" description="A public page for your band, duo or collective." noindex>
+<BaseLayout title="Create a group" description="A public page for your band, duo or collective." noindex assistant={false} messages={false}>
   <section class="app">
     <div class="app__wrap" style="margin-inline:auto;max-width:560px">
       <h1 class="cn__title">Set up your group.</h1>

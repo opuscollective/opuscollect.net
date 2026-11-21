@@ -120,3 +120,8 @@ html:not([data-motion='fluid'])::view-transition-group(*) { animation-duration: 
 .opus-prep.is-in { opacity: 1; transform: translate(-50%, 0); }
 .opus-prep.is-out { opacity: 0; transform: translate(-50%, -4px); transition-duration: 0.45s; }
 html:not([data-motion='fluid']) .opus-prep, html:not([data-motion='fluid']) .opus-prep.is-out { transition: none; }
+
+/* Phones: floating launchers step aside while scrolling down (see BaseLayout). */
+@media (max-width: 720px) {
+  .fl-away .oa-launch, .fl-away .om-launch { opacity: 0; pointer-events: none; transform: translateY(10px); }
+}
