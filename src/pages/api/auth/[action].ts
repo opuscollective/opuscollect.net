@@ -23,8 +23,17 @@ export const POST: APIRoute = async ({ params, request, cookies, locals }) => {
         return json({ ok: true, emailStatus: r.email_status, joined });
       }
       case 'login':
-        await login(ctx, await readJson(request));
-        return json({ ok: true });
+      {
+        const body = await readJson(request);
+        const u = await login(ctx, body);
+        // "Sign in to join": the membership is completed here, once the session exists. Safe to repeat.
+        let joined: { href: string; name: string } | null = null;
+        const uid = (u as { id?: string } | undefined)?.id;
+        if (body.join === true && typeof body.invite === 'string' && uid) {
+          try { const j = await joinByInvite(env, uid, body.invite); joined = { href: j.clan.href, name: j.clan.name }; } catch { /* signed in; they can retry from the invite link */ }
+        }
+        return json({ ok: true, joined });
+      }
       case 'logout':
         await destroySession(env.DB, cookies);
         return json({ ok: true });
