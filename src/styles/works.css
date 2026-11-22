@@ -209,3 +209,4 @@ html.wk-stage-in .oa-launch, html.wk-stage-in .om-launch, html.wk-away .oa-launc
 .wk-roll .wk-cr small, .wk-roll .wk-cr .px-tag { grid-column: auto; grid-row: auto; }
 .wk-roll .wk-cr .wk-cr__more b { font-size: inherit; font-weight: 600; letter-spacing: 0; line-height: inherit; }
 .wk-roll .wk-cr summary .px-tag { justify-self: end; align-self: center; }
+@media (max-width: 600px) { .wk-roll .wk-cr summary .px-tag { grid-column: 2; justify-self: start; } }
