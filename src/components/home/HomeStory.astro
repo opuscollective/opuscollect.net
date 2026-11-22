@@ -1,0 +1,194 @@
+---
+/**
+ * Homepage below the Earth: one connected story in three chapters, each shown with the real product interface.
+ *   01 Discover people  ·  02 Build your identity  ·  03 Create together
+ * Compositions alternate (not a card grid). Interfaces are built from the real components' look but carry no invented
+ * people, numbers or activity: they are labeled "Example", and planned features are labeled "Upcoming".
+ * Other products (Studios, Events, Venues, Airplay, Charts, Collective) are reached from inside World and the footer.
+ */
+import OpusMark from '../ui/OpusMark.astro';
+const CHIPS = ['Producer', 'Engineer', 'Vocalist', 'Songwriter'];
+const ROWS = [
+  { role: 'Mixing engineer', meta: 'Birmingham, AL', open: true },
+  { role: 'Producer · Songwriter', meta: 'Atlanta, GA', open: false },
+  { role: 'Vocalist', meta: 'Nashville, TN', open: true },
+];
+const PINS = [[22, 38], [38, 46], [49, 33], [61, 52], [74, 40], [30, 62], [68, 28]];
+---
+<section class="story" aria-label="What you can do on Opus">
+  <div class="story__in">
+
+    <header class="story__lead ds-rise" data-reveal>
+      <p class="ds-eyebrow">One profile. One network.</p>
+      <h2 class="story__statement">
+        <a href="#discover">Discover people.</a>
+        <a href="#identity">Build your identity.</a>
+        <a href="#together">Create together.</a>
+      </h2>
+    </header>
+
+    <!-- 01 DISCOVER: text left, interface right -->
+    <article class="ch ch--discover" id="discover" aria-labelledby="ch1">
+      <div class="ch__text ds-rise" data-reveal>
+        <p class="ds-eyebrow">01 · World</p>
+        <h3 class="ds-title" id="ch1">Find the right person in the right city.</h3>
+        <p class="ds-lede">Search by specialty, see who is nearby, and open a profile without leaving the map.</p>
+        <a class="ds-link" href="/world">Explore World</a>
+      </div>
+      <div class="ui ui--world ds-surface ds-rise" data-reveal style="--d:.08s" aria-hidden="true">
+        <div class="ui__tag"><span class="ds-pill ds-pill--example">Example</span></div>
+        <div class="map">
+          {PINS.map(([x, y], i) => <i class="pin" style={`left:${x}%;top:${y}%;--i:${i}`}></i>)}
+          <span class="map__you"><OpusMark size={16} /></span>
+        </div>
+        <div class="dir">
+          <div class="search"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="5.5"/><path d="m13.5 13.5 4 4" stroke-linecap="round"/></svg>Search people, specialties or a city</div>
+          <div class="chips">{CHIPS.map((c, i) => <span class={`chip${i === 0 ? ' is-on' : ''}`}>{c}</span>)}</div>
+          <ul class="rows" role="list">
+            {ROWS.map((r) => (
+              <li class="prow">
+                <span class="av"><OpusMark size={14} /></span>
+                <span class="prow__t"><b>{r.role}</b><small>{r.meta}</small></span>
+                {r.open && <span class="ds-pill ds-pill--live">Open to collaborate</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 02 IDENTITY: interface left, text right -->
+    <article class="ch ch--identity" id="identity" aria-labelledby="ch2">
+      <div class="ui ui--profile ds-surface ds-rise" data-reveal aria-hidden="true">
+        <div class="ui__tag"><span class="ds-pill ds-pill--example">Example</span></div>
+        <div class="who">
+          <span class="who__av"><OpusMark size={26} /></span>
+          <div><b>Your name</b><small>Producer · Engineer · Birmingham, AL</small></div>
+        </div>
+        <div class="resume">
+          <p class="ds-eyebrow">Résumé</p>
+          <div class="rrow rrow--new"><span class="rrow__art"></span><span class="rrow__t"><b>Your first release</b><small>Added once, shown everywhere</small></span><span class="ds-pill ds-pill--live">Credit added</span></div>
+          <div class="rrow"><span class="rrow__art rrow__art--b"></span><span class="rrow__t"><b>Mixing credit</b><small>Waiting for the artist to confirm</small></span><span class="ds-pill">Awaiting confirmation</span></div>
+          <div class="rrow rrow--ghost"><span class="rrow__art"></span><span class="rrow__t"><b>Next work</b><small>Shared only when you choose</small></span></div>
+        </div>
+      </div>
+      <div class="ch__text ds-rise" data-reveal style="--d:.08s">
+        <p class="ds-eyebrow">02 · Works</p>
+        <h3 class="ds-title" id="ch2">Start your résumé.</h3>
+        <p class="ds-lede">Your past work. Your present. Your future. Add a release or credit once and it builds your profile on its own.</p>
+        <a class="ds-link" href="/works">See how Works fits your profile</a>
+      </div>
+    </article>
+
+    <!-- 03 TOGETHER: text left, flow right -->
+    <article class="ch ch--together" id="together" aria-labelledby="ch3">
+      <div class="ch__text ds-rise" data-reveal>
+        <p class="ds-eyebrow">03 · Studios and sessions</p>
+        <h3 class="ds-title" id="ch3">Book a room. Bring your people.</h3>
+        <p class="ds-lede">Find a studio in World, send a booking request, and soon turn it into a session your collaborators can join.</p>
+        <a class="ds-link" href="/studios">Find a studio</a>
+      </div>
+      <div class="ui ui--flow ds-surface ds-rise" data-reveal style="--d:.08s" aria-hidden="true">
+        <div class="ui__tag"><span class="ds-pill ds-pill--example">Example</span></div>
+        <ol class="flow">
+          <li><span class="flow__dot is-done"></span><span class="flow__t"><b>Browse studios in World</b><small>Rooms, rates and open times</small></span><span class="ds-pill ds-pill--live">Available</span></li>
+          <li><span class="flow__dot is-done"></span><span class="flow__t"><b>Send a booking request</b><small>The studio confirms the time</small></span><span class="ds-pill ds-pill--live">Available</span></li>
+          <li><span class="flow__dot"></span><span class="flow__t"><b>Session with your collaborators</b><small>Invites, RSVPs and a shared chat</small></span><span class="ds-pill ds-pill--soon">Upcoming</span></li>
+          <li><span class="flow__dot"></span><span class="flow__t"><b>Split the cost</b><small>Optional, once payments launch</small></span><span class="ds-pill ds-pill--soon">Upcoming</span></li>
+        </ol>
+      </div>
+    </article>
+
+    <!-- Two-minute path + join -->
+    <aside class="go ds-rise" data-reveal aria-labelledby="go-t">
+      <h2 class="ds-title" id="go-t">Ready in about two minutes.</h2>
+      <ol class="go__steps"><li>Create your account</li><li>Choose your specialties</li><li>Pick your city</li><li>Enter World</li></ol>
+      <div class="go__cta">
+        <a class="ds-btn ds-btn--accent" href="/sign-up?next=/start">Join Opus</a>
+        <a class="ds-btn ds-btn--ghost" href="/world">Explore World</a>
+      </div>
+      <p class="go__note">Opus Collective is the community behind it. <a class="ds-link" href="/collective">Meet the Collective</a></p>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .story { background: var(--bg); color: var(--text); padding: clamp(72px, 10vw, 150px) var(--gutter) clamp(64px, 8vw, 120px); }
+  .story__in { max-width: 1240px; margin: 0 auto; display: grid; gap: clamp(96px, 13vw, 200px); }
+  .story__lead { display: grid; gap: 20px; }
+  .story__statement { margin: 0; display: grid; gap: 0; font-size: clamp(2.4rem, 1.1rem + 6.2vw, 6rem); font-weight: 600; letter-spacing: -0.055em; line-height: 1; }
+  .story__statement a { color: var(--text); opacity: 0.32; transition: opacity var(--m-control) var(--ds-ease), transform var(--m-control) var(--ds-ease); width: fit-content; }
+  .story__statement a:hover, .story__statement a:focus-visible { opacity: 1; outline: none; transform: translateX(6px); }
+  .story__statement a:first-child { opacity: 1; }
+
+  .ch { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 6vw, 96px); align-items: center; scroll-margin-top: 80px; }
+  .ch--identity { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  .ch__text { display: grid; gap: 18px; justify-items: start; }
+
+  .ui { position: relative; padding: clamp(14px, 2vw, 24px); overflow: hidden; }
+  .ui__tag { position: absolute; top: 12px; right: 12px; z-index: 3; }
+
+  /* World */
+  .ui--world { display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr); gap: 0; padding: 0; min-height: 420px; }
+  .map { position: relative; background:
+      radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 22%, transparent) 1px, transparent 1.4px) 0 0 / 14px 14px,
+      linear-gradient(160deg, var(--surface-sunken), var(--surface)); }
+  .map::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, transparent 40%, var(--surface) 100%); }
+  .pin { position: absolute; width: 8px; height: 8px; margin: -4px; border-radius: 50%; background: var(--accent); z-index: 1; }
+  .pin::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid var(--accent); opacity: 0; animation: ping 3.6s var(--ds-ease) infinite; animation-delay: calc(var(--i) * 0.5s); }
+  :global(html:not([data-motion='fluid'])) .pin::after { animation: none; }
+  @keyframes ping { 0% { transform: scale(0.4); opacity: 0.7; } 70%, 100% { transform: scale(1.8); opacity: 0; } }
+  .map__you { position: absolute; left: 49%; top: 33%; z-index: 2; transform: translate(-50%, -50%); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--text); color: var(--bg); box-shadow: 0 8px 20px -6px rgba(0,0,0,.5); }
+  .dir { position: relative; z-index: 2; display: grid; gap: 14px; align-content: center; padding: clamp(18px, 2.4vw, 28px); background: var(--surface); }
+  .search { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 10px; background: var(--surface-sunken); color: var(--text-3); font-size: 13.5px; white-space: nowrap; overflow: hidden; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 6px 12px; border-radius: 999px; font-size: 13px; background: var(--ds-wash); color: var(--text-2); }
+  .chip.is-on { background: var(--text); color: var(--bg); }
+  .rows { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .prow, .rrow, .flow li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 0; }
+  .prow + .prow { box-shadow: 0 -1px 0 var(--line-faint); }
+  .av { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ds-wash-2); color: var(--text-2); }
+  .prow__t, .rrow__t, .flow__t { display: grid; min-width: 0; }
+  .prow__t b, .rrow__t b, .flow__t b, .who b { font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; }
+  .prow__t small, .rrow__t small, .flow__t small, .who small { font-size: 12.5px; color: var(--text-3); }
+
+  /* Profile */
+  .ui--profile { display: grid; gap: 22px; padding: clamp(20px, 3vw, 36px); min-height: 420px; align-content: start; }
+  .who { display: flex; align-items: center; gap: 16px; padding-top: 18px; }
+  .who__av { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(145deg, var(--accent), color-mix(in srgb, var(--accent) 40%, var(--text))); color: #fff; }
+  .who div { display: grid; }
+  .who b { font-size: 20px; letter-spacing: -0.025em; }
+  .resume { display: grid; gap: 4px; }
+  .resume .ds-eyebrow { margin-bottom: 6px; }
+  .rrow { padding: 12px 0; box-shadow: 0 -1px 0 var(--line-faint); }
+  .rrow__art { width: 44px; height: 44px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 30%, var(--surface-sunken))); }
+  .rrow__art--b { background: linear-gradient(135deg, #7b6bd6, color-mix(in srgb, #7b6bd6 30%, var(--surface-sunken))); }
+  .rrow--ghost { opacity: 0.5; }
+  .rrow--ghost .rrow__art { background: var(--surface-sunken); box-shadow: inset 0 0 0 1px var(--line); }
+
+  /* Flow */
+  .ui--flow { padding: clamp(20px, 3vw, 36px); min-height: 380px; display: grid; align-content: center; }
+  .flow { margin: 0; padding: 0; list-style: none; display: grid; }
+  .flow li { grid-template-columns: 16px minmax(0, 1fr) auto; padding: 16px 0; position: relative; }
+  .flow li + li { box-shadow: 0 -1px 0 var(--line-faint); }
+  .flow__dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+  .flow__dot.is-done { background: var(--live); box-shadow: none; }
+
+  /* Join */
+  .go { display: grid; justify-items: center; gap: 28px; text-align: center; padding-top: clamp(24px, 4vw, 56px); }
+  .go__steps { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 28px; counter-reset: s; color: var(--text-2); font-size: 15px; }
+  .go__steps li { counter-increment: s; }
+  .go__steps li::before { content: counter(s); display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 8px; border-radius: 50%; background: var(--ds-wash-2); font-size: 12px; font-weight: 600; color: var(--text); }
+  .go__cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .go__note { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; color: var(--text-3); font-size: 14px; }
+
+  @media (max-width: 900px) {
+    .ch, .ch--identity { grid-template-columns: 1fr; gap: 28px; }
+    .ch--identity .ui { order: 2; }
+    .ui--world { grid-template-columns: 1fr; min-height: 0; }
+    .map { height: 180px; }
+    .story__statement { font-size: clamp(2.3rem, 11vw, 3.4rem); }
+    .go__steps { flex-direction: column; align-items: center; }
+  }
+  @media (hover: hover) { .ui { transition: transform var(--m-card) var(--ds-ease), box-shadow var(--m-card) var(--ds-ease); } .ui:hover { box-shadow: var(--ds-elev-3); } }
+</style>
