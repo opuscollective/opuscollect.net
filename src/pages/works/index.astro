@@ -6,7 +6,6 @@
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ProductNav from '@/components/product/ProductNav.astro';
-import WorksFloat from '@/components/works/WorksFloat.astro';
 import { CATALOG } from '@/data/catalog';
 import { listPublicWorks, type PublicWork } from '@/server/releases';
 import { mediaUrl } from '@/server/profiles';
@@ -25,8 +24,17 @@ const wall = members
   ? pub.map((w) => ({ href: `/r/${w.id}`, title: w.title, by: w.artist, cover: w.coverKey ? mediaUrl(w.coverKey) : '' }))
   : CATALOG.map((c) => ({ href: c.href, title: c.title, by: c.artist, cover: c.cover }));
 const [scenic, amazing, lucia] = [CATALOG[0]!, CATALOG[1]!, CATALOG[2]!];
+// Example credits only: they show how a credit looks next to its project. No real person is credited by this list.
+const rel = (c: (typeof CATALOG)[number], kind: string, date: string) => ({ title: c.title, cover: c.cover, kind, date });
+const credits = [
+  { role: 'Primary Artist', who: 'You', rel: rel(scenic, 'Mixtape', 'Oct 26, 2026'), tag: '', status: 'Self-reported', note: 'You added this yourself. It appears on your profile as self-reported until others confirm it.' },
+  { role: 'Producer', who: 'A producer on Opus', rel: rel(amazing, 'Single', 'Oct 16, 2026'), tag: ' px-tag--confirmed', status: 'Confirmed', note: 'The producer confirmed this credit, so it now counts on their profile.' },
+  { role: 'Songwriter', who: 'A songwriter on Opus', rel: rel(lucia, 'Release', 'Example date'), tag: ' px-tag--confirmed', status: 'Confirmed', note: 'The writer confirmed this credit, so it now counts on their profile.' },
+  { role: 'Mixing Engineer', who: 'An engineer on Opus', rel: rel(scenic, 'Mixtape', 'Oct 26, 2026'), tag: ' px-tag--pending', status: 'Awaiting confirmation', note: 'Invited. It counts only after the engineer confirms it.' },
+  { role: 'Artwork & Design', who: 'A designer, not on Opus yet', rel: rel(amazing, 'Single', 'Oct 16, 2026'), tag: '', status: 'Not on Opus', note: 'Credited by name. They can claim it by joining Opus.' },
+];
 ---
-<BaseLayout title="Works" description="Works on Opus. Start your résumé: your past work, your present and your future, in one record on your Opus profile.">
+<BaseLayout assistant={false} messages={false} title="Works" description="Works on Opus. Start your résumé: your past work, your present and your future, in one record on your Opus profile.">
   <ProductNav product="works" current="overview" noCta />
   <div class="wk">
     <!-- Stage -->
@@ -94,13 +102,23 @@ const [scenic, amazing, lucia] = [CATALOG[0]!, CATALOG[1]!, CATALOG[2]!];
         </div>
         <div>
           <ul class="wk-roll" role="list" aria-label="Example credits">
-            <li><b>Primary Artist</b><small>You</small><span class="px-tag">Self-reported</span></li>
-            <li><b>Producer</b><small>A producer on Opus</small><span class="px-tag px-tag--confirmed">Confirmed</span></li>
-            <li><b>Songwriter</b><small>A songwriter on Opus</small><span class="px-tag px-tag--confirmed">Confirmed</span></li>
-            <li><b>Mixing Engineer</b><small>An engineer on Opus</small><span class="px-tag px-tag--pending">Awaiting confirmation</span></li>
-            <li><b>Artwork &amp; Design</b><small>A designer, not on Opus yet</small><span class="px-tag">Not on Opus</span></li>
+            {credits.map((c) => (
+              <li>
+                <details class="wk-cr" name="credit">
+                  <summary>
+                    <span class="wk-cr__art wk-shadow"><img src={c.rel.cover} alt="" width="44" height="44" loading="lazy" decoding="async" /></span>
+                    <span class="wk-cr__t"><b>{c.role}</b><small>{c.rel.title} · {c.who}</small></span>
+                    <span class={`px-tag${c.tag}`}>{c.status}</span>
+                  </summary>
+                  <div class="wk-cr__more">
+                    <p><b>{c.rel.title}</b> · {c.rel.kind} · {c.rel.date}</p>
+                    <p>{c.note}</p>
+                  </div>
+                </details>
+              </li>
+            ))}
           </ul>
-          <p class="wk-roll__legend"><span class="wk-ex">Example</span> Credits are never counted until the person credited confirms.</p>
+          <p class="wk-roll__legend"><span class="wk-ex">Example</span> Illustrative credits with artwork from the Opus Collective catalog. Credits are never counted until the person credited confirms.</p>
         </div>
       </div>
     </section>
@@ -126,5 +144,5 @@ const [scenic, amazing, lucia] = [CATALOG[0]!, CATALOG[1]!, CATALOG[2]!];
       </div>
     </section>
   </div>
-  <WorksFloat />
+  
 </BaseLayout>
