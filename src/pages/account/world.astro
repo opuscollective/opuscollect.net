@@ -44,7 +44,7 @@ const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
             </div>
           ) : <p class="dim">You haven’t set up your profile yet.</p>}
           <p class="mw__row">
-            {profile ? <><a class="btn-app" href="/me">See my page</a><a class="btn-app btn-app--ghost" href="/account/profile">Edit</a></> : <a class="btn-app" href="/start">Set up your profile</a>}
+            {profile ? <><a class="btn-app" href="/me">See my page</a><a class="btn-app btn-app--ghost" href="/account/page">Customize</a><a class="btn-app btn-app--ghost" href="/account/profile">Edit</a></> : <a class="btn-app" href="/start">Set up your profile</a>}
           </p>
         </article>
 

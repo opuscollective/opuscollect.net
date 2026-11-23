@@ -1,0 +1,125 @@
+---
+/** Customize your page: tagline, featured work, link buttons, section order. The same settings drive your profile and your link-in-bio page. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getMyProfile } from '@/server/profiles';
+import { profileReleases } from '@/server/releases';
+import { getPageConfig, PAGE_SECTIONS } from '@/server/page-config';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/account/page');
+const env = Astro.locals.runtime.env;
+const p = await getMyProfile(env.DB, user.id);
+if (!p) return Astro.redirect('/start');
+const page = await getPageConfig(env.WAITLIST, p.id);
+const record = await profileReleases(env.DB, user.id);
+const origin = Astro.url.origin;
+---
+<BaseLayout title="Customize your page" noindex assistant={false} messages={false}>
+  <section class="app">
+    <div class="app__wrap pg" style="margin-inline:auto">
+      <p class="t-meta app__kicker">Your page</p>
+      <h1 class="app__title">Make it yours.</h1>
+      <p class="dim">Choose what people see first. These settings shape your profile and your link for Instagram, TikTok and anywhere else.</p>
+
+      <form class="pg__form" data-page novalidate>
+        <label class="field"><span>Tagline</span><input class="input" name="tagline" maxlength="90" value={page.tagline} placeholder="One line about what you do" /></label>
+
+        <label class="field"><span>Featured work</span>
+          <select class="input" name="featured">
+            <option value="">{record.length ? 'My latest (automatic)' : 'Nothing yet. Add a work first'}</option>
+            {record.map((r) => <option value={r.id} selected={page.featured === r.id}>{r.title}</option>)}
+          </select>
+        </label>
+
+        <fieldset class="pg__sec">
+          <legend>Link buttons <small>Up to 8. They appear on your page and your link.</small></legend>
+          <ul class="pg__links" data-links role="list"></ul>
+          <button type="button" class="btn-app btn-app--ghost" data-add-link>Add a link</button>
+        </fieldset>
+
+        <fieldset class="pg__sec">
+          <legend>Sections <small>Show, hide and reorder.</small></legend>
+          <ul class="pg__order" data-order role="list"></ul>
+        </fieldset>
+
+        <div data-status class="form-status" role="status"></div>
+        <div class="pg__row">
+          <button class="btn-app" type="submit">Save</button>
+          <a class="btn-app btn-app--ghost" href={`/${p.handle}`}>See my page</a>
+          <a class="btn-app btn-app--ghost" href={`/${p.handle}/links`}>See my link</a>
+        </div>
+        <p class="dim pg__share">Your link: <b data-copy-url>{origin}/{p.handle}/links</b> <button type="button" class="pg__copy" data-copy>Copy</button></p>
+      </form>
+    </div>
+  </section>
+  <script type="application/json" id="page-data" set:html={JSON.stringify({ page, labels: PAGE_SECTIONS })}></script>
+</BaseLayout>
+
+<style>
+  .pg { max-width: 640px; }
+  .pg__form { display: flex; flex-direction: column; gap: 28px; margin-top: 32px; }
+  .pg__sec { border: 0; padding: 0; margin: 0; }
+  .pg__sec legend { font-size: 16px; font-weight: 500; margin-bottom: 12px; }
+  .pg__sec legend small { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--text-3); }
+  .pg__links, .pg__order { display: grid; gap: 8px; margin-bottom: 12px; }
+  .pg__order { margin: 0; }
+  :global(.pg__links li) { display: grid; grid-template-columns: 1fr 1.6fr auto; gap: 8px; }
+  :global(.pg__order li) { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
+  :global(.pg__order label) { flex: 1; display: flex; gap: 10px; align-items: center; }
+  :global(.pg__mini) { border: 0; background: none; color: var(--text-2); font: inherit; cursor: pointer; padding: 4px 8px; }
+  :global(.pg__mini:hover) { color: var(--text); }
+  .pg__row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .pg__share { font-size: 13px; }
+  .pg__copy { border: 0; background: none; color: var(--text); text-decoration: underline; cursor: pointer; font: inherit; }
+</style>
+
+<script>
+  const data = JSON.parse(document.getElementById('page-data')!.textContent!) as { page: { links: { label: string; url: string }[]; order: string[]; hide: string[] }; labels: Record<string, string> };
+  const form = document.querySelector<HTMLFormElement>('[data-page]')!;
+  const links = form.querySelector<HTMLUListElement>('[data-links]')!;
+  const order = form.querySelector<HTMLUListElement>('[data-order]')!;
+  const status = form.querySelector<HTMLElement>('[data-status]')!;
+  const addBtn = form.querySelector<HTMLButtonElement>('[data-add-link]')!;
+
+  const addLink = (l = { label: '', url: '' }) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<input class="input" data-l placeholder="Label" maxlength="40" aria-label="Link label"><input class="input" data-u placeholder="https://…" aria-label="Link address"><button type="button" class="pg__mini" aria-label="Remove link">Remove</button>';
+    (li.querySelector('[data-l]') as HTMLInputElement).value = l.label;
+    (li.querySelector('[data-u]') as HTMLInputElement).value = l.url;
+    li.querySelector('button')!.addEventListener('click', () => { li.remove(); addBtn.hidden = false; });
+    links.append(li);
+    addBtn.hidden = links.children.length >= 8;
+  };
+  data.page.links.forEach(addLink);
+  addBtn.addEventListener('click', () => addLink());
+
+  const addSection = (k: string) => {
+    const li = document.createElement('li'); li.dataset.k = k;
+    li.innerHTML = `<label><input type="checkbox" ${data.page.hide.includes(k) ? '' : 'checked'}> ${data.labels[k]}</label><button type="button" class="pg__mini" data-up aria-label="Move up">↑</button><button type="button" class="pg__mini" data-down aria-label="Move down">↓</button>`;
+    li.querySelector('[data-up]')!.addEventListener('click', () => li.previousElementSibling && li.previousElementSibling.before(li));
+    li.querySelector('[data-down]')!.addEventListener('click', () => li.nextElementSibling && li.nextElementSibling.after(li));
+    order.append(li);
+  };
+  data.page.order.forEach(addSection);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const body = {
+      tagline: fd.get('tagline'), featured: fd.get('featured') || null,
+      links: [...links.children].map((li) => ({ label: (li.querySelector('[data-l]') as HTMLInputElement).value, url: (li.querySelector('[data-u]') as HTMLInputElement).value })).filter((l) => l.label || l.url),
+      order: [...order.children].map((li) => (li as HTMLElement).dataset.k),
+      hide: [...order.children].filter((li) => !(li.querySelector('input') as HTMLInputElement).checked).map((li) => (li as HTMLElement).dataset.k),
+    };
+    status.className = 'form-status'; status.textContent = 'Saving…';
+    const r = await fetch('/api/page', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    if (r.ok) { status.textContent = 'Saved.'; } else { status.className = 'form-status notice notice--error'; status.textContent = (await r.json().catch(() => ({}))).error ?? 'Couldn’t save.'; }
+  });
+  form.querySelector('[data-copy]')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    try { await navigator.clipboard.writeText(form.querySelector('[data-copy-url]')!.textContent!); b.textContent = 'Copied'; } catch { b.textContent = 'Select and copy'; }
+    setTimeout(() => (b.textContent = 'Copy'), 2000);
+  });
+</script>

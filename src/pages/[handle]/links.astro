@@ -1,0 +1,74 @@
+---
+/** The member's link-in-bio page: opuscollect.net/<handle>/links. One compact page for any social profile. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { SPECIALTIES, allSpecialties } from '@/data/specialties';
+import { visibleLabel } from '@/data/places';
+import { getPublicProfile, mediaUrl } from '@/server/profiles';
+import { profileReleases } from '@/server/releases';
+import { getPageConfig } from '@/server/page-config';
+import { RELEASE_KINDS } from '@/data/music';
+import '@/styles/app.css';
+export const prerender = false;
+
+const handle = Astro.params.handle ?? '';
+const db = Astro.locals.runtime.env.DB;
+const found = await getPublicProfile(db, handle, Astro.locals.user?.id ?? null);
+if (!found) return Astro.redirect('/world');
+const { profile: p, isOwner, ownerId } = found;
+const page = await getPageConfig(Astro.locals.runtime.env.WAITLIST, p.id);
+const record = await profileReleases(db, ownerId);
+const featured = record.find((x) => x.id === page.featured) ?? record[0] ?? null;
+const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
+const where = visibleLabel(p.placeId, p.locationVisibility);
+const LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
+const buttons = [...page.links, ...Object.entries(p.links).filter(([, v]) => !!v).map(([k, v]) => ({ label: LABEL[k] ?? k, url: v as string }))];
+const photo = p.photoKey ? mediaUrl(p.photoKey) : null;
+const hue = [...p.handle].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 0);
+---
+<BaseLayout title={`${p.displayName} · Links`} description={page.tagline || `${p.displayName} on Opus.`} noindex={p.status !== 'published'} image={photo ?? undefined} hideFooter assistant={false} messages={false}>
+  <main class="lk" style={`--h:${hue}`}>
+    <div class="lk__wash" aria-hidden="true" style={photo ? `background-image:url(${photo})` : ''}></div>
+    <div class="lk__col">
+      {isOwner && p.status !== 'published' && <p class="lk__draft">Draft preview. Publish your profile to share this link.</p>}
+      <div class="lk__photo" style={photo ? `background-image:url(${photo})` : ''} role="img" aria-label={p.displayName}>{!photo && p.displayName.slice(0, 1).toUpperCase()}</div>
+      <h1>{p.displayName}</h1>
+      <p class="lk__sub">{[roles[0], where].filter(Boolean).join(' · ')}</p>
+      {page.tagline && <p class="lk__tag">{page.tagline}</p>}
+
+      {featured && (
+        <a class="lk__feat" href={`/r/${featured.id}`}>
+          <span class="lk__cover" style={featured.coverKey ? `background-image:url(${mediaUrl(featured.coverKey)})` : ''}></span>
+          <span><small>{featured.released ? 'Out now' : 'Coming soon'} · {RELEASE_KINDS[featured.kind]}</small><b>{featured.title}</b></span>
+          <i aria-hidden="true">→</i>
+        </a>
+      )}
+      <ul class="lk__btns" role="list">
+        {buttons.map((b) => <li><a href={b.url} target="_blank" rel="noopener nofollow ugc">{b.label}</a></li>)}
+        <li><a class="is-main" href={`/${p.handle}`}>See full profile on Opus</a></li>
+      </ul>
+      <p class="lk__foot"><a href="/">Opus Collective</a></p>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .lk { position: relative; min-height: calc(100vh - 56px); display: grid; justify-items: center; padding: 48px var(--gutter) 64px; overflow: hidden; }
+  .lk__wash { position: absolute; inset: -60px; background: radial-gradient(60% 50% at 50% 0%, hsl(var(--h) 55% 45% / .5), transparent 70%) center / cover no-repeat; filter: blur(60px) saturate(1.3); opacity: .5; pointer-events: none; }
+  .lk__col { position: relative; width: min(460px, 100%); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+  .lk__photo { width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; font-size: 44px; font-weight: 300; color: #fff; background: linear-gradient(145deg, hsl(var(--h) 45% 38%), hsl(calc(var(--h) + 50) 50% 22%)) center / cover; box-shadow: 0 24px 50px -24px rgba(0, 0, 0, .6); margin-bottom: 12px; }
+  h1 { margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -0.045em; }
+  .lk__sub { margin: 0; font-size: 14px; color: var(--text-2); }
+  .lk__tag { margin: 10px 0 0; font-size: 16px; color: var(--text-2); max-width: 36ch; }
+  .lk__draft { margin: 0 0 20px; font-size: 13px; color: var(--text-2); }
+  .lk__feat { display: flex; align-items: center; gap: 14px; width: 100%; margin-top: 26px; padding: 10px 16px 10px 10px; border-radius: 16px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); text-align: left; text-decoration: none; color: inherit; }
+  .lk__feat > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .lk__feat small { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
+  .lk__feat b { font-weight: 500; font-size: 17px; letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lk__cover { width: 64px; height: 64px; border-radius: 8px; background: linear-gradient(135deg, hsl(var(--h) 45% 42%), hsl(calc(var(--h) + 50) 50% 20%)) center / cover; }
+  .lk__btns { width: 100%; margin-top: 14px; display: grid; gap: 10px; }
+  .lk__btns a { display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 20px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 15px; text-decoration: none; transition: background .15s; }
+  .lk__btns a:hover { background: var(--surface-hover); }
+  .lk__btns a.is-main { background: var(--text); color: var(--bg); box-shadow: none; font-weight: 500; }
+  .lk__foot { margin: 28px 0 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .lk__foot a { color: var(--text-3); text-decoration: none; }
+</style>
