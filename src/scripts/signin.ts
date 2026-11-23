@@ -22,7 +22,16 @@ export function mountSignin(root: HTMLElement, opts: Opts = {}) {
       <label class="sm__field"><span>Email</span><input name="email" type="email" autocomplete="email" inputmode="email" required /></label>
       <p class="sm__msg" data-msg role="alert" hidden></p>
       <button class="sm__btn" type="submit">Email me a code</button>
+      <p class="sm__alt"><button type="button" class="sm__link" data-topw>Use a password instead</button></p>
       <p class="sm__alt">New to Opus? <a href="${opts.signUpHref ?? '/sign-up'}">Create an account</a></p>
+    </form>
+    <form class="sm__step" data-s3 novalidate hidden>
+      <h2 class="sm__title">Sign in</h2>
+      <label class="sm__field"><span>Email</span><input name="email" type="email" autocomplete="email" inputmode="email" required /></label>
+      <label class="sm__field"><span>Password</span><input name="password" type="password" autocomplete="current-password" required /></label>
+      <p class="sm__msg" data-msg3 role="alert" hidden></p>
+      <button class="sm__btn" type="submit">Sign in</button>
+      <p class="sm__alt"><button type="button" class="sm__link" data-tocode>Email me a code instead</button> · <a href="/forgot-password">Forgot password?</a></p>
     </form>
     <form class="sm__step" data-s2 novalidate hidden>
       <h2 class="sm__title">Check your email</h2>
@@ -35,6 +44,8 @@ export function mountSignin(root: HTMLElement, opts: Opts = {}) {
     </form>`;
   const s1 = root.querySelector<HTMLFormElement>('[data-s1]')!;
   const s2 = root.querySelector<HTMLFormElement>('[data-s2]')!;
+  const s3 = root.querySelector<HTMLFormElement>('[data-s3]')!;
+  const msg3 = s3.querySelector<HTMLElement>('[data-msg3]')!;
   const msg1 = s1.querySelector<HTMLElement>('[data-msg]')!;
   const msg2 = s2.querySelector<HTMLElement>('[data-msg2]')!;
   const dev = s2.querySelector<HTMLElement>('[data-dev]')!;
@@ -70,6 +81,18 @@ export function mountSignin(root: HTMLElement, opts: Opts = {}) {
   code.addEventListener('input', () => { code.value = code.value.replace(/\D/g, '').slice(0, 6); if (code.value.length === 6) void verify(); });
   s2.querySelector('[data-resend]')!.addEventListener('click', async () => { if (await send()) show(msg2, 'A new code is on its way.'); else show(msg2, msg1.textContent || ''); });
   s2.querySelector('[data-back]')!.addEventListener('click', () => { s2.hidden = true; s1.hidden = false; email.focus(); });
+  // Password option: same account, same session, no code.
+  const email3 = s3.elements.namedItem('email') as HTMLInputElement;
+  const pw = s3.elements.namedItem('password') as HTMLInputElement;
+  s1.querySelector('[data-topw]')!.addEventListener('click', () => { email3.value = email.value; s1.hidden = true; s3.hidden = false; (email3.value ? pw : email3).focus(); });
+  s3.querySelector('[data-tocode]')!.addEventListener('click', () => { email.value = email3.value; s3.hidden = true; s1.hidden = false; email.focus(); });
+  s3.addEventListener('submit', async (e) => {
+    e.preventDefault(); show(msg3, ''); busy(s3, true);
+    try {
+      const d = await post('login', { email: email3.value, password: pw.value, ...(opts.invite ? { invite: opts.invite, join: true } : {}) });
+      opts.onDone?.(d as { joined?: { href?: string } | null });
+    } catch (err) { show(msg3, (err as Error).message); busy(s3, false); pw.select(); }
+  });
   email.focus();
 }
 
