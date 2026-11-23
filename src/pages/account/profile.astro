@@ -88,7 +88,6 @@ const linkFields = [
             </div>
           </div>
           <p class="dim" data-upload-status role="status"></p>
-          {!p && <p class="dim">Save a draft first, then you can add your photo.</p>}
         </div>
 
         <details class="pe-more" open={!!p}>
@@ -307,10 +306,26 @@ const linkFields = [
   // ----- save / publish -----
   let intent = 'save';
   form.querySelectorAll<HTMLButtonElement>('[data-intent]').forEach((b) => b.addEventListener('click', () => (intent = b.dataset.intent!)));
+  let pendingPhoto: Blob | null = null;
   bindForm(form, {
     url: '/api/profile',
     busyLabel: 'Saving…',
-    body: (f) => {
+    body: (f) => buildBody(f, intent === 'publish' && pendingPhoto ? undefined : intent === 'publish' ? true : intent === 'unpublish' ? false : undefined),
+    onSuccess: async (d) => {
+      // New member with a photo chosen during setup: upload it now that the profile exists, then publish if asked.
+      let dest = `/account/profile?saved=${intent}`;
+      if (pendingPhoto) {
+        const r = await fetch('/api/profile/image?slot=photo', { method: 'POST', headers: { 'content-type': pendingPhoto.type }, body: pendingPhoto });
+        if (r.ok && intent === 'publish') {
+          const r2 = await fetch('/api/profile', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(buildBody(form, true)) });
+          if (!r2.ok) dest = '/account/profile?saved=save';
+        } else if (!r.ok) dest = '/account/profile?saved=save';
+      }
+      location.href = dest;
+    },
+  });
+  function buildBody(f: HTMLFormElement, publish: boolean | undefined) {
+    {
       const v = values(f);
       const checked = (sel: string) => Array.from(document.querySelectorAll<HTMLInputElement>(`${sel} input:checked`)).map((i) => i.value);
       const links: Record<string, string> = {};
@@ -320,19 +335,28 @@ const linkFields = [
         openToCollab: v.openToCollab, showOnMap: v.showOnMap, locationVisibility: v.locationVisibility, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'), links,
         credits: readRows('credits'), portfolio: readRows('portfolio'),
         achievements: readRows('achievements').map((r) => r.value), collaborations: readRows('collaborations').map((r) => r.value),
-        publish: intent === 'publish' ? true : intent === 'unpublish' ? false : undefined,
+        publish,
       };
-    },
-    onSuccess: () => { location.href = `/account/profile?saved=${intent}`; },
-  });
+    }
+  }
 
   // ----- photos -----
   const upStatus = document.querySelector<HTMLElement>('[data-upload-status]')!;
   document.querySelectorAll<HTMLInputElement>('[data-upload]').forEach((input) => input.addEventListener('change', async () => {
     const file = input.files?.[0];
     if (!file) return;
-    if (!data) { upStatus.textContent = 'Save your details first, then add photos.'; input.value = ''; return; }
     const slot = input.dataset.upload as 'photo' | 'cover';
+    if (!data) {
+      if (slot === 'cover') { upStatus.textContent = 'You can add a cover once your profile is saved.'; input.value = ''; return; }
+      // No profile yet: keep the cleaned photo here and upload it right after the first save.
+      try {
+        pendingPhoto = await prepareImage(file, 800, 'square');
+        const el = document.querySelector<HTMLElement>('[data-photo-preview]')!;
+        el.style.backgroundImage = `url(${URL.createObjectURL(pendingPhoto)})`; el.textContent = '';
+        upStatus.textContent = 'Photo ready. It uploads when you save.';
+      } catch (e) { upStatus.textContent = e instanceof Error ? e.message : 'That image could not be read.'; }
+      input.value = ''; return;
+    }
     upStatus.textContent = 'Preparing image…';
     try {
       // Re-encode in the browser: resizes, fixes orientation and drops all metadata (including GPS) before upload.
