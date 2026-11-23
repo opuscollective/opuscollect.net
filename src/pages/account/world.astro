@@ -7,7 +7,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { membershipsOf } from '@/server/clans';
 import { listFollows } from '@/server/cities';
 import { mediaUrl } from '@/server/profiles';
-import { HIRE_ENABLED } from '@/lib/features';
+import { futureFor } from '@/server/future';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -19,7 +19,7 @@ const one = async <T,>(q: string, ...b: unknown[]) => db.prepare(q).bind(...b).f
 
 const profile = await one<{ handle: string; display_name: string; status: string; photo_key: string | null }>(
   "SELECT handle, display_name, status, photo_key FROM profiles WHERE owner_user_id = ? AND kind = 'musician'", user.id);
-const studios = (await db.prepare("SELECT id, handle, display_name, status FROM profiles WHERE owner_user_id = ? AND kind = 'studio' ORDER BY created_at").bind(user.id).all<{ id: string; handle: string; display_name: string; status: string }>().catch(() => ({ results: [] as { id: string; handle: string; display_name: string; status: string }[] }))).results;
+const studios = (await db.prepare("SELECT id, handle, display_name, status, photo_key FROM profiles WHERE owner_user_id = ? AND kind = 'studio' ORDER BY created_at").bind(user.id).all<{ id: string; handle: string; display_name: string; status: string; photo_key: string | null }>().catch(() => ({ results: [] as { id: string; handle: string; display_name: string; status: string; photo_key: string | null }[] }))).results;
 const groups = await membershipsOf(db, user.id, false).catch(() => []);
 const cities = await listFollows(env, user.id).catch(() => []);
 const works = (await one<{ n: number }>('SELECT COUNT(*) AS n FROM releases WHERE owner_user_id = ?', user.id))?.n ?? 0;
@@ -27,9 +27,25 @@ const myBookings = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM bookings
 const studioRequests = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM bookings b JOIN profiles p ON p.id = b.profile_id WHERE p.owner_user_id = ? AND b.status = 'requested'", user.id))?.n ?? 0;
 const requests = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM connections WHERE addressee_id = ? AND status = 'pending'", user.id))?.n ?? 0;
 const connections = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM connections WHERE (requester_id = ?1 OR addressee_id = ?1) AND status = 'accepted'", user.id))?.n ?? 0;
-const hireWaiting = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM work_requests WHERE owner_user_id = ? AND status = 'requested'", user.id))?.n ?? 0;
-const hireOn = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM services s JOIN profiles p ON p.id = s.profile_id WHERE p.owner_user_id = ? AND p.kind = 'musician' AND s.active = 1", user.id))?.n ?? 0;
+const covers = (await db.prepare('SELECT cover_key FROM releases WHERE owner_user_id = ? ORDER BY coalesce(release_date, \'\') DESC, created_at DESC LIMIT 3').bind(user.id).all<{ cover_key: string | null }>().catch(() => ({ results: [] as { cover_key: string | null }[] }))).results;
+const friends = (await db.prepare(`SELECT p.photo_key, p.display_name FROM connections c JOIN profiles p ON p.owner_user_id = (CASE WHEN c.requester_id = ?1 THEN c.addressee_id ELSE c.requester_id END) AND p.kind = 'musician'
+  WHERE (c.requester_id = ?1 OR c.addressee_id = ?1) AND c.status = 'accepted' ORDER BY c.responded_at DESC, c.created_at DESC LIMIT 4`).bind(user.id).all<{ photo_key: string | null; display_name: string }>().catch(() => ({ results: [] as { photo_key: string | null; display_name: string }[] }))).results;
+const upcoming = await futureFor(db, user.id).catch(() => []);
+const nowD = new Date();
+const ym = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}`;
+const dim = new Date(nowD.getFullYear(), nowD.getMonth() + 1, 0).getDate();
+const lead = new Date(nowD.getFullYear(), nowD.getMonth(), 1).getDay();
+const busy = new Set(upcoming.filter((i) => i.day?.startsWith(ym)).map((i) => Number(i.day!.slice(8, 10))));
+const cells = [...Array(lead).fill(0), ...Array.from({ length: dim }, (_, i) => i + 1)];
+const monthName = nowD.toLocaleDateString('en-US', { month: 'long' });
 const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
+const ICON: Record<string, string> = {
+  works: '<path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+  studio: '<path d="M3 21h18M5 21V8l7-4 7 4v13"/><path d="M10 21v-6h4v6"/>',
+  groups: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.5c3 0 6 1.6 6 5.5"/>',
+  network: '<circle cx="12" cy="12" r="2.5"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="20" r="2"/><path d="M6.5 7.5l4 3M17.5 7.5l-4 3M12 14.5V18"/>',
+  city: '<path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+};
 ---
 <BaseLayout title="My World" noindex assistant={false}>
   <section class="app">
@@ -37,102 +53,115 @@ const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
       <p class="t-meta app__kicker">My World</p>
       <h1 class="app__title">Everything that’s yours.</h1>
 
-      <div class="mw__grid">
-        <article class="mw__card mw__card--lead">
-          <h2>You</h2>
-          {profile ? (
-            <div class="mw__me">
-              <span class="mw__av" style={profile.photo_key ? `background-image:url(${mediaUrl(profile.photo_key)})` : ''}></span>
-              <div><b>{profile.display_name}</b><small>{state(profile.status)} · opuscollect.net/{profile.handle}</small></div>
-            </div>
-          ) : <p class="dim">You haven’t set up your profile yet.</p>}
-          <p class="mw__row">
-            {profile ? <><a class="btn-app" href="/me">See my page</a><a class="btn-app btn-app--ghost" href="/account/page">Customize</a><a class="btn-app btn-app--ghost" href="/account/profile">Edit</a></> : <a class="btn-app" href="/start">Set up your profile</a>}
-          </p>
-        </article>
-
-        <article class="mw__card">
-          <h2>Works <span class="mw__n">{works}</span></h2>
-          <p class="dim">Songs and releases on your page. Search for one and add it in seconds.</p>
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/works/mine?add=1">Add a work</a><a class="mw__link" href="/works/mine">See all</a></p>
-        </article>
-
-        <article class="mw__card">
-          <h2>Studios <span class="mw__n">{studios.length}</span></h2>
-          {studios.length ? (
-            <ul class="mw__list" role="list">{studios.map((s) => <li><a href={`/business/switch?id=${s.id}`}>{s.display_name}</a><small>{state(s.status)}</small></li>)}</ul>
-          ) : <p class="dim">List a studio to get discovered and take booking requests. Free.</p>}
-          {studioRequests > 0 && <p class="mw__alert">{studioRequests} booking request{studioRequests === 1 ? '' : 's'} waiting</p>}
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/business">{studios.length ? 'Manage studios' : 'List your studio'}</a>{studios.length > 0 && <a class="mw__link" href="/business?new=1">Add another</a>}{studios.length > 0 && <a class="mw__link" href="/business/bookings">Bookings</a>}</p>
-        </article>
-
-        {HIRE_ENABLED && <article class="mw__card">
-          <h2>Work <span class="mw__n">{hireOn}</span></h2>
-          <p class="dim">{hireOn ? `${hireOn} service${hireOn === 1 ? '' : 's'} listed. You show as For hire in World.` : 'Offer a beat, a mix or a session, remote or in person, and get hired through Opus.'}</p>
-          {hireWaiting > 0 && <p class="mw__alert">{hireWaiting} work request{hireWaiting === 1 ? '' : 's'} waiting</p>}
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/account/hire">{hireOn ? 'Manage work' : 'Offer your services'}</a></p>
-        </article>}
-
-        <article class="mw__card">
-          <h2>Groups <span class="mw__n">{groups.length}</span></h2>
-          {groups.length ? (
-            <ul class="mw__list" role="list">{groups.slice(0, 5).map((g) => <li><a href={g.isAdmin ? `/clans/${g.clan.handle}/manage` : g.clan.href}>{g.clan.name}</a><small>{g.isAdmin ? 'You manage it' : 'Member'}</small></li>)}</ul>
-          ) : <p class="dim">Bands, crews and collectives you’re part of.</p>}
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/clans/new">Create a group</a><a class="mw__link" href="/clans/mine">All groups</a></p>
-        </article>
-
-        <article class="mw__card">
-          <h2>Network <span class="mw__n">{connections}</span></h2>
-          <p class="dim">{requests ? `${requests} connection request${requests === 1 ? '' : 's'} waiting for you.` : 'Your connections, requests and messages.'}</p>
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/network">Open Network</a></p>
-        </article>
-
-        <article class="mw__card">
-          <h2>Sessions you booked <span class="mw__n">{myBookings}</span></h2>
-          <p class="dim">Studio sessions you’ve requested or confirmed.</p>
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/account/bookings">Your bookings</a></p>
-        </article>
-
-        <article class="mw__card">
-          <h2>Future</h2>
-          <p class="dim">Your calendar: sessions, release dates and events, in one place.</p>
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/future?tab=mine&view=calendar">Open calendar</a><a class="btn-app btn-app--ghost" href="/events/new">Create an event</a></p>
-        </article>
-
-        <article class="mw__card">
-          <h2>Cities <span class="mw__n">{cities.length}</span></h2>
-          {cities.length ? <p class="dim">{cities.slice(0, 6).map((c) => c.name).join(', ')}</p> : <p class="dim">Follow cities to keep up with what’s happening there.</p>}
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/world/cities">My Cities</a></p>
-        </article>
-
-        <article class="mw__card">
-          <h2>Settings</h2>
-          <p class="dim">Password, appearance and email.</p>
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/account">Account settings</a></p>
-        </article>
+      <div class="mw__me">
+        {profile ? (
+          <>
+            <span class="mw__av" style={profile.photo_key ? `background-image:url(${mediaUrl(profile.photo_key)})` : ''}></span>
+            <div class="mw__who"><b>{profile.display_name}</b><small>{state(profile.status)} · opuscollect.net/{profile.handle}</small></div>
+            <span class="mw__acts"><a class="btn-app" href="/me">See my page</a><a class="btn-app btn-app--ghost" href="/account/page">Customize</a><a class="btn-app btn-app--ghost" href="/account/profile">Edit</a></span>
+          </>
+        ) : (
+          <>
+            <div class="mw__who"><b>Set up your profile</b><small>It takes a minute.</small></div>
+            <span class="mw__acts"><a class="btn-app" href="/start">Start</a></span>
+          </>
+        )}
       </div>
+
+      <div class="mw__grid">
+        <a class="mw__tile" href="/works/mine">
+          <span class="mw__vis mw__vis--covers">
+            {covers.length ? covers.map((c, i) => <i style={c.cover_key ? `background-image:url(${mediaUrl(c.cover_key)})` : `--c:${200 + i * 50}`}></i>) : <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.works}></svg>}
+          </span>
+          <span class="mw__t"><b>Works</b><em>{works}</em></span>
+          <span class="mw__s">{works ? 'Your releases and credits' : 'Add your first song'}</span>
+        </a>
+
+        <a class="mw__tile" href="/business">
+          <span class="mw__vis mw__vis--photo" style={studios[0]?.photo_key ? `background-image:url(${mediaUrl(studios[0].photo_key)})` : ''}>
+            {!studios[0]?.photo_key && <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.studio}></svg>}
+          </span>
+          <span class="mw__t"><b>Studios</b>{studioRequests > 0 ? <em class="is-hot">{studioRequests} new</em> : <em>{studios.length}</em>}</span>
+          <span class="mw__s">{studios.length ? studios.map((x) => x.display_name).join(', ') : 'List yours. Free'}</span>
+        </a>
+
+        <a class="mw__tile" href="/clans/mine">
+          <span class="mw__vis mw__vis--stack">
+            {groups.length ? groups.slice(0, 4).map((g) => <i style={g.clan.photo ? `background-image:url(${g.clan.photo})` : ''}>{!g.clan.photo && g.clan.name.slice(0, 1)}</i>) : <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.groups}></svg>}
+          </span>
+          <span class="mw__t"><b>Groups</b><em>{groups.length}</em></span>
+          <span class="mw__s">{groups.length ? groups.slice(0, 2).map((g) => g.clan.name).join(', ') : 'Bands and crews'}</span>
+        </a>
+
+        <a class="mw__tile" href="/network">
+          <span class="mw__vis mw__vis--stack">
+            {friends.length ? friends.map((f) => <i style={f.photo_key ? `background-image:url(${mediaUrl(f.photo_key)})` : ''}>{!f.photo_key && f.display_name.slice(0, 1)}</i>) : <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.network}></svg>}
+          </span>
+          <span class="mw__t"><b>Network</b>{requests > 0 ? <em class="is-hot">{requests} waiting</em> : <em>{connections}</em>}</span>
+          <span class="mw__s">{connections ? 'Your connections' : 'Find your people'}</span>
+        </a>
+
+        <a class="mw__tile" href="/future?tab=mine&view=calendar">
+          <span class="mw__vis mw__vis--month" aria-hidden="true">
+            <span class="mw__mn">{monthName}</span>
+            <span class="mw__cal">{cells.map((d) => <i class:list={{ 'is-today': d === nowD.getDate(), 'is-busy': busy.has(d), 'is-empty': d === 0 }}>{d || ''}</i>)}</span>
+          </span>
+          <span class="mw__t"><b>Future</b><em>{upcoming.length}</em></span>
+          <span class="mw__s">{upcoming.length ? `${upcoming.length} coming up` : 'Sessions, releases, events'}</span>
+        </a>
+
+        <a class="mw__tile" href="/world/cities">
+          <span class="mw__vis mw__vis--chips">
+            {cities.length ? cities.slice(0, 3).map((c) => <i>{c.name}</i>) : <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.city}></svg>}
+          </span>
+          <span class="mw__t"><b>Cities</b><em>{cities.length}</em></span>
+          <span class="mw__s">{cities.length ? 'Cities you follow' : 'Follow a city'}</span>
+        </a>
+      </div>
+
+      <p class="mw__quick">
+        <a href="/works/mine?add=1">Add a work</a>
+        <a href="/account/bookings">Your bookings{myBookings ? ` (${myBookings})` : ''}</a>
+        <a href="/events/new">Create an event</a>
+        <a href="/account">Account settings</a>
+      </p>
     </div>
   </section>
 </BaseLayout>
 
 <style>
-  .mw__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 36px; }
-  .mw__card { display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
-  .mw__card--lead { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
-  .mw__card h2 { margin: 0; font-size: 22px; font-weight: 300; letter-spacing: -0.03em; display: flex; align-items: baseline; gap: 10px; }
-  .mw__n { font-size: 14px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-  .mw__card p { margin: 0; }
-  .mw__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: auto !important; padding-top: 8px; }
-  .mw__link { font-size: 14px; color: var(--text-2); }
-  .mw__link:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
-  .mw__me { display: flex; align-items: center; gap: 14px; }
-  .mw__me b { display: block; font-size: 20px; font-weight: 400; }
-  .mw__me small { color: var(--text-3); font-size: 13px; }
+  .mw { max-width: 1040px; }
+  .mw__me { display: flex; align-items: center; gap: 16px; margin-top: 32px; padding: 18px 22px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
   .mw__av { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; flex: none; }
-  .mw__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-  .mw__list li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
-  .mw__list small { color: var(--text-3); }
-  .mw__alert { font-size: 13px; color: var(--accent); }
-  @media (max-width: 960px) { .mw__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 620px) { .mw__grid { grid-template-columns: 1fr; } .mw__card--lead { flex-direction: column; align-items: flex-start; } }
+  .mw__who { flex: 1; min-width: 0; }
+  .mw__who b { display: block; font-size: 20px; font-weight: 400; letter-spacing: -0.02em; }
+  .mw__who small { color: var(--text-3); font-size: 13px; }
+  .mw__acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mw__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+  .mw__tile { display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 18px; border-radius: 22px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: inherit; text-decoration: none; transition: transform .2s ease, box-shadow .2s ease; }
+  .mw__tile:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--line-strong); }
+  .mw__vis { position: relative; height: 150px; border-radius: 14px; background: var(--surface-sunken) center / cover no-repeat; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; margin-bottom: 8px; }
+  .mw__vis > svg { width: 40px; height: 40px; fill: none; stroke: var(--text-3); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+  .mw__vis--covers i { width: 28%; aspect-ratio: 1; border-radius: 8px; background: linear-gradient(135deg, hsl(var(--c, 220) 45% 42%), hsl(calc(var(--c, 220) + 50) 50% 22%)) center / cover no-repeat; box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .6); }
+  .mw__vis--stack { gap: 0; }
+  .mw__vis--stack i { display: grid; place-items: center; width: 56px; height: 56px; margin-left: -12px; border-radius: 50%; border: 3px solid var(--surface-sunken); background: var(--surface-hover) center / cover no-repeat; color: var(--text-2); font-style: normal; font-size: 18px; }
+  .mw__vis--stack i:first-child { margin-left: 0; }
+  .mw__vis--chips { flex-wrap: wrap; align-content: center; padding: 0 14px; }
+  .mw__vis--chips i { font-style: normal; font-size: 13px; padding: 7px 13px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text-2); }
+  .mw__vis--month { flex-direction: column; justify-content: center; gap: 6px; }
+  .mw__mn { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+  .mw__cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; width: 82%; }
+  .mw__cal i { font-style: normal; font-size: 10px; line-height: 16px; text-align: center; color: var(--text-3); border-radius: 50%; }
+  .mw__cal i.is-busy { color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); border-radius: 0; }
+  .mw__cal i.is-today { background: var(--text); color: var(--bg); border-radius: 50%; }
+  .mw__t { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 0 8px; }
+  .mw__t b { font-size: 20px; font-weight: 400; letter-spacing: -0.025em; white-space: nowrap; }
+  .mw__t em { font-style: normal; font-size: 14px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mw__t em.is-hot { color: var(--accent); }
+  .mw__s { padding: 0 8px; font-size: 13px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mw__quick { display: flex; flex-wrap: wrap; gap: 6px 26px; margin-top: 26px; font-size: 14px; }
+  .mw__quick a { color: var(--text-2); }
+  .mw__quick a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+  @media (max-width: 860px) { .mw__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mw__me { flex-wrap: wrap; } .mw__acts { width: 100%; } .mw__acts .btn-app { flex: 1; padding-inline: 10px; } }
+  @media (max-width: 460px) { .mw__vis { height: 120px; } .mw__t b { font-size: 18px; } .mw__vis--stack i { width: 44px; height: 44px; } }
 </style>
