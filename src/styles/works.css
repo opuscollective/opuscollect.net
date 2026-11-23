@@ -210,3 +210,11 @@ html.wk-stage-in .oa-launch, html.wk-stage-in .om-launch, html.wk-away .oa-launc
 .wk-roll .wk-cr .wk-cr__more b { font-size: inherit; font-weight: 600; letter-spacing: 0; line-height: inherit; }
 .wk-roll .wk-cr summary .px-tag { justify-self: end; align-self: center; }
 @media (max-width: 600px) { .wk-roll .wk-cr summary .px-tag { grid-column: 2; justify-self: start; } }
+.wk-stage__in { grid-template-columns: minmax(0, 4.6fr) minmax(0, 7.4fr); }
+.wk-stage__copy .wk-label { margin-bottom: 2px; }
+.wk-close h2 { margin-bottom: 8px; }
+@media (max-width: 900px) { .wk-stage__in { grid-template-columns: 1fr; } }
+.wk-stage__in { grid-template-columns: minmax(0, 4.6fr) minmax(0, 7.4fr); }
+.wk-stage__copy .wk-label { margin-bottom: 2px; }
+.wk-close h2 { margin-bottom: 8px; }
+@media (max-width: 900px) { .wk-stage__in { grid-template-columns: 1fr; } }

@@ -6,28 +6,20 @@
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ProductNav from '@/components/product/ProductNav.astro';
+import WorksProfile from '@/components/works/WorksProfile.astro';
 import { CATALOG } from '@/data/catalog';
-import { listPublicWorks, type PublicWork } from '@/server/releases';
-import { mediaUrl } from '@/server/profiles';
 import '@/styles/product.css';
 import '@/styles/works.css';
 export const prerender = false;
 
 if (Astro.locals.user) return Astro.redirect(`/works/mine${Astro.url.searchParams.get('add') === '1' ? '?add=1' : ''}`);
 
-let pub: PublicWork[] = [];
-try { pub = (await listPublicWorks(Astro.locals.runtime.env.DB, { limit: 9 })).works; } catch (e) { console.error('works: public', e); }
 const addHref = `/sign-in?next=${encodeURIComponent('/works?add=1')}`;
-// The wall: real member works when there are any, otherwise the Opus Collective catalog, labelled as such.
-const members = pub.length >= 4;
-const wall = members
-  ? pub.map((w) => ({ href: `/r/${w.id}`, title: w.title, by: w.artist, cover: w.coverKey ? mediaUrl(w.coverKey) : '' }))
-  : CATALOG.map((c) => ({ href: c.href, title: c.title, by: c.artist, cover: c.cover }));
 const [scenic, amazing, lucia] = [CATALOG[0]!, CATALOG[1]!, CATALOG[2]!];
 // Example credits only: they show how a credit looks next to its project. No real person is credited by this list.
 const rel = (c: (typeof CATALOG)[number], kind: string, date: string) => ({ title: c.title, cover: c.cover, kind, date });
 const credits = [
-  { role: 'Primary Artist', who: 'You', rel: rel(scenic, 'Mixtape', 'Oct 26, 2026'), tag: '', status: 'Self-reported', note: 'You added this yourself. It appears on your profile as self-reported until others confirm it.' },
+  { role: 'Primary Artist', who: 'A member', rel: rel(scenic, 'Mixtape', 'Oct 26, 2026'), tag: '', status: 'Self-reported', note: 'You added this yourself. It appears on your profile as self-reported until others confirm it.' },
   { role: 'Producer', who: 'A producer on Opus', rel: rel(amazing, 'Single', 'Oct 16, 2026'), tag: ' px-tag--confirmed', status: 'Confirmed', note: 'The producer confirmed this credit, so it now counts on their profile.' },
   { role: 'Songwriter', who: 'A songwriter on Opus', rel: rel(lucia, 'Release', 'Example date'), tag: ' px-tag--confirmed', status: 'Confirmed', note: 'The writer confirmed this credit, so it now counts on their profile.' },
   { role: 'Mixing Engineer', who: 'An engineer on Opus', rel: rel(scenic, 'Mixtape', 'Oct 26, 2026'), tag: ' px-tag--pending', status: 'Awaiting confirmation', note: 'Invited. It counts only after the engineer confirms it.' },
@@ -37,58 +29,21 @@ const credits = [
 <BaseLayout assistant={false} messages={false} title="Works" description="Works on Opus. Start your résumé: your past work, your present and your future, in one record on your Opus profile.">
   <ProductNav product="works" current="overview" noCta />
   <div class="wk">
-    <!-- Stage -->
+    <!-- Stage: one Opus Profile preview that Works feeds -->
     <section class="wk-stage" data-wk-stage aria-labelledby="wk-h1">
-      <div class="wk-wash" aria-hidden="true"><img src={scenic.cover} alt="" width="900" height="900" /></div>
+      <div class="wk-wash" aria-hidden="true"><img src={lucia.cover} alt="" width="900" height="900" /></div>
       <div class="wk-wrap wk-stage__in">
         <div class="wk-stage__copy">
-          <h1 id="wk-h1">Start your résumé.</h1>
-          <p class="lead">Your past work. Your present. Your future.</p>
+          <p class="wk-label">Works</p>
+          <h1 id="wk-h1">Your work speaks for itself.</h1>
+          <p class="lead">Every release. Every credit. One professional identity.</p>
           <div class="wk-stage__ctas">
             <a class="px-btn px-btn--go" href={addHref}>Add Work</a>
             <a class="px-btn px-btn--text" href="/works/explore">Explore Works</a>
           </div>
         </div>
-
-        <div class="wk-rec" role="group" aria-label="Example: an Opus record built from the Opus Collective catalog">
-          <div class="wk-sheet">
-            <span class="wk-art wk-sheet__cover wk-shadow"><img src={scenic.cover} alt={`${scenic.title} by ${scenic.artist}`} width="900" height="900" fetchpriority="high" decoding="async" /></span>
-            <div class="wk-sheet__id">
-              <h2>Bogo</h2>
-              <p>Artist · Executive Producer · Mixing &amp; Mastering Engineer</p>
-              <p class="dim">Birmingham, AL · Opus Collective</p>
-            </div>
-            <div class="wk-sheet__body">
-              <div class="wk-sheet__work"><b>Scenic</b><span>Mixtape · Oct 2026 · OC 002</span></div>
-              <ul class="wk-roles" role="list"><li>Primary Artist</li><li>Executive Producer</li><li>Mixing</li><li>Mastering</li></ul>
-            </div>
-            <div class="wk-sheet__more">
-              <span class="wk-art"><img src={amazing.cover} alt="" width="88" height="88" loading="lazy" decoding="async" /></span>
-              <span><b>Amazing</b><small>Single · Oct 2026 · OC 001, the first Opus Collective release</small></span>
-              <span class="wk-ex">Example</span>
-            </div>
-          </div>
-          <p class="wk-rec__note">Example record, from releases in the Opus Collective catalog.</p>
-        </div>
+        <WorksProfile />
       </div>
-    </section>
-
-    <!-- 1. Your creative portfolio -->
-    <section class="wk-port" aria-labelledby="wk-port">
-      <div class="wk-wrap wk-port__head">
-        <div>
-          <p class="wk-label">01</p>
-          <h2 class="wk-h2" id="wk-port">Your creative portfolio.</h2>
-          <p class="wk-p">Every single, EP, album and mixtape gets its own page, with the artwork up front and the details a collaborator or a booker needs.</p>
-        </div>
-        <div class="wk-share" aria-hidden="true"><em>opuscollect.net/r/…</em><span class="px-btn px-btn--line px-btn--sm">Copy link</span><span class="px-btn px-btn--line px-btn--sm">Share</span></div>
-      </div>
-      <ul class="wk-wall" role="list">
-        {wall.map((w, i) => (
-          <li><a href={w.href}><span class="wk-art wk-shadow">{w.cover ? <img src={w.cover} alt="" loading={i < 4 ? 'eager' : 'lazy'} decoding="async" /> : null}</span><b>{w.title}</b><small>{w.by}</small></a></li>
-        ))}
-      </ul>
-      <div class="wk-wrap"><p class="wk-port__src">{members ? 'New on Opus' : <><span class="wk-ex">Showcase</span> Releases from the Opus Collective catalog.</>}</p></div>
     </section>
 
     <!-- 2. Recognition for every contribution -->
@@ -96,7 +51,7 @@ const credits = [
       <div class="wk-wash wk-wash--b" aria-hidden="true"><img src={lucia.cover} alt="" width="900" height="900" loading="lazy" /></div>
       <div class="wk-wrap wk-rec2__in">
         <div class="wk-rec2__head">
-          <p class="wk-label">02</p>
+          <p class="wk-label">01</p>
           <h2 class="wk-h2" id="wk-rec2">Recognition for every contribution.</h2>
           <p class="wk-p">Credit the producer, the writers, the engineers and the designer. Members you credit confirm it themselves, and only then does it count on their profile.</p>
         </div>
@@ -123,22 +78,14 @@ const credits = [
       </div>
     </section>
 
-    <!-- 3. Your evolving professional record -->
-    <section class="wk-line" aria-labelledby="wk-line">
+    <!-- Close -->
+    <section class="wk-line" aria-labelledby="wk-end">
       <div class="wk-wrap">
-        <div class="wk-line__head">
-          <p class="wk-label">03</p>
-          <h2 class="wk-h2" id="wk-line">Your evolving professional record.</h2>
-          <p class="wk-p">What you released, what you made for others, what’s next. One record on your Opus profile, newest first.</p>
-        </div>
-        <ol class="wk-track" role="list" aria-label="Example record">
-          <li class="is-gap"><span class="wk-track__when">Next</span><span class="wk-slot">Your next work</span></li>
-          <li><span class="wk-track__when">Oct 26, 2026</span><span class="wk-art wk-shadow"><img src={scenic.cover} alt="" loading="lazy" decoding="async" /></span><b>Scenic</b><small>Mixtape · Primary Artist, Executive Producer</small></li>
-          <li><span class="wk-track__when">Oct 16, 2026</span><span class="wk-art wk-shadow"><img src={amazing.cover} alt="" loading="lazy" decoding="async" /></span><b>Amazing</b><small>Single · Primary Artist</small></li>
-          <li class="is-gap"><span class="wk-track__when">Earlier</span><span class="wk-slot">Past work, added anytime</span></li>
-        </ol>
         <div class="wk-close">
-          <p>Add a work in under a minute. Credit everyone who made it.</p>
+          <div>
+            <h2 class="wk-h2" id="wk-end">Start your résumé.</h2>
+            <p class="wk-p">Your past work. Your present. Your future.</p>
+          </div>
           <div class="wk-stage__ctas"><a class="px-btn px-btn--go" href={addHref}>Add Work</a><a class="px-btn px-btn--text" href="/works/explore">Explore Works</a></div>
         </div>
       </div>
