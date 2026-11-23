@@ -70,7 +70,7 @@ for (const [name, count] of SPREAD) {
       id: `m-${pad(n)}`, kind: 'musician', slug: `sample-${LABEL[primary!].toLowerCase()}-${pad(n)}`,
       name: `Sample ${LABEL[primary!]} ${pad(n)}`,
       location: near(c, 9, 'approximate'),
-      primarySpecialty: primary!, specialties: additional, genres: [g1, g2], verification: r() < 0.22 ? 'verified' : 'none', forHire: r() < 0.3,
+      primarySpecialty: primary!, specialties: additional, genres: [g1, g2], verification: r() < 0.22 ? 'verified' : 'none', forHire: false,
       highlight: r() < 0.5 ? 'Sample achievement line' : undefined, isSample: true,
     });
   }

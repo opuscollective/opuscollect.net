@@ -21,11 +21,11 @@ test('only members near the place count', () => {
   assert.deepEqual(inPlace([near, far], BHM).map((l) => l.id), [near.id]);
 });
 
-test('shelves: top specialty first, then studios, then other specialties, for hire and orgs', () => {
+test('shelves: top specialty first, then studios, then other specialties and orgs', () => {
   const ls = [musician('producer'), musician('producer'), musician('producer', { collab: true }), musician('vocalist', { collab: true }), musician('vocalist'), musician('dj'), studio()];
   const g = cityGuide(ls, BHM);
   assert.equal(g.total, 7); assert.equal(g.musicians, 6); assert.equal(g.studios, 1);
-  assert.deepEqual(g.shelves.map((s) => s.key), ['spec-producer', 'studios', 'spec-vocalist', 'hire']);
+  assert.deepEqual(g.shelves.map((s) => s.key), ['spec-producer', 'studios', 'spec-vocalist']);
   assert.equal(g.shelves[0]!.title, 'Music Producers');
   assert.deepEqual(g.shelves[0]!.filter, { kind: 'musician', specialty: 'producer' });
 });

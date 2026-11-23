@@ -3,6 +3,7 @@
  * Pure HTML builders (no DOM), so the same markup works in the split panel, the List view drawer
  * and the phone bottom sheet. Every string from the server is escaped.
  */
+import { HIRE_ENABLED } from './features.ts';
 import type { Listing } from '@/types/directory';
 import type { ProfileDetail, PreviewAction } from '@/server/world-detail';
 import { esc } from './html';
@@ -41,7 +42,7 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
   if (l.kind === 'musician') {
     const sp = allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s]?.label ?? s);
     roles = `<p class="pv__roles">${sp.map((s, i) => `<span${i === 0 ? ' class="is-primary"' : ''}>${esc(s)}</span>`).join('')}</p>${l.genres.length ? `<p class="pv__genres">${esc(l.genres.join(' · '))}</p>` : ''}`;
-    status = l.forHire ? '<p class="wc__status is-live">For hire</p>' : '';
+    status = HIRE_ENABLED && l.forHire ? '<p class="wc__status is-live">For hire</p>' : '';
     if (typeof d.connections === 'number' && !l.isSample) status += `<p class="pv__conns"><b>${d.connections.toLocaleString('en-US')}</b><span>${d.connections === 1 ? 'Connection' : 'Connections'}</span></p>`;
   } else {
     roles = `<p class="pv__roles"><span class="is-primary">${esc(kindLabel(l))}</span></p>`;

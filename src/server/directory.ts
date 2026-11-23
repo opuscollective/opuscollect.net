@@ -9,6 +9,7 @@
  * - Members choose a visibility (city, metro, region, hidden). Only what they chose leaves the server:
  *   a "region" member gets no coordinates and no city; a "hidden" member gets no location at all.
  */
+import { HIRE_ENABLED } from '@/lib/features';
 import { MIN_LOCALITY_GROUP } from '@/data/places';
 import type { MusicianListing, StudioListing, OrganizationListing, Listing, StudioType, StudioVerification, GeoPoint, LocationVisibility } from '@/types/directory';
 import { money } from '@/lib/booking-time';
@@ -89,7 +90,7 @@ export async function publicMusicians(db: D1Database, onlyId?: string): Promise<
       specialties: (r.specialties ? r.specialties.split(',') : []) as Specialty[],
       genres: r.genres ? r.genres.split('|') : [],
       verification: r.verification === 'verified' ? 'verified' : 'none',
-      forHire: r.hire_n > 0,
+      forHire: HIRE_ENABLED && r.hire_n > 0,
       highlight: firstAchievement(r.achievements),
     } satisfies MusicianListing;
   });

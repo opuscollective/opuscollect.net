@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { removeHireService, requestWork, respondWork, saveHireService } from '@/server/hire';
+import { HIRE_ENABLED } from '@/lib/features';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
 export const prerender = false;
@@ -7,6 +8,7 @@ export const prerender = false;
 /** POST service · service-remove · request · respond ({ id, action: accept|decline|withdraw, reply? }). Signed in only. */
 export const POST: APIRoute = async ({ locals, request, params }) => {
   try {
+    if (!HIRE_ENABLED) throw new HttpError(404, 'Not found.');
     const user = locals.user;
     if (!user) throw new HttpError(401, 'Please sign in first.');
     const env = locals.runtime.env;

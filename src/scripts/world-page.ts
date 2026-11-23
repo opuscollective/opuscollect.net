@@ -9,6 +9,7 @@
  *   and remounted at the same camera position when you come back.
  * Profiles open in a preview (panel, drawer or bottom sheet) without leaving the page.
  */
+import { HIRE_ENABLED } from '@/lib/features';
 import { tileHtml, matches, isVerified, esc, type WorldFilters } from '@/lib/world';
 import { cityGuide, type Shelf } from '@/lib/world-guide';
 import { cityGuideHeader } from '@/lib/city-guide-html';
@@ -88,7 +89,7 @@ export function initWorld(root: HTMLElement) {
   f.text = params.get('q') ?? '';
   f.specialty = toSpecialty(params.get('specialty') ?? params.get('discipline')); // "discipline" kept for old links
   f.genre = params.get('genre') ?? '';
-  f.forHire = params.get('hire') === '1';
+  f.forHire = HIRE_ENABLED && params.get('hire') === '1';
   f.verifiedOnly = params.get('verified') === '1';
   const st0 = params.get('studio');
   if (st0 === 'commercial' || st0 === 'home' || st0 === 'remote') f.studioType = st0;
@@ -206,7 +207,7 @@ export function initWorld(root: HTMLElement) {
     $<HTMLSelectElement>('[data-specialty]').value = f.specialty ?? '';
     $<HTMLSelectElement>('[data-genre]').value = f.genre ?? '';
     $<HTMLSelectElement>('[data-studio-type]').value = f.studioType ?? '';
-    $<HTMLInputElement>('[data-hire]').checked = !!f.forHire;
+    const hireSw = document.querySelector<HTMLInputElement>('[data-hire]'); if (hireSw) hireSw.checked = !!f.forHire;
     $<HTMLInputElement>('[data-verified]').checked = f.verifiedOnly;
     $<HTMLInputElement>('[data-inview]').checked = inView;
     $<HTMLSelectElement>('[data-sort]').value = sort;
@@ -226,7 +227,7 @@ export function initWorld(root: HTMLElement) {
   const quick = $('[data-quick]');
   type QF = { id: string; label: string; only?: string; on: () => boolean; toggle: () => void };
   const QUICK: QF[] = [
-    { id: 'hire', label: 'For hire', only: 'musician', on: () => !!f.forHire, toggle: () => { f.forHire = !f.forHire; } },
+    ...(HIRE_ENABLED ? [{ id: 'hire', label: 'For hire', only: 'musician', on: () => !!f.forHire, toggle: () => { f.forHire = !f.forHire; } }] : []),
     { id: 'verified', label: 'Verified', on: () => f.verifiedOnly, toggle: () => { f.verifiedOnly = !f.verifiedOnly; } },
     ...Object.entries(SPECIALTIES).slice(0, 12).map(([k, d]): QF => ({ id: 'sp-' + k, label: d.plural, only: 'musician', on: () => f.specialty === k, toggle: () => { f.specialty = f.specialty === k ? '' : toSpecialty(k); } })),
     ...([['commercial', 'Recording studios'], ['home', 'Home studios'], ['remote', 'Remote']] as const).map(([k, l]): QF => ({ id: 'st-' + k, label: l, only: 'studio', on: () => f.studioType === k, toggle: () => { f.studioType = f.studioType === k ? '' : k; } })),
@@ -477,7 +478,7 @@ export function initWorld(root: HTMLElement) {
       if (!sh) return;
       f.kinds = sh.filter.kind ? [sh.filter.kind] : [];
       f.specialty = sh.filter.specialty ?? '';
-      f.forHire = !!sh.filter.hire;
+      f.forHire = HIRE_ENABLED && !!sh.filter.hire;
       changed();
       results.scrollIntoView?.({ block: 'start' });
       return;
@@ -571,7 +572,7 @@ export function initWorld(root: HTMLElement) {
   $<HTMLSelectElement>('[data-specialty]').addEventListener('change', (e) => { f.specialty = toSpecialty((e.target as HTMLSelectElement).value); changed(); });
   $<HTMLSelectElement>('[data-genre]').addEventListener('change', (e) => { f.genre = (e.target as HTMLSelectElement).value; changed(); });
   $<HTMLSelectElement>('[data-studio-type]').addEventListener('change', (e) => { f.studioType = (e.target as HTMLSelectElement).value as WorldFilters['studioType']; changed(); });
-  $<HTMLInputElement>('[data-hire]').addEventListener('change', (e) => { f.forHire = (e.target as HTMLInputElement).checked; changed(); });
+  document.querySelector<HTMLInputElement>('[data-hire]')?.addEventListener('change', (e) => { f.forHire = (e.target as HTMLInputElement).checked; changed(); });
   $<HTMLInputElement>('[data-verified]').addEventListener('change', (e) => { f.verifiedOnly = (e.target as HTMLInputElement).checked; changed(); });
   $<HTMLSelectElement>('[data-sort]').addEventListener('change', (e) => { sort = (e.target as HTMLSelectElement).value; changed(); });
   $<HTMLInputElement>('[data-inview]').addEventListener('change', (e) => { inView = (e.target as HTMLInputElement).checked; changed(); });

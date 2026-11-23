@@ -11,6 +11,7 @@ import { profileReleases } from '@/server/releases';
 import { RELEASE_KINDS } from '@/data/music';
 import { getPageConfig } from '@/server/page-config';
 import { listHireServices } from '@/server/hire';
+import { HIRE_ENABLED } from '@/lib/features';
 import { membershipsOf, myInvites } from '@/server/clans';
 import '@/styles/app.css';
 import '@/styles/clans.css';
@@ -45,7 +46,7 @@ const clans = await membershipsOf(db, ownerId).catch(() => []);
 const invites = isOwner ? await myInvites(db, ownerId).catch(() => []) : [];
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
 const links = Object.entries(p.links).filter(([, v]) => !!v);
-const hire = p.status === 'published' || isOwner ? await listHireServices(db, p.id).catch(() => []) : [];
+const hire = HIRE_ENABLED && (p.status === 'published' || isOwner) ? await listHireServices(db, p.id).catch(() => []) : [];
 const usd = (c: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(c / 100);
 const page = await getPageConfig(Astro.locals.runtime.env.WAITLIST, p.id);
 const featured = record.find((x) => x.id === page.featured) ?? record[0] ?? null;
@@ -178,7 +179,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
       ) : (
       <div class="mp__grid">
         <div class="mp__main">
-          {(hire.length > 0 || isOwner) && (
+          {HIRE_ENABLED && (hire.length > 0 || isOwner) && (
             <section class="mp__sec mp__hire" id="hire" style="order:-1">
               <h2 class="mp__h">Work with {p.displayName.split(' ')[0]}</h2>
               {hire.length > 0 ? (

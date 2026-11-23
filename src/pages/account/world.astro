@@ -7,6 +7,7 @@ import BaseLayout from '@/layouts/BaseLayout.astro';
 import { membershipsOf } from '@/server/clans';
 import { listFollows } from '@/server/cities';
 import { mediaUrl } from '@/server/profiles';
+import { HIRE_ENABLED } from '@/lib/features';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -65,12 +66,12 @@ const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
           <p class="mw__row"><a class="btn-app btn-app--ghost" href="/business">{studios.length ? 'Manage studios' : 'List your studio'}</a>{studios.length > 0 && <a class="mw__link" href="/business?new=1">Add another</a>}{studios.length > 0 && <a class="mw__link" href="/business/bookings">Bookings</a>}</p>
         </article>
 
-        <article class="mw__card">
+        {HIRE_ENABLED && <article class="mw__card">
           <h2>Work <span class="mw__n">{hireOn}</span></h2>
           <p class="dim">{hireOn ? `${hireOn} service${hireOn === 1 ? '' : 's'} listed. You show as For hire in World.` : 'Offer a beat, a mix or a session, remote or in person, and get hired through Opus.'}</p>
           {hireWaiting > 0 && <p class="mw__alert">{hireWaiting} work request{hireWaiting === 1 ? '' : 's'} waiting</p>}
           <p class="mw__row"><a class="btn-app btn-app--ghost" href="/account/hire">{hireOn ? 'Manage work' : 'Offer your services'}</a></p>
-        </article>
+        </article>}
 
         <article class="mw__card">
           <h2>Groups <span class="mw__n">{groups.length}</span></h2>

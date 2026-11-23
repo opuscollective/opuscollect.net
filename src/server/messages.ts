@@ -8,6 +8,7 @@
  * - New messages and connection events are pushed to the member's open sockets through the
  *   Global Chat room; if no socket is open the page catches up by polling.
  */
+import { HIRE_ENABLED } from '@/lib/features';
 import { HttpError, audit, now, randomId } from './util';
 import { limit } from './ratelimit';
 import { isBlockedEitherWay } from './connections';
@@ -183,6 +184,6 @@ export async function unreadSummary(db: D1Database, me: string) {
       (SELECT COUNT(*) FROM connections x WHERE x.addressee_id = ?1 AND x.status = 'pending'
          AND NOT EXISTS (SELECT 1 FROM blocks k WHERE k.blocker_id = ?1 AND k.blocked_id = x.requester_id)) AS reqs`).bind(me).first<{ dm: number; notes: number; reqs: number }>();
   // Work requests need migration 0013; until it is applied they simply count as none.
-  const w = await db.prepare("SELECT COUNT(*) AS n FROM work_requests WHERE owner_user_id = ? AND status = 'requested'").bind(me).first<{ n: number }>().catch(() => null);
+  const w = !HIRE_ENABLED ? null : await db.prepare("SELECT COUNT(*) AS n FROM work_requests WHERE owner_user_id = ? AND status = 'requested'").bind(me).first<{ n: number }>().catch(() => null);
   return { dm: r?.dm ?? 0, notifications: r?.notes ?? 0, requests: (r?.reqs ?? 0) + (w?.n ?? 0) };
 }

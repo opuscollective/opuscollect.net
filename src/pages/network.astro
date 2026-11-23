@@ -1,4 +1,5 @@
 ---
+import { HIRE_ENABLED } from '@/lib/features';
 /**
  * Network. Signed in: My Network, with connections, received requests and sent requests in one place, plus
  * Discover people and Messages. Signed out: what Network is, and the way in. Real relationships only:
@@ -33,7 +34,7 @@ const ago = (t: number) => {
   if (s < 7 * 86400) { const d = Math.round(s / 86400); return `${d} day${d === 1 ? '' : 's'} ago`; }
   return DATE.format(t);
 };
-const workWaiting = user ? (await Astro.locals.runtime.env.DB.prepare("SELECT COUNT(*) AS n FROM work_requests WHERE owner_user_id = ? AND status = 'requested'").bind(user.id).first<{ n: number }>().catch(() => null))?.n ?? 0 : 0;
+const workWaiting = HIRE_ENABLED && user ? (await Astro.locals.runtime.env.DB.prepare("SELECT COUNT(*) AS n FROM work_requests WHERE owner_user_id = ? AND status = 'requested'").bind(user.id).first<{ n: number }>().catch(() => null))?.n ?? 0 : 0;
 const sub = (c: ConnItem) => [c.other.specialty, c.other.place].filter(Boolean).join(' · ');
 const COUNT = { connections: connected.length, received: incoming.length, sent: outgoing.length };
 const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' };

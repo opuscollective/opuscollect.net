@@ -3,9 +3,11 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getMyProfile } from '@/server/profiles';
 import { incomingWork, listHireServices, outgoingWork } from '@/server/hire';
+import { HIRE_ENABLED } from '@/lib/features';
 import '@/styles/app.css';
 export const prerender = false;
 
+if (!HIRE_ENABLED) return Astro.redirect('/account/world');
 const user = Astro.locals.user;
 if (!user) return Astro.redirect('/sign-in?next=/account/hire');
 const db = Astro.locals.runtime.env.DB;
