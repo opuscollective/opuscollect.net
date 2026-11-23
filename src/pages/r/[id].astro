@@ -47,8 +47,8 @@ const fromClans = r.status === 'published' ? await clansForWork(Astro.locals.run
         <p class="t-meta dim">{releaseMeta(r)}{r.releaseDate && r.released ? ` · ${formatDate(r.releaseDate)}` : ''}</p>
         <h1 class="rp__title">{r.title}</h1>
         <p class="rp__by">{primary.length
-          ? primary.map((c, i) => <>{i > 0 && ', '}{linked(c) ? <a class="rp__person" href={`/m/${c.handle}`}>{c.name}</a> : c.name}</>)
-          : r.ownerHandle ? <a class="rp__person" href={`/m/${r.ownerHandle}`}>{r.ownerName}</a> : r.ownerName}</p>
+          ? primary.map((c, i) => <>{i > 0 && ', '}{linked(c) ? <a class="rp__person" href={`/${c.handle}`}>{c.name}</a> : c.name}</>)
+          : r.ownerHandle ? <a class="rp__person" href={`/${r.ownerHandle}`}>{r.ownerName}</a> : r.ownerName}</p>
         {fromClans.length > 0 && <p class="rp__desc" style="margin-top:8px">From {fromClans.map((c, i) => <>{i > 0 && ', '}<a class="link" href={c.href}>{c.name}</a></>)}</p>}
         {r.description && <p class="rp__desc">{r.description}</p>}
         {isOwner && <div class="row" style="margin-top:20px"><a class="btn-app btn-app--ghost" href={`/works/${r.id}`}>Edit release</a></div>}
@@ -74,7 +74,7 @@ const fromClans = r.status === 'published' ? await clansForWork(Astro.locals.run
               return (
                 <li>
                   <div class="rp__track"><span>{t.position}</span>{t.title}</div>
-                  {tc.length > 0 && <p class="rp__tcredits">{tc.map((c, i) => <>{i > 0 && ' · '}{roleLabel(c.role)}: {linked(c) ? <a href={`/m/${c.handle}`}>{c.name}</a> : c.name}</>)}</p>}
+                  {tc.length > 0 && <p class="rp__tcredits">{tc.map((c, i) => <>{i > 0 && ' · '}{roleLabel(c.role)}: {linked(c) ? <a href={`/${c.handle}`}>{c.name}</a> : c.name}</>)}</p>}
                 </li>
               );
             })}</ol>
@@ -83,7 +83,7 @@ const fromClans = r.status === 'published' ? await clansForWork(Astro.locals.run
         {wholeCredits.length > 0 && (
           <section class="rp__sec"><h2 class="t-meta">Credits</h2>
             <ul class="rp__credits" role="list">{wholeCredits.map((c) => (
-              <li>{linked(c) ? <a class="rp__person" href={`/m/${c.handle}`}>{c.name}</a> : <span>{c.name}</span>}<span class="dim">{roleLabel(c.role)}</span>{(() => { const t = creditTrust(c); return <span class:list={['px-tag', t === 'confirmed' && 'px-tag--confirmed', t === 'pending' && 'px-tag--pending']} title={TRUST_HELP[t]}>{TRUST_LABEL[t]}</span>; })()}</li>
+              <li>{linked(c) ? <a class="rp__person" href={`/${c.handle}`}>{c.name}</a> : <span>{c.name}</span>}<span class="dim">{roleLabel(c.role)}</span>{(() => { const t = creditTrust(c); return <span class:list={['px-tag', t === 'confirmed' && 'px-tag--confirmed', t === 'pending' && 'px-tag--pending']} title={TRUST_HELP[t]}>{TRUST_LABEL[t]}</span>; })()}</li>
             ))}</ul>
           </section>
         )}

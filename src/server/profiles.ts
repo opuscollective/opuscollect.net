@@ -2,6 +2,7 @@
  * Musician profiles: read, validate, save, publish, photos.
  * All validation happens here on the server. Public reads never expose private fields.
  */
+import { RESERVED } from '@/server/usernames';
 import { SPECIALTY_KEYS, type Specialty } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
 import { HttpError, audit, now, randomId, str } from './util';
@@ -91,7 +92,7 @@ export async function getPublicProfile(db: D1Database, handle: string, viewerId:
 
 // ---------- validation ----------
 export const slugify = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 30);
-export const RESERVED = new Set(['admin', 'account', 'api', 'world', 'opus', 'support', 'help', 'settings', 'verified', 'sign-in', 'sign-up', 'about', 'legal', 'new', 'edit', 'business', 'studios', 'bookings', 'venues', 'opportunities', 'people', 'media']);
+export { RESERVED };
 
 export function cleanUrl(v: unknown, hosts: string[] | null): string {
   const s = str(v, 500);

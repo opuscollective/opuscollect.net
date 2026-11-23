@@ -81,7 +81,7 @@ export async function publicMusicians(db: D1Database, onlyId?: string): Promise<
       kind: 'musician',
       slug: r.handle,
       name: r.display_name,
-      href: `/m/${r.handle}`,
+      href: `/${r.handle}`,
       photo: mediaUrl(r.photo_key) ?? undefined,
       ...pp,
       primarySpecialty: r.primary_specialty,

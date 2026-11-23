@@ -24,7 +24,7 @@ const when = (t: number) => new Date(t).toLocaleString('en-US', { month: 'short'
         {items.length === 0 ? <p class="dim">Nothing waiting. Good.</p> : (
           <ul class="mq" role="list">{items.map((m) => (
             <li class="mq__item" data-id={m.id}>
-              <p class="mq__who"><b>{m.author.handle ? <a href={`/m/${m.author.handle}`}>{m.author.name}</a> : m.author.name}</b> <span class="dim">{when(m.at)}</span>
+              <p class="mq__who"><b>{m.author.handle ? <a href={`/${m.author.handle}`}>{m.author.name}</a> : m.author.name}</b> <span class="dim">{when(m.at)}</span>
                 {m.status === 'held' && <span class="mq__tag">Hidden after reports</span>}
                 {m.reports > 0 && <span class="mq__tag">{m.reports} {m.reports === 1 ? 'report' : 'reports'}: {m.reasons.join(', ')}</span>}
                 {m.flagged && <span class="mq__tag">Flagged: {m.flagReason}</span>}

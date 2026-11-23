@@ -117,7 +117,7 @@ const hasVibe = r.genres.length > 0 || r.moods.length > 0;
             {g.credits.length === 0 ? <p class="dim">No credits yet.</p> : g.credits.map((c) => (
               <div class="mb-credit" data-credit={c.id}>
                 <span class="mb-credit__av" style={c.photoKey ? `background-image:url(${mediaUrl(c.photoKey)})` : ''}></span>
-                <span class="mb-credit__text">{c.handle && c.status === 'confirmed' ? <a class="link" href={`/m/${c.handle}`}>{c.name}</a> : c.name}<small>{roleLabel(c.role)}</small></span>
+                <span class="mb-credit__text">{c.handle && c.status === 'confirmed' ? <a class="link" href={`/${c.handle}`}>{c.name}</a> : c.name}<small>{roleLabel(c.role)}</small></span>
                 <span class:list={['mu-pill', STATUS[c.status][1]]}>{STATUS[c.status][0]}</span>
                 <button type="button" class="mb-x" data-remove-credit aria-label={`Remove ${c.name} as ${roleLabel(c.role)}`}>×</button>
               </div>
@@ -370,11 +370,11 @@ const hasVibe = r.genres.length > 0 || r.moods.length > 0;
     peopleHost.innerHTML = people.map((p) => {
       const why = [...p.match.genres, ...p.match.moods];
       return `<div class="mb-person" data-h="${esc(p.handle)}">
-        <a class="mb-person__top" href="/m/${esc(p.handle)}" target="_blank" rel="noopener"><span class="mb-credit__av" style="${p.photo ? `background-image:url(${esc(p.photo)})` : ''}"></span>
+        <a class="mb-person__top" href="/${esc(p.handle)}" target="_blank" rel="noopener"><span class="mb-credit__av" style="${p.photo ? `background-image:url(${esc(p.photo)})` : ''}"></span>
           <span><b>${esc(p.name)}${p.verified ? ' ✓' : ''}</b><small>${esc([p.specialty, p.place].filter(Boolean).join(' · '))}</small></span></a>
         <p class="mb-person__why">${why.length ? `Shares <strong>${why.map(esc).join(', ')}</strong>` : 'No shared genres or moods yet'}${p.releases ? ` · ${p.releases} release${p.releases === 1 ? '' : 's'} on Opus` : ''}</p>
         ${p.credited ? '<span class="mu-pill mu-pill--draft" style="align-self:flex-start">Already on this release</span>'
-          : role ? `<button type="button" class="btn-app btn-app--ghost" data-invite>Request as ${esc(roleName)}</button>` : `<a class="btn-app btn-app--ghost" href="/m/${esc(p.handle)}" target="_blank" rel="noopener">View profile</a>`}
+          : role ? `<button type="button" class="btn-app btn-app--ghost" data-invite>Request as ${esc(roleName)}</button>` : `<a class="btn-app btn-app--ghost" href="/${esc(p.handle)}" target="_blank" rel="noopener">View profile</a>`}
       </div>`;
     }).join('');
   });

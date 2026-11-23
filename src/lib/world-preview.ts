@@ -84,7 +84,7 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
   }
 
   // The photo carries over to the profile page as one element (cross-document view transition, see global.css).
-  const hm = /^\/m\/([A-Za-z0-9_-]+)$/.exec(d.actions.profile.href ?? '');
+  const hm = /^\/([A-Za-z0-9_-]+)$/.exec(d.actions.profile.href ?? '');
   const vt = hm ? ` style="view-transition-name:pf-${hm[1]}"` : '';
   const washSrc = mainImage(l);
   const wash = washSrc ? `<div class="pv__wash" aria-hidden="true" style="background-image:url('${esc(washSrc)}')"></div>` : '';

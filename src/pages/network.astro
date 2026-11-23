@@ -101,13 +101,13 @@ const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' }
                 <ul class="nw__list" role="list" data-list>
                   {connected.map((c) => (
                     <li class="nw__row" data-id={c.id} data-spec={c.other.specialtyKey ?? ''} data-text={`${c.other.name} ${sub(c)}`.toLowerCase()}>
-                      <a class="nw__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+                      <a class="nw__who" href={c.other.handle ? `/${c.other.handle}` : undefined}>
                         <span class="nw__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''} aria-hidden="true">{!c.other.photoKey && c.other.name.slice(0, 1)}</span>
                         <span class="nw__id"><b>{c.other.name}{c.other.verified && <VerifiedBadge size={15} />}</b><small>{sub(c) || 'Opus member'}</small></span>
                       </a>
                       <span class="nw__meta">Connected {c.respondedAt ? DATE.format(c.respondedAt) : ''}</span>
                       <div class="nw__acts">
-                        {c.other.handle && <a class="btn-app btn-app--ghost nw__btn" href={`/m/${c.other.handle}`}>View profile</a>}
+                        {c.other.handle && <a class="btn-app btn-app--ghost nw__btn" href={`/${c.other.handle}`}>View profile</a>}
                         {c.other.handle && <button class="btn-app nw__btn" type="button" data-message-handle={c.other.handle}>Message</button>}
                         <button class="nw__x" type="button" data-act="remove" data-name={c.other.name}>Remove</button>
                       </div>
@@ -135,7 +135,7 @@ const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' }
             ) : (
               <ul class="nw__list" role="list">{incoming.map((c) => (
                 <li class="nw__row nw__row--req" data-id={c.id}>
-                  <a class="nw__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+                  <a class="nw__who" href={c.other.handle ? `/${c.other.handle}` : undefined}>
                     <span class="nw__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''} aria-hidden="true">{!c.other.photoKey && c.other.name.slice(0, 1)}</span>
                     <span class="nw__id"><b>{c.other.name}{c.other.verified && <VerifiedBadge size={15} />}</b><small>{sub(c) || 'Opus member'}</small></span>
                   </a>
@@ -157,7 +157,7 @@ const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' }
             ) : (
               <ul class="nw__list" role="list">{outgoing.map((c) => (
                 <li class="nw__row" data-id={c.id}>
-                  <a class="nw__who" href={c.other.handle ? `/m/${c.other.handle}` : undefined}>
+                  <a class="nw__who" href={c.other.handle ? `/${c.other.handle}` : undefined}>
                     <span class="nw__av" style={c.other.photoKey ? `background-image:url(${mediaUrl(c.other.photoKey)})` : ''} aria-hidden="true">{!c.other.photoKey && c.other.name.slice(0, 1)}</span>
                     <span class="nw__id"><b>{c.other.name}{c.other.verified && <VerifiedBadge size={15} />}</b><small>{c.other.specialty ?? 'Opus member'}</small></span>
                   </a>

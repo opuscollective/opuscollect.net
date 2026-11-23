@@ -79,7 +79,7 @@ function init() {
     if (text != null) e.textContent = text;
     return e;
   };
-  const profileHref = (a: Author) => (a.handle ? `/m/${encodeURIComponent(a.handle)}` : '');
+  const profileHref = (a: Author) => (a.handle ? `/${encodeURIComponent(a.handle)}` : '');
   const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'O';
   function avatar(a: Author) {
     const href = profileHref(a);

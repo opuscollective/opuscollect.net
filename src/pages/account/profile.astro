@@ -33,14 +33,14 @@ const linkFields = [
       {welcome && !user.emailVerified && <p class="notice" style="margin-top:20px">Welcome to Opus. We sent a confirmation link to <b>{user.email}</b>. You can build your profile now and publish once your email is confirmed.</p>}
 
       {p?.status === 'published' && (
-        <div class="pe-live" data-live data-url={`https://opuscollect.net/m/${p.handle}`}>
+        <div class="pe-live" data-live data-url={`https://opuscollect.net/${p.handle}`}>
           <p class="pe-live__t">Your page is live.</p>
-          <p class="pe-live__u">opuscollect.net/m/{p.handle}</p>
+          <p class="pe-live__u">opuscollect.net/{p.handle}</p>
           <p class="pe-live__s">Give this link to anyone. They don’t need an account to see it.</p>
           <div class="pe-live__a">
             <button type="button" class="btn-app" data-copy>Copy link</button>
             <button type="button" class="btn-app btn-app--ghost" data-share hidden>Share</button>
-            <a class="btn-app btn-app--ghost" href={`/m/${p.handle}`} target="_blank" rel="noopener">View page</a>
+            <a class="btn-app btn-app--ghost" href={`/${p.handle}`} target="_blank" rel="noopener">View page</a>
           </div>
         </div>
       )}
@@ -108,7 +108,7 @@ const linkFields = [
         <div class="panel">
           <h2>About you</h2>
           <div class="form" style="margin-top:16px">
-            <label class="field"><span>Profile address</span><input class="input" name="handle" value={p?.handle ?? ''} maxlength="30" placeholder="your-name" /><small>opuscollect.net/m/<b data-handle-preview>{p?.handle || 'your-name'}</b></small></label>
+            <label class="field"><span>Profile address</span><input class="input" name="handle" value={p?.handle ?? ''} maxlength="30" placeholder="your-name" /><small>opuscollect.net/<b data-handle-preview>{p?.handle || 'your-name'}</b></small></label>
             <fieldset class="field" style="border:0;padding:0;margin:0"><legend>Additional specialties <span class="dim">(up to 6)</span></legend>
               <div class="chips" data-specialties>
                 {Object.entries(SPECIALTIES).map(([k, s]) => <label class="chip"><input type="checkbox" value={k} checked={p?.specialties.includes(k as never)} /><span>{s.label}</span></label>)}
@@ -182,7 +182,7 @@ const linkFields = [
         <div data-status class="form-status"></div>
         <div class="pe-actions">
           <button class="btn-app btn-app--ghost" type="submit" data-intent="save">{p?.status === 'published' ? 'Save' : 'Save draft'}</button>
-          {p && <a class="btn-app btn-app--ghost" href={`/m/${p.handle}`} target="_blank" data-preview>Preview</a>}
+          {p && <a class="btn-app btn-app--ghost" href={`/${p.handle}`} target="_blank" data-preview>Preview</a>}
           {p?.status === 'published'
             ? <button class="btn-app btn-app--ghost" type="submit" data-intent="unpublish">Unpublish</button>
             : null}

@@ -261,7 +261,7 @@ const today = new Date().toISOString().slice(0, 10);
         ? 'It’s on your profile now, with its own page you can share.'
         : w.note || (w.profilePublished ? 'Saved as a draft.' : 'Saved as a draft. It shows on your profile once your profile is published.');
       const view = done!.querySelector<HTMLAnchorElement>('[data-aw-view]')!;
-      if (w.published && w.handle) { view.href = `/m/${w.handle}#works`; view.textContent = 'View on your profile'; }
+      if (w.published && w.handle) { view.href = `/${w.handle}#works`; view.textContent = 'View on your profile'; }
       else { view.href = `/r/${w.id}`; view.textContent = 'Preview your work'; }
       done!.querySelector<HTMLAnchorElement>('[data-aw-edit]')!.href = `/works/${w.id}#credits`;
       const share = done!.querySelector<HTMLButtonElement>('[data-aw-share]')!;
