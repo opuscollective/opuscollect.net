@@ -83,10 +83,13 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
       + section(l.href?.startsWith('/c/') ? 'Members' : 'Selected projects', d.projects.length ? `<ul class="pv__bullets">${d.projects.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : '');
   }
 
+  // The photo carries over to the profile page as one element (cross-document view transition, see global.css).
+  const hm = /^\/m\/([A-Za-z0-9_-]+)$/.exec(d.actions.profile.href ?? '');
+  const vt = hm ? ` style="view-transition-name:pf-${hm[1]}"` : '';
   const washSrc = mainImage(l);
   const wash = washSrc ? `<div class="pv__wash" aria-hidden="true" style="background-image:url('${esc(washSrc)}')"></div>` : '';
   return `<article class="pv pv--${l.kind}" aria-labelledby="pv-name">
-  ${wash}<div class="pv__hero">${hero}</div>
+  ${wash}<div class="pv__hero"${vt}>${hero}</div>
   <div class="pv__body">
     <header class="pv__head">
       <div class="pv__title"><h2 id="pv-name">${esc(l.name)}</h2>${badgeHtml(l)}${sample}</div>

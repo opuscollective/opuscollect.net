@@ -355,3 +355,24 @@ const topCities = CITIES.slice(0, 8);
   }
   :global(html:not([data-motion='fluid'])) .hero__stage { transition: none; }
 </style>
+
+<script>
+  // The Earth leans a few pixels toward the cursor, eased. Fluid motion setting and fine pointers only.
+  import { motion } from '@/lib/motion';
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  const globe = document.querySelector<HTMLElement>('[data-hero-globe]');
+  if (hero && globe && motion() === 'fluid' && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    let tx = 0, ty = 0, x = 0, y = 0, raf = 0;
+    const tick = () => {
+      x += (tx - x) * 0.06; y += (ty - y) * 0.06;
+      globe.style.translate = `${(x * 14).toFixed(2)}px ${(y * 9).toFixed(2)}px`;
+      raf = Math.abs(tx - x) + Math.abs(ty - y) > 0.002 ? requestAnimationFrame(tick) : 0;
+    };
+    hero.addEventListener('pointermove', (e) => {
+      const r = hero.getBoundingClientRect();
+      tx = ((e.clientX - r.left) / r.width - 0.5) * 2; ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      if (!raf) raf = requestAnimationFrame(tick);
+    });
+    hero.addEventListener('pointerleave', () => { tx = 0; ty = 0; if (!raf) raf = requestAnimationFrame(tick); });
+  }
+</script>

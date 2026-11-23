@@ -83,6 +83,8 @@ button { cursor: pointer; }
 ::view-transition-new(root) { animation: vt-in var(--m-page) var(--m-ease) both; }
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; transform: translateY(4px); } }
+/* A person's photo grows from the World preview into their profile as one element (names are pf-<handle>). */
+::view-transition-group(*) { animation-duration: var(--m-page); animation-timing-function: var(--m-ease); }
 .hdr { view-transition-name: site-header; }
 /* The header doesn't fade or ghost between pages: it simply stays. */
 ::view-transition-group(site-header) { animation: none; }

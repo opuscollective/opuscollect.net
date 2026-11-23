@@ -53,7 +53,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
     {p.coverKey && <div class="mp__cover" style={`background-image:url(${mediaUrl(p.coverKey)})`} aria-hidden="true"></div>}
     <div class:list={['mp__inner', { 'has-cover': !!p.coverKey }]}>
       <header class:list={['mp__head', { 'no-photo': !p.photoKey }]}>
-        <div class="mp__photo" style={p.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''} role="img" aria-label={p.photoKey ? `Photo of ${p.displayName}` : p.displayName}>{!p.photoKey && initials(p.displayName)}</div>
+        <div class="mp__photo" style={`view-transition-name:pf-${p.handle};` + (p.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : '')} role="img" aria-label={p.photoKey ? `Photo of ${p.displayName}` : p.displayName}>{!p.photoKey && initials(p.displayName)}</div>
         <div class="mp__id">
           <h1 class="mp__name">{p.displayName}{p.verification === 'verified' && <VerifiedBadge size={22} />}</h1>
           {roles.length > 0 && <p class="mp__roles"><span class="mp__primary">{roles[0]}</span>{roles.slice(1).map((r) => <span>{r}</span>)}</p>}
