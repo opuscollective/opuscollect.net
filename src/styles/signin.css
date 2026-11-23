@@ -27,3 +27,16 @@
 .sm *, .sm-inline * { box-sizing: border-box; }
 .sm__step { grid-template-columns: minmax(0, 1fr); }
 .sm__field input { width: 100%; }
+
+/* Recognition look: blurred wash, thin type, underline fields, pill action. */
+.sm { border-radius: 26px; overflow: hidden; }
+.sm [data-mount], .sm-inline { position: relative; isolation: isolate; padding: clamp(28px, 5vw, 44px); }
+.sm [data-mount]::before, .sm-inline::before { content: ''; position: absolute; z-index: -1; inset: -30% -20% auto; height: 260px; pointer-events: none; filter: blur(36px);
+  background: radial-gradient(50% 60% at 25% 30%, rgba(154,174,255,.24), transparent 70%), radial-gradient(40% 50% at 75% 20%, rgba(255,196,160,.16), transparent 70%); }
+.sm__title { font-size: clamp(2rem, 1.6rem + 1.6vw, 2.6rem); letter-spacing: -0.05em; }
+.sm__lead { color: var(--text-3); font-weight: 300; }
+.sm__field { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.sm__field input { background: transparent; box-shadow: none; border-radius: 0; border-bottom: 1px solid var(--line-strong); padding: 0; height: 46px; font-weight: 300; font-size: 18px; }
+.sm__field input:focus { outline: 0; border-bottom-color: var(--accent); }
+.sm__btn { height: 52px; font-weight: 400; font-size: 16px; }
+.sm__code { text-transform: none; }
