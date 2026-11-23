@@ -13,7 +13,7 @@ test('people search applies specialty and city filters', () => {
   assert.equal(go('I need a mixing engineer in NYC'), '/musicians?specialty=mixing-engineer&city=New+York');
   assert.equal(go('Discover musicians'), '/musicians');
   assert.equal(go('verified singers in London'), '/musicians?specialty=vocalist&verified=1&city=London');
-  assert.equal(go('people open to collaborate'), '/musicians?collab=1');
+  assert.equal(go('people for hire'), '/musicians?hire=1');
 });
 
 test('studios open the studio directory', () => {
