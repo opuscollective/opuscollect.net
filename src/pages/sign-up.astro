@@ -88,6 +88,24 @@ const OPTIONS = [
   });
 </script>
 <style>
+  /* Account step: Recognition look. Thin display type, a blurred wash, hairline fields, a pill action. */
+  .app--center:has([data-signup]) { position: relative; isolation: isolate; overflow: clip; padding-top: clamp(56px, 9vh, 112px); }
+  .app--center:has([data-signup])::before { content: ''; position: absolute; z-index: -1; inset: -10% -10% auto; height: 560px; pointer-events: none;
+    background: radial-gradient(48% 60% at 28% 20%, rgba(154,174,255,.22), transparent 70%), radial-gradient(40% 50% at 72% 10%, rgba(255,196,160,.16), transparent 70%); filter: blur(40px); }
+  .su:has([data-signup]) { max-width: 480px; }
+  .su:has([data-signup]) .su__title { font-weight: 300; font-size: clamp(2.4rem, 1.8rem + 2.6vw, 3.6rem); letter-spacing: -0.05em; }
+  .su:has([data-signup]) .su__lead { font-weight: 300; color: var(--text-3); margin-bottom: 40px; }
+  .su:has([data-signup]) .app__kicker { margin-bottom: 28px; }
+  .su:has([data-signup]) .app__kicker a { text-transform: uppercase; letter-spacing: .14em; font-size: 11.5px; color: var(--text-3); text-decoration: none; }
+  [data-signup] { display: flex; flex-direction: column; gap: 22px; }
+  [data-signup] .field > span { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+  [data-signup] .input { background: transparent; border: 0; border-bottom: 1px solid var(--line-strong); border-radius: 0; padding-left: 0; padding-right: 0; min-height: 48px; font-size: 18px; font-weight: 300; box-shadow: none; }
+  [data-signup] .input:focus { background: transparent; border-bottom-color: var(--accent); }
+  [data-signup] .field small { font-size: 12.5px; }
+  [data-signup] .check { flex-direction: row; align-items: center; gap: 12px; font-size: 13.5px; }
+  [data-signup] .check > span { text-transform: none; letter-spacing: 0; font-size: 13.5px; color: var(--text-2); }
+  [data-signup] .check input { margin: 0; }
+  [data-signup] .btn-app--block { min-height: 54px; border-radius: 999px; font-weight: 400; font-size: 16px; }
   .su { max-width: 560px; }
   .app__wrap.su:has(.su__opts) { max-width: 980px; text-align: center; }
   .su__title { margin: 0; font-size: clamp(2rem, 1.5rem + 2.2vw, 3rem); line-height: 1.05; letter-spacing: -0.045em; font-weight: 500; text-wrap: balance; }
