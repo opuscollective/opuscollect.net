@@ -321,6 +321,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__credits li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 14px 0; border-bottom: 1px solid var(--c-line); font-size: 15px; }
   .mp__credits li:first-child { border-top: 1px solid var(--c-line); }
   .mp__sec .mp__tags, .mp__sec .mp__links, .mp__sec .mp__list { margin-top: 14px; }
+  @media (max-width: 600px) { .mp__facts { gap: 6px 18px; } .mp__facts li + li::before { display: none; } }
   @media (max-width: 860px) {
     .mp__head, .mp__head.no-photo { grid-template-columns: 1fr; justify-items: start; row-gap: 20px; }
     .mp__photo { width: 148px; }
