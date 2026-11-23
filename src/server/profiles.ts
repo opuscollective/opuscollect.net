@@ -118,15 +118,13 @@ export interface SaveInput {
   collaborations?: unknown; portfolio?: unknown; publish?: unknown;
 }
 
-/** What's still missing before a profile can be published. */
+/** What's still missing before a profile can be published. Two-minute rule: email, name, photo, specialty and city. Genres, bio and the rest are optional. */
 export function missingForPublish(p: ProfileData, emailVerified: boolean): string[] {
   const m: string[] = [];
   if (!emailVerified) m.push('Confirm your email address');
   if (!p.displayName) m.push('Artist or professional name');
   if (!p.primarySpecialty) m.push('Primary specialty');
   if (!p.placeId) m.push('City');
-  if (!p.genres.length) m.push('At least one genre');
-  if (p.bio.trim().length < 40) m.push('A short bio (40 characters or more)');
   if (!p.photoKey) m.push('Profile photo');
   return m;
 }

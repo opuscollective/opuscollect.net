@@ -26,9 +26,9 @@ const linkFields = [
 <BaseLayout title="Edit profile" noindex assistant={false} messages={false}>
   <section class="app">
     <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
-      <p class="t-meta app__kicker">{p ? 'Your profile' : 'Step 1 of 1'}</p>
-      <h1 class="app__title">{p ? 'Edit your profile' : 'What’s your specialty?'}</h1>
-      <p class="app__lead">{p ? 'Changes save as a draft until you publish. Published profiles appear in World at city level only.' : 'Set up your professional profile. You can save a draft and finish later. Nothing is public until you publish.'}</p>
+      <p class="t-meta app__kicker">{p ? 'Your profile' : 'Set up your profile'}</p>
+      <h1 class="app__title">{p ? 'Edit your profile' : 'Four things. That’s all.'}</h1>
+      <p class="app__lead">{p ? 'Changes save as a draft until you publish. Published profiles appear in World at city level only.' : 'A photo, your name, what you do and where. Add the rest whenever you like.'}</p>
 
       {welcome && !user.emailVerified && <p class="notice" style="margin-top:20px">Welcome to Opus. We sent a confirmation link to <b>{user.email}</b>. You can build your profile now and publish once your email is confirmed.</p>}
 
@@ -37,14 +37,43 @@ const linkFields = [
           ? <span><b>Published.</b> Your profile is public at <a class="link" href={`/m/${p.handle}`}>opuscollect.net/m/{p.handle}</a>.</span>
           : missing && missing.length
             ? <span><b>Draft.</b> To publish, add: {missing.join(', ')}.</span>
-            : p ? <span><b>Draft.</b> Ready to publish.</span> : <span><b>New profile.</b> Required fields are marked.</span>}
+            : p ? <span><b>Draft.</b> Ready to publish.</span> : <span><b>New profile.</b> Nothing is public until you publish.</span>}
       </div>
 
       <form class="form" data-profile novalidate>
+        <!-- Essentials -->
+        <div class="panel pe-ess">
+          <h2>You</h2>
+          <div class="form" style="margin-top:16px">
+            <label class="field"><span>Artist or professional name</span><input class="input" name="displayName" value={p?.displayName ?? ''} maxlength="80" required /></label>
+            <div class="field"><span>What do you do?</span>
+              <div class="pe-pick" role="radiogroup" aria-label="Primary specialty" data-pick>
+                {Object.entries(SPECIALTIES).map(([k, s]) => <button type="button" role="radio" aria-checked={p?.primarySpecialty === k ? "true" : "false"} data-v={k}>{s.label}</button>)}
+              </div>
+              <select class="select pe-pick__sel" name="primarySpecialty" required tabindex="-1" aria-hidden="true">
+                <option value="">Choose your main role</option>
+                {Object.entries(SPECIALTIES).map(([k, s]) => <option value={k} selected={p?.primarySpecialty === k}>{s.label}</option>)}
+              </select>
+            </div>
+            <label class="field"><span>Where are you?</span>
+              <select class="select" name="placeId" required>
+                <option value="">Choose your city or area</option>
+                {metros.map((m) => (
+                  <optgroup label={`${m.name}${m.region ? ', ' + m.region : ''} · ${m.countryName}`}>
+                    <option value={m.id} selected={p?.placeId === m.id}>{placeLabel(m)}</option>
+                    {localitiesOf(m.id).map((l) => <option value={l.id} selected={p?.placeId === l.id}>{l.name} ({m.name} area)</option>)}
+                  </optgroup>
+                ))}
+              </select>
+              <small>Only your city or area shows publicly, never an address. Don’t see your city? Choose the nearest one for now.</small>
+            </label>
+          </div>
+        </div>
+
         <!-- Photos -->
         <div class="panel">
           <h2>Photos</h2>
-          <p class="dim">A clear photo of you (required). JPEG or WebP. Location data is removed from every photo you upload.</p>
+          <p class="dim">A clear photo of you. JPEG or WebP. Location data is removed from every photo you upload.</p>
           <div class="pe-photos">
             <div class="pe-photo">
               <div class="pe-photo__img" data-photo-preview style={p?.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''}>{!p?.photoKey && <span>No photo</span>}</div>
@@ -59,45 +88,25 @@ const linkFields = [
             </div>
           </div>
           <p class="dim" data-upload-status role="status"></p>
-          {!p && <p class="dim">Save your details first, then add photos.</p>}
+          {!p && <p class="dim">Save a draft first, then you can add your photo.</p>}
         </div>
 
-        <!-- Basics -->
+        <details class="pe-more" open={!!p}>
+          <summary><span>Add more to your profile</span><small>Optional. Do it now or later.</small></summary>
         <div class="panel">
-          <h2>Basics</h2>
+          <h2>About you</h2>
           <div class="form" style="margin-top:16px">
-            <div class="grid-2">
-              <label class="field"><span>Artist or professional name *</span><input class="input" name="displayName" value={p?.displayName ?? ''} maxlength="80" required /></label>
-              <label class="field"><span>Profile address</span><input class="input" name="handle" value={p?.handle ?? ''} maxlength="30" placeholder="your-name" /><small>opuscollect.net/m/<b data-handle-preview>{p?.handle || 'your-name'}</b></small></label>
-            </div>
-            <label class="field"><span>Primary Specialty *</span>
-              <select class="select" name="primarySpecialty" required>
-                <option value="">Choose your main role</option>
-                {Object.entries(SPECIALTIES).map(([k, s]) => <option value={k} selected={p?.primarySpecialty === k}>{s.label}</option>)}
-              </select>
-            </label>
-            <fieldset class="field" style="border:0;padding:0;margin:0"><legend>Additional Specialties <span class="dim">(up to 6)</span></legend>
+            <label class="field"><span>Profile address</span><input class="input" name="handle" value={p?.handle ?? ''} maxlength="30" placeholder="your-name" /><small>opuscollect.net/m/<b data-handle-preview>{p?.handle || 'your-name'}</b></small></label>
+            <fieldset class="field" style="border:0;padding:0;margin:0"><legend>Additional specialties <span class="dim">(up to 6)</span></legend>
               <div class="chips" data-specialties>
                 {Object.entries(SPECIALTIES).map(([k, s]) => <label class="chip"><input type="checkbox" value={k} checked={p?.specialties.includes(k as never)} /><span>{s.label}</span></label>)}
               </div>
             </fieldset>
-            <fieldset class="field" style="border:0;padding:0;margin:0"><legend>Genres * <span class="dim">(up to 5)</span></legend>
+            <fieldset class="field" style="border:0;padding:0;margin:0"><legend>Genres <span class="dim">(up to 5)</span></legend>
               <div class="chips" data-genres>
                 {GENRES.map((g) => <label class="chip"><input type="checkbox" value={g} checked={p?.genres.includes(g)} /><span>{g}</span></label>)}
               </div>
             </fieldset>
-            <label class="field"><span>City *</span>
-              <select class="select" name="placeId" required>
-                <option value="">Choose your city or area</option>
-                {metros.map((m) => (
-                  <optgroup label={`${m.name}${m.region ? ', ' + m.region : ''} · ${m.countryName}`}>
-                    <option value={m.id} selected={p?.placeId === m.id}>{placeLabel(m)}</option>
-                    {localitiesOf(m.id).map((l) => <option value={l.id} selected={p?.placeId === l.id}>{l.name} ({m.name} area)</option>)}
-                  </optgroup>
-                ))}
-              </select>
-              <small>Only the city or area shows publicly, never an address. Suburbs are grouped into their metro area on the map until enough members share them. Don’t see your city? Choose the nearest one for now.</small>
-            </label>
             <label class="field"><span>Public location</span>
               <select class="select" name="locationVisibility">
                 <option value="city" selected={!p || p.locationVisibility === 'city'}>Show my city or suburb</option>
@@ -107,7 +116,7 @@ const linkFields = [
               </select>
               <small>Opus never sends a more precise location than you choose here, not even behind the scenes.</small>
             </label>
-            <label class="field"><span>Short biography *</span>
+            <label class="field"><span>Short biography</span>
               <textarea class="textarea" name="bio" maxlength="1200" rows="5" placeholder="Who you are, what you make, and who you want to work with.">{p?.bio ?? ''}</textarea>
               <small><span data-bio-count>{p?.bio.length ?? 0}</span> / 1200</small>
             </label>
@@ -156,6 +165,8 @@ const linkFields = [
           <button type="button" class="btn-app btn-app--ghost" data-add="portfolio">Add a link</button>
         </div>
 
+        </details>
+
         <div data-status class="form-status"></div>
         <div class="pe-actions">
           <button class="btn-app btn-app--ghost" type="submit" data-intent="save">{p?.status === 'published' ? 'Save' : 'Save draft'}</button>
@@ -172,6 +183,22 @@ const linkFields = [
 </BaseLayout>
 
 <style>
+  /* Recognition look: thin type, soft wash, hairline panels, pill pickers. */
+  :global(main:has([data-profile])) { position: relative; isolation: isolate; }
+  :global(main:has([data-profile]))::before { content: ''; position: absolute; z-index: -1; inset: 0 -10% auto; height: 420px; pointer-events: none; filter: blur(44px);
+    background: radial-gradient(48% 60% at 26% 10%, rgba(154,174,255,.2), transparent 70%), radial-gradient(40% 50% at 74% 0%, rgba(255,196,160,.13), transparent 70%); }
+  :global(.app__title) { font-weight: 300; letter-spacing: -0.045em; }
+  .pe-pick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .pe-pick button { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); font: inherit; font-size: 15px; font-weight: 300; cursor: pointer; transition: background .18s, color .18s, border-color .18s; }
+  .pe-pick button:hover { background: var(--surface-hover); color: var(--text); }
+  .pe-pick button[aria-checked='true'] { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .pe-pick button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pe-pick__sel { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .pe-more { margin-top: 28px; }
+  .pe-more > summary { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 18px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); cursor: pointer; list-style: none; font-size: 20px; font-weight: 300; letter-spacing: -0.02em; }
+  .pe-more > summary::-webkit-details-marker { display: none; }
+  .pe-more > summary small { font-size: 13px; letter-spacing: 0; color: var(--text-3); }
+  .pe-more[open] > summary { margin-bottom: 20px; }
   .pe-photos { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; margin-top: 16px; align-items: start; }
   .pe-photo, .pe-cover { display: flex; flex-direction: column; gap: 12px; }
   .pe-photo__img { width: 160px; height: 160px; border-radius: 50%; }
@@ -205,6 +232,13 @@ const linkFields = [
     handle: string; credits: Row[]; achievements: string[]; collaborations: string[]; portfolio: Row[];
   };
   const form = document.querySelector<HTMLFormElement>('[data-profile]')!;
+
+  // ----- primary specialty picker: big buttons that drive the real select -----
+  const sel = form.querySelector<HTMLSelectElement>('select[name="primarySpecialty"]')!;
+  form.querySelectorAll<HTMLButtonElement>('[data-pick] button').forEach((b) => b.addEventListener('click', () => {
+    sel.value = b.dataset.v ?? ''; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    form.querySelectorAll<HTMLButtonElement>('[data-pick] button').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+  }));
 
   // ----- repeatable rows -----
   const TEMPLATES: Record<string, { cls: string; fields: [string, string, string][] }> = {
