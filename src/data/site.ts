@@ -166,6 +166,7 @@ export const FOOTER_NAV = [
   { label: 'World', href: '/world' },
   { label: 'Works', href: '/works' },
   { label: 'Studios', href: '/studios' },
+  { label: 'List your studio', href: '/business' },
   { label: 'Venues', href: '/venues' },
   { label: 'Events', href: '/events' },
   { label: 'Airplay', href: '/airplay' },
