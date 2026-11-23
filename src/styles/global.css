@@ -127,6 +127,5 @@ html:not([data-motion='fluid']) .opus-prep, html:not([data-motion='fluid']) .opu
   .fl-away .oa-launch, .fl-away .om-launch { opacity: 0; pointer-events: none; transform: translateY(10px); }
 }
 
-/* The homepage invites with its own actions: no floating Messages or Ask Opus for visitors who aren't signed in. */
-html:not(.is-signed-in) body:has([data-hero]) .oa-launch,
-html:not(.is-signed-in) body:has([data-hero]) .om-launch { display: none; }
+/* The homepage invites with its own actions: no floating Ask Opus for visitors who aren't signed in. Messages (Global Chat) stays: signed-out visitors can read it. */
+html:not(.is-signed-in) body:has([data-hero]) .oa-launch { display: none; }

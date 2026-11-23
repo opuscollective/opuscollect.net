@@ -123,8 +123,8 @@ export const NAV: NavItem[] = [
 
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
 /** The Create menu (signed in): start something new. First in the account menu on desktop and phones. */
-/** The header shows only these two; every other section is reachable from the homepage and the footer. */
-export const HEADER_NAV = (): NavItem[] => NAV.filter((n) => n.label === 'World' || n.label === 'Works');
+/** The header shows World and Network (Bogo 2026-11-23: Works is out of the header for launch; its pages stay reachable by URL and the footer). */
+export const HEADER_NAV = (): NavItem[] => NAV.filter((n) => n.label === 'World' || n.label === 'Network');
 
 export const CREATE_MENU = [
   { label: 'Create a group', href: '/clans/new' },
