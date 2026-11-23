@@ -96,6 +96,18 @@ const ogImage = new URL(image, SITE.url).href;
         if (next !== away) { away = next; document.documentElement.classList.toggle('fl-away', away); }
         lastY = y;
       }, { passive: true });
+      // Any link to /sign-in opens the sign-in popup (emailed code). Invites and modified clicks use the full page.
+      if (!document.documentElement.classList.contains('is-signed-in') && location.pathname !== '/sign-in') {
+        document.addEventListener('click', (e) => {
+          const a = (e.target as Element | null)?.closest?.('a[href^="/sign-in"]') as HTMLAnchorElement | null;
+          if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === '_blank') return;
+          const u = new URL(a.href, location.href);
+          if (u.pathname !== '/sign-in' || u.searchParams.has('invite')) return;
+          e.preventDefault();
+          const raw = u.searchParams.get('next') ?? '';
+          import('@/scripts/signin').then((m) => m.openSignin(/^\/(?!\/)[\w\-/?=&%.]*$/.test(raw) ? raw : undefined));
+        });
+      }
       // Marks [data-reveal] elements as they arrive (a few small details still key off .is-in). Sections themselves
       // no longer animate on scroll. Content is always visible.
       const els = document.querySelectorAll('[data-reveal]');

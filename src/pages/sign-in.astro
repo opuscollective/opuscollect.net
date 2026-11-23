@@ -15,30 +15,17 @@ if (Astro.locals.user) return Astro.redirect(invite ? `/clans/invite/${invite}` 
 <BaseLayout title="Sign in" noindex assistant={false} messages={false}>
   <section class="app app--center">
     <div class="app__wrap">
-      <p class="t-meta app__kicker">Members</p>
-      <h1 class="app__title">{inviteClan ? `Sign in to join ${inviteClan.name}.` : 'Sign in to Opus.'}</h1>
-      <form class="form" data-signin data-next={next} data-invite={invite} novalidate>
-        <label class="field"><span>Email</span>
-          <input class="input" name="email" type="email" autocomplete="email" required inputmode="email" />
-        </label>
-        <label class="field"><span>Password</span>
-          <input class="input" name="password" type="password" autocomplete="current-password" required />
-        </label>
-        <div data-status class="form-status"></div>
-        <button class="btn-app btn-app--block" type="submit">Sign in</button>
-      </form>
-      <p class="app__alt"><a href="/forgot-password">Forgot your password?</a></p>
-      <p class="app__alt">New to Opus? <a href={invite ? `/sign-up?invite=${invite}&join=1` : next !== '/account' ? `/sign-up?next=${encodeURIComponent(next)}` : '/sign-up'}>Create an account</a></p>
+      <div class="sm-inline" data-signin-mount data-next={next} data-invite={invite}></div>
     </div>
   </section>
 </BaseLayout>
 <script>
-  import { bindForm, values } from '@/scripts/form';
-  const form = document.querySelector<HTMLFormElement>('[data-signin]')!;
-  bindForm(form, {
-    url: '/api/auth/login',
-    body: (f) => ({ ...values(f), ...(form.dataset.invite ? { invite: form.dataset.invite, join: true } : {}) }),
-    busyLabel: 'Signing in…',
-    onSuccess: (d) => { location.href = (d.joined as { href?: string } | null)?.href || (form.dataset.invite ? `/clans/invite/${form.dataset.invite}` : form.dataset.next || '/account'); },
+  import { mountSignin } from '@/scripts/signin';
+  const el = document.querySelector<HTMLElement>('[data-signin-mount]')!;
+  const next = el.dataset.next || '/account', invite = el.dataset.invite || '';
+  mountSignin(el, {
+    next, invite,
+    signUpHref: invite ? `/sign-up?invite=${invite}&join=1` : next !== '/account' ? `/sign-up?next=${encodeURIComponent(next)}` : '/sign-up',
+    onDone: (d) => { location.href = d.joined?.href || (invite ? `/clans/invite/${invite}` : next); },
   });
 </script>

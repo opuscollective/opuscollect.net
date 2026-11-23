@@ -6,7 +6,7 @@
  */
 import { esc } from '@/lib/html';
 
-export interface Mail { to: string; subject: string; heading: string; body: string; action: { label: string; url: string }; footnote: string }
+export interface Mail { to: string; subject: string; heading: string; body: string; action?: { label: string; url: string }; /** A one-time code shown large instead of a button (sign-in). */ code?: string; footnote: string }
 
 function render(m: Mail) {
   const html = `<!doctype html><html><body style="margin:0;background:#f2efea;padding:40px 16px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1c">
@@ -14,11 +14,11 @@ function render(m: Mail) {
 <p style="margin:0 0 32px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#65606a">Opus Collective</p>
 <h1 style="margin:0 0 16px;font-size:26px;font-weight:500;letter-spacing:-.02em;color:#1a1a1c">${esc(m.heading)}</h1>
 <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#4a464c">${esc(m.body)}</p>
-<p style="margin:0 0 28px"><a href="${esc(m.action.url)}" style="display:inline-block;padding:13px 22px;border-radius:999px;background:#1a1a1c;color:#f2efea;text-decoration:none;font-weight:500;font-size:15px">${esc(m.action.label)}</a></p>
-<p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#65606a">Or paste this link into your browser:<br><span style="color:#4a464c;word-break:break-all">${esc(m.action.url)}</span></p>
+${m.code ? `<p style="margin:0 0 28px;font-size:38px;letter-spacing:.32em;font-weight:500;color:#1a1a1c">${esc(m.code)}</p>` : ''}${m.action ? `<p style="margin:0 0 28px"><a href="${esc(m.action.url)}" style="display:inline-block;padding:13px 22px;border-radius:999px;background:#1a1a1c;color:#f2efea;text-decoration:none;font-weight:500;font-size:15px">${esc(m.action.label)}</a></p>
+<p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#65606a">Or paste this link into your browser:<br><span style="color:#4a464c;word-break:break-all">${esc(m.action.url)}</span></p>` : ''}
 <p style="margin:32px 0 0;font-size:12px;line-height:1.6;color:#65606a">${esc(m.footnote)}</p>
 </td></tr></table></body></html>`;
-  const text = `${m.heading}\n\n${m.body}\n\n${m.action.label}: ${m.action.url}\n\n${m.footnote}\n\nOpus Collective`;
+  const text = `${m.heading}\n\n${m.body}\n\n${m.code ? m.code + '\n\n' : ''}${m.action ? `${m.action.label}: ${m.action.url}\n\n` : ''}${m.footnote}\n\nOpus Collective`;
   return { html, text };
 }
 
@@ -41,7 +41,7 @@ export async function sendMail(env: Env, m: Mail): Promise<EmailResult> {
     return 'sent';
   }
   if (env.SITE_ENV !== 'production') {
-    console.log(`[email:dev] to=${m.to} subject="${m.subject}" link=${m.action.url}`);
+    console.log(`[email:dev] to=${m.to} subject="${m.subject}" ${m.code ? `code=${m.code}` : `link=${m.action?.url}`}`);
     return 'logged';
   }
   console.error('[email] No email provider configured; message not sent:', m.subject);
@@ -67,4 +67,12 @@ export const resetPasswordMail = (to: string, url: string): Mail => ({
 /** A plain notification with one button (bookings, requests). */
 export const noticeMail = (to: string, subject: string, heading: string, body: string, label: string, url: string, footnote = 'You’re receiving this because of activity on Opus.'): Mail => ({
   to, subject, heading, body, action: { label, url }, footnote,
+});
+
+export const loginCodeMail = (to: string, code: string): Mail => ({
+  to, subject: `${code} is your Opus sign-in code`,
+  heading: 'Your sign-in code',
+  body: 'Enter this code to sign in to Opus. It works for 10 minutes and only once.',
+  code,
+  footnote: "If you didn't try to sign in, you can ignore this email. No one can sign in without this code.",
 });
