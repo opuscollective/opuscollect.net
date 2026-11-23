@@ -5,7 +5,7 @@
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SPECIALTIES } from '@/data/specialties';
-import { PLACES, placeLabel } from '@/data/places';
+import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import { getMyProfile, missingForPublish } from '@/server/profiles';
 import { listMyReleases } from '@/server/releases';
 import '@/styles/app.css';
@@ -19,8 +19,6 @@ const releases = profile ? await listMyReleases(db, user.id).catch(() => []) : [
 const step = !profile ? 1 : Astro.url.searchParams.has('done') || releases.length ? 3 : 2;
 const missing = profile ? missingForPublish(profile, user.emailVerified) : [];
 
-const metros = PLACES.filter((p) => p.kind === 'metro').sort((a, b) => a.countryName.localeCompare(b.countryName) || a.name.localeCompare(b.name));
-const localitiesOf = (id: string) => PLACES.filter((p) => p.kind === 'locality' && p.metroId === id).sort((a, b) => a.name.localeCompare(b.name));
 const STEPS = ['You', 'Your first release', 'Done'];
 ---
 <BaseLayout title="Set up Opus" noindex assistant={false} messages={false}>
@@ -43,16 +41,8 @@ const STEPS = ['You', 'Your first release', 'Done'];
               </select>
             </label>
             <label class="field"><span>Where are you based?</span>
-              <select class="select" name="placeId" required>
-                <option value="">Choose your city or area</option>
-                {metros.map((m) => (
-                  <optgroup label={`${m.name}${m.region ? ', ' + m.region : ''} · ${m.countryName}`}>
-                    <option value={m.id}>{placeLabel(m)}</option>
-                    {localitiesOf(m.id).map((l) => <option value={l.id}>{l.name} ({m.name} area)</option>)}
-                  </optgroup>
-                ))}
-              </select>
-              <small>Only your city or area is ever shown, never an address.</small>
+              <PlaceSelect required />
+              <small>Type your city or ZIP code. Only your city is ever shown, never an address.</small>
             </label>
             <div data-status class="form-status"></div>
             <button class="btn-app btn-app--block" type="submit">Continue</button>

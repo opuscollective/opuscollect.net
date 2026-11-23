@@ -32,14 +32,7 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
           ))}
         </div>
       </fieldset>
-      <label class="field"><span>City or area *</span><PlaceSelect selected={s.placeId} required /><small>Shown publicly. World places you at the city’s centre, never at your address.</small></label>
-      <fieldset class="field" style="border:0;padding:0;margin:0">
-        <legend>How precisely to show your location</legend>
-        <div class="bk__svc" style="margin-top:8px">
-          <label><input type="radio" name="locationVisibility" value="city" checked={s.locationVisibility === 'city'} /><span><b>City or suburb</b><small>Your chosen city. A suburb only shows on its own when several members share it.</small></span><span></span></label>
-          <label><input type="radio" name="locationVisibility" value="metro" checked={s.locationVisibility === 'metro'} /><span><b>Metro area only</b><small>For example “Birmingham area” instead of Hoover.</small></span><span></span></label>
-        </div>
-      </fieldset>
+      <label class="field"><span>City *</span><PlaceSelect selected={s.placeId} required /><small>Shown publicly. World places you at the city’s centre, never at your address.</small></label>
       <label class="field"><span>About the studio *</span><textarea class="textarea" name="bio" rows="6" maxlength="2000">{s.bio}</textarea><small>At least 40 characters. What you record, who you work with, what makes the room good.</small></label>
       <label class="field"><span>Equipment</span><textarea class="textarea" name="equipment" rows="5" placeholder="One item per line, e.g. Neumann U87">{s.equipment.join('\n')}</textarea></label>
       <div class="grid-2">

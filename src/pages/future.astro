@@ -218,7 +218,7 @@ const FILTERS = [['', 'All'], ['event', 'Events'], ['session', 'Sessions'], ['re
 <script>
   // Our Future: picking a city reloads with ?place=.
   const pf = document.querySelector<HTMLFormElement>('[data-place-form]');
-  pf?.querySelector('select')?.addEventListener('change', () => pf.submit());
+  pf?.addEventListener('change', () => pf.submit());
   // Invitations: accept or decline in place.
   document.querySelectorAll<HTMLButtonElement>('[data-invite] [data-respond]').forEach((b) => b.addEventListener('click', async () => {
     const li = b.closest<HTMLElement>('[data-invite]')!;

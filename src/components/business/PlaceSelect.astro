@@ -1,17 +1,32 @@
 ---
-/** City or area picker: each metro followed by its suburbs. Only public centre points exist; never an address. */
-import { PLACES } from '@/data/places';
-interface Props { name?: string; selected?: string | null; required?: boolean }
-const { name = 'placeId', selected = null, required = false } = Astro.props;
-const metros = PLACES.filter((p) => p.kind === 'metro').sort((a, b) => a.countryName.localeCompare(b.countryName) || a.name.localeCompare(b.name));
-const localitiesOf = (id: string) => PLACES.filter((p) => p.kind === 'locality' && p.metroId === id).sort((a, b) => a.name.localeCompare(b.name));
+/**
+ * City field (one way to choose a place everywhere). Type a city, a suburb or a US ZIP code and pick from the list;
+ * with nothing typed it lists every Opus city. A suburb or ZIP resolves to its city. Only the city is ever stored or shown.
+ * Fills a hidden input named `name` with the city's place id. Behaviour: src/scripts/city-field.ts.
+ */
+import { cityFor } from '@/lib/city-search';
+interface Props { name?: string; selected?: string | null; required?: boolean; placeholder?: string }
+const { name = 'placeId', selected = null, required = false, placeholder = 'City or ZIP code' } = Astro.props;
+const current = cityFor(selected);
 ---
-<select class="select" name={name} required={required}>
-  <option value="">Choose a city or area</option>
-  {metros.map((m) => (
-    <optgroup label={`${m.name}${m.region ? `, ${m.region}` : ''} · ${m.countryName}`}>
-      <option value={m.id} selected={selected === m.id}>{m.name}{m.region ? `, ${m.region}` : ''}</option>
-      {localitiesOf(m.id).map((l) => <option value={l.id} selected={selected === l.id}>{l.name} ({m.name} area)</option>)}
-    </optgroup>
-  ))}
-</select>
+<div class="cf" data-cityfield data-required={required ? '' : undefined}>
+  <input class="input cf__text" type="text" data-cf-text role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls={`${name}-cf-list`}
+    autocomplete="off" autocapitalize="words" spellcheck="false" placeholder={placeholder} value={current?.label ?? ''} required={required} />
+  <input type="hidden" name={name} data-cf-value value={current?.id ?? ''} />
+  <ul class="cf__list" id={`${name}-cf-list`} role="listbox" data-cf-list hidden></ul>
+  <span class="sr-only" role="status" aria-live="polite" data-cf-msg></span>
+</div>
+<script>
+  import '@/scripts/city-field';
+</script>
+<style is:global>
+  .cf { position: relative; }
+  .cf__list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); max-height: 280px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
+    border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 18px 40px -20px rgba(0, 0, 0, .45); }
+  .cf__list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 10px; border-radius: 8px; color: var(--text); cursor: pointer; }
+  .cf__list li b { font-weight: 500; }
+  .cf__list li small { color: var(--text-3); font-size: 12px; text-align: right; }
+  .cf__list li[aria-selected='true'], .cf__list li:hover { background: var(--surface-hover); }
+  .cf__list .cf__none { color: var(--text-3); cursor: default; justify-content: flex-start; }
+  .cf__list .cf__none:hover { background: none; }
+</style>

@@ -2,7 +2,7 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SPECIALTIES } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
-import { PLACES, placeLabel } from '@/data/places';
+import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import { getMyProfile, missingForPublish, mediaUrl } from '@/server/profiles';
 import '@/styles/app.css';
 export const prerender = false;
@@ -13,9 +13,6 @@ const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
 const missing = profile ? missingForPublish(profile, user.emailVerified) : null;
 const welcome = Astro.url.searchParams.has('welcome');
 
-// Group places: each metro followed by its localities, sorted by country then name.
-const metros = PLACES.filter((p) => p.kind === 'metro').sort((a, b) => a.countryName.localeCompare(b.countryName) || a.name.localeCompare(b.name));
-const localitiesOf = (id: string) => PLACES.filter((p) => p.kind === 'locality' && p.metroId === id).sort((a, b) => a.name.localeCompare(b.name));
 
 const p = profile;
 const linkFields = [
@@ -71,16 +68,8 @@ const linkFields = [
               </select>
             </div>
             <label class="field"><span>Where are you?</span>
-              <select class="select" name="placeId" required>
-                <option value="">Choose your city or area</option>
-                {metros.map((m) => (
-                  <optgroup label={`${m.name}${m.region ? ', ' + m.region : ''} · ${m.countryName}`}>
-                    <option value={m.id} selected={p?.placeId === m.id}>{placeLabel(m)}</option>
-                    {localitiesOf(m.id).map((l) => <option value={l.id} selected={p?.placeId === l.id}>{l.name} ({m.name} area)</option>)}
-                  </optgroup>
-                ))}
-              </select>
-              <small>Only your city or area shows publicly, never an address. Don’t see your city? Choose the nearest one for now.</small>
+              <PlaceSelect selected={p?.placeId ?? null} required />
+              <small>Type your city, a suburb or your ZIP code. Only your city shows publicly, never an address. Don’t see yours? Choose the nearest big city.</small>
             </label>
           </div>
         </div>
@@ -123,10 +112,8 @@ const linkFields = [
             </fieldset>
             <label class="field"><span>Public location</span>
               <select class="select" name="locationVisibility">
-                <option value="city" selected={!p || p.locationVisibility === 'city'}>Show my city or suburb</option>
-                <option value="metro" selected={p?.locationVisibility === 'metro'}>Show only my metro area (e.g. Birmingham area)</option>
-                <option value="region" selected={p?.locationVisibility === 'region'}>Show only my state or country (not on the map)</option>
-                <option value="hidden" selected={p?.locationVisibility === 'hidden'}>Don’t show my location (not on the map)</option>
+                <option value="city" selected={!p || p.locationVisibility === 'city' || p.locationVisibility === 'metro' || p.locationVisibility === 'region'}>Show my city</option>
+                <option value="hidden" selected={p?.locationVisibility === 'hidden'}>Don’t show my city (not on the map)</option>
               </select>
               <small>Opus never sends a more precise location than you choose here, not even behind the scenes.</small>
             </label>
