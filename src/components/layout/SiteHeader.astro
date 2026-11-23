@@ -1,5 +1,5 @@
 ---
-import { HEADER_NAV, ACCOUNT, ACCOUNT_MENU, CREATE_MENU, SITE } from '@/data/site';
+import { HEADER_NAV, ACCOUNT, ACCOUNT_MENU, SITE } from '@/data/site';
 import Icon from '../ui/Icon.astro';
 import ThemeSwitch from '../ui/ThemeSwitch.astro';
 interface Props { overlay?: boolean }
@@ -86,11 +86,6 @@ const OVERFLOW = new Set<string>();
           <Icon name="user" size={18} /><span class="sr-only">Account menu</span><Icon name="chevron-down" size={14} class="acct__chev" />
         </button>
         <div class="acct__menu" id="acct-menu" hidden data-acct-menu>
-          <ul role="list" class="acct__manage" data-manage-list hidden></ul>
-          <p class="acct__group">Create</p>
-          <ul role="list" class="acct__create">
-            {CREATE_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
-          </ul>
           <ul role="list">
             {ACCOUNT_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           </ul>
@@ -120,8 +115,6 @@ const OVERFLOW = new Set<string>();
       </ul>
       <div class="mmenu__actions">
         <ul role="list" class="mmenu__acct" data-auth-in hidden>
-          <span data-manage-list-m hidden></span>
-          {CREATE_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           {ACCOUNT_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           <li><button type="button" data-logout>Sign out</button></li>
         </ul>
@@ -258,28 +251,6 @@ const OVERFLOW = new Set<string>();
         el.textContent = n > 9 ? '9+' : String(n); el.hidden = n === 0;
         el.setAttribute('aria-label', `${n} pending connection ${n === 1 ? 'request' : 'requests'}`);
       });
-    }).catch(() => {});
-  }
-
-  // "Manage <group>" for each group the member manages (only they see it).
-  if (document.documentElement.classList.contains('is-signed-in')) {
-    fetch('/api/clans/managed').then((r) => (r.ok ? r.json() : null)).then((d: { groups?: { name: string; href: string }[] } | null) => {
-      const groups = d?.groups ?? [];
-      if (!groups.length) return;
-      // Clone an existing menu link so the new items carry the same scoped styles.
-      const items = (model: Element | null): DocumentFragment => {
-        const f = document.createDocumentFragment();
-        for (const g of groups) {
-          const li = document.createElement('li');
-          const a = (model?.cloneNode(false) as HTMLAnchorElement | null) ?? document.createElement('a');
-          a.href = g.href; a.textContent = `Manage ${g.name}`; li.append(a); f.append(li);
-        }
-        return f;
-      };
-      const ul = document.querySelector<HTMLElement>('[data-manage-list]');
-      if (ul) { ul.append(items(ul.parentElement?.querySelector('.acct__create a') ?? null)); ul.hidden = false; }
-      const m = document.querySelector<HTMLElement>('[data-manage-list-m]');
-      if (m) m.replaceWith(items(m.parentElement?.querySelector('li a') ?? null));
     }).catch(() => {});
   }
 

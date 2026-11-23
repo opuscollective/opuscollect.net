@@ -1,0 +1,128 @@
+---
+/**
+ * My World: everything you own or run on Opus, in one place. Your profile, works, studios (as many as you list),
+ * groups, bookings, the cities you follow and your Future. Counts are real; nothing is invented.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { membershipsOf } from '@/server/clans';
+import { listFollows } from '@/server/cities';
+import { mediaUrl } from '@/server/profiles';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/account/world');
+const env = Astro.locals.runtime.env;
+const db = env.DB;
+const one = async <T,>(q: string, ...b: unknown[]) => db.prepare(q).bind(...b).first<T>().catch(() => null);
+
+const profile = await one<{ handle: string; display_name: string; status: string; photo_key: string | null }>(
+  "SELECT handle, display_name, status, photo_key FROM profiles WHERE owner_user_id = ? AND kind = 'musician'", user.id);
+const studios = (await db.prepare("SELECT handle, display_name, status FROM profiles WHERE owner_user_id = ? AND kind = 'studio' ORDER BY created_at").bind(user.id).all<{ handle: string; display_name: string; status: string }>().catch(() => ({ results: [] as { handle: string; display_name: string; status: string }[] }))).results;
+const groups = await membershipsOf(db, user.id, false).catch(() => []);
+const cities = await listFollows(env, user.id).catch(() => []);
+const works = (await one<{ n: number }>('SELECT COUNT(*) AS n FROM releases WHERE owner_user_id = ?', user.id))?.n ?? 0;
+const myBookings = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM bookings WHERE user_id = ? AND status IN ('requested','accepted')", user.id))?.n ?? 0;
+const studioRequests = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM bookings b JOIN profiles p ON p.id = b.profile_id WHERE p.owner_user_id = ? AND b.status = 'requested'", user.id))?.n ?? 0;
+const requests = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM connections WHERE addressee_id = ? AND status = 'pending'", user.id))?.n ?? 0;
+const connections = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM connections WHERE (requester_id = ?1 OR addressee_id = ?1) AND status = 'accepted'", user.id))?.n ?? 0;
+const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
+---
+<BaseLayout title="My World" noindex assistant={false}>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide mw" style="margin-inline:auto">
+      <p class="t-meta app__kicker">My World</p>
+      <h1 class="app__title">Everything that’s yours.</h1>
+
+      <div class="mw__grid">
+        <article class="mw__card mw__card--lead">
+          <h2>You</h2>
+          {profile ? (
+            <div class="mw__me">
+              <span class="mw__av" style={profile.photo_key ? `background-image:url(${mediaUrl(profile.photo_key)})` : ''}></span>
+              <div><b>{profile.display_name}</b><small>{state(profile.status)} · opuscollect.net/{profile.handle}</small></div>
+            </div>
+          ) : <p class="dim">You haven’t set up your profile yet.</p>}
+          <p class="mw__row">
+            {profile ? <><a class="btn-app" href="/me">See my page</a><a class="btn-app btn-app--ghost" href="/account/profile">Edit</a></> : <a class="btn-app" href="/start">Set up your profile</a>}
+          </p>
+        </article>
+
+        <article class="mw__card">
+          <h2>Works <span class="mw__n">{works}</span></h2>
+          <p class="dim">Songs and releases on your page. Search for one and add it in seconds.</p>
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/works/mine?add=1">Add a work</a><a class="mw__link" href="/works/mine">See all</a></p>
+        </article>
+
+        <article class="mw__card">
+          <h2>Studios <span class="mw__n">{studios.length}</span></h2>
+          {studios.length ? (
+            <ul class="mw__list" role="list">{studios.map((s) => <li><a href="/business">{s.display_name}</a><small>{state(s.status)}</small></li>)}</ul>
+          ) : <p class="dim">List a studio to get discovered and take booking requests. Free.</p>}
+          {studioRequests > 0 && <p class="mw__alert">{studioRequests} booking request{studioRequests === 1 ? '' : 's'} waiting</p>}
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/business">{studios.length ? 'Manage studio' : 'List your studio'}</a>{studios.length > 0 && <a class="mw__link" href="/business/bookings">Bookings</a>}</p>
+        </article>
+
+        <article class="mw__card">
+          <h2>Groups <span class="mw__n">{groups.length}</span></h2>
+          {groups.length ? (
+            <ul class="mw__list" role="list">{groups.slice(0, 5).map((g) => <li><a href={g.isAdmin ? `/clans/${g.clan.handle}/manage` : g.clan.href}>{g.clan.name}</a><small>{g.isAdmin ? 'You manage it' : 'Member'}</small></li>)}</ul>
+          ) : <p class="dim">Bands, crews and collectives you’re part of.</p>}
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/clans/new">Create a group</a><a class="mw__link" href="/clans/mine">All groups</a></p>
+        </article>
+
+        <article class="mw__card">
+          <h2>Network <span class="mw__n">{connections}</span></h2>
+          <p class="dim">{requests ? `${requests} connection request${requests === 1 ? '' : 's'} waiting for you.` : 'Your connections, requests and messages.'}</p>
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/network">Open Network</a></p>
+        </article>
+
+        <article class="mw__card">
+          <h2>Sessions you booked <span class="mw__n">{myBookings}</span></h2>
+          <p class="dim">Studio sessions you’ve requested or confirmed.</p>
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/account/bookings">Your bookings</a></p>
+        </article>
+
+        <article class="mw__card">
+          <h2>Future</h2>
+          <p class="dim">Your calendar: sessions, release dates and events, in one place.</p>
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/future?tab=mine&view=calendar">Open calendar</a><a class="btn-app btn-app--ghost" href="/events/new">Create an event</a></p>
+        </article>
+
+        <article class="mw__card">
+          <h2>Cities <span class="mw__n">{cities.length}</span></h2>
+          {cities.length ? <p class="dim">{cities.slice(0, 6).map((c) => c.name).join(', ')}</p> : <p class="dim">Follow cities to keep up with what’s happening there.</p>}
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/world/cities">My Cities</a></p>
+        </article>
+
+        <article class="mw__card">
+          <h2>Settings</h2>
+          <p class="dim">Password, appearance and email.</p>
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/account">Account settings</a></p>
+        </article>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .mw__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 36px; }
+  .mw__card { display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .mw__card--lead { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
+  .mw__card h2 { margin: 0; font-size: 22px; font-weight: 300; letter-spacing: -0.03em; display: flex; align-items: baseline; gap: 10px; }
+  .mw__n { font-size: 14px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .mw__card p { margin: 0; }
+  .mw__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: auto !important; padding-top: 8px; }
+  .mw__link { font-size: 14px; color: var(--text-2); }
+  .mw__link:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+  .mw__me { display: flex; align-items: center; gap: 14px; }
+  .mw__me b { display: block; font-size: 20px; font-weight: 400; }
+  .mw__me small { color: var(--text-3); font-size: 13px; }
+  .mw__av { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; flex: none; }
+  .mw__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .mw__list li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
+  .mw__list small { color: var(--text-3); }
+  .mw__alert { font-size: 13px; color: var(--accent); }
+  @media (max-width: 960px) { .mw__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 620px) { .mw__grid { grid-template-columns: 1fr; } .mw__card--lead { flex-direction: column; align-items: flex-start; } }
+</style>

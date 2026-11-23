@@ -131,20 +131,12 @@ export const NAV: NavItem[] = [
 /** The header shows World and Network (Bogo 2026-11-23: Works is out of the header for launch; its pages stay reachable by URL and the footer). */
 export const HEADER_NAV = (): NavItem[] => NAV.filter((n) => n.label === 'World' || n.label === 'Network');
 
-export const CREATE_MENU = [
-  { label: 'Create a group', href: '/clans/new' },
-  { label: 'Create an event', href: '/events/new' },
-  { label: 'Add Work', href: '/works?add=1' },
-];
+/** The account menu is deliberately short: your profile as the public sees it, everything you own in My World, and settings. */
+export const CREATE_MENU: { label: string; href: string }[] = [];
 
 export const ACCOUNT_MENU = [
-  { label: 'Your profile', href: '/account/profile' },
-  { label: 'My groups', href: '/clans/mine' },
-  { label: 'Your works', href: '/works/mine' },
-  { label: 'My Future', href: '/future' },
-  { label: 'My Network', href: '/network' },
-  { label: 'Bookings', href: '/account/bookings' },
-  { label: 'Business dashboard', href: '/business' },
+  { label: 'My profile', href: '/me' },
+  { label: 'My World', href: '/account/world' },
   { label: 'Account settings', href: '/account' },
 ];
 

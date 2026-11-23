@@ -10,6 +10,7 @@ import ProductNav from '@/components/product/ProductNav.astro';
 import Icon from '@/components/ui/Icon.astro';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import { futureFor, ourFuture } from '@/server/future';
+import { monthGrid } from '@/lib/ics';
 import { groupByMonth, KIND_LABEL, type FutureItem } from '@/lib/future';
 import { PLACE_BY_ID } from '@/data/places';
 import { listFollows, type FollowedCity } from '@/server/cities';
@@ -36,6 +37,14 @@ const upcoming = items.filter((i) => !i.past);
 const recent = items.filter((i) => i.past).reverse();
 const invites = upcoming.filter((i) => i.tone === 'pending' && i.eventId);
 const months = groupByMonth(upcoming.filter((i) => !(i.tone === 'pending' && i.eventId)), today);
+const view = tab === 'mine' && user && Astro.url.searchParams.get('view') === 'calendar' ? 'calendar' : 'list';
+const ymNow = new Date().toISOString().slice(0, 7);
+const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(Astro.url.searchParams.get('m') ?? '') ? Astro.url.searchParams.get('m')! : ymNow;
+const shiftMonth = (k: string, d: number) => { const [y, m] = k.split('-').map(Number) as [number, number]; return new Date(Date.UTC(y, m - 1 + d, 1)).toISOString().slice(0, 7); };
+const grid = view === 'calendar' ? monthGrid(ym) : [];
+const byDay = new Map<string, FutureItem[]>();
+if (view === 'calendar') for (const i of items) if (i.day) { const a = byDay.get(i.day) ?? []; a.push(i); byDay.set(i.day, a); }
+const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(ym + '-01T00:00:00Z'));
 const FILTERS = [['', 'All'], ['event', 'Events'], ['session', 'Sessions'], ['release', 'Releases']] as const;
 ---
 <BaseLayout title={tab === 'our' ? 'Our Future' : 'My Future'} description="Future on Opus: your sessions, planned releases and events in one timeline, and the public events coming up across Opus." noindex={tab === 'mine'}>
@@ -72,6 +81,13 @@ const FILTERS = [['', 'All'], ['event', 'Events'], ['session', 'Sessions'], ['re
         {user && <a class="fut__btn" href="/events/new">Create an event</a>}
       </div>
 
+      {tab === 'mine' && user && (
+        <div class="fut__views" role="tablist" aria-label="View">
+          <a role="tab" aria-selected={view === 'list' ? 'true' : 'false'} href="/future?tab=mine">List</a>
+          <a role="tab" aria-selected={view === 'calendar' ? 'true' : 'false'} href="/future?tab=mine&view=calendar">Calendar</a>
+        </div>
+      )}
+
       {failed && <p class="panel fut__note">Future couldn’t be loaded just now. Please try again in a moment.</p>}
 
       {tab === 'mine' && !user && (
@@ -107,7 +123,57 @@ const FILTERS = [['', 'All'], ['event', 'Events'], ['session', 'Sessions'], ['re
         </div>
       )}
 
-      <div class="fut__months" data-fut-list>
+      {view === 'calendar' && (
+        <section class="fcal" aria-label={monthLabel}>
+          <header class="fcal__head">
+            <a class="fcal__nav" href={`/future?tab=mine&view=calendar&m=${shiftMonth(ym, -1)}`} aria-label="Previous month">‹</a>
+            <h2>{monthLabel}</h2>
+            <a class="fcal__nav" href={`/future?tab=mine&view=calendar&m=${shiftMonth(ym, 1)}`} aria-label="Next month">›</a>
+            {ym !== ymNow && <a class="fcal__today" href="/future?tab=mine&view=calendar">Today</a>}
+          </header>
+          <div class="fcal__dow" aria-hidden="true">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => <span>{d}</span>)}</div>
+          <div class="fcal__grid">
+            {grid.flat().map((c) => (
+              <div class:list={['fcal__cell', { 'is-out': !c.inMonth, 'is-today': c.day === today }]}>
+                <span class="fcal__d">{Number(c.day.slice(8))}</span>
+                {(byDay.get(c.day) ?? []).map((i) => <a class={`fcal__ev fcal__ev--${i.kind}`} href={i.href} title={`${i.title} · ${i.when}`}>{i.title}</a>)}
+              </div>
+            ))}
+          </div>
+          <p class="dim fcal__note">Studio sessions you book or host, releases with a planned date, and events you host, perform at or saved appear here on their own.</p>
+        </section>
+      )}
+
+      {tab === 'mine' && user && (
+        <details class="fsync" data-sync>
+          <summary><span>Add to my calendar</span><small>Apple, Google, Outlook, Notion</small></summary>
+          <div class="fsync__body">
+            <p class="dim">Your Opus calendar can show up in the calendar you already use, and stay up to date on its own. It’s a private link only you have. It’s one-way: Opus updates your calendar, not the other way round.</p>
+            <div class="fsync__row" data-sync-off>
+              <button type="button" class="btn-app" data-sync-make>Create my calendar link</button>
+            </div>
+            <div data-sync-on hidden>
+              <label class="field"><span>Your private link</span><input class="input" readonly data-sync-url /></label>
+              <div class="fsync__row">
+                <button type="button" class="btn-app" data-sync-copy>Copy link</button>
+                <a class="btn-app btn-app--ghost" data-sync-webcal href="#">Open in my calendar app</a>
+                <button type="button" class="btn-app btn-app--ghost" data-sync-reset>Reset link</button>
+                <button type="button" class="fsync__off" data-sync-stop>Turn off</button>
+              </div>
+              <ul class="fsync__steps">
+                <li><b>Apple Calendar:</b> “Open in my calendar app”, or File › New Calendar Subscription and paste the link.</li>
+                <li><b>Google Calendar:</b> Other calendars (+) › From URL, paste the link. Google refreshes a few times a day.</li>
+                <li><b>Outlook:</b> Add calendar › Subscribe from web, paste the link.</li>
+                <li><b>Notion Calendar:</b> subscribe in Google or Apple Calendar first; Notion Calendar shows both.</li>
+              </ul>
+              <p class="dim">Anyone with this link can see these items, so don’t share it. Reset it if it ever leaks, and the old one stops working.</p>
+            </div>
+            <p class="dim" data-sync-msg role="status"></p>
+          </div>
+        </details>
+      )}
+
+      <div class="fut__months" data-fut-list hidden={view === 'calendar'}>
         {months.map((m) => (
           <section class="fut__month" aria-labelledby={`fm-${m.key}`} data-month>
             <h2 class="fut__mlabel" id={`fm-${m.key}`}>{m.key === 'tba' ? 'Dates to be announced' : m.label}</h2>
@@ -190,6 +256,36 @@ const FILTERS = [['', 'All'], ['event', 'Events'], ['session', 'Sessions'], ['re
 </script>
 
 <style>
+  .fut__views { display: inline-flex; gap: 2px; padding: 2px; margin: 18px 0 4px; border-radius: 999px; background: var(--surface-sunken); }
+  .fut__views a { padding: 7px 18px; border-radius: 999px; font-size: 14px; color: var(--text-2); }
+  .fut__views a[aria-selected='true'] { background: var(--surface-raised); color: var(--text); box-shadow: 0 1px 2px var(--shadow-c); }
+  .fcal { margin-top: 20px; }
+  .fcal__head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .fcal__head h2 { margin: 0; font-size: 26px; font-weight: 300; letter-spacing: -0.04em; flex: 0 1 auto; }
+  .fcal__nav { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; font-size: 22px; color: var(--text-2); box-shadow: inset 0 0 0 1px var(--line); }
+  .fcal__nav:hover { background: var(--surface-hover); color: var(--text); }
+  .fcal__today { margin-left: auto; font-size: 14px; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; }
+  .fcal__dow, .fcal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .fcal__dow span { padding: 6px 8px; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
+  .fcal__grid { border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+  .fcal__cell { min-height: 108px; padding: 6px; display: flex; flex-direction: column; gap: 3px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; }
+  .fcal__cell.is-out { background: var(--surface-sunken); opacity: .55; }
+  .fcal__d { font-size: 13px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .fcal__cell.is-today .fcal__d { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--text); color: var(--bg); }
+  .fcal__ev { display: block; padding: 3px 7px; border-radius: 6px; font-size: 12px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--accent-soft); color: var(--text); box-shadow: inset 2px 0 0 var(--accent); }
+  .fcal__ev--session { box-shadow: inset 2px 0 0 var(--live); background: var(--live-soft); }
+  .fcal__ev--release { box-shadow: inset 2px 0 0 var(--text-3); background: var(--surface-sunken); }
+  .fcal__note { margin-top: 12px; font-size: 13px; }
+  @media (max-width: 720px) { .fcal__cell { min-height: 64px; padding: 3px; } .fcal__ev { font-size: 0; padding: 0; height: 6px; border-radius: 3px; } .fcal__dow span { padding: 4px 2px; font-size: 10px; letter-spacing: 0; } }
+  .fsync { margin-top: 28px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .fsync > summary { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 16px 0; cursor: pointer; list-style: none; font-size: 18px; font-weight: 300; letter-spacing: -0.02em; }
+  .fsync > summary::-webkit-details-marker { display: none; }
+  .fsync > summary small { font-size: 13px; color: var(--text-3); letter-spacing: 0; }
+  .fsync__body { display: grid; gap: 14px; padding: 4px 0 22px; max-width: 640px; }
+  .fsync__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .fsync__off { background: none; border: 0; padding: 0 6px; color: var(--text-3); font: inherit; font-size: 14px; cursor: pointer; }
+  .fsync__off:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+  .fsync__steps { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; color: var(--text-2); }
   .fut__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; }
   .fut__bar > .fut__btn:only-child { margin-left: auto; }
   .fut__place { min-width: min(320px, 100%); }
@@ -245,3 +341,22 @@ const FILTERS = [['', 'All'], ['event', 'Events'], ['session', 'Sessions'], ['re
     .fut__item :global(.fut__go) { display: none; }
   }
 </style>
+
+<script>
+  // Add to my calendar: create, copy, reset or turn off the private subscription link.
+  const sync = document.querySelector<HTMLElement>('[data-sync]');
+  if (sync) {
+    const off = sync.querySelector<HTMLElement>('[data-sync-off]')!, on = sync.querySelector<HTMLElement>('[data-sync-on]')!;
+    const urlEl = sync.querySelector<HTMLInputElement>('[data-sync-url]')!, webcal = sync.querySelector<HTMLAnchorElement>('[data-sync-webcal]')!;
+    const msg = sync.querySelector<HTMLElement>('[data-sync-msg]')!;
+    type L = { url: string; webcal: string } | null;
+    const show = (l: L) => { off.hidden = !!l; on.hidden = !l; if (l) { urlEl.value = l.url; webcal.href = l.webcal; } };
+    const call = async (method: string): Promise<L> => { const r = await fetch('/api/calendar', { method, credentials: 'same-origin' }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error((d as { error?: string }).error ?? 'Something went wrong.'); return (d as { link?: L }).link ?? null; };
+    const run = async (method: string, ok: string) => { try { msg.textContent = ''; show(await call(method)); msg.textContent = ok; } catch (e) { msg.textContent = (e as Error).message; } };
+    sync.addEventListener('toggle', () => { if ((sync as HTMLDetailsElement).open && !sync.dataset.loaded) { sync.dataset.loaded = '1'; call('GET').then(show).catch(() => {}); } });
+    sync.querySelector('[data-sync-make]')!.addEventListener('click', () => run('POST', ''));
+    sync.querySelector('[data-sync-reset]')!.addEventListener('click', () => { if (confirm('Reset your calendar link? Calendars using the old one will stop updating until you add the new one.')) run('POST', 'New link ready. The old one no longer works.'); });
+    sync.querySelector('[data-sync-stop]')!.addEventListener('click', () => run('DELETE', 'Calendar link turned off.'));
+    sync.querySelector('[data-sync-copy]')!.addEventListener('click', async () => { try { await navigator.clipboard.writeText(urlEl.value); msg.textContent = 'Link copied.'; } catch { urlEl.select(); msg.textContent = 'Press copy on your keyboard.'; } });
+  }
+</script>

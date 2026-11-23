@@ -46,8 +46,15 @@ const links = Object.entries(p.links).filter(([, v]) => !!v);
 const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${where ? ` · ${where}` : ''} on Opus.`;
 ---
 <BaseLayout title={p.displayName} description={desc} noindex={p.status !== 'published'} image={p.photoKey ? mediaUrl(p.photoKey)! : undefined}>
-  {isOwner && p.status !== 'published' && (
-    <div class="mp-preview"><span><b>Preview.</b> Only you can see this draft.</span> <a class="link" href="/account/profile">Back to editing</a></div>
+  {isOwner && (
+    <div class="mp-preview">
+      <span><b>{p.status === 'published' ? 'This is your public page.' : 'Draft preview.'}</b> {p.status === 'published' ? 'Everyone sees it exactly like this.' : 'Only you can see it until you publish.'}</span>
+      <span class="mp-preview__a">
+        <a class="btn-app btn-app--ghost" href="/account/profile">Edit profile</a>
+        <a class="btn-app btn-app--ghost" href="/works/mine?add=1">Add a work</a>
+        <a class="btn-app btn-app--ghost" href="/account/world">My World</a>
+      </span>
+    </div>
   )}
   <article class="mp">
     {p.coverKey && <div class="mp__cover" style={`background-image:url(${mediaUrl(p.coverKey)})`} aria-hidden="true"></div>}
@@ -209,6 +216,9 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__conns b { font-size: clamp(30px, 3.2vw, 44px); font-weight: 300; letter-spacing: -0.045em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
   .mp__conns span { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
   .mp-preview { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunken); font-size: 14px; color: var(--c-fg-subtle); }
+  .mp-preview { align-items: center; }
+  .mp-preview__a { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+  .mp-preview .btn-app { min-height: 34px; padding: 0 14px; font-size: 13px; }
   .mp-preview b { color: var(--text); font-weight: 500; }
   .mp__cover { height: clamp(220px, 34vw, 420px); background: var(--surface-sunken) center / cover no-repeat; mask-image: linear-gradient(#000 40%, transparent); -webkit-mask-image: linear-gradient(#000 40%, transparent); opacity: .55; }
   .mp__inner { max-width: 1180px; margin: 0 auto; padding: 0 var(--gutter) 96px; }
