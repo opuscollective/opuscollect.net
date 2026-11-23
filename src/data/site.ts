@@ -38,6 +38,11 @@ export const NAV: NavItem[] = [
         { label: 'Groups', href: '/clans' },
         { label: 'Verified members', href: '/world?verified=1' },
       ] },
+      { title: 'Studios', links: [
+        { label: 'Find a studio', href: '/studios' },
+        { label: 'List your studio', href: '/business' },
+        { label: 'Your bookings', href: '/account/bookings' },
+      ] },
       { title: 'Cities', links: [
         { label: 'Birmingham', href: '/world/birmingham' },
         { label: 'Atlanta', href: '/world/atlanta' },
