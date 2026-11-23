@@ -7,6 +7,7 @@ import { listBusinessBookings, listCustomers } from '@/server/bookings';
 import { formatSlot, tzAbbr, money } from '@/lib/booking-time';
 import '@/styles/app.css';
 import '@/styles/business.css';
+import '@/styles/bizhero.css';
 export const prerender = false;
 
 const user = Astro.locals.user;
@@ -29,17 +30,28 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
 ---
 {!user || !studio ? (
   <BaseLayout title="Opus Business" description="Booking pages, requests and client management for recording studios, on Opus.">
+    <section class="bz-hero">
+      <div class="bz-wash" aria-hidden="true"><img src="/images/studio-control-room-1400.jpg" alt="" decoding="async" /></div>
+      <div class="bz-in">
+        <div class="bz-copy">
+          <p class="bz-label">Studios · Opus Business</p>
+          <h1>Your studio. More sessions.</h1>
+          <p class="bz-lead">Get discovered by musicians, manage your bookings, and grow your business. Free to list.</p>
+          <p class="bz-fine">No monthly subscription. Booking and scheduling software included. Opus takes 20% only on eligible bookings processed through Opus; bookings made entirely outside Opus carry no Opus commission.</p>
+          <a class="bz-go" href="#start">List your studio</a>
+        </div>
+        <ul class="bz-roll" role="list" aria-label="What Opus Business includes">
+          <li><b>Studio listing</b><small>Appears in World, where artists search by city</small><span class="bz-pill bz-pill--live">Available</span></li>
+          <li><b>Availability</b><small>Services, prices and weekly hours</small><span class="bz-pill bz-pill--live">Available</span></li>
+          <li><b>Booking requests</b><small>Accept or decline, from one page you can share</small><span class="bz-pill bz-pill--live">Available</span></li>
+          <li><b>Session management</b><small>Customers and upcoming sessions</small><span class="bz-pill bz-pill--live">Available</span></li>
+          <li><b>Payments and earnings</b><small>Not switched on yet. Nobody is charged today</small><span class="bz-pill">Upcoming</span></li>
+        </ul>
+      </div>
+    </section>
     <section class="app">
       <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
-        <p class="t-meta app__kicker">Opus Business</p>
-        <h1 class="app__title">Run your studio’s bookings on Opus.</h1>
-        <p class="app__lead">A booking page you can share anywhere, services and prices, opening hours, and requests you accept or decline. Your studio also appears in World, where artists search by city. Home studio addresses stay private.</p>
-        <ul class="steps" role="list" style="margin-top:28px">
-          <li><a href="#start"><i>1</i>Create your studio profile</a></li>
-          <li><a href="#start"><i>2</i>Add services, prices and weekly hours</a></li>
-          <li><a href="#start"><i>3</i>Publish and share your booking link</a></li>
-        </ul>
-        <p class="notice" style="margin-top:24px">Studio tools are in early access while we pilot in Birmingham. Online payments and subscriptions are not switched on yet, so nobody is charged. Bookings are requests you accept or decline.</p>
+        <p class="notice">Studio tools are in early access while we pilot in Birmingham. Bookings are requests you accept or decline. Home studio addresses stay private.</p>
 
         {!user ? (
           <div class="row" style="margin-top:28px" id="start">
