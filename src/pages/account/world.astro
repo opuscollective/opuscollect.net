@@ -18,7 +18,7 @@ const one = async <T,>(q: string, ...b: unknown[]) => db.prepare(q).bind(...b).f
 
 const profile = await one<{ handle: string; display_name: string; status: string; photo_key: string | null }>(
   "SELECT handle, display_name, status, photo_key FROM profiles WHERE owner_user_id = ? AND kind = 'musician'", user.id);
-const studios = (await db.prepare("SELECT handle, display_name, status FROM profiles WHERE owner_user_id = ? AND kind = 'studio' ORDER BY created_at").bind(user.id).all<{ handle: string; display_name: string; status: string }>().catch(() => ({ results: [] as { handle: string; display_name: string; status: string }[] }))).results;
+const studios = (await db.prepare("SELECT id, handle, display_name, status FROM profiles WHERE owner_user_id = ? AND kind = 'studio' ORDER BY created_at").bind(user.id).all<{ id: string; handle: string; display_name: string; status: string }>().catch(() => ({ results: [] as { id: string; handle: string; display_name: string; status: string }[] }))).results;
 const groups = await membershipsOf(db, user.id, false).catch(() => []);
 const cities = await listFollows(env, user.id).catch(() => []);
 const works = (await one<{ n: number }>('SELECT COUNT(*) AS n FROM releases WHERE owner_user_id = ?', user.id))?.n ?? 0;
@@ -57,10 +57,10 @@ const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
         <article class="mw__card">
           <h2>Studios <span class="mw__n">{studios.length}</span></h2>
           {studios.length ? (
-            <ul class="mw__list" role="list">{studios.map((s) => <li><a href="/business">{s.display_name}</a><small>{state(s.status)}</small></li>)}</ul>
+            <ul class="mw__list" role="list">{studios.map((s) => <li><a href={`/business/switch?id=${s.id}`}>{s.display_name}</a><small>{state(s.status)}</small></li>)}</ul>
           ) : <p class="dim">List a studio to get discovered and take booking requests. Free.</p>}
           {studioRequests > 0 && <p class="mw__alert">{studioRequests} booking request{studioRequests === 1 ? '' : 's'} waiting</p>}
-          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/business">{studios.length ? 'Manage studio' : 'List your studio'}</a>{studios.length > 0 && <a class="mw__link" href="/business/bookings">Bookings</a>}</p>
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/business">{studios.length ? 'Manage studios' : 'List your studio'}</a>{studios.length > 0 && <a class="mw__link" href="/business?new=1">Add another</a>}{studios.length > 0 && <a class="mw__link" href="/business/bookings">Bookings</a>}</p>
         </article>
 
         <article class="mw__card">

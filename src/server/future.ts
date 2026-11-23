@@ -1,6 +1,6 @@
 /** Gathers a member's Future: sessions, planned releases and the events they host, perform at or saved. */
 import { listMyBookings, listBusinessBookings, STATUS_LABEL } from './bookings';
-import { getMyStudio } from './business';
+import { listMyStudios } from './business';
 import { listMyReleases } from './releases';
 import { EVENTS } from '@/data/events';
 import { myEvents, listPublicEvents, ROLE_LABEL, type EventView, type MyRole } from './events';
@@ -49,8 +49,7 @@ export async function futureFor(db: D1Database, userId: string, now = Date.now()
     });
   }
   // Sessions booked with your studio.
-  const studio = await getMyStudio(db, userId);
-  if (studio) {
+  for (const studio of await listMyStudios(db, userId)) {
     for (const b of await listBusinessBookings(db, studio.id)) {
       if (!LIVE.has(b.status)) continue;
       if (b.start_at && b.start_at < now) continue;

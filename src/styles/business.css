@@ -156,3 +156,12 @@ html:not([data-motion='fluid']) .skel { animation: none; }
 .gal li { display: flex; flex-direction: column; gap: 8px; }
 .gal img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; border: 1px solid var(--c-ink-600); background: var(--surface-sunken); }
 .gal .btn-app { align-self: flex-start; }
+
+.biz__switch { padding: 0 12px 12px; margin-bottom: 8px; border-bottom: 1px solid var(--c-line); font-size: 13px; }
+.biz__switch ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 2px; }
+.biz__switch li a { display: block; padding: 5px 8px; margin-inline: -8px; border-radius: 6px; color: var(--c-fg-ghost); text-decoration: none; }
+.biz__switch li a:hover { color: var(--text); }
+.biz__switch li a[aria-current] { color: var(--text); background: var(--c-line); }
+.biz__add { color: var(--c-fg-ghost); text-decoration: none; }
+.biz__add:hover { color: var(--text); text-decoration: underline; }
+@media (max-width: 900px) { .biz__switch { display: none; } }

@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { archiveService, getMyStudio, saveAvailability, saveService, saveStudio, setStudioPublished, studioChecklist } from '@/server/business';
+import { STUDIO_COOKIE, archiveService, getMyStudio, saveAvailability, saveService, saveStudio, setStudioPublished, studioChecklist } from '@/server/business';
 import { addGalleryImage, removeGalleryImage, removeImage, uploadImage } from '@/server/profiles';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
@@ -11,36 +11,38 @@ export const prerender = false;
  * DELETE image?slot=cover · gallery?id=…
  * POST gallery (image bytes) adds a gallery photo
  */
-export const POST: APIRoute = async ({ locals, request, params, url }) => {
+export const POST: APIRoute = async ({ locals, request, params, url, cookies }) => {
   try {
+    const pref = cookies.get(STUDIO_COOKIE)?.value;
     const user = locals.user;
     if (!user) throw new HttpError(401, 'Please sign in first.');
     const env = locals.runtime.env;
     switch (params.action) {
       case 'studio': {
-        const studio = await saveStudio(env, user, await readJson(request));
+        const studio = await saveStudio(env, user, await readJson(request), pref);
+        cookies.set(STUDIO_COOKIE, studio.id, { path: '/', httpOnly: true, sameSite: 'lax', secure: url.protocol === 'https:', maxAge: 60 * 60 * 24 * 365 });
         return json({ studio: { ...studio, privateAddress: undefined }, checklist: await studioChecklist(env.DB, studio, user.emailVerified) });
       }
       case 'publish': {
         const body = await readJson<{ on?: unknown }>(request);
-        const studio = await getMyStudio(env.DB, user.id);
+        const studio = await getMyStudio(env.DB, user.id, pref);
         if (!studio) throw new HttpError(404, 'Set up your studio first.');
         const s = await setStudioPublished(env, user, studio, body.on === true);
         return json({ status: s.status });
       }
-      case 'service': return json({ id: await saveService(env, user, await readJson(request)) });
-      case 'service-archive': { const b = await readJson<{ id?: unknown }>(request); await archiveService(env, user, b.id); return json({ ok: true }); }
-      case 'hours': return json(await saveAvailability(env, user, await readJson(request)));
+      case 'service': return json({ id: await saveService(env, user, await readJson(request), pref) });
+      case 'service-archive': { const b = await readJson<{ id?: unknown }>(request); await archiveService(env, user, b.id, pref); return json({ ok: true }); }
+      case 'hours': return json(await saveAvailability(env, user, await readJson(request), pref));
       case 'image': {
         const slot = url.searchParams.get('slot');
         if (slot !== 'photo' && slot !== 'cover') throw new HttpError(400, 'Unknown image slot.');
-        const studio = await getMyStudio(env.DB, user.id);
+        const studio = await getMyStudio(env.DB, user.id, pref);
         if (!studio) throw new HttpError(400, 'Save your studio details before adding photos.');
         const key = await uploadImage(env, user, request, slot, studio);
         return json({ ok: true, url: `/media/${key}` });
       }
       case 'gallery': {
-        const studio = await getMyStudio(env.DB, user.id);
+        const studio = await getMyStudio(env.DB, user.id, pref);
         if (!studio) throw new HttpError(400, 'Save your studio details before adding photos.');
         return json({ ok: true, ...(await addGalleryImage(env, user, request, studio)) });
       }
@@ -49,12 +51,13 @@ export const POST: APIRoute = async ({ locals, request, params, url }) => {
   } catch (e) { return fail(e); }
 };
 
-export const DELETE: APIRoute = async ({ locals, params, url }) => {
+export const DELETE: APIRoute = async ({ locals, params, url, cookies }) => {
   try {
+    const pref = cookies.get(STUDIO_COOKIE)?.value;
     const user = locals.user;
     if (!user) throw new HttpError(401, 'Please sign in first.');
     if (params.action === 'gallery') {
-      const studio = await getMyStudio(locals.runtime.env.DB, user.id);
+      const studio = await getMyStudio(locals.runtime.env.DB, user.id, pref);
       if (!studio) throw new HttpError(404, 'Set up your studio first.');
       await removeGalleryImage(locals.runtime.env, studio, url.searchParams.get('id'));
       return json({ ok: true });
@@ -62,7 +65,7 @@ export const DELETE: APIRoute = async ({ locals, params, url }) => {
     if (params.action !== 'image') throw new HttpError(404, 'Not found.');
     const slot = url.searchParams.get('slot');
     if (slot !== 'photo' && slot !== 'cover') throw new HttpError(400, 'Unknown image slot.');
-    const studio = await getMyStudio(locals.runtime.env.DB, user.id);
+    const studio = await getMyStudio(locals.runtime.env.DB, user.id, pref);
     await removeImage(locals.runtime.env, user, slot, studio);
     return json({ ok: true });
   } catch (e) { return fail(e); }

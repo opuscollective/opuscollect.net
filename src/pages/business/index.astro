@@ -2,7 +2,7 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import BusinessShell from '@/components/business/BusinessShell.astro';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
-import { STUDIO_TYPES, getMyStudio, studioChecklist } from '@/server/business';
+import { STUDIO_COOKIE, STUDIO_TYPES, getMyStudio, studioChecklist } from '@/server/business';
 import { listBusinessBookings, listCustomers } from '@/server/bookings';
 import { formatSlot, tzAbbr, money } from '@/lib/booking-time';
 import '@/styles/app.css';
@@ -12,7 +12,8 @@ export const prerender = false;
 
 const user = Astro.locals.user;
 const db = Astro.locals.runtime.env.DB;
-const studio = user ? await getMyStudio(db, user.id) : null;
+const adding = Astro.url.searchParams.get('new') === '1';
+const studio = user ? await getMyStudio(db, user.id, Astro.cookies.get(STUDIO_COOKIE)?.value) : null;
 let data: null | {
   check: Awaited<ReturnType<typeof studioChecklist>>; bookings: Awaited<ReturnType<typeof listBusinessBookings>>; customers: number;
 } = null;
@@ -28,7 +29,7 @@ const thisMonth = data?.bookings.filter((b) => b.created_at >= monthStart.getTim
 const pageUrl = studio ? `${Astro.url.origin}/studios/${studio.handle}` : '';
 const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project');
 ---
-{!user || !studio ? (
+{!user || !studio || adding ? (
   <BaseLayout title="Opus Business" description="Booking pages, requests and client management for recording studios, on Opus.">
     <section class="bz-hero">
       <div class="bz-wash" aria-hidden="true"><img src="/images/studio-control-room-1400.jpg" alt="" decoding="async" /></div>
@@ -60,7 +61,7 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
           </div>
         ) : (
           <form class="form panel" data-new-studio novalidate id="start" style="margin-top:28px">
-            <h2>Set up your studio</h2>
+            <h2>{studio ? 'Add another studio' : 'Set up your studio'}</h2>
             <label class="field"><span>Studio name *</span><input class="input" name="name" maxlength="80" required autocomplete="organization" /></label>
             <fieldset class="field" style="border:0;padding:0;margin:0">
               <legend>What kind of studio? *</legend>
@@ -141,7 +142,7 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
 <script>
   import { bindForm, values } from '@/scripts/form';
   const f = document.querySelector<HTMLFormElement>('[data-new-studio]');
-  if (f) bindForm(f, { url: '/api/business/studio', body: (form) => values(form), busyLabel: 'Creating…', onSuccess: () => { location.href = '/business/studio?new=1'; } });
+  if (f) bindForm(f, { url: '/api/business/studio', body: (form) => ({ ...values(form), newStudio: true }), busyLabel: 'Creating…', onSuccess: () => { location.href = '/business/studio?new=1'; } });
 
   document.querySelector<HTMLButtonElement>('[data-copy]')?.addEventListener('click', async (e) => {
     const b = e.currentTarget as HTMLButtonElement;

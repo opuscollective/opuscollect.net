@@ -58,10 +58,22 @@ const STUDIO_SELECT = `SELECT p.*, d.studio_type, d.equipment, d.private_address
   d.max_days_ahead, d.booking_policy, d.cancellation_policy, d.studio_verification
   FROM profiles p JOIN studio_details d ON d.profile_id = p.id`;
 
-export async function getMyStudio(db: D1Database, userId: string): Promise<StudioPrivate | null> {
+/** The owner's active studio: the preferred id when they own it (they can run several), else their first. */
+export async function getMyStudio(db: D1Database, userId: string, preferredId?: string | null): Promise<StudioPrivate | null> {
+  if (preferredId) {
+    const p = await db.prepare(`${STUDIO_SELECT} WHERE p.id = ? AND p.owner_user_id = ? AND p.kind = 'studio'`).bind(preferredId, userId).first<StudioRow>();
+    if (p) return toStudio(p);
+  }
   const r = await db.prepare(`${STUDIO_SELECT} WHERE p.owner_user_id = ? AND p.kind = 'studio' ORDER BY p.created_at LIMIT 1`).bind(userId).first<StudioRow>();
   return r ? toStudio(r) : null;
 }
+
+export async function listMyStudios(db: D1Database, userId: string) {
+  return (await db.prepare("SELECT id, handle, display_name AS name, status FROM profiles WHERE owner_user_id = ? AND kind = 'studio' ORDER BY created_at")
+    .bind(userId).all<{ id: string; handle: string; name: string; status: string }>()).results;
+}
+
+export const STUDIO_COOKIE = 'opus_studio';
 
 /** Public studio by handle. Drafts are visible only to their owner. The private address is removed. */
 export async function getPublicStudio(db: D1Database, handle: string, viewerId: string | null): Promise<Studio | null> {
@@ -118,7 +130,7 @@ export async function studioChecklist(db: D1Database, s: Studio, emailVerified: 
 export interface StudioInput {
   name?: unknown; handle?: unknown; studioType?: unknown; placeId?: unknown; bio?: unknown; equipment?: unknown;
   website?: unknown; instagram?: unknown; privateAddress?: unknown; timezone?: unknown; minNoticeHours?: unknown;
-  maxDaysAhead?: unknown; bookingPolicy?: unknown; cancellationPolicy?: unknown; showOnMap?: unknown; locationVisibility?: unknown; publish?: unknown;
+  maxDaysAhead?: unknown; bookingPolicy?: unknown; cancellationPolicy?: unknown; showOnMap?: unknown; locationVisibility?: unknown; publish?: unknown; newStudio?: unknown;
 }
 
 const intIn = (v: unknown, lo: number, hi: number, d: number) => {
@@ -126,10 +138,12 @@ const intIn = (v: unknown, lo: number, hi: number, d: number) => {
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d;
 };
 
-export async function saveStudio(env: Env, user: SessionUser, body: StudioInput) {
+export async function saveStudio(env: Env, user: SessionUser, body: StudioInput, pref?: string | null) {
   const db = env.DB;
   await limit(db, `studio-save:${user.id}`, 60, 10 * 60_000);
-  const existing = await getMyStudio(db, user.id);
+  // `newStudio` adds another studio; otherwise the active studio is updated.
+  const existing = body.newStudio === true ? null : await getMyStudio(db, user.id, pref);
+  if (!existing && (await listMyStudios(db, user.id)).length >= 10) throw new HttpError(400, 'You can list up to 10 studios.');
 
   const name = str(body.name, 80);
   if (!name) throw new HttpError(400, 'Add your studio’s name.', 'name');
@@ -184,7 +198,7 @@ export async function saveStudio(env: Env, user: SessionUser, body: StudioInput)
   await db.batch(stmts);
   if (!existing) await audit(db, user.id, 'studio.created', { id });
 
-  let studio = (await getMyStudio(db, user.id))!;
+  let studio = (await getMyStudio(db, user.id, id))!;
   if (body.publish === true || body.publish === false) studio = await setStudioPublished(env, user, studio, body.publish === true);
   return studio;
 }
@@ -202,8 +216,8 @@ export async function setStudioPublished(env: Env, user: SessionUser, studio: St
   return { ...studio, status } as StudioPrivate;
 }
 
-async function ownedStudio(env: Env, user: SessionUser) {
-  const s = await getMyStudio(env.DB, user.id);
+async function ownedStudio(env: Env, user: SessionUser, pref?: string | null) {
+  const s = await getMyStudio(env.DB, user.id, pref);
   if (!s) throw new HttpError(404, 'Set up your studio first.');
   return s;
 }
@@ -217,9 +231,9 @@ export function parsePrice(v: unknown) {
   return Math.round(Number(s) * 100);
 }
 
-export async function saveService(env: Env, user: SessionUser, body: ServiceInput) {
+export async function saveService(env: Env, user: SessionUser, body: ServiceInput, pref?: string | null) {
   const db = env.DB;
-  const studio = await ownedStudio(env, user);
+  const studio = await ownedStudio(env, user, pref);
   await limit(db, `service-save:${user.id}`, 120, 10 * 60_000);
   const name = str(body.name, 80);
   if (!name) throw new HttpError(400, 'Name the service, for example “Recording session (2 hours)”.', 'name');
@@ -252,8 +266,8 @@ export async function saveService(env: Env, user: SessionUser, body: ServiceInpu
 }
 
 /** Services are archived, not deleted, so past bookings keep their history. */
-export async function archiveService(env: Env, user: SessionUser, id: unknown) {
-  const studio = await ownedStudio(env, user);
+export async function archiveService(env: Env, user: SessionUser, id: unknown, pref?: string | null) {
+  const studio = await ownedStudio(env, user, pref);
   await env.DB.prepare('UPDATE services SET active = 0, updated_at = ? WHERE id = ? AND profile_id = ?').bind(now(), String(id ?? ''), studio.id).run();
   // A published studio must keep at least one service.
   if (studio.status === 'published' && (await listServices(env.DB, studio.id)).length === 0) {
@@ -263,9 +277,9 @@ export async function archiveService(env: Env, user: SessionUser, id: unknown) {
 }
 
 /** Replace weekly hours and closed days in one go. Hours are "HH:MM" strings in the studio's time zone. */
-export async function saveAvailability(env: Env, user: SessionUser, body: { rules?: unknown; closed?: unknown }) {
+export async function saveAvailability(env: Env, user: SessionUser, body: { rules?: unknown; closed?: unknown }, pref?: string | null) {
   const db = env.DB;
-  const studio = await ownedStudio(env, user);
+  const studio = await ownedStudio(env, user, pref);
   await limit(db, `hours-save:${user.id}`, 60, 10 * 60_000);
   const toMin = (s: unknown) => {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? ''));
