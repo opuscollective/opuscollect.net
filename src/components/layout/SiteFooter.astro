@@ -1,10 +1,10 @@
 ---
 import { FOOTER_NAV, SOCIALS, SITE } from '@/data/site';
 const year = new Date().getFullYear();
-/** light: the warm-white editorial footer in either theme (homepage). */
+/** light: the black footer in either theme, continuing the dark globe hero (homepage). */
 const { light = false } = Astro.props as { light?: boolean };
 ---
-<footer class:list={['ftr', { 'ftr--light tone-light': light }]}>
+<footer class:list={['ftr', { 'ftr--light tone-dark': light }]}>
   <div class="container">
     <div class="ftr__top">
       <div class="ftr__brand">
@@ -30,8 +30,9 @@ const { light = false } = Astro.props as { light?: boolean };
 </footer>
 
 <style>
-  .ftr--light { background: var(--bg); color: var(--text); border-top: 0; }
+  .ftr.ftr--light { background: var(--bg); color: var(--text); border-top: 0; }
   .ftr--light .ftr__links a:hover, .ftr--light .ftr__legal a:hover { color: var(--text); }
+  .ftr--light .ftr__legal { padding-bottom: 96px; border-top-color: rgba(255,255,255,.1); } /* clear of the floating Messages button */
   .ftr { border-top: 1px solid var(--c-line); padding-top: clamp(56px, 7vw, 96px); overflow: hidden; }
   .ftr__top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 32px 56px; }
   .ftr__brand { display: flex; flex-direction: column; gap: 14px; }
