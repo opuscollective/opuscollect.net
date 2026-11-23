@@ -9,7 +9,7 @@ import { esc } from '@/lib/html';
 export interface Mail { to: string; subject: string; heading: string; body: string; action?: { label: string; url: string }; /** A one-time code shown large instead of a button (sign-in). */ code?: string; footnote: string }
 
 function render(m: Mail) {
-  const html = `<!doctype html><html><body style="margin:0;background:#f2efea;padding:40px 16px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1c">
+  const html = `<!doctype html><html><body style="margin:0;background:#ffffff;padding:40px 16px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1c">
 <table role="presentation" width="100%" style="max-width:520px;margin:0 auto"><tr><td>
 <p style="margin:0 0 32px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#65606a">Opus Collective</p>
 <h1 style="margin:0 0 16px;font-size:26px;font-weight:500;letter-spacing:-.02em;color:#1a1a1c">${esc(m.heading)}</h1>

@@ -32,7 +32,7 @@ import { zipPoint } from '@/scripts/zip-lookup';
 type View = 'map' | 'split' | 'list';
 type Sheet = 'peek' | 'half' | 'full';
 
-const VIEW_KEY = 'opus.world.view.v1';
+const VIEW_KEY = 'opus.world.view.v2';
 /** Results near a searched city when there is no map to follow (List view), in km. */
 const NEAR_KM = 100;
 
@@ -220,6 +220,30 @@ export function initWorld(root: HTMLElement) {
     filtersBtn.classList.toggle('is-active', n > 0);
     filtersBtn.setAttribute('aria-label', n ? `Filters, ${n} applied` : 'Filters');
     $<HTMLButtonElement>('[data-clear-q]').hidden = !q.value;
+    syncQuick();
+  }
+  // ---------- Quick filters: one-tap pills, always visible, in sync with the Filters panel ----------
+  const quick = $('[data-quick]');
+  type QF = { id: string; label: string; only?: string; on: () => boolean; toggle: () => void };
+  const QUICK: QF[] = [
+    { id: 'collab', label: 'Open to collaborate', only: 'musician', on: () => !!f.openToCollab, toggle: () => { f.openToCollab = !f.openToCollab; } },
+    { id: 'verified', label: 'Verified', on: () => f.verifiedOnly, toggle: () => { f.verifiedOnly = !f.verifiedOnly; } },
+    ...Object.entries(SPECIALTIES).slice(0, 12).map(([k, d]): QF => ({ id: 'sp-' + k, label: d.plural, only: 'musician', on: () => f.specialty === k, toggle: () => { f.specialty = f.specialty === k ? '' : toSpecialty(k); } })),
+    ...([['commercial', 'Recording studios'], ['home', 'Home studios'], ['remote', 'Remote']] as const).map(([k, l]): QF => ({ id: 'st-' + k, label: l, only: 'studio', on: () => f.studioType === k, toggle: () => { f.studioType = f.studioType === k ? '' : k; } })),
+  ];
+  quick.innerHTML = QUICK.map((x) => `<button type="button" class="wp__q" data-q="${x.id}" aria-pressed="false">${esc(x.label)}</button>`).join('');
+  quick.addEventListener('click', (e) => {
+    const id = (e.target as Element).closest<HTMLElement>('[data-q]')?.dataset.q;
+    const x = QUICK.find((y) => y.id === id);
+    if (!x) return;
+    x.toggle(); changed();
+  });
+  function syncQuick() {
+    quick.querySelectorAll<HTMLButtonElement>('[data-q]').forEach((b) => {
+      const x = QUICK.find((y) => y.id === b.dataset.q)!;
+      b.hidden = x.only ? (kind() ? x.only !== kind() : x.only === 'studio') : false;
+      b.setAttribute('aria-pressed', String(x.on()));
+    });
   }
   function setFilters(open: boolean) {
     filtersEl.classList.toggle('is-open', open);

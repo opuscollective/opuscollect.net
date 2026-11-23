@@ -145,7 +145,7 @@ const topCities = CITIES.slice(0, 8);
    * doesn't know, and zooms down into their city.
    */
   async function enter() {
-    const href = '/world?view=map&enter=1';
+    const href = '/world?view=split&enter=1';
     if (!api) { location.href = href; return; }
     if (!start()) return;
     hero.classList.add('is-entering');
