@@ -1,0 +1,132 @@
+---
+/** Work: offer your services for hire (remote or in person) and answer requests. No payments on Opus yet. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getMyProfile } from '@/server/profiles';
+import { incomingWork, listHireServices, outgoingWork } from '@/server/hire';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/account/hire');
+const db = Astro.locals.runtime.env.DB;
+const p = await getMyProfile(db, user.id);
+if (!p) return Astro.redirect('/start');
+const services = await listHireServices(db, p.id, true).catch(() => []);
+const incoming = await incomingWork(db, user.id).catch(() => []);
+const outgoing = await outgoingWork(db, user.id).catch(() => []);
+const money = (c: number, cur: string) => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(c / 100);
+const ago = (t: number) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const waiting = incoming.filter((r) => r.status === 'requested').length;
+---
+<BaseLayout title="Work" noindex assistant={false} messages={false}>
+  <section class="app">
+    <div class="app__wrap hw" style="margin-inline:auto">
+      <p class="t-meta app__kicker">Work</p>
+      <h1 class="app__title">Get hired through Opus.</h1>
+      <p class="dim">List what you do, remote or in person, with a starting price. People who find you in World can request to work with you. Nothing is charged on Opus yet, and price never changes how you’re ranked.</p>
+
+      <section class="hw__sec">
+        <h2>Your services <span>{services.filter((s) => s.active).length}</span></h2>
+        <ul class="hw__list" data-services role="list">
+          {services.map((s) => (
+            <li data-id={s.id} data-name={s.name} data-desc={s.description} data-mode={s.mode} data-price={String(Math.round(s.fromCents / 100))} class:list={{ 'is-off': !s.active }}>
+              <div><b>{s.name}</b><small>{s.mode === 'remote' ? 'Remote' : 'In person'} · from {money(s.fromCents, s.currency)}{s.description && ` · ${s.description}`}{!s.active && ' · Hidden'}</small></div>
+              <span><button type="button" class="hw__mini" data-edit>Edit</button>{s.active && <button type="button" class="hw__mini" data-remove>Hide</button>}</span>
+            </li>
+          ))}
+        </ul>
+        {services.length === 0 && <p class="dim">Nothing listed yet. Add one to show “Available for hire” on your page and in World.</p>}
+        <form class="hw__form" data-form novalidate>
+          <input type="hidden" name="id" />
+          <label class="field"><span>Service</span><input class="input" name="name" maxlength="80" placeholder="Custom beat, Mixing per song, Session guitar…" required /></label>
+          <div class="hw__two">
+            <label class="field"><span>How</span><select class="input" name="mode"><option value="remote">Remote</option><option value="session">In person</option></select></label>
+            <label class="field"><span>From (USD)</span><input class="input" name="price" inputmode="decimal" placeholder="100" required /></label>
+          </div>
+          <label class="field"><span>Details <small>optional</small></span><input class="input" name="description" maxlength="300" placeholder="Turnaround, what’s included…" /></label>
+          <div data-status class="form-status" role="status"></div>
+          <div class="hw__row"><button class="btn-app" type="submit" data-save>Add service</button><button class="btn-app btn-app--ghost" type="button" data-cancel hidden>Cancel</button></div>
+        </form>
+      </section>
+
+      <section class="hw__sec">
+        <h2>Requests for you <span>{waiting}</span></h2>
+        {incoming.length === 0 ? <p class="dim">When someone asks to work with you, it shows here and in your Requests count.</p> : (
+          <ul class="hw__reqs" role="list">{incoming.map((r) => (
+            <li data-req={r.id}>
+              <p class="hw__t"><b>{r.serviceName}</b> · {r.mode === 'remote' ? 'Remote' : 'In person'} · from {money(r.fromCents, r.currency)} <time>{ago(r.at)}</time></p>
+              <p class="hw__who">From {r.who.handle ? <a class="link" href={`/${r.who.handle}`}>{r.who.name}</a> : r.who.name}</p>
+              <p class="hw__proj">{r.project}</p>
+              {(r.budget || r.deadline) && <p class="dim hw__fine">{[r.budget && `Budget: ${r.budget}`, r.deadline && `When: ${r.deadline}`].filter(Boolean).join(' · ')}</p>}
+              {r.status === 'requested' ? (
+                <div class="hw__row"><button class="btn-app" data-act="accept">Accept</button><button class="btn-app btn-app--ghost" data-act="decline">Decline</button></div>
+              ) : <p class="hw__state">{r.status === 'accepted' ? 'Accepted. You’re now connected, so you can message each other.' : r.status === 'declined' ? 'Declined' : 'Withdrawn by them'}</p>}
+            </li>
+          ))}</ul>
+        )}
+      </section>
+
+      {outgoing.length > 0 && (
+        <section class="hw__sec">
+          <h2>Requests you sent <span>{outgoing.length}</span></h2>
+          <ul class="hw__reqs" role="list">{outgoing.map((r) => (
+            <li data-req={r.id}>
+              <p class="hw__t"><b>{r.serviceName}</b> with <a class="link" href={`/${r.who.handle}`}>{r.who.name}</a> <time>{ago(r.at)}</time></p>
+              <p class="hw__state">{r.status === 'requested' ? 'Waiting for a reply' : r.status === 'accepted' ? 'Accepted. Message them from Messages.' : r.status === 'declined' ? 'Declined' : 'Withdrawn'}</p>
+              {r.status === 'requested' && <div class="hw__row"><button class="btn-app btn-app--ghost" data-act="withdraw">Withdraw</button></div>}
+            </li>
+          ))}</ul>
+        </section>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hw { max-width: 720px; }
+  .hw__sec { margin-top: 44px; }
+  .hw__sec h2 { font-size: 22px; font-weight: 500; letter-spacing: -0.03em; margin-bottom: 14px; }
+  .hw__sec h2 span { font-size: 14px; font-weight: 400; color: var(--text-3); margin-left: 6px; }
+  .hw__list, .hw__reqs { display: grid; gap: 10px; margin-bottom: 18px; }
+  .hw__list li, .hw__reqs li { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 16px 18px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
+  .hw__reqs li { display: block; }
+  .hw__list li.is-off { opacity: .5; }
+  .hw__list small { display: block; margin-top: 4px; color: var(--text-3); font-size: 13px; }
+  .hw__mini { border: 0; background: none; color: var(--text-2); font: inherit; font-size: 14px; cursor: pointer; padding: 4px 8px; }
+  .hw__mini:hover { color: var(--text); text-decoration: underline; }
+  .hw__form { display: grid; gap: 14px; padding-top: 6px; }
+  .hw__two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hw__row { display: flex; gap: 10px; margin-top: 12px; }
+  .hw__t { margin: 0; font-size: 15px; } .hw__t time { float: right; color: var(--text-3); font-size: 13px; }
+  .hw__who { margin: 6px 0 0; font-size: 14px; color: var(--text-2); }
+  .hw__proj { margin: 10px 0 0; white-space: pre-line; line-height: 1.55; }
+  .hw__fine { margin: 8px 0 0; font-size: 13px; }
+  .hw__state { margin: 10px 0 0; font-size: 14px; color: var(--text-2); }
+</style>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-form]')!;
+  const status = form.querySelector<HTMLElement>('[data-status]')!;
+  const saveBtn = form.querySelector<HTMLButtonElement>('[data-save]')!;
+  const cancel = form.querySelector<HTMLButtonElement>('[data-cancel]')!;
+  const post = (url: string, body: unknown) => fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const reset = () => { form.reset(); (form.elements.namedItem('id') as HTMLInputElement).value = ''; saveBtn.textContent = 'Add service'; cancel.hidden = true; };
+  cancel.addEventListener('click', reset);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault(); status.className = 'form-status'; status.textContent = 'Saving…';
+    const d = Object.fromEntries(new FormData(form));
+    const r = await post('/api/hire/service', d);
+    if (r.ok) location.reload(); else { status.className = 'form-status notice notice--error'; status.textContent = (await r.json().catch(() => ({}))).error ?? 'Couldn’t save.'; }
+  });
+  document.querySelectorAll<HTMLLIElement>('[data-services] li').forEach((li) => {
+    li.querySelector('[data-edit]')?.addEventListener('click', () => {
+      for (const k of ['id', 'name', 'mode', 'price', 'description']) (form.elements.namedItem(k) as HTMLInputElement).value = k === 'id' ? li.dataset.id! : k === 'description' ? li.dataset.desc! : li.dataset[k]!;
+      saveBtn.textContent = 'Save changes'; cancel.hidden = false; form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    li.querySelector('[data-remove]')?.addEventListener('click', async () => { await post('/api/hire/service-remove', { id: li.dataset.id }); location.reload(); });
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-req] [data-act]').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true; const r = await post('/api/hire/respond', { id: b.closest<HTMLElement>('[data-req]')!.dataset.req, action: b.dataset.act });
+    if (r.ok) location.reload(); else b.disabled = false;
+  }));
+</script>

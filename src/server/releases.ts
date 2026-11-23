@@ -491,7 +491,7 @@ export async function findTalent(db: D1Database, user: SessionUser, releaseId: s
       (SELECT COUNT(*) FROM profile_genres g WHERE g.profile_id = p.id AND g.genre IN (SELECT value FROM json_each(?))) AS gm
     FROM profiles p
     WHERE p.kind = 'musician' AND p.status = 'published' AND p.owner_user_id <> ?
-      ${opts.openOnly ? 'AND p.open_to_collab = 1' : ''}
+      
       AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = ? AND b.blocked_id = p.owner_user_id) OR (b.blocker_id = p.owner_user_id AND b.blocked_id = ?))
       ${specFilter}
     ORDER BY gm DESC, p.updated_at DESC LIMIT 200`).bind(...binds)

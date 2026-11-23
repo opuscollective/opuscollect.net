@@ -10,6 +10,7 @@ import { connectionCount } from '@/server/messages';
 import { profileReleases } from '@/server/releases';
 import { RELEASE_KINDS } from '@/data/music';
 import { getPageConfig } from '@/server/page-config';
+import { listHireServices } from '@/server/hire';
 import { membershipsOf, myInvites } from '@/server/clans';
 import '@/styles/app.css';
 import '@/styles/clans.css';
@@ -44,6 +45,8 @@ const clans = await membershipsOf(db, ownerId).catch(() => []);
 const invites = isOwner ? await myInvites(db, ownerId).catch(() => []) : [];
 const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
 const links = Object.entries(p.links).filter(([, v]) => !!v);
+const hire = p.status === 'published' || isOwner ? await listHireServices(db, p.id).catch(() => []) : [];
+const usd = (c: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(c / 100);
 const page = await getPageConfig(Astro.locals.runtime.env.WAITLIST, p.id);
 const featured = record.find((x) => x.id === page.featured) ?? record[0] ?? null;
 const shelf = record.filter((x) => x.id !== featured?.id);
@@ -79,8 +82,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {page.tagline && <p class="mp__tag">{page.tagline}</p>}
           <ul class="mp__facts" role="list">
             {where && <li>{where}</li>}
+            {hire.length > 0 && <li class="is-on">For hire</li>}
             <li><b>{connections.toLocaleString('en-US')}</b> {connections === 1 ? 'connection' : 'connections'}</li>
-            {p.openToCollab && <li class="is-on">Open to collaborate</li>}
           </ul>
           {links.length + page.links.length > 0 && (
             <ul class="mp__chips" role="list">
@@ -92,7 +95,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {isOwner ? (
             <a class="btn-app btn-app--ghost" href="/account/profile">Edit profile</a>
           ) : !viewer ? (
-            p.openToCollab && <a class="btn-app" href={'/sign-in?next=' + encodeURIComponent('/' + p.handle + '?connect=1')}>Connect</a>
+            <a class="btn-app" href={'/sign-in?next=' + encodeURIComponent('/' + p.handle + '?connect=1')}>Connect</a>
           ) : rel?.state === 'connected' ? (
             <>
               <span class="mp__state" data-conn-state="connected">Connected</span>
@@ -108,7 +111,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               <button class="btn-app" type="button" data-conn-act="accept" data-conn-id={rel.id}>Accept</button>
               <button class="btn-app btn-app--ghost" type="button" data-conn-act="decline" data-conn-id={rel.id}>Decline</button>
             </>
-          ) : rel?.state === 'none' && p.openToCollab ? (
+          ) : rel?.state === 'none' ? (
             <button class="btn-app" type="button" data-connect-open aria-haspopup="dialog">Connect</button>
           ) : null}
           {viewer && !isOwner && (
@@ -128,7 +131,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
       {rel?.state === 'received' && <p class="mp__note" data-conn-note>{p.displayName} asked to connect with you. You can also answer in <a class="link" href="/network?tab=received">My Network</a>.</p>}
       <p class="dim mu-err" data-conn-status role="alert"></p>
 
-      {viewer && !isOwner && rel?.state === 'none' && p.openToCollab && (
+      {viewer && !isOwner && rel?.state === 'none' && (
         <dialog class="cdlg" data-connect aria-labelledby="cdlg-title">
           <form class="cdlg__form" data-connect-form novalidate>
             <div class="cdlg__who">
@@ -154,11 +157,42 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
         </dialog>
       )}
 
-      {isEmpty && !isOwner ? (
+      {viewer && !isOwner && hire.length > 0 && (
+        <dialog class="cdlg" data-work aria-labelledby="wdlg-title">
+          <form class="cdlg__form" data-work-form novalidate>
+            <div class="cdlg__who"><span><b id="wdlg-title">Request to work with {p.displayName}</b><small data-work-service></small></span></div>
+            <input type="hidden" name="handle" value={p.handle} />
+            <input type="hidden" name="serviceId" />
+            <label class="field cdlg__field"><span>About the project *</span><textarea class="textarea" name="project" maxlength="1500" rows="4" placeholder="What are you making? Reference tracks, genre, what you need from them."></textarea></label>
+            <label class="field"><span>Your budget <span class="dim">(optional)</span></span><input class="input" name="budget" maxlength="120" placeholder="e.g. $200" /></label>
+            <label class="field"><span>When <span class="dim">(optional)</span></span><input class="input" name="deadline" maxlength="120" placeholder="e.g. by Dec 15, or this weekend" /></label>
+            <p class="cdlg__fine">{p.displayName} sees this and accepts or declines. If they accept, you’re connected and can message. Nothing is charged on Opus.</p>
+            <div data-status class="form-status"></div>
+            <div class="cdlg__row"><button class="btn-app btn-app--ghost" type="button" data-work-cancel>Cancel</button><button class="btn-app" type="submit">Send request</button></div>
+          </form>
+        </dialog>
+      )}
+
+      {isEmpty && !isOwner && hire.length === 0 ? (
         <p class="mp__new">{p.displayName} is new to Opus. Their works and credits will appear here.</p>
       ) : (
       <div class="mp__grid">
         <div class="mp__main">
+          {(hire.length > 0 || isOwner) && (
+            <section class="mp__sec mp__hire" id="hire" style="order:-1">
+              <h2 class="mp__h">Work with {p.displayName.split(' ')[0]}</h2>
+              {hire.length > 0 ? (
+                <ul class="mp__svc" role="list">{hire.map((x) => (
+                  <li>
+                    <span><b>{x.name}</b><small>{x.mode === 'remote' ? 'Remote' : 'In person'} · from {usd(x.fromCents)}{x.description && ` · ${x.description}`}</small></span>
+                    {isOwner ? null : viewer ? <button class="btn-app btn-app--ghost" type="button" data-work-open data-sid={x.id} data-sname={x.name}>Request</button> : <a class="btn-app btn-app--ghost" href={'/sign-in?next=' + encodeURIComponent('/' + p.handle)}>Request</a>}
+                  </li>
+                ))}</ul>
+              ) : <p class="dim">Offer a beat, a mix or a session, remote or in person, and show “For hire” here and in World. <a class="link" href="/account/hire">List a service</a></p>}
+              {isOwner && hire.length > 0 && <p class="dim mp__fine"><a class="link" href="/account/hire">Edit services and requests</a></p>}
+              {hire.length > 0 && !isOwner && <p class="dim mp__fine">“From” prices are a guide. You agree the details and payment directly; Opus doesn’t take payment yet.</p>}
+            </section>
+          )}
           {show('works') && (record.length > 0 || isOwner) && (
             <section class="mp__sec" id="works" style={`order:${ord('works')}`}>
               {featured ? (
@@ -321,6 +355,11 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__credits li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 14px 0; border-bottom: 1px solid var(--c-line); font-size: 15px; }
   .mp__credits li:first-child { border-top: 1px solid var(--c-line); }
   .mp__sec .mp__tags, .mp__sec .mp__links, .mp__sec .mp__list { margin-top: 14px; }
+  .mp__svc { display: grid; gap: 8px; }
+  .mp__svc li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
+  .mp__svc small { display: block; margin-top: 3px; font-size: 13px; color: var(--text-3); }
+  .mp__svc b { font-weight: 500; }
+  .mp__fine { margin-top: 10px; font-size: 13px; }
   @media (max-width: 600px) { .mp__facts { gap: 6px 18px; } .mp__facts li + li::before { display: none; } }
   @media (max-width: 860px) {
     .mp__head, .mp__head.no-photo { grid-template-columns: 1fr; justify-items: start; row-gap: 20px; }
@@ -349,6 +388,20 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   // Arriving from a World preview's Connect button opens the dialog directly.
   if (new URLSearchParams(location.search).get('connect') === '1' && open) openDlg();
   if (form) bindForm(form, { url: '/api/connections', busyLabel: 'Sending…', onSuccess: () => { location.href = location.pathname; } });
+
+
+  // Request to work: a small dialog that sends project details to the member.
+  const wdlg = document.querySelector<HTMLDialogElement>('[data-work]');
+  const wform = wdlg?.querySelector<HTMLFormElement>('[data-work-form]');
+  document.querySelectorAll<HTMLButtonElement>('[data-work-open]').forEach((b) => b.addEventListener('click', () => {
+    if (!wdlg || !wform) return;
+    (wform.elements.namedItem('serviceId') as HTMLInputElement).value = b.dataset.sid!;
+    const l = wdlg.querySelector<HTMLElement>('[data-work-service]'); if (l) l.textContent = b.dataset.sname ?? '';
+    wdlg.showModal();
+  }));
+  wdlg?.addEventListener('click', (e) => { if (e.target === wdlg) wdlg.close(); });
+  wdlg?.querySelector('[data-work-cancel]')?.addEventListener('click', () => wdlg.close());
+  if (wform) bindForm(wform, { url: '/api/hire/request', busyLabel: 'Sending…', onSuccess: () => { wdlg?.close(); const n = document.createElement('p'); n.className = 'mp__note'; n.textContent = 'Request sent. You’ll see their answer in Requests.'; document.querySelector('.mp__head')?.after(n); } });
 
   // Cancel, accept, decline and remove, right here on the profile.
   const cstatus = document.querySelector<HTMLElement>('[data-conn-status]');

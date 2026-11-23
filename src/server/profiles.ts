@@ -189,7 +189,7 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
 
   const t = now();
   const id = existing?.id ?? randomId();
-  const openToCollab = body.openToCollab === false ? 0 : 1;
+  const openToCollab = 1; // Everyone on Opus is open to connect. The column is kept but no longer used.
   const showOnMap = body.showOnMap === false ? 0 : 1;
   const vis = toVisibility(body.locationVisibility, existing?.locationVisibility);
   const stmts: D1PreparedStatement[] = [];

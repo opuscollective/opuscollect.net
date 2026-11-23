@@ -64,7 +64,7 @@ export interface MusicianListing extends ListingBase {
   specialties: Specialty[];
   genres: string[];
   verification: MusicianVerification;
-  openToCollab: boolean;
+  forHire?: boolean;
   highlight?: string; // short achievement line, shown on the card
 }
 

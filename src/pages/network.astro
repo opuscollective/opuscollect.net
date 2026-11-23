@@ -33,6 +33,7 @@ const ago = (t: number) => {
   if (s < 7 * 86400) { const d = Math.round(s / 86400); return `${d} day${d === 1 ? '' : 's'} ago`; }
   return DATE.format(t);
 };
+const workWaiting = user ? (await Astro.locals.runtime.env.DB.prepare("SELECT COUNT(*) AS n FROM work_requests WHERE owner_user_id = ? AND status = 'requested'").bind(user.id).first<{ n: number }>().catch(() => null))?.n ?? 0 : 0;
 const sub = (c: ConnItem) => [c.other.specialty, c.other.place].filter(Boolean).join(' · ');
 const COUNT = { connections: connected.length, received: incoming.length, sent: outgoing.length };
 const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' };
@@ -130,8 +131,9 @@ const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' }
 
           <!-- Received requests -->
           <section class="nw__pane" data-pane="received" hidden={tab !== 'received'} aria-label="Received requests">
+            {workWaiting > 0 && <p class="nw__sum"><a class="link" href="/account/hire">{workWaiting} work request{workWaiting === 1 ? '' : 's'} waiting for you</a></p>}
             {incoming.length === 0 ? (
-              <div class="nw__empty"><h2>No requests waiting</h2><p class="dim">When someone asks to connect, it shows here. Keep “Open to collaboration” on in your profile to receive requests.</p></div>
+              <div class="nw__empty"><h2>No requests waiting</h2><p class="dim">When someone asks to connect, it shows here.</p></div>
             ) : (
               <ul class="nw__list" role="list">{incoming.map((c) => (
                 <li class="nw__row nw__row--req" data-id={c.id}>

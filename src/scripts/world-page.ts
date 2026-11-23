@@ -65,7 +65,7 @@ export function initWorld(root: HTMLElement) {
   let loaded = false;
   let loadError = false;
 
-  const f: WorldFilters = { kinds: [], specialty: '', genre: '', openToCollab: false, studioType: '', verifiedOnly: false, text: '' };
+  const f: WorldFilters = { kinds: [], specialty: '', genre: '', forHire: false, studioType: '', verifiedOnly: false, text: '' };
   let sort = 'recommended';
   let inView = true;
   let active: string | null = null;
@@ -88,7 +88,7 @@ export function initWorld(root: HTMLElement) {
   f.text = params.get('q') ?? '';
   f.specialty = toSpecialty(params.get('specialty') ?? params.get('discipline')); // "discipline" kept for old links
   f.genre = params.get('genre') ?? '';
-  f.openToCollab = params.get('collab') === '1';
+  f.forHire = params.get('hire') === '1';
   f.verifiedOnly = params.get('verified') === '1';
   const st0 = params.get('studio');
   if (st0 === 'commercial' || st0 === 'home' || st0 === 'remote') f.studioType = st0;
@@ -103,7 +103,7 @@ export function initWorld(root: HTMLElement) {
     u.pathname = city ? `/world/${citySlug(city.name)}` : KIND_PATH[f.kinds[0] ?? ''];
     u.searchParams.delete('type'); u.searchParams.delete('view'); u.searchParams.delete('enter');
     set('q', f.text); set('specialty', f.specialty || ''); set('genre', f.genre); set('studio', f.studioType || '');
-    set('collab', f.openToCollab ? '1' : ''); set('verified', f.verifiedOnly ? '1' : ''); set('city', city ? '' : place?.name); set('p', previewId);
+    set('hire', f.forHire ? '1' : ''); set('verified', f.verifiedOnly ? '1' : ''); set('city', city ? '' : place?.name); set('p', previewId);
     history.replaceState(history.state, '', u);
   }
 
@@ -201,12 +201,12 @@ export function initWorld(root: HTMLElement) {
 
   // ---------- Filters panel ----------
   const kind = () => f.kinds[0] ?? '';
-  const filterCount = () => [f.specialty, f.genre, f.studioType, f.verifiedOnly, f.openToCollab].filter(Boolean).length;
+  const filterCount = () => [f.specialty, f.genre, f.studioType, f.verifiedOnly, f.forHire].filter(Boolean).length;
   function syncControls() {
     $<HTMLSelectElement>('[data-specialty]').value = f.specialty ?? '';
     $<HTMLSelectElement>('[data-genre]').value = f.genre ?? '';
     $<HTMLSelectElement>('[data-studio-type]').value = f.studioType ?? '';
-    $<HTMLInputElement>('[data-collab]').checked = !!f.openToCollab;
+    $<HTMLInputElement>('[data-hire]').checked = !!f.forHire;
     $<HTMLInputElement>('[data-verified]').checked = f.verifiedOnly;
     $<HTMLInputElement>('[data-inview]').checked = inView;
     $<HTMLSelectElement>('[data-sort]').value = sort;
@@ -226,7 +226,7 @@ export function initWorld(root: HTMLElement) {
   const quick = $('[data-quick]');
   type QF = { id: string; label: string; only?: string; on: () => boolean; toggle: () => void };
   const QUICK: QF[] = [
-    { id: 'collab', label: 'Open to collaborate', only: 'musician', on: () => !!f.openToCollab, toggle: () => { f.openToCollab = !f.openToCollab; } },
+    { id: 'hire', label: 'For hire', only: 'musician', on: () => !!f.forHire, toggle: () => { f.forHire = !f.forHire; } },
     { id: 'verified', label: 'Verified', on: () => f.verifiedOnly, toggle: () => { f.verifiedOnly = !f.verifiedOnly; } },
     ...Object.entries(SPECIALTIES).slice(0, 12).map(([k, d]): QF => ({ id: 'sp-' + k, label: d.plural, only: 'musician', on: () => f.specialty === k, toggle: () => { f.specialty = f.specialty === k ? '' : toSpecialty(k); } })),
     ...([['commercial', 'Recording studios'], ['home', 'Home studios'], ['remote', 'Remote']] as const).map(([k, l]): QF => ({ id: 'st-' + k, label: l, only: 'studio', on: () => f.studioType === k, toggle: () => { f.studioType = f.studioType === k ? '' : k; } })),
@@ -265,7 +265,7 @@ export function initWorld(root: HTMLElement) {
     if (f.genre) c.push(chipHtml('genre', f.genre));
     if (f.studioType) c.push(chipHtml('studioType', { commercial: 'Recording studios', home: 'Home studios', remote: 'Remote services' }[f.studioType]));
     if (f.verifiedOnly) c.push(chipHtml('verified', 'Opus Verified'));
-    if (f.openToCollab) c.push(chipHtml('collab', 'Open to collaborate'));
+    if (f.forHire) c.push(chipHtml('hire', 'For hire'));
     if (c.length > 1) c.push('<button type="button" class="wp__chip wp__chip--clear" data-chip="all">Clear all</button>');
     chips.innerHTML = c.join('');
     chips.hidden = c.length === 0;
@@ -278,13 +278,13 @@ export function initWorld(root: HTMLElement) {
     if (k === 'genre') f.genre = '';
     if (k === 'studioType') f.studioType = '';
     if (k === 'verified') f.verifiedOnly = false;
-    if (k === 'collab') f.openToCollab = false;
+    if (k === 'hire') f.forHire = false;
     if (k === 'all') { resetAll(); return; }
     changed();
     q.focus();
   });
 
-  function resetFilters() { f.specialty = ''; f.genre = ''; f.studioType = ''; f.verifiedOnly = false; f.openToCollab = false; sort = 'recommended'; inView = true; }
+  function resetFilters() { f.specialty = ''; f.genre = ''; f.studioType = ''; f.verifiedOnly = false; f.forHire = false; sort = 'recommended'; inView = true; }
   function resetAll() { resetFilters(); f.kinds = []; f.text = ''; q.value = ''; clearPlace(); changed(); }
   /** Forget the searched city. When it was set, the globe also returns to the whole world so results widen again. */
   function clearPlace() {
@@ -477,7 +477,7 @@ export function initWorld(root: HTMLElement) {
       if (!sh) return;
       f.kinds = sh.filter.kind ? [sh.filter.kind] : [];
       f.specialty = sh.filter.specialty ?? '';
-      f.openToCollab = !!sh.filter.collab;
+      f.forHire = !!sh.filter.hire;
       changed();
       results.scrollIntoView?.({ block: 'start' });
       return;
@@ -553,7 +553,7 @@ export function initWorld(root: HTMLElement) {
       const k = b.dataset.kind as WorldFilters['kinds'][number] | '';
       f.kinds = k ? [k] : [];
       // Category-specific filters don't carry over to a category they don't apply to.
-      if (k && k !== 'musician') { f.specialty = ''; f.genre = ''; f.openToCollab = false; }
+      if (k && k !== 'musician') { f.specialty = ''; f.genre = ''; f.forHire = false; }
       if (k !== 'studio') f.studioType = '';
       changed();
     }),
@@ -571,7 +571,7 @@ export function initWorld(root: HTMLElement) {
   $<HTMLSelectElement>('[data-specialty]').addEventListener('change', (e) => { f.specialty = toSpecialty((e.target as HTMLSelectElement).value); changed(); });
   $<HTMLSelectElement>('[data-genre]').addEventListener('change', (e) => { f.genre = (e.target as HTMLSelectElement).value; changed(); });
   $<HTMLSelectElement>('[data-studio-type]').addEventListener('change', (e) => { f.studioType = (e.target as HTMLSelectElement).value as WorldFilters['studioType']; changed(); });
-  $<HTMLInputElement>('[data-collab]').addEventListener('change', (e) => { f.openToCollab = (e.target as HTMLInputElement).checked; changed(); });
+  $<HTMLInputElement>('[data-hire]').addEventListener('change', (e) => { f.forHire = (e.target as HTMLInputElement).checked; changed(); });
   $<HTMLInputElement>('[data-verified]').addEventListener('change', (e) => { f.verifiedOnly = (e.target as HTMLInputElement).checked; changed(); });
   $<HTMLSelectElement>('[data-sort]').addEventListener('change', (e) => { sort = (e.target as HTMLSelectElement).value; changed(); });
   $<HTMLInputElement>('[data-inview]').addEventListener('change', (e) => { inView = (e.target as HTMLInputElement).checked; changed(); });

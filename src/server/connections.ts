@@ -48,7 +48,6 @@ export async function requestConnection(env: Env, user: SessionUser, body: { to?
   if (!target || target.status !== 'published') throw new HttpError(404, 'That profile isn’t available.');
   if (target.owner_user_id === user.id) throw new HttpError(400, 'That’s your own profile.');
   if (await isBlockedEitherWay(db, user.id, target.owner_user_id)) throw new HttpError(403, 'You can’t connect with this member.');
-  if (!target.open_to_collab) throw new HttpError(403, 'This member isn’t taking new collaboration requests right now.');
   const raw = typeof body.message === 'string' ? body.message.trim() : '';
   if (raw.length > INTRO_MAX) throw new HttpError(400, `Keep your introduction to ${INTRO_MAX} characters.`, 'message');
   // Plain text only: line breaks are kept, other control characters dropped. Pages escape it when shown.

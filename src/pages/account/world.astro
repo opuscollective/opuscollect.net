@@ -26,6 +26,8 @@ const myBookings = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM bookings
 const studioRequests = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM bookings b JOIN profiles p ON p.id = b.profile_id WHERE p.owner_user_id = ? AND b.status = 'requested'", user.id))?.n ?? 0;
 const requests = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM connections WHERE addressee_id = ? AND status = 'pending'", user.id))?.n ?? 0;
 const connections = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM connections WHERE (requester_id = ?1 OR addressee_id = ?1) AND status = 'accepted'", user.id))?.n ?? 0;
+const hireWaiting = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM work_requests WHERE owner_user_id = ? AND status = 'requested'", user.id))?.n ?? 0;
+const hireOn = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM services s JOIN profiles p ON p.id = s.profile_id WHERE p.owner_user_id = ? AND p.kind = 'musician' AND s.active = 1", user.id))?.n ?? 0;
 const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
 ---
 <BaseLayout title="My World" noindex assistant={false}>
@@ -61,6 +63,13 @@ const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
           ) : <p class="dim">List a studio to get discovered and take booking requests. Free.</p>}
           {studioRequests > 0 && <p class="mw__alert">{studioRequests} booking request{studioRequests === 1 ? '' : 's'} waiting</p>}
           <p class="mw__row"><a class="btn-app btn-app--ghost" href="/business">{studios.length ? 'Manage studios' : 'List your studio'}</a>{studios.length > 0 && <a class="mw__link" href="/business?new=1">Add another</a>}{studios.length > 0 && <a class="mw__link" href="/business/bookings">Bookings</a>}</p>
+        </article>
+
+        <article class="mw__card">
+          <h2>Work <span class="mw__n">{hireOn}</span></h2>
+          <p class="dim">{hireOn ? `${hireOn} service${hireOn === 1 ? '' : 's'} listed. You show as For hire in World.` : 'Offer a beat, a mix or a session, remote or in person, and get hired through Opus.'}</p>
+          {hireWaiting > 0 && <p class="mw__alert">{hireWaiting} work request{hireWaiting === 1 ? '' : 's'} waiting</p>}
+          <p class="mw__row"><a class="btn-app btn-app--ghost" href="/account/hire">{hireOn ? 'Manage work' : 'Offer your services'}</a></p>
         </article>
 
         <article class="mw__card">
