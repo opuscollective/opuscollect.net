@@ -10,9 +10,12 @@ export const GROUP_SECTIONS: Record<string, string> = { members: 'Members', work
 export type PageSection = string;
 
 export interface PageLink { label: string; url: string }
-export interface PageConfig { tagline: string; featured: string | null; links: PageLink[]; order: PageSection[]; hide: PageSection[] }
+/** Essentials: the works a member puts first (up to MAX_ESSENTIALS), and a short line per work on what it is and means. */
+export const MAX_ESSENTIALS = 6;
+export const NOTE_MAX = 220;
+export interface PageConfig { tagline: string; featured: string | null; links: PageLink[]; order: PageSection[]; hide: PageSection[]; essentials: string[]; notes: Record<string, string> }
 
-export const DEFAULT_PAGE: PageConfig = { tagline: '', featured: null, links: [], order: ['works', 'credits', 'about'], hide: [] };
+export const DEFAULT_PAGE: PageConfig = { tagline: '', featured: null, links: [], order: ['works', 'credits', 'about'], hide: [], essentials: [], notes: {} };
 
 export function cleanPage(raw: unknown, sections: Record<string, string> = PAGE_SECTIONS): PageConfig {
   const keys = Object.keys(sections);
@@ -29,7 +32,15 @@ export function cleanPage(raw: unknown, sections: Record<string, string> = PAGE_
   const order = [...new Set((Array.isArray(o.order) ? o.order : []).filter((k): k is string => typeof k === 'string' && keys.includes(k)))];
   for (const k of keys) if (!order.includes(k)) order.push(k);
   const hide = [...new Set((Array.isArray(o.hide) ? o.hide : []).filter((k): k is string => typeof k === 'string' && keys.includes(k)))];
-  return { tagline, featured, links, order, hide };
+  const id = (v: unknown): v is string => typeof v === 'string' && /^[\w-]{1,40}$/.test(v);
+  const essentials = [...new Set((Array.isArray(o.essentials) ? o.essentials : []).filter(id))].slice(0, MAX_ESSENTIALS);
+  const notes: Record<string, string> = {};
+  const rawNotes = (o.notes && typeof o.notes === 'object' ? o.notes : {}) as Record<string, unknown>;
+  for (const [k, v] of Object.entries(rawNotes)) {
+    const t = String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
+    if (id(k) && t && Object.keys(notes).length < 60) notes[k] = t;
+  }
+  return { tagline, featured, links, order, hide, essentials, notes };
 }
 
 export async function getPageConfig(kv: KVNamespace | undefined, profileId: string, sections: Record<string, string> = PAGE_SECTIONS): Promise<PageConfig> {

@@ -33,12 +33,26 @@ const origin = Astro.url.origin;
       <form class="pg__form" data-page novalidate>
         <label class="field"><span>Tagline</span><input class="input" name="tagline" maxlength="90" value={page.tagline} placeholder="One line about what you do" /></label>
 
-        <label class="field"><span>Featured work</span>
+        {!clan && (
+          <fieldset class="pg__sec">
+            <legend>Essentials <small>Up to six works that lead your page. A line about each says what it is and what it means.</small></legend>
+            {record.length === 0 && <p class="dim">Add a work first, then choose your essentials here.</p>}
+            <ul class="pg__ess" data-ess role="list">
+              {record.map((r) => (
+                <li data-id={r.id}>
+                  <label class="pg__ess-t"><input type="checkbox" checked={page.essentials.includes(r.id)} /> <b>{r.title}</b>{'releaseDate' in r && typeof r.releaseDate === 'string' && <small>{r.releaseDate.slice(0, 4)}</small>}</label>
+                  <input class="input" data-note maxlength="220" value={page.notes[r.id] ?? ''} placeholder="What it is, and what it means" />
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        )}
+        {clan && (<label class="field"><span>Featured work</span>
           <select class="input" name="featured">
             <option value="">{record.length ? 'My latest (automatic)' : 'Nothing yet. Add a work first'}</option>
             {record.map((r) => <option value={r.id} selected={page.featured === r.id}>{r.title}</option>)}
           </select>
-        </label>
+        </label>)}
 
         <fieldset class="pg__sec">
           <legend>Link buttons <small>Up to 8. They appear on your page and your link.</small></legend>
@@ -70,6 +84,11 @@ const origin = Astro.url.origin;
   .pg__sec { border: 0; padding: 0; margin: 0; }
   .pg__sec legend { font-size: 16px; font-weight: 500; margin-bottom: 12px; }
   .pg__sec legend small { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--text-3); }
+  .pg__ess { display: grid; gap: 10px; margin: 12px 0 0; }
+  .pg__ess li { display: grid; gap: 8px; padding: 12px 14px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
+  .pg__ess-t { display: flex; align-items: baseline; gap: 10px; }
+  .pg__ess-t b { font-weight: 500; }
+  .pg__ess-t small { color: var(--text-3); }
   .pg__links, .pg__order { display: grid; gap: 8px; margin-bottom: 12px; }
   .pg__order { margin: 0; }
   :global(.pg__links li) { display: grid; grid-template-columns: 1fr 1.6fr auto; gap: 8px; }
@@ -111,11 +130,17 @@ const origin = Astro.url.origin;
   };
   data.page.order.forEach(addSection);
 
+  const ess = [...form.querySelectorAll<HTMLInputElement>('[data-ess] input[type=checkbox]')];
+  const capEss = () => { const n = ess.filter((c) => c.checked).length; ess.forEach((c) => (c.disabled = !c.checked && n >= 6)); };
+  ess.forEach((c) => c.addEventListener('change', capEss)); capEss();
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
     const body = {
       tagline: fd.get('tagline'), featured: fd.get('featured') || null,
+      essentials: [...form.querySelectorAll<HTMLElement>('[data-ess] li')].filter((li) => (li.querySelector('input[type=checkbox]') as HTMLInputElement).checked).map((li) => li.dataset.id),
+      notes: Object.fromEntries([...form.querySelectorAll<HTMLElement>('[data-ess] li')].map((li) => [li.dataset.id, (li.querySelector('[data-note]') as HTMLInputElement).value]).filter(([, v]) => v)),
       links: [...links.children].map((li) => ({ label: (li.querySelector('[data-l]') as HTMLInputElement).value, url: (li.querySelector('[data-u]') as HTMLInputElement).value })).filter((l) => l.label || l.url),
       order: [...order.children].map((li) => (li as HTMLElement).dataset.k),
       hide: [...order.children].filter((li) => !(li.querySelector('input') as HTMLInputElement).checked).map((li) => (li as HTMLElement).dataset.k),

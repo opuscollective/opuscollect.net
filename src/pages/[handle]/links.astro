@@ -17,7 +17,7 @@ if (!found) return Astro.redirect('/world');
 const { profile: p, isOwner, ownerId } = found;
 const page = await getPageConfig(Astro.locals.runtime.env.WAITLIST, p.id);
 const record = await profileReleases(db, ownerId);
-const featured = record.find((x) => x.id === page.featured) ?? record[0] ?? null;
+const featured = record.find((x) => x.id === (page.essentials[0] ?? page.featured)) ?? record[0] ?? null;
 const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
 const where = visibleLabel(p.placeId, p.locationVisibility);
 const LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
