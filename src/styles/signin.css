@@ -40,3 +40,10 @@
 .sm__field input:focus { outline: 0; border-bottom-color: var(--accent); }
 .sm__btn { height: 52px; font-weight: 400; font-size: 16px; }
 .sm__code { text-transform: none; }
+
+/* Links underline only on hover or keyboard focus. */
+.sm__alt a, .sm__link { text-decoration: none; }
+.sm__alt a:hover, .sm__link:hover, .sm__alt a:focus-visible, .sm__link:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.sm__alt a:focus-visible, .sm__link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.sm-inline .sm__alt a, .sm-inline .sm__link { text-decoration: none; }
+.sm-inline .sm__alt a:hover, .sm-inline .sm__link:hover { text-decoration: underline; }

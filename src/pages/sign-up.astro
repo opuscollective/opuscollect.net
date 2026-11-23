@@ -88,6 +88,9 @@ const OPTIONS = [
   });
 </script>
 <style>
+  .su .app__alt a, .su .check .link { text-decoration: none; }
+  .su .app__alt a:hover, .su .check .link:hover, .su .app__alt a:focus-visible, .su .check .link:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+  .su .app__alt a:focus-visible, .su .check .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
   /* Account step: Recognition look. Thin display type, a blurred wash, hairline fields, a pill action. */
   .app--center:has([data-signup]) { position: relative; isolation: isolate; overflow: clip; padding-top: clamp(56px, 9vh, 112px); }
   .app--center:has([data-signup])::before { content: ''; position: absolute; z-index: -1; inset: -10% -10% auto; height: 560px; pointer-events: none;
