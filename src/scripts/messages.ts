@@ -14,7 +14,9 @@ interface Author { handle: string; name: string; photo: string | null; city: str
 interface GMsg { id: number; body: string; at: number; author: Author; pending?: boolean; cid?: string }
 interface DMsg { id: number; body: string; at: number; mine: boolean; pending?: boolean; cid?: string }
 interface Conv { id: string; with: Author; preview: string; at: number; fromMe: boolean; unread: boolean }
-interface Note { id: string; kind: 'connection_request' | 'connection_accepted'; connectionId: string; at: number; unread: boolean; who: Author; state: string }
+interface Note { id: string; kind: 'connection_request' | 'connection_accepted'; connectionId: string; at: number; unread: boolean; who: Author; state: string; note?: string }
+interface GroupRoom { id: string; handle: string; name: string; photo: string | null; preview: string; at: number | null; unread: boolean; members: number }
+interface Friend { handle: string; name: string; photo: string | null; specialty: string | null }
 type Tab = 'global' | 'private' | 'group';
 interface Me { signedIn: boolean; handle?: string | null; mod?: boolean; blocker?: null | 'verify' | 'profile'; restriction?: { kind: string; until: number | null } | null; blocked?: string[]; live?: boolean }
 
@@ -49,7 +51,7 @@ function init() {
   const gMsgs: GMsg[] = [];
   let gLoaded = false, gLoading = false, gMore = true, gUnseen = 0;
   let cooldownUntil = 0, gSending = false;
-  let convs: Conv[] = [], notes: Note[] = [];
+  let convs: Conv[] = [], notes: Note[] = [], groupRooms: GroupRoom[] = [];
   let convoId: string | null = null, convoWith: Author | null = null, dMsgs: DMsg[] = [], dMore = false, dCanSend = true, theirReadAt = 0, pSending = false;
   let unread = { dm: 0, notifications: 0, group: 0 };
   let ws: WebSocket | null = null, wsState: 'off' | 'connecting' | 'live' | 'down' = 'off', wsTries = 0, wsTimer = 0, everLive = false;
@@ -62,7 +64,7 @@ function init() {
   const draftKey = (k: string) => `opus.msg.draft.${k}`;
   const getDraft = (k: string) => { try { return localStorage.getItem(draftKey(k)) ?? ''; } catch { return ''; } };
   const setDraft = (k: string, v: string) => { try { v ? localStorage.setItem(draftKey(k), v) : localStorage.removeItem(draftKey(k)); } catch { /* ignore */ } };
-  let tab: Tab = readUI().tab === 'private' || readUI().tab === 'group' ? readUI().tab! : 'global';
+  let tab: Tab = readUI().tab === 'private' || readUI().tab === 'group' ? 'private' : 'global'; // a group room isn't restored; groups are listed in Messages
 
   const api = async <T,>(url: string, init?: RequestInit): Promise<T> => {
     const r = await fetch(url, { credentials: 'same-origin', ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
@@ -133,10 +135,9 @@ function init() {
     badge.hidden = n === 0;
     badge.textContent = n > 99 ? '99+' : String(n);
     launch.setAttribute('aria-label', n ? `Messages, ${n} unread` : 'Messages');
-    pcount.hidden = pn === 0;
-    pcount.textContent = pn > 99 ? '99+' : String(pn);
-    qcount.hidden = unread.group === 0;
-    qcount.textContent = String(unread.group);
+    pcount.hidden = n === 0;
+    pcount.textContent = n > 99 ? '99+' : String(n);
+    qcount.hidden = true;
     const gActive = gUnseen > 0 && !(isOpen() && tab === 'global');
     dot.hidden = !gActive || n > 0;
     gdot.hidden = !(gUnseen > 0 && tab !== 'global');
@@ -534,10 +535,10 @@ function init() {
       p.notes.replaceChildren(); p.convos.replaceChildren(st);
       return;
     }
-    if (!convs.length && !notes.length) p.convos.replaceChildren(skeleton(4));
+    if (!convs.length && !notes.length && !groupRooms.length) p.convos.replaceChildren(skeleton(4));
     try {
-      const [c, n] = await Promise.all([api<{ conversations: Conv[]; unread: typeof unread }>('/api/messages'), api<{ items: Note[] }>('/api/notifications')]);
-      convs = c.conversations; notes = n.items; unread = c.unread;
+      const [c, n, gr] = await Promise.all([api<{ conversations: Conv[]; unread: { dm: number; notifications: number } }>('/api/messages'), api<{ items: Note[] }>('/api/notifications'), api<{ rooms: GroupRoom[] }>('/api/group-chat').catch(() => ({ rooms: [] as GroupRoom[] }))]);
+      convs = c.conversations; notes = n.items; groupRooms = gr.rooms; unread = { ...unread, dm: c.unread.dm, notifications: c.unread.notifications, group: groupRooms.filter((r) => r.unread).length };
       renderPrivateHome();
       renderBadges();
       if (notes.some((x) => x.unread)) {
@@ -559,13 +560,15 @@ function init() {
       ? x.state === 'pending'
       : x.state === 'accepted' && !talking.has(x.who.handle) && Date.now() - x.at < 14 * 86_400_000)).slice(0, 8);
     if (live.length) {
-      nf.append(el('h3', 'om__section', 'Connections'));
+      nf.append(el('h3', 'om__section', 'Requests'));
       for (const x of live) {
         const row = el('div', 'om-row');
         row.append(avatar(x.who));
         const main = el('div', 'om-row__main');
         const nm = nameEl(x.who, 'om-row__name'); main.append(nm);
-        main.append(el('span', 'om-row__sub', x.kind === 'connection_request' ? 'Wants to connect' : 'Accepted your request'));
+        const sub = el('span', 'om-row__sub', x.kind === 'connection_request' ? (x.note ? `“${x.note}”` : 'Wants to connect') : 'Accepted your request');
+        if (x.note) sub.style.cssText = 'white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical';
+        main.append(sub);
         row.append(main);
         const acts = el('div', 'om-row__acts');
         if (x.kind === 'connection_request') {
@@ -585,8 +588,27 @@ function init() {
     }
     p.notes.replaceChildren(nf);
     const cf = document.createDocumentFragment();
+    if (groupRooms.length) {
+      cf.append(el('h3', 'om__section', 'Groups'));
+      for (const r of groupRooms) {
+        const row = el('button', `om-row${r.unread ? ' is-unread' : ''}`);
+        row.type = 'button';
+        const logo = el('span', 'om-row__av');
+        if (r.photo) logo.style.backgroundImage = `url("${r.photo}")`; else logo.textContent = initials(r.name);
+        const main = el('span', 'om-row__main');
+        main.append(el('span', 'om-row__name', r.name), el('span', 'om-row__sub', r.preview || `${r.members} member${r.members === 1 ? '' : 's'} · say hello`));
+        const side = el('span', 'om-row__side', r.at ? ago(r.at) : '');
+        if (r.unread) { const u = el('span', 'om-row__unread'); u.setAttribute('aria-label', 'Unread'); side.append(u); }
+        row.append(logo, main, side);
+        row.addEventListener('click', () => { showTab('group'); document.dispatchEvent(new CustomEvent('opus:group-open', { detail: { id: r.id } })); });
+        cf.append(row);
+      }
+    }
+    const newBtn = el('button', 'om__new-msg', 'New message'); newBtn.type = 'button';
+    newBtn.addEventListener('click', openFriends);
     if (convs.length) {
-      cf.append(el('h3', 'om__section', 'Messages'));
+      const h = el('h3', 'om__section', 'Messages'); h.append(newBtn);
+      cf.append(h);
       for (const c of convs) {
         const row = el('button', `om-row${c.unread ? ' is-unread' : ''}`);
         row.type = 'button';
@@ -602,10 +624,34 @@ function init() {
       }
     } else {
       const st = el('div', 'om__state');
-      st.append(el('strong', '', 'No conversations yet.'), document.createTextNode('Connect with people from Global Chat or World, then message them here.'));
+      st.append(el('strong', '', 'No conversations yet.'), document.createTextNode('Connect with people from Global Chat or World, then message them here.'), el('br'), newBtn);
       cf.append(st);
     }
     p.convos.replaceChildren(cf);
+  }
+  // Start a chat with anyone you're connected to.
+  async function openFriends() {
+    const f = document.createDocumentFragment();
+    const head = el('h3', 'om__section', 'New message');
+    const cancel = el('button', 'om__new-msg', 'Cancel'); cancel.type = 'button'; cancel.addEventListener('click', renderPrivateHome); head.append(cancel);
+    f.append(head, el('div', 'om__state', 'Loading…'));
+    p.convos.replaceChildren(f);
+    try {
+      const d = await api<{ connected: { other: { handle: string | null; name: string; specialty: string | null; photoKey: string | null } }[] }>('/api/connections');
+      const people: Friend[] = d.connected.filter((c) => c.other.handle).map((c) => ({ handle: c.other.handle!, name: c.other.name, photo: c.other.photoKey ? `/media/${c.other.photoKey}` : null, specialty: c.other.specialty }));
+      const list = document.createDocumentFragment();
+      list.append(head);
+      if (!people.length) { const st = el('div', 'om__state'); st.append(el('strong', '', 'No connections yet.'), document.createTextNode('Connect with people from World, then message them here.')); list.append(st); }
+      for (const x of people) {
+        const row = el('button', 'om-row'); row.type = 'button';
+        const a: Author = { handle: '', name: x.name, photo: x.photo, city: null, verified: false };
+        const main = el('span', 'om-row__main'); main.append(el('span', 'om-row__name', x.name), el('span', 'om-row__sub', x.specialty ?? ''));
+        row.append(avatar(a), main, el('span'));
+        row.addEventListener('click', () => messageHandle(x.handle));
+        list.append(row);
+      }
+      p.convos.replaceChildren(list);
+    } catch { renderPrivateHome(); flash('Couldn’t load your connections.'); }
   }
   async function answer(x: Note, action: 'accept' | 'decline', acts: HTMLElement) {
     acts.querySelectorAll('button').forEach((b) => (b.disabled = true));
@@ -774,13 +820,14 @@ function init() {
     if (o) {
       e.preventDefault();
       const want = o.dataset.openMessages;
-      tab = want === 'private' || want === 'group' ? want : 'global';
+      tab = want === 'private' || want === 'group' ? (want === 'group' && !o.dataset.groupId ? 'private' : want) : 'global';
       if (isOpen()) showTab(tab); else open();
-      if (tab === 'group' && o.dataset.groupId) document.dispatchEvent(new CustomEvent('opus:group-open', { detail: { id: o.dataset.groupId } }));
+      if (tab === 'group') document.dispatchEvent(new CustomEvent('opus:group-open', { detail: { id: o.dataset.groupId } }));
     }
   });
 
   document.addEventListener('opus:group-read', () => refreshUnread());
+  document.addEventListener('opus:group-exit', () => { if (isOpen()) showTab('private'); });
 
   // ---------- socket ----------
   function connect() {
@@ -820,7 +867,7 @@ function init() {
         if (m.t === 'error' && (m.code === 'timeout' || m.code === 'banned')) refreshMe();
       } else if (m.t === 'nudge') {
         if (m.kind === 'dm') { if (convoId && m.conversation === convoId && isOpen() && tab === 'private') refreshConvo(); else refreshUnread(); if (tab === 'private' && !convoId && isOpen()) loadPrivateHome(); }
-        else if (m.kind === 'group') { refreshUnread(); document.dispatchEvent(new CustomEvent('opus:group-nudge', { detail: m })); }
+        else if (m.kind === 'group') { refreshUnread(); document.dispatchEvent(new CustomEvent('opus:group-nudge', { detail: m })); if (tab === 'private' && !convoId && isOpen()) loadPrivateHome(); }
         else { refreshUnread(); if (tab === 'private' && !convoId && isOpen()) loadPrivateHome(); }
       }
     });
@@ -880,7 +927,7 @@ function init() {
   if (ask) {
     params.delete('messages');
     history.replaceState(history.state, '', location.pathname + (params.toString() ? `?${params}` : '') + location.hash);
-    tab = ask === 'private' || ask === 'group' ? ask : 'global';
+    tab = ask === 'private' || ask === 'group' ? 'private' : 'global';
   }
   const ui = readUI();
   if (signedIn()) {

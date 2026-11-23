@@ -18,8 +18,8 @@ import { mediaUrl } from './profiles';
 export const GROUP_MSG_MAX = 2000;
 const PAGE = 50;
 
-export interface SessionCard { title: string; detail: string; when: string; at: number; href: string | null }
-export interface GroupMsg { id: number; kind: 'text' | 'session'; body: string; session: SessionCard | null; at: number; mine: boolean; author: ChatAuthor }
+export interface SessionCard { title: string; detail: string; when: string; at: number; day?: string | null; href: string | null }
+export interface GroupMsg { id: number; kind: 'text' | 'session'; body: string; session: SessionCard | null; at: number; mine: boolean; author: ChatAuthor; going: number; myRsvp: 'going' | 'no' | null }
 export interface GroupRoom { id: string; handle: string; name: string; photo: string | null; typeLabel: string; preview: string; at: number | null; unread: boolean; members: number }
 
 const parse = <T,>(s: string | null, f: T): T => { try { return s ? (JSON.parse(s) as T) : f; } catch { return f; } };
@@ -61,12 +61,15 @@ export async function listGroupRooms(db: D1Database, me: string): Promise<GroupR
   return out.sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 }
 
-const toMsg = (r: AuthorRow & { id: number; sender_id: string; kind: string; body: string; session: string | null; created_at: number }, me: string): GroupMsg => ({
+type MsgRow = AuthorRow & { id: number; sender_id: string; kind: string; body: string; session: string | null; created_at: number; going?: number; my_rsvp?: string | null };
+const toMsg = (r: MsgRow, me: string): GroupMsg => ({
   id: r.id, kind: r.kind === 'session' ? 'session' : 'text', body: r.body, session: r.kind === 'session' ? parse<SessionCard | null>(r.session, null) : null,
-  at: r.created_at, mine: r.sender_id === me, author: author(r),
+  at: r.created_at, mine: r.sender_id === me, author: author(r), going: r.going ?? 0, myRsvp: r.my_rsvp === 'going' || r.my_rsvp === 'no' ? r.my_rsvp : null,
 });
 
-const MSG_SELECT = (extra: string) => `SELECT g.id, g.sender_id, g.kind, g.body, g.session, g.created_at, ${AUTHOR_COLS('p')}
+const MSG_SELECT = (extra: string) => `SELECT g.id, g.sender_id, g.kind, g.body, g.session, g.created_at, ${AUTHOR_COLS('p')},
+  (SELECT COUNT(*) FROM group_rsvps x WHERE x.message_id = g.id AND x.status = 'going') AS going,
+  (SELECT y.status FROM group_rsvps y WHERE y.message_id = g.id AND y.user_id = ?2) AS my_rsvp
   FROM group_messages g ${AUTHOR_SQL('p', 'g.sender_id')}
   WHERE g.clan_id = ?1 AND NOT EXISTS (SELECT 1 FROM blocks k WHERE k.blocker_id = ?2 AND k.blocked_id = g.sender_id) ${extra}`;
 
@@ -74,7 +77,7 @@ const MSG_SELECT = (extra: string) => `SELECT g.id, g.sender_id, g.kind, g.body,
 export async function groupMessages(db: D1Database, me: string, clanId: string, before?: number) {
   await requireMember(db, clanId, me);
   const rows = await db.prepare(`${MSG_SELECT(before ? 'AND g.id < ?3' : '')} ORDER BY g.id DESC LIMIT ${PAGE}`)
-    .bind(...(before ? [clanId, me, before] : [clanId, me])).all<AuthorRow & { id: number; sender_id: string; kind: string; body: string; session: string | null; created_at: number }>();
+    .bind(...(before ? [clanId, me, before] : [clanId, me])).all<MsgRow>();
   if (!before) await markGroupRead(db, me, clanId);
   return { messages: rows.results.reverse().map((r) => toMsg(r, me)), more: rows.results.length === PAGE };
 }
@@ -83,7 +86,7 @@ export async function groupMessages(db: D1Database, me: string, clanId: string, 
 export async function groupMessagesSince(db: D1Database, me: string, clanId: string, after: number) {
   await requireMember(db, clanId, me);
   const rows = await db.prepare(`${MSG_SELECT('AND g.id > ?3')} ORDER BY g.id ASC LIMIT 100`).bind(clanId, me, after)
-    .all<AuthorRow & { id: number; sender_id: string; kind: string; body: string; session: string | null; created_at: number }>();
+    .all<MsgRow>();
   await markGroupRead(db, me, clanId);
   return { messages: rows.results.map((r) => toMsg(r, me)) };
 }
@@ -114,7 +117,7 @@ export async function sendGroupMessage(env: Env, me: string, clanId: string, inp
     if (!item || !item.at) throw new HttpError(404, 'That session isn’t on your Future with a set time.');
     kind = 'session';
     // Private booking pages stay private; only a public event link travels with the card.
-    session = { title: item.title.slice(0, 120), detail: item.detail.slice(0, 160), when: item.when, at: item.at, href: item.kind === 'event' && item.href.startsWith('/') ? item.href : null };
+    session = { title: item.title.slice(0, 120), detail: item.detail.slice(0, 160), when: item.when, at: item.at, day: item.day, href: item.kind === 'event' && item.href.startsWith('/') ? item.href : null };
     body = cleanBody(input.body).slice(0, GROUP_MSG_MAX);
   } else {
     body = cleanBody(input.body);
@@ -127,7 +130,7 @@ export async function sendGroupMessage(env: Env, me: string, clanId: string, inp
     .bind(clanId, me, kind, body, session ? JSON.stringify(session) : null, session?.at ?? null, clientId, t).first<{ id: number }>();
   if (!ins) {
     const prev = await db.prepare(`${MSG_SELECT('AND g.client_id = ?3 AND g.sender_id = ?2')}`).bind(clanId, me, clientId)
-      .first<AuthorRow & { id: number; sender_id: string; kind: string; body: string; session: string | null; created_at: number }>();
+      .first<MsgRow>();
     if (prev) return { message: toMsg(prev, me) };
     throw new HttpError(500, 'Couldn’t send. Try again.');
   }
@@ -135,7 +138,22 @@ export async function sendGroupMessage(env: Env, me: string, clanId: string, inp
   const who = await db.prepare(`SELECT ${AUTHOR_COLS('p')} FROM users u ${AUTHOR_SQL('p', 'u.id')} WHERE u.id = ?`).bind(me).first<AuthorRow>();
   const others = (await memberIds(db, clanId));
   try { await tellRoom(env, '/nudge', { uids: others, event: { kind: 'group', clan: clanId } }); } catch (e) { console.error('group nudge', e); }
-  return { message: toMsg({ ...(who ?? { handle: null, display_name: null, photo_key: null, verification: null, pstatus: null, city: null }), id: ins.id, sender_id: me, kind, body, session: session ? JSON.stringify(session) : null, created_at: t }, me) };
+  return { message: toMsg({ ...(who ?? { handle: null, display_name: null, photo_key: null, verification: null, pstatus: null, city: null }), id: ins.id, sender_id: me, kind, body, session: session ? JSON.stringify(session) : null, created_at: t, going: 0, my_rsvp: null }, me) };
+}
+
+/** Going / Can't on a shared session. Going adds it to my Future; null takes my answer back. */
+export async function rsvpGroupMessage(env: Env, me: string, clanId: string, messageId: number, status: unknown) {
+  const db = env.DB;
+  await requireMember(db, clanId, me);
+  const m = await db.prepare("SELECT 1 AS ok FROM group_messages WHERE id = ? AND clan_id = ? AND kind = 'session'").bind(messageId, clanId).first();
+  if (!m) throw new HttpError(404, 'Session not found.');
+  if (status === 'going' || status === 'no') {
+    await db.prepare('INSERT INTO group_rsvps (message_id, user_id, status, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(message_id, user_id) DO UPDATE SET status = excluded.status, updated_at = excluded.updated_at')
+      .bind(messageId, me, status, now()).run();
+  } else await db.prepare('DELETE FROM group_rsvps WHERE message_id = ? AND user_id = ?').bind(messageId, me).run();
+  const n = await db.prepare("SELECT COUNT(*) AS n FROM group_rsvps WHERE message_id = ? AND status = 'going'").bind(messageId).first<{ n: number }>();
+  try { await tellRoom(env, '/nudge', { uids: await memberIds(db, clanId), event: { kind: 'group', clan: clanId } }); } catch { /* best effort */ }
+  return { going: n?.n ?? 0, myRsvp: status === 'going' || status === 'no' ? status : null };
 }
 
 /** The sender, or a group admin, can take a message down. */
@@ -156,7 +174,7 @@ export async function removeGroupMessage(env: Env, me: string, clanId: string, m
 /** My upcoming sessions that I could share (set date, not past). */
 export async function shareableSessions(db: D1Database, me: string, clanId: string) {
   await requireMember(db, clanId, me);
-  return (await futureFor(db, me)).filter((i) => !i.past && i.at && i.at > now())
+  return (await futureFor(db, me)).filter((i) => !i.past && i.at && i.at > now() && !i.id.startsWith('grp-'))
     .sort((a, b) => a.at - b.at).slice(0, 20)
     .map((i) => ({ id: i.id, title: i.title, detail: i.detail, when: i.when, kind: i.kind }));
 }

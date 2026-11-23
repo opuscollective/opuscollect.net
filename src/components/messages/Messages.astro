@@ -20,8 +20,8 @@
     </button>
     <div class="om__tabs" role="tablist" aria-label="Conversations">
       <button type="button" role="tab" class="om__tab" data-om-tab="global" aria-selected="true" aria-controls="om-global" id="om-tab-global">Global<span class="om-dot om-dot--tab" data-om-gdot hidden></span></button>
-      <button type="button" role="tab" class="om__tab" data-om-tab="private" aria-selected="false" aria-controls="om-private" id="om-tab-private">Private<span class="om-count" data-om-pcount hidden></span></button>
-      <button type="button" role="tab" class="om__tab" data-om-tab="group" aria-selected="false" aria-controls="om-group" id="om-tab-group">Group<span class="om-count" data-om-qcount hidden></span></button>
+      <button type="button" role="tab" class="om__tab" data-om-tab="private" aria-selected="false" aria-controls="om-private" id="om-tab-private">Messages<span class="om-count" data-om-pcount hidden></span></button>
+      <button type="button" role="tab" class="om__tab" data-om-tab="group" aria-selected="false" aria-controls="om-group" id="om-tab-group" hidden tabindex="-1">Group<span class="om-count" data-om-qcount hidden></span></button>
     </div>
     <button type="button" class="om__icon om__min" data-om-min aria-label="Minimize messages">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 9.5 12 15.5l6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -154,7 +154,7 @@
   .om__icon:hover { background: var(--surface-hover); color: var(--text); }
   .om__back { visibility: hidden; }
   .om.in-convo .om__back { visibility: visible; }
-  .om__tabs { flex: 1; display: flex; justify-content: center; gap: 2px; padding: 3px; margin: 0 auto; max-width: 300px; border-radius: var(--r-pill); background: var(--bg); }
+  .om__tabs { flex: 1; display: flex; justify-content: center; gap: 2px; padding: 3px; margin: 0 auto; max-width: 240px; border-radius: var(--r-pill); background: var(--bg); }
   .om__tab { flex: 1; height: 30px; border: 0; border-radius: var(--r-pill); background: none; color: var(--text-3); font-size: 13px; font-weight: 500; }
   .om__tab[aria-selected='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
   .om-count { display: inline-block; min-width: 16px; height: 16px; margin-left: 6px; padding: 0 4px; border-radius: 8px; background: var(--text); color: var(--bg); font-size: 10px; line-height: 16px; font-weight: 600; vertical-align: 1px; }
@@ -257,6 +257,12 @@
   .om-skel i:last-child { height: 30px; }
 
   /* ---------- Group: rooms, messages, session cards ---------- */
+  .om__tab[hidden] { display: none; }
+  .om-rsvp { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 6px; grid-column: 2; }
+  .om-card__going { margin: 4px 0 0; color: var(--text-3); font-size: 12px; grid-column: 2; }
+  .om-rsvp .om-card__going { margin: 0 0 0 4px; }
+  .om__new-msg { float: right; margin: -2px 0 0; padding: 0; border: 0; background: none; color: var(--text-2); font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .om__new-msg:hover { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
   .om__list--grp { padding: 4px 0; }
   .om-row__av { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; overflow: hidden; background: var(--bg); color: var(--text-2); font-weight: 500; background-size: cover; background-position: center; }
   .om-g { position: relative; display: grid; grid-template-columns: 32px 1fr; column-gap: 10px; padding: 7px 14px 3px; }

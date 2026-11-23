@@ -70,5 +70,16 @@ export async function futureFor(db: D1Database, userId: string, now = Date.now()
       when: formatDay(r.releaseDate), day: r.releaseDate, at: 0, href: `/works/${r.id}`,
     });
   }
+  // Sessions a group shared that I said I'm going to. Shared by someone else, so they aren't already in my Future.
+  try {
+    const { results } = await db.prepare(`SELECT g.id, g.session, p.display_name AS group_name, p.handle FROM group_rsvps r
+        JOIN group_messages g ON g.id = r.message_id JOIN profiles p ON p.id = g.clan_id
+      WHERE r.user_id = ? AND r.status = 'going' AND g.sender_id <> ? AND g.session_at > ? ORDER BY g.session_at LIMIT 50`).bind(userId, userId, now)
+      .all<{ id: number; session: string; group_name: string; handle: string }>();
+    for (const r of results) {
+      const c = JSON.parse(r.session) as { title: string; detail: string; when: string; at: number; day?: string | null; href?: string | null };
+      items.push({ id: `grp-${r.id}`, kind: 'session', title: c.title, detail: [c.detail, r.group_name].filter(Boolean).join(' · '), when: c.when, day: c.day ?? new Date(c.at).toISOString().slice(0, 10), at: c.at, status: 'Going', tone: 'role', href: c.href || `/c/${r.handle}` });
+    }
+  } catch { /* migration 0014 not applied yet */ }
   return items;
 }

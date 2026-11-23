@@ -23,3 +23,13 @@ CREATE TABLE group_reads (
   read_at   INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (clan_id, user_id)
 );
+
+-- Answers to a shared session: Going puts it in the member's Future (and their calendar feed).
+CREATE TABLE group_rsvps (
+  message_id  INTEGER NOT NULL REFERENCES group_messages(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status      TEXT NOT NULL CHECK (status IN ('going', 'no')),
+  updated_at  INTEGER NOT NULL,
+  PRIMARY KEY (message_id, user_id)
+);
+CREATE INDEX group_rsvps_user ON group_rsvps (user_id, status);

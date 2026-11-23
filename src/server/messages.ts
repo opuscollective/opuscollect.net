@@ -158,13 +158,16 @@ export async function notify(env: Env, userId: string, kind: 'connection_request
 
 export async function listNotifications(db: D1Database, me: string) {
   const rows = await db.prepare(`SELECT n.id, n.kind, n.ref_id, n.created_at, n.read_at, ${AUTHOR_COLS('p')},
-      (SELECT status FROM connections x WHERE x.id = n.ref_id) AS conn_status
+      (SELECT status FROM connections x WHERE x.id = n.ref_id) AS conn_status,
+      (SELECT message FROM connections x WHERE x.id = n.ref_id) AS conn_message
     FROM notifications n ${AUTHOR_SQL('p', 'n.actor_id')}
     WHERE n.user_id = ? AND NOT EXISTS (SELECT 1 FROM blocks k WHERE k.blocker_id = n.user_id AND k.blocked_id = n.actor_id)
     ORDER BY n.created_at DESC LIMIT 50`).bind(me)
-    .all<AuthorRow & { id: string; kind: string; ref_id: string; created_at: number; read_at: number | null; conn_status: string | null }>();
+    .all<AuthorRow & { id: string; kind: string; ref_id: string; created_at: number; read_at: number | null; conn_status: string | null; conn_message: string | null }>();
   return rows.results.map((r) => ({
     id: r.id, kind: r.kind, connectionId: r.ref_id, at: r.created_at, unread: !r.read_at, who: author(r),
+    // The note sent with a connection request.
+    note: r.kind === 'connection_request' ? (r.conn_message ?? '').slice(0, 300) : '',
     // A request that was answered or withdrawn shows as such, not as a live button.
     state: r.conn_status ?? 'gone',
   }));

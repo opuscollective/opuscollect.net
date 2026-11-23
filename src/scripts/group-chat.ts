@@ -8,7 +8,7 @@
  */
 interface Author { handle: string; name: string; photo: string | null; city: string | null; verified: boolean }
 interface Card { title: string; detail: string; when: string; at: number; href: string | null }
-interface Msg { id: number; kind: 'text' | 'session'; body: string; session: Card | null; at: number; mine: boolean; author: Author; pending?: boolean; cid?: string }
+interface Msg { id: number; kind: 'text' | 'session'; body: string; session: Card | null; at: number; mine: boolean; author: Author; going: number; myRsvp: 'going' | 'no' | null; pending?: boolean; cid?: string }
 interface Room { id: string; handle: string; name: string; photo: string | null; typeLabel: string; preview: string; at: number | null; unread: boolean; members: number }
 interface Shareable { id: string; title: string; detail: string; when: string; kind: string }
 
@@ -87,11 +87,11 @@ function init(panel: HTMLElement, home: HTMLElement) {
     }
     renderHome();
     // One group: no list to choose from, go straight in. Several: remembered room, else the list.
-    const want = o.auto ?? (readUI().grp as string | null | undefined) ?? (rooms.length === 1 ? rooms[0].id : null);
+    const want = o.auto;
     if (want && rooms.some((r) => r.id === want) && !room) openRoom(want, { quiet: true });
   }
   function renderHome() {
-    single = rooms.length === 1;
+    single = false;
     if (!rooms.length) {
       state('Your group’s chat lives here', 'Start a group, or accept an invite, and its members can talk and share sessions here.', [{ href: '/clans/new', label: 'Start a group', solid: true }, { href: '/clans/mine', label: 'My groups' }]);
       return;
@@ -161,6 +161,8 @@ function init(panel: HTMLElement, home: HTMLElement) {
       card.append(el('span', 'om-card__w', c.when));
       if (m.body) e.append(el('p', 'om-m__text', m.body));
       e.append(card);
+      if (m.id > 0 && c.at > Date.now() && !m.mine) e.append(rsvpRow(m));
+      else if (m.going > 0) e.append(el('p', 'om-card__going', `${m.going} going`));
     } else e.append(el('p', 'om-m__text', m.body));
     if (m.mine && !m.pending) {
       const x = el('button', 'om-g__x', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'Remove message');
@@ -168,6 +170,24 @@ function init(panel: HTMLElement, home: HTMLElement) {
       e.append(x);
     }
     return e;
+  }
+  function rsvpRow(m: Msg) {
+    const wrap = el('div', 'om-rsvp');
+    const mk = (label: string, status: 'going' | 'no') => {
+      const b = el('button', `om__btn om__btn--small${m.myRsvp === status ? ' om__btn--solid' : ''}`, label); b.type = 'button'; b.setAttribute('aria-pressed', String(m.myRsvp === status));
+      b.addEventListener('click', async () => {
+        if (!room) return;
+        try {
+          const r = await post<{ going: number; myRsvp: 'going' | 'no' | null }>(`/api/group-chat/${encodeURIComponent(room.id)}`, { action: 'rsvp', messageId: m.id, status: m.myRsvp === status ? null : status });
+          m.going = r.going; m.myRsvp = r.myRsvp; renderMsgs('none');
+        } catch (e) { note.textContent = (e as Error).message; }
+      });
+      return b;
+    };
+    wrap.append(mk('Going', 'going'), mk('Can’t', 'no'));
+    if (m.going > 0) wrap.append(el('span', 'om-card__going', `${m.going} going`));
+    if (m.myRsvp === 'going') wrap.append(el('span', 'om-card__going', 'On your Future'));
+    return wrap;
   }
   function renderMsgs(keep: 'bottom' | 'none' = 'bottom') {
     const f = document.createDocumentFragment();
@@ -222,7 +242,7 @@ function init(panel: HTMLElement, home: HTMLElement) {
     if (!body) return;
     sending = true; sendBtn.disabled = true; note.textContent = '';
     const c = cid();
-    const mine: Msg = { id: -Date.now(), kind: 'text', body, session: null, at: Date.now(), mine: true, author: { handle: '', name: 'You', photo: null, city: null, verified: false }, pending: true, cid: c };
+    const mine: Msg = { id: -Date.now(), kind: 'text', body, session: null, at: Date.now(), mine: true, author: { handle: '', name: 'You', photo: null, city: null, verified: false }, going: 0, myRsvp: null, pending: true, cid: c };
     msgs.push(mine); renderMsgs('bottom');
     input.value = ''; setDraft(room.id, ''); autosize();
     try {
@@ -279,21 +299,22 @@ function init(panel: HTMLElement, home: HTMLElement) {
   }
 
   // ---------- panel hooks ----------
+  // Groups are listed inside the Messages tab, so leaving a room goes back there.
   function backToList() {
     room = null; rememberRoom(null); closeSheet();
-    loadHome({ quiet: true, auto: '' });
-    panel.classList.remove('in-convo');
+    convoEl.hidden = true; panel.classList.remove('in-convo');
+    document.dispatchEvent(new CustomEvent('opus:group-exit'));
   }
-  document.addEventListener('opus:group-back', () => { if (room && !single) backToList(); });
-  document.addEventListener('opus:group-show', () => { if (room) { convoEl.hidden = false; home.hidden = true; panel.classList.toggle('in-convo', !single); catchUp(); } else loadHome(); });
+  document.addEventListener('opus:group-back', () => backToList());
+  document.addEventListener('opus:group-show', () => { if (room) { convoEl.hidden = false; home.hidden = true; panel.classList.add('in-convo'); catchUp(); } });
   document.addEventListener('opus:group-open', (e) => {
     const id = (e as CustomEvent<{ id: string }>).detail?.id;
-    if (!id) return;
+    if (!id) { if (!room) document.dispatchEvent(new CustomEvent('opus:group-exit')); return; }
     if (rooms.some((r) => r.id === id)) openRoom(id); else loadHome({ auto: id });
   });
   document.addEventListener('opus:group-nudge', () => {
     if (!isShown()) return;
-    if (room) catchUp(); else loadHome({ quiet: true, auto: '' });
+    if (room) catchUp();
   });
   // A removed message can't be caught up by "after"; a fresh page keeps the room honest.
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && isShown() && room) reload(); });
