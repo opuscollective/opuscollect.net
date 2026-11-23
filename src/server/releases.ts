@@ -178,10 +178,23 @@ async function myMusicianProfile(db: D1Database, userId: string) {
     .first<{ id: string; handle: string; display_name: string; status: string }>();
 }
 
+const HOSTS: Record<ReleaseLinkKey, string[] | null> = {
+  spotify: ['open.spotify.com', 'spotify.com', 'spotify.link'], appleMusic: ['music.apple.com'], youtube: ['youtube.com', 'youtu.be', 'music.youtube.com'],
+  soundcloud: ['soundcloud.com', 'on.soundcloud.com'], other: null,
+};
+const readLinks = (v: unknown) => {
+  const src = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  const links: Partial<Record<ReleaseLinkKey, string>> = {};
+  for (const k of RELEASE_LINK_KEYS) { const u = cleanUrl(src[k], HOSTS[k]); if (u) links[k] = u; }
+  return links;
+};
+
 export interface CreateReleaseInput {
   past?: unknown; title?: unknown;
   /** Add Work (2026-11-18): the four essentials in one step, plus optional details. */
   quick?: unknown; kind?: unknown; role?: unknown; artist?: unknown; releaseDate?: unknown; description?: unknown;
+  /** Streaming links found by Add Work's song search or pasted link. Validated per platform. */
+  links?: unknown;
 }
 
 export async function createRelease(env: Env, user: SessionUser, body: CreateReleaseInput) {
@@ -210,8 +223,8 @@ export async function createRelease(env: Env, user: SessionUser, body: CreateRel
   // The member adding the work is credited in the role they chose (Primary Artist unless they say otherwise).
   // That credit is self-reported. When they worked on someone else's release, the artist is named, unlinked.
   const stmts = [
-    db.prepare('INSERT INTO releases (id, owner_user_id, title, kind, release_date, released, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, user.id, title, kind, date || null, past ? 1 : 0, description, t, t),
+    db.prepare('INSERT INTO releases (id, owner_user_id, title, kind, release_date, released, description, links, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, user.id, title, kind, date || null, past ? 1 : 0, description, JSON.stringify(readLinks(body.links)), t, t),
     db.prepare("INSERT INTO release_credits (id, release_id, role, user_id, name, status, created_by, created_at, responded_at) VALUES (?, ?, ?, ?, ?, 'confirmed', ?, ?, ?)")
       .bind(randomId(), id, role, user.id, me.display_name, user.id, t, t),
   ];
@@ -272,12 +285,7 @@ export async function saveRelease(env: Env, user: SessionUser, id: string, body:
   const genres = pickList(body.genres, GENRES, LIMITS.genres);
   const moods = pickList(body.moods, MOODS, LIMITS.moods);
   const linksIn = (body.links && typeof body.links === 'object' ? body.links : {}) as Record<string, unknown>;
-  const HOSTS: Record<ReleaseLinkKey, string[] | null> = {
-    spotify: ['open.spotify.com', 'spotify.com', 'spotify.link'], appleMusic: ['music.apple.com'], youtube: ['youtube.com', 'youtu.be', 'music.youtube.com'],
-    soundcloud: ['soundcloud.com', 'on.soundcloud.com'], other: null,
-  };
-  const links: Partial<Record<ReleaseLinkKey, string>> = {};
-  for (const k of RELEASE_LINK_KEYS) { const u = cleanUrl(linksIn[k], HOSTS[k]); if (u) links[k] = u; }
+  const links = readLinks(linksIn);
 
   // Tracks: keep existing ids (their credits stay attached), add new ones, drop removed ones.
   const tracksIn = (Array.isArray(body.tracks) ? body.tracks : []).slice(0, LIMITS.tracks)

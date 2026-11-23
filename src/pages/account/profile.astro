@@ -41,10 +41,12 @@ const linkFields = [
             <button type="button" class="btn-app" data-copy>Copy link</button>
             <button type="button" class="btn-app btn-app--ghost" data-share hidden>Share</button>
             <a class="btn-app btn-app--ghost" href={`/${p.handle}`} target="_blank" rel="noopener">View page</a>
+            <a class="btn-app btn-app--ghost" href="/works/mine?add=1">Add a work</a>
           </div>
         </div>
       )}
 
+      {p && p.status !== 'published' && <p class="app__lead" style="margin-top:14px"><a class="link" href="/works/mine?add=1">Add a song or release</a>: search for it and we fill in the details.</p>}
       <div class="notice" style="margin-top:20px" data-state>
         {p?.status === 'published'
           ? <span><b>Published.</b></span>
