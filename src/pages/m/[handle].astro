@@ -59,7 +59,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {roles.length > 0 && <p class="mp__roles"><span class="mp__primary">{roles[0]}</span>{roles.slice(1).map((r) => <span>{r}</span>)}</p>}
           <p class="mp__meta">
             {where && <span>{where}</span>}
-            <span class="mp__conns">{connections} {connections === 1 ? 'connection' : 'connections'}</span>
+            <span class="mp__conns"><b>{connections.toLocaleString('en-US')}</b><span>{connections === 1 ? 'Connection' : 'Connections'}</span></span>
             <span class:list={['mp__collab', { 'is-on': p.openToCollab }]}>{p.openToCollab ? 'Open to collaboration' : 'Not taking new collaborations'}</span>
           </p>
         </div>
@@ -205,6 +205,9 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
 </BaseLayout>
 
 <style>
+  .mp__conns { display: inline-flex; align-items: baseline; gap: 8px; margin-top: 10px; }
+  .mp__conns b { font-size: clamp(30px, 3.2vw, 44px); font-weight: 300; letter-spacing: -0.045em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+  .mp__conns span { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
   .mp-preview { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunken); font-size: 14px; color: var(--c-fg-subtle); }
   .mp-preview b { color: var(--text); font-weight: 500; }
   .mp__cover { height: clamp(220px, 34vw, 420px); background: var(--surface-sunken) center / cover no-repeat; mask-image: linear-gradient(#000 40%, transparent); -webkit-mask-image: linear-gradient(#000 40%, transparent); opacity: .55; }

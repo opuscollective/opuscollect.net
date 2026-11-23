@@ -905,3 +905,8 @@ html:not([data-motion='fluid']) .wx, html:not([data-motion='fluid']) .wx.is-in, 
 .wp__q:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .world[data-view='list'] .wp__quick { grid-column: 1 / -1; }
 @media (max-width: 760px) { .wp__q { min-height: 40px; } }
+
+/* Connections: a quiet, large number. Accepted connections only. */
+.pv__conns { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 0; }
+.pv__conns b { font-size: 34px; font-weight: 300; letter-spacing: -0.04em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.pv__conns span { font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
