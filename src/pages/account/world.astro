@@ -123,6 +123,7 @@ const ICON: Record<string, string> = {
         <a href="/works/mine?add=1">Add a work</a>
         <a href="/account/bookings">Your bookings{myBookings ? ` (${myBookings})` : ''}</a>
         <a href="/events/new">Create an event</a>
+        {groups.length > 0 && <a href="#group-chat" data-open-messages="group">Group chat</a>}
         <a href="/account">Account settings</a>
       </p>
     </div>

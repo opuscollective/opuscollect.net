@@ -21,6 +21,7 @@
     <div class="om__tabs" role="tablist" aria-label="Conversations">
       <button type="button" role="tab" class="om__tab" data-om-tab="global" aria-selected="true" aria-controls="om-global" id="om-tab-global">Global<span class="om-dot om-dot--tab" data-om-gdot hidden></span></button>
       <button type="button" role="tab" class="om__tab" data-om-tab="private" aria-selected="false" aria-controls="om-private" id="om-tab-private">Private<span class="om-count" data-om-pcount hidden></span></button>
+      <button type="button" role="tab" class="om__tab" data-om-tab="group" aria-selected="false" aria-controls="om-group" id="om-tab-group">Group<span class="om-count" data-om-qcount hidden></span></button>
     </div>
     <button type="button" class="om__icon om__min" data-om-min aria-label="Minimize messages">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 9.5 12 15.5l6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -75,11 +76,39 @@
     </div>
   </div>
 
+  <!-- Group -->
+  <div class="om__view" id="om-group" role="tabpanel" aria-labelledby="om-tab-group" data-om-view="group" hidden>
+    <div class="om__scroll om__scroll--home" data-q-home></div>
+    <div class="om__convo" data-q-convo hidden>
+      <div class="om__with" data-q-with></div>
+      <div class="om__scroll" data-q-scroll>
+        <p class="om__top" data-q-top hidden></p>
+        <div class="om__list om__list--grp" data-q-list role="log" aria-live="polite" aria-relevant="additions" aria-label="Group chat"></div>
+      </div>
+      <div class="om-share" data-q-sheet hidden>
+        <div class="om-share__head"><b>Share a session</b><button type="button" class="om__icon" data-q-sheet-close aria-label="Close">✕</button></div>
+        <div class="om-share__list" data-q-sheet-list></div>
+      </div>
+      <div class="om__foot">
+        <p class="om__note" data-q-note role="status" aria-live="polite"></p>
+        <form class="om__composer" data-q-form autocomplete="off">
+          <button type="button" class="om__plus" data-q-share aria-label="Share a session" title="Share a session">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="4.5" y="5.5" width="15" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 10h15M9 3.5v4M15 3.5v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+          <label for="om-q-input" class="sr-only">Message the group</label>
+          <textarea id="om-q-input" rows="1" maxlength="2000" placeholder="Message the group" enterkeyhint="send" data-q-input></textarea>
+          <button type="submit" class="om__send" data-q-send>Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <div class="om-menu" data-om-menu role="menu" hidden></div>
 </section>
 
 <script>
   import '@/scripts/messages';
+  import '@/scripts/group-chat';
 </script>
 
 <style is:global>
@@ -125,7 +154,7 @@
   .om__icon:hover { background: var(--surface-hover); color: var(--text); }
   .om__back { visibility: hidden; }
   .om.in-convo .om__back { visibility: visible; }
-  .om__tabs { flex: 1; display: flex; justify-content: center; gap: 2px; padding: 3px; margin: 0 auto; max-width: 240px; border-radius: var(--r-pill); background: var(--bg); }
+  .om__tabs { flex: 1; display: flex; justify-content: center; gap: 2px; padding: 3px; margin: 0 auto; max-width: 300px; border-radius: var(--r-pill); background: var(--bg); }
   .om__tab { flex: 1; height: 30px; border: 0; border-radius: var(--r-pill); background: none; color: var(--text-3); font-size: 13px; font-weight: 500; }
   .om__tab[aria-selected='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
   .om-count { display: inline-block; min-width: 16px; height: 16px; margin-left: 6px; padding: 0 4px; border-radius: 8px; background: var(--text); color: var(--bg); font-size: 10px; line-height: 16px; font-weight: 600; vertical-align: 1px; }
@@ -226,6 +255,33 @@
   .om-skel i { display: block; border-radius: 6px; background: var(--bg); }
   .om-skel i:first-child { width: 32px; height: 32px; border-radius: 50%; }
   .om-skel i:last-child { height: 30px; }
+
+  /* ---------- Group: rooms, messages, session cards ---------- */
+  .om__list--grp { padding: 4px 0; }
+  .om-row__av { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; overflow: hidden; background: var(--bg); color: var(--text-2); font-weight: 500; background-size: cover; background-position: center; }
+  .om-g { position: relative; display: grid; grid-template-columns: 32px 1fr; column-gap: 10px; padding: 7px 14px 3px; }
+  .om-g.is-cont { padding-top: 1px; }
+  .om-g.is-cont .om-m__av, .om-g.is-cont .om-m__head { display: none; }
+  .om-g.is-cont > :not(.om-m__av):not(.om-m__head) { grid-column: 2; }
+  .om-g > .om-card, .om-g > .om-m__text { grid-column: 2; }
+  .om-g.is-pending .om-m__text { opacity: .55; }
+  .om-g__x { position: absolute; top: 4px; right: 8px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: none; color: var(--text-3); opacity: 0; font-size: 14px; }
+  .om-g:hover .om-g__x, .om-g__x:focus-visible { opacity: 1; }
+  @media (hover: none) { .om-g__x { opacity: .5; } }
+  .om-card { display: grid; gap: 2px; margin-top: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); text-decoration: none; }
+  a.om-card:hover { border-color: var(--text-3); }
+  .om-card__k { color: var(--text-3); font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+  .om-card__t { font-weight: 500; line-height: 1.3; }
+  .om-card__s { color: var(--text-2); font-size: 13px; }
+  .om-card__w { color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .om__plus { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; margin-left: -6px; background: none; color: var(--text-2); }
+  .om__plus:hover { background: var(--surface-hover); color: var(--text); }
+  .om-share { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; max-height: 70%; display: flex; flex-direction: column; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; background: var(--surface); box-shadow: 0 -20px 40px -24px rgba(0, 0, 0, .5); }
+  .om-share[hidden] { display: none; }
+  .om-share__head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 4px 16px; }
+  .om-share__list { overflow-y: auto; padding: 0 0 10px; }
+  .om-share__empty { margin: 14px 16px 18px; color: var(--text-3); font-size: 13px; line-height: 1.5; }
+  .om__convo.has-sheet .om__foot { visibility: hidden; }
 
   /* ---------- Phones: full screen, composer above the keyboard ---------- */
   @media (max-width: 760px) {

@@ -15,6 +15,7 @@ interface GMsg { id: number; body: string; at: number; author: Author; pending?:
 interface DMsg { id: number; body: string; at: number; mine: boolean; pending?: boolean; cid?: string }
 interface Conv { id: string; with: Author; preview: string; at: number; fromMe: boolean; unread: boolean }
 interface Note { id: string; kind: 'connection_request' | 'connection_accepted'; connectionId: string; at: number; unread: boolean; who: Author; state: string }
+type Tab = 'global' | 'private' | 'group';
 interface Me { signedIn: boolean; handle?: string | null; mod?: boolean; blocker?: null | 'verify' | 'profile'; restriction?: { kind: string; until: number | null } | null; blocked?: string[]; live?: boolean }
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel)!;
@@ -25,9 +26,9 @@ if (launch && panel) init();
 function init() {
   const phone = matchMedia('(max-width: 760px)');
   const reduce = motion() !== 'fluid';
-  const badge = $('[data-om-badge]'), dot = $('[data-om-dot]'), gdot = $('[data-om-gdot]'), pcount = $('[data-om-pcount]');
+  const badge = $('[data-om-badge]'), dot = $('[data-om-dot]'), gdot = $('[data-om-gdot]'), pcount = $('[data-om-pcount]'), qcount = $('[data-om-qcount]');
   const tabs = [...panel.querySelectorAll<HTMLButtonElement>('[data-om-tab]')];
-  const views = { global: $('[data-om-view="global"]', panel), private: $('[data-om-view="private"]', panel) };
+  const views = { global: $('[data-om-view="global"]', panel), private: $('[data-om-view="private"]', panel), group: $('[data-om-view="group"]', panel) };
   const g = {
     scroll: $('[data-g-scroll]', panel), list: $('[data-g-list]', panel), state: $('[data-g-state]', panel), top: $('[data-g-top]', panel),
     banner: $('[data-g-banner]', panel), newBtn: $<HTMLButtonElement>('[data-g-new]', panel), foot: $('[data-g-foot]', panel), note: $('[data-g-note]', panel),
@@ -50,18 +51,18 @@ function init() {
   let cooldownUntil = 0, gSending = false;
   let convs: Conv[] = [], notes: Note[] = [];
   let convoId: string | null = null, convoWith: Author | null = null, dMsgs: DMsg[] = [], dMore = false, dCanSend = true, theirReadAt = 0, pSending = false;
-  let unread = { dm: 0, notifications: 0 };
+  let unread = { dm: 0, notifications: 0, group: 0 };
   let ws: WebSocket | null = null, wsState: 'off' | 'connecting' | 'live' | 'down' = 'off', wsTries = 0, wsTimer = 0, everLive = false;
   let pollTimer = 0;
 
   const UI_KEY = 'opus.msg.ui.v1';
-  type UI = { open?: boolean; tab?: 'global' | 'private'; convo?: string | null };
+  type UI = { open?: boolean; tab?: Tab; convo?: string | null };
   const readUI = (): UI => { try { return JSON.parse(sessionStorage.getItem(UI_KEY) || '{}'); } catch { return {}; } };
   const writeUI = (u: Partial<UI>) => { try { sessionStorage.setItem(UI_KEY, JSON.stringify({ ...readUI(), ...u })); } catch { /* private mode */ } };
   const draftKey = (k: string) => `opus.msg.draft.${k}`;
   const getDraft = (k: string) => { try { return localStorage.getItem(draftKey(k)) ?? ''; } catch { return ''; } };
   const setDraft = (k: string, v: string) => { try { v ? localStorage.setItem(draftKey(k), v) : localStorage.removeItem(draftKey(k)); } catch { /* ignore */ } };
-  let tab: 'global' | 'private' = readUI().tab === 'private' ? 'private' : 'global';
+  let tab: Tab = readUI().tab === 'private' || readUI().tab === 'group' ? readUI().tab! : 'global';
 
   const api = async <T,>(url: string, init?: RequestInit): Promise<T> => {
     const r = await fetch(url, { credentials: 'same-origin', ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
@@ -127,19 +128,22 @@ function init() {
 
   // ---------- badges ----------
   function renderBadges() {
-    const n = unread.dm + unread.notifications;
+    const pn = unread.dm + unread.notifications;
+    const n = pn + unread.group;
     badge.hidden = n === 0;
     badge.textContent = n > 99 ? '99+' : String(n);
     launch.setAttribute('aria-label', n ? `Messages, ${n} unread` : 'Messages');
-    pcount.hidden = n === 0;
-    pcount.textContent = badge.textContent;
+    pcount.hidden = pn === 0;
+    pcount.textContent = pn > 99 ? '99+' : String(pn);
+    qcount.hidden = unread.group === 0;
+    qcount.textContent = String(unread.group);
     const gActive = gUnseen > 0 && !(isOpen() && tab === 'global');
     dot.hidden = !gActive || n > 0;
     gdot.hidden = !(gUnseen > 0 && tab !== 'global');
   }
   async function refreshUnread() {
     if (!signedIn()) return;
-    try { const u = await api<{ dm: number; notifications: number }>('/api/messages/unread'); unread = { dm: u.dm, notifications: u.notifications }; renderBadges(); } catch { /* offline */ }
+    try { const u = await api<{ dm: number; notifications: number; group?: number }>('/api/messages/unread'); unread = { dm: u.dm, notifications: u.notifications, group: u.group ?? 0 }; renderBadges(); document.dispatchEvent(new CustomEvent('opus:group-unread', { detail: unread.group })); } catch { /* offline */ }
   }
 
   // ---------- open / close ----------
@@ -175,11 +179,13 @@ function init() {
   $('[data-om-min]', panel).addEventListener('click', () => close());
   $('[data-om-back]', panel).addEventListener('click', () => {
     if (tab === 'private' && convoId) { closeConvo(); return; }
+    if (tab === 'group' && panel.classList.contains('in-convo')) { document.dispatchEvent(new CustomEvent('opus:group-back')); return; }
     close();
   });
   addEventListener('popstate', () => {
     if (!isOpen() || !phone.matches) return;
     if (tab === 'private' && convoId) { closeConvo(); history.pushState({ ...(history.state ?? {}), om: 1 }, ''); return; }
+    if (tab === 'group' && panel.classList.contains('in-convo')) { document.dispatchEvent(new CustomEvent('opus:group-back')); history.pushState({ ...(history.state ?? {}), om: 1 }, ''); return; }
     close({ fromPop: true });
   });
   document.addEventListener('keydown', (e) => {
@@ -205,17 +211,20 @@ function init() {
   }
   window.visualViewport?.addEventListener('resize', () => { if (isOpen()) { const s = activeScroll(); const stick = s && nearBottom(s); fitViewport(); if (s && stick) toBottom(s); } });
   window.visualViewport?.addEventListener('scroll', () => isOpen() && fitViewport());
-  const activeScroll = () => (tab === 'global' ? g.scroll : convoId ? p.scroll : null);
+  const activeScroll = () => (tab === 'global' ? g.scroll : tab === 'group' ? (panel.classList.contains('in-convo') ? panel.querySelector<HTMLElement>('[data-q-scroll]') : null) : convoId ? p.scroll : null);
 
   // ---------- tabs ----------
-  function showTab(t: 'global' | 'private', o: { focus?: boolean } = {}) {
+  function showTab(t: Tab, o: { focus?: boolean } = {}) {
     tab = t;
     writeUI({ tab: t });
     for (const b of tabs) b.setAttribute('aria-selected', String(b.dataset.omTab === t));
     views.global.hidden = t !== 'global';
     views.private.hidden = t !== 'private';
+    views.group.hidden = t !== 'group';
     panel.classList.toggle('in-convo', t === 'private' && !!convoId);
-    if (t === 'global') {
+    if (t === 'group') {
+      document.dispatchEvent(new CustomEvent('opus:group-show', { detail: { focus: o.focus && !phone.matches } }));
+    } else if (t === 'global') {
       gUnseen = 0;
       if (!gLoaded) loadGlobal(); else if (g.newBtn.hidden) toBottom(g.scroll);
       renderComposer();
@@ -229,7 +238,7 @@ function init() {
     renderBadges();
     measureFoot();
   }
-  for (const b of tabs) b.addEventListener('click', () => showTab(b.dataset.omTab as 'global' | 'private', { focus: true }));
+  for (const b of tabs) b.addEventListener('click', () => showTab(b.dataset.omTab as Tab, { focus: true }));
   function measureFoot() { requestAnimationFrame(() => panel.style.setProperty('--om-foot', `${g.foot.offsetHeight}px`)); }
 
   // ---------- Global: render ----------
@@ -618,7 +627,7 @@ function init() {
     try {
       const r = await post<{ id: string }>('/api/messages', { to: handle });
       if (!isOpen()) open({ focus: false });
-      if (tab !== 'private') { tab = 'private'; for (const b of tabs) b.setAttribute('aria-selected', String(b.dataset.omTab === 'private')); views.global.hidden = true; views.private.hidden = false; writeUI({ tab: 'private' }); }
+      if (tab !== 'private') { tab = 'private'; for (const b of tabs) b.setAttribute('aria-selected', String(b.dataset.omTab === 'private')); views.global.hidden = true; views.group.hidden = true; views.private.hidden = false; writeUI({ tab: 'private' }); }
       openConvo(r.id, null);
     } catch (e) {
       if (!isOpen()) open({ focus: false });
@@ -762,8 +771,16 @@ function init() {
     const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-message-handle]');
     if (t) { e.preventDefault(); messageHandle(t.dataset.messageHandle!); }
     const o = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-open-messages]');
-    if (o) { e.preventDefault(); tab = (o.dataset.openMessages === 'private' ? 'private' : 'global'); open(); }
+    if (o) {
+      e.preventDefault();
+      const want = o.dataset.openMessages;
+      tab = want === 'private' || want === 'group' ? want : 'global';
+      if (isOpen()) showTab(tab); else open();
+      if (tab === 'group' && o.dataset.groupId) document.dispatchEvent(new CustomEvent('opus:group-open', { detail: { id: o.dataset.groupId } }));
+    }
   });
+
+  document.addEventListener('opus:group-read', () => refreshUnread());
 
   // ---------- socket ----------
   function connect() {
@@ -803,6 +820,7 @@ function init() {
         if (m.t === 'error' && (m.code === 'timeout' || m.code === 'banned')) refreshMe();
       } else if (m.t === 'nudge') {
         if (m.kind === 'dm') { if (convoId && m.conversation === convoId && isOpen() && tab === 'private') refreshConvo(); else refreshUnread(); if (tab === 'private' && !convoId && isOpen()) loadPrivateHome(); }
+        else if (m.kind === 'group') { refreshUnread(); document.dispatchEvent(new CustomEvent('opus:group-nudge', { detail: m })); }
         else { refreshUnread(); if (tab === 'private' && !convoId && isOpen()) loadPrivateHome(); }
       }
     });
@@ -834,7 +852,7 @@ function init() {
     pollTimer = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       if (isOpen() && tab === 'global' && gLoaded) loadGlobalSince();
-      if (signedIn()) { refreshUnread(); if (convoId && isOpen() && tab === 'private') refreshConvo(); }
+      if (signedIn()) { refreshUnread(); if (convoId && isOpen() && tab === 'private') refreshConvo(); if (isOpen() && tab === 'group') document.dispatchEvent(new CustomEvent('opus:group-nudge', { detail: {} })); }
     }, signedIn() ? 20_000 : 30_000);
   }
   function stopPolling() { clearInterval(pollTimer); pollTimer = 0; }
@@ -862,7 +880,7 @@ function init() {
   if (ask) {
     params.delete('messages');
     history.replaceState(history.state, '', location.pathname + (params.toString() ? `?${params}` : '') + location.hash);
-    tab = ask === 'private' ? 'private' : 'global';
+    tab = ask === 'private' || ask === 'group' ? ask : 'global';
   }
   const ui = readUI();
   if (signedIn()) {

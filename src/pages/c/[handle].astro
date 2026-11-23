@@ -9,6 +9,7 @@ import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import EventPoster from '@/components/events/EventPoster.astro';
 import { clanAdmins, GROUP_TYPES, ROLE_SUGGESTIONS, clanWorks, eligibleWorks, getClanByHandle, isClanAdmin, roster } from '@/server/clans';
 import { listHostedEvents } from '@/server/events';
+import { groupUpcoming, isGroupMember } from '@/server/group-chat';
 import { getMyProfile, mediaUrl } from '@/server/profiles';
 import { RELEASE_KINDS } from '@/data/music';
 import { GROUP_SECTIONS, getPageConfig } from '@/server/page-config';
@@ -29,6 +30,9 @@ if (!clan || (clan.status !== 'published' && !admin)) {
 if (clan.handle !== Astro.params.handle) return Astro.redirect(clan.href, 301);
 
 const [members, works, events] = await Promise.all([roster(db, clan, admin), clanWorks(db, clan.id), listHostedEvents(db, clan.id)]);
+const chatMember = viewer ? await isGroupMember(db, clan.id, viewer.id) : false;
+// Sessions members shared in the group chat. Members only; empty until migration 0014 is applied.
+const shared = chatMember ? await groupUpcoming(db, clan.id).catch(() => []) : [];
 const active = members.filter((m) => m.status === 'active');
 const pendingSpots = members.filter((m) => m.status === 'open' || m.status === 'invited' || m.status === 'declined');
 const eligible = admin ? await eligibleWorks(db, clan.id) : [];
@@ -106,6 +110,7 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
           </a>
         )}
         <div class="cl__actions">
+          {chatMember && <button class="btn-app" type="button" data-open-messages="group" data-group-id={clan.id}>Group chat</button>}
           {admin && <a class="btn-app btn-app--ghost" href="#manage" data-open="manage">Manage</a>}
           {admin && <a class="btn-app btn-app--ghost" href={`/account/page?group=${clan.handle}`}>Customize page</a>}
           <button class="cl__quiet" type="button" data-share>Share</button>
@@ -169,6 +174,20 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
             </a>
           ))}
         </div>
+      </section>
+    )}
+
+    {shared.length > 0 && (
+      <section class="cl__sec" style="order:60" aria-labelledby="cl-shared">
+        <h2 id="cl-shared">Sessions <small class="cl__only">Members only</small></h2>
+        <ul class="cl-sess" role="list">
+          {shared.map((c) => (
+            <li>
+              {c.href ? <a href={c.href}><b>{c.title}</b><span>{c.when}</span><small>{c.detail} · shared by {c.by}</small></a>
+                : <div><b>{c.title}</b><span>{c.when}</span><small>{c.detail} · shared by {c.by}</small></div>}
+            </li>
+          ))}
+        </ul>
       </section>
     )}
 

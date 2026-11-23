@@ -21,14 +21,14 @@ const PAGE = 50;
 
 const sorted = (x: string, y: string) => (x < y ? [x, y] : [y, x]) as [string, string];
 
-const AUTHOR_SQL = (alias: string, uidExpr: string) => `
+export const AUTHOR_SQL = (alias: string, uidExpr: string) => `
   LEFT JOIN profiles ${alias} ON ${alias}.owner_user_id = ${uidExpr} AND ${alias}.kind = 'musician'
   LEFT JOIN places ${alias}pl ON ${alias}pl.id = ${alias}.place_id
   LEFT JOIN places ${alias}m ON ${alias}m.id = ${alias}pl.metro_id`;
-const AUTHOR_COLS = (a: string) => `${a}.handle AS handle, ${a}.display_name AS display_name, ${a}.photo_key AS photo_key, ${a}.verification AS verification, ${a}.status AS pstatus,
+export const AUTHOR_COLS = (a: string) => `${a}.handle AS handle, ${a}.display_name AS display_name, ${a}.photo_key AS photo_key, ${a}.verification AS verification, ${a}.status AS pstatus,
   CASE WHEN COALESCE(${a}.location_visibility, 'city') IN ('city', 'metro') THEN ${a}m.name ELSE NULL END AS city`;
-interface AuthorRow { handle: string | null; display_name: string | null; photo_key: string | null; verification: string | null; pstatus: string | null; city: string | null }
-const author = (r: AuthorRow): ChatAuthor => (r.handle && r.pstatus === 'published'
+export interface AuthorRow { handle: string | null; display_name: string | null; photo_key: string | null; verification: string | null; pstatus: string | null; city: string | null }
+export const author = (r: AuthorRow): ChatAuthor => (r.handle && r.pstatus === 'published'
   ? { handle: r.handle, name: r.display_name ?? 'Opus member', photo: mediaUrl(r.photo_key), city: r.city, verified: r.verification === 'verified' }
   : { handle: '', name: r.display_name ?? 'Opus member', photo: null, city: null, verified: false });
 
