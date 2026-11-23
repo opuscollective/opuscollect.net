@@ -176,3 +176,20 @@ export async function listConnections(db: D1Database, userId: string) {
     blocked: blocked.results,
   };
 }
+
+/** Who a member is connected to, for their public page: recent faces (published profiles only) and, for a signed-in visitor, how many connections they share. */
+export async function profileConnections(db: D1Database, ownerId: string, viewerId: string | null) {
+  const faces = await db.prepare(`SELECT p.handle, p.display_name, p.photo_key FROM connections c
+      JOIN profiles p ON p.owner_user_id = (CASE WHEN c.requester_id = ?1 THEN c.addressee_id ELSE c.requester_id END) AND p.kind = 'musician' AND p.status = 'published'
+    WHERE (c.requester_id = ?1 OR c.addressee_id = ?1) AND c.status = 'accepted'
+      AND (?2 IS NULL OR NOT EXISTS (SELECT 1 FROM blocks k WHERE (k.blocker_id = ?2 AND k.blocked_id = p.owner_user_id) OR (k.blocker_id = p.owner_user_id AND k.blocked_id = ?2)))
+    ORDER BY COALESCE(c.responded_at, c.created_at) DESC LIMIT 6`).bind(ownerId, viewerId).all<{ handle: string; display_name: string; photo_key: string | null }>();
+  let mutual = 0;
+  if (viewerId && viewerId !== ownerId) {
+    const r = await db.prepare(`WITH mine AS (SELECT CASE WHEN requester_id = ?1 THEN addressee_id ELSE requester_id END AS u FROM connections WHERE (requester_id = ?1 OR addressee_id = ?1) AND status = 'accepted'),
+        theirs AS (SELECT CASE WHEN requester_id = ?2 THEN addressee_id ELSE requester_id END AS u FROM connections WHERE (requester_id = ?2 OR addressee_id = ?2) AND status = 'accepted')
+      SELECT COUNT(*) AS n FROM mine JOIN theirs USING (u)`).bind(viewerId, ownerId).first<{ n: number }>();
+    mutual = r?.n ?? 0;
+  }
+  return { faces: faces.results.map((f) => ({ handle: f.handle, name: f.display_name, photoKey: f.photo_key })), mutual };
+}

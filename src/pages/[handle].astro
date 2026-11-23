@@ -5,7 +5,7 @@ import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import { SPECIALTIES, allSpecialties } from '@/data/specialties';
 import { PLACE_BY_ID, visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
-import { relationship, DEFAULT_INTRO, INTRO_MAX } from '@/server/connections';
+import { relationship, DEFAULT_INTRO, INTRO_MAX, profileConnections } from '@/server/connections';
 import { connectionCount } from '@/server/messages';
 import { profileReleases } from '@/server/releases';
 import { RELEASE_KINDS } from '@/data/music';
@@ -39,6 +39,8 @@ const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialt
 const rel = viewer ? await relationship(db, viewer.id, ownerId) : null;
 // Accepted connections only; never estimated.
 const connections = await connectionCount(db, ownerId);
+const people = connections > 0 ? await profileConnections(db, ownerId, viewer?.id ?? null).catch(() => ({ faces: [], mutual: 0 })) : { faces: [], mutual: 0 };
+const firstNames = people.faces.slice(0, 2).map((f) => f.name.split(' ')[0]);
 // The member's record: releases they put out, plus releases where they confirmed a credit.
 const record = await profileReleases(db, ownerId);
 // Bands and other groups this member accepted. Invitations are shown to the member only.
@@ -113,11 +115,25 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               ))}
             </ul>
           )}
+          {connections > 0 && (
+            <div class="mp__people">
+              {people.faces.length > 0 && <span class="mp__faces" aria-hidden="true">{people.faces.map((f) => (
+                <a href={`/${f.handle}`} tabindex="-1" title={f.name} style={f.photoKey ? `background-image:url(${mediaUrl(f.photoKey)})` : ''}>{!f.photoKey && f.name.slice(0, 1)}</a>
+              ))}</span>}
+              <span class="mp__people-t">
+                {people.faces.length > 0 ? <>Connected with {firstNames.join(', ')}{connections > firstNames.length && ` and ${connections - firstNames.length} ${connections - firstNames.length === 1 ? 'other' : 'others'}`}</> : `${connections} ${connections === 1 ? 'connection' : 'connections'}`}
+                {people.mutual > 0 && <b> · {people.mutual} in common</b>}
+              </span>
+            </div>
+          )}
           <div class="mp__actions">
           {isOwner ? (
             <a class="btn-app btn-app--ghost" href="/account/profile">Edit profile</a>
           ) : !viewer ? (
-            <a class="btn-app" href={'/sign-in?next=' + encodeURIComponent('/' + p.handle + '?connect=1')}>Connect</a>
+            <>
+              <a class="btn-app" href={'/sign-in?next=' + encodeURIComponent('/' + p.handle + '?connect=1')}>Connect</a>
+              <a class="btn-app btn-app--ghost" href={'/sign-in?next=' + encodeURIComponent('/' + p.handle + '?connect=1')}>Message</a>
+            </>
           ) : rel?.state === 'connected' ? (
             <>
               <span class="mp__state" data-conn-state="connected">Connected</span>
@@ -134,7 +150,10 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               <button class="btn-app btn-app--ghost" type="button" data-conn-act="decline" data-conn-id={rel.id}>Decline</button>
             </>
           ) : rel?.state === 'none' ? (
-            <button class="btn-app" type="button" data-connect-open aria-haspopup="dialog">Connect</button>
+            <>
+              <button class="btn-app" type="button" data-connect-open aria-haspopup="dialog">Connect</button>
+              <button class="btn-app btn-app--ghost" type="button" data-connect-open aria-haspopup="dialog">Message</button>
+            </>
           ) : null}
           {viewer && !isOwner && (
             <details class="mp__more">
@@ -343,6 +362,11 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__facts li + li::before { content: ''; display: inline-block; width: 3px; height: 3px; margin: 0 14px 3px; border-radius: 50%; background: var(--text-3); vertical-align: middle; }
   .mp__facts b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
   .mp__facts .is-on { color: var(--c-accent); }
+  .mp__people { display: flex; align-items: center; gap: 12px; margin-top: 22px; color: var(--text-2); font-size: 14px; }
+  .mp__faces { display: inline-flex; flex: none; }
+  .mp__faces a { display: grid; place-items: center; width: 34px; height: 34px; margin-left: -9px; border-radius: 50%; border: 2px solid var(--bg); background: var(--surface-hover, #ddd) center / cover no-repeat; color: var(--text-2); font-size: 12px; font-weight: 500; text-decoration: none; }
+  .mp__faces a:first-child { margin-left: 0; }
+  .mp__people-t b { color: var(--text); font-weight: 500; }
   .mp__groups { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 22px; }
   .mp__groups a { display: inline-flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13px; text-decoration: none; transition: box-shadow var(--dur) var(--ease); }
   .mp__groups a:hover { box-shadow: inset 0 0 0 1px var(--text-3); }
@@ -432,12 +456,13 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   // Connect: a compact dialog with an optional, editable introduction. Nothing is sent until "Send request".
   const dlg = document.querySelector<HTMLDialogElement>('[data-connect]');
   const form = dlg?.querySelector<HTMLFormElement>('[data-connect-form]');
-  const open = document.querySelector<HTMLButtonElement>('[data-connect-open]');
+  const opens = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-connect-open]'));
+  const open = opens[0];
   const intro = dlg?.querySelector<HTMLTextAreaElement>('[data-intro]');
   const count = dlg?.querySelector<HTMLElement>('[data-intro-count]');
   intro?.addEventListener('input', () => { if (count) count.textContent = String(intro.value.length); });
   const openDlg = () => { if (!dlg) return; dlg.showModal(); intro?.focus(); intro?.setSelectionRange(intro.value.length, intro.value.length); };
-  open?.addEventListener('click', openDlg);
+  opens.forEach((b) => b.addEventListener('click', openDlg));
   dlg?.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // click outside the card
   dlg?.querySelector('[data-connect-cancel]')?.addEventListener('click', () => dlg.close());
   dlg?.addEventListener('close', () => open?.focus());
