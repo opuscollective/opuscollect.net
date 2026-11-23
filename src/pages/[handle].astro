@@ -92,6 +92,16 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               {links.map(([k, v]) => <li><a href={v} target="_blank" rel="noopener nofollow ugc">{LINK_LABEL[k] ?? k} ↗</a></li>)}
             </ul>
           )}
+          {clans.length > 0 && (
+            <ul class="mp__groups" role="list" aria-label="Groups">
+              {clans.map((m) => (
+                <li><a href={m.clan.href} title={[m.clan.typeLabel, m.roles.join(', ')].filter(Boolean).join(' · ')}>
+                  <span class="mp__gl" style={m.clan.photo ? `background-image:url(${m.clan.photo})` : ''}>{!m.clan.photo && m.clan.name.slice(0, 1)}</span>
+                  <span class="mp__gn">{m.clan.name}</span>
+                </a></li>
+              ))}
+            </ul>
+          )}
           <div class="mp__actions">
           {isOwner ? (
             <a class="btn-app btn-app--ghost" href="/account/profile">Edit profile</a>
@@ -253,16 +263,6 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {roles.length > 0 && <section class="mp__card"><h2 class="mp__h">Specialties</h2><ul class="mp__tags" role="list">{roles.map((r, i) => <li class:list={{ 'is-primary': i === 0 }}>{r}</li>)}</ul></section>}
           {p.genres.length > 0 && <section class="mp__card"><h2 class="mp__h">Genres</h2><ul class="mp__tags" role="list">{p.genres.map((g) => <li>{g}</li>)}</ul></section>}
           {where && worldCity && <section class="mp__card"><h2 class="mp__h">Based in</h2><p><a class="link" href={CITIES.some((c) => c.name === worldCity) ? `/world/${citySlug(worldCity)}` : `/world?city=${encodeURIComponent(worldCity)}`}>{where} on World →</a></p></section>}
-          {clans.length > 0 && (
-            <section class="mp__card"><h2 class="mp__h">Member of</h2>
-              <div class="cl-aff">{clans.map((m) => (
-                <a href={m.clan.href}>
-                  <span class="cl-aff__ph" style={m.clan.photo ? `background-image:url(${m.clan.photo})` : ''}></span>
-                  <span><b>{m.clan.name}</b><small>{[m.clan.typeLabel, m.roles.join(', ')].filter(Boolean).join(' · ')}</small></span>
-                </a>
-              ))}</div>
-            </section>
-          )}
           {isOwner && <section class="mp__card mp__share"><h2 class="mp__h">Share</h2><p class="dim">One link for your bio.</p><p class="mp__sharelinks"><a class="link" href={`/${p.handle}/links`}>opuscollect.net/{p.handle}/links</a></p></section>}
         </aside>
       </div>
@@ -324,6 +324,11 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__facts li + li::before { content: ''; display: inline-block; width: 3px; height: 3px; margin: 0 14px 3px; border-radius: 50%; background: var(--text-3); vertical-align: middle; }
   .mp__facts b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
   .mp__facts .is-on { color: var(--c-accent); }
+  .mp__groups { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 22px; }
+  .mp__groups a { display: inline-flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13px; text-decoration: none; transition: box-shadow var(--dur) var(--ease); }
+  .mp__groups a:hover { box-shadow: inset 0 0 0 1px var(--text-3); }
+  .mp__gl { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-hover, #eee) center / cover; color: var(--text-2); font-weight: 500; }
+  .mp__gn { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   .mp__chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
   .mp__chips a { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13px; text-decoration: none; }
   .mp__chips a:hover { background: var(--surface-hover); }
