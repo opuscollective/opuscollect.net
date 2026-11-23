@@ -154,18 +154,11 @@ export const SOCIALS = [
 ];
 
 /** Footer: one short row. Everything else is reachable from the header or from these pages. */
+/** Footer: only what is live today. Add Works, Future, Charts etc. back here when they launch. */
 export const FOOTER_NAV = [
   { label: 'World', href: '/world' },
-  { label: 'Works', href: '/works' },
   { label: 'Studios', href: '/studios' },
   { label: 'List your studio', href: '/business' },
-  { label: 'Venues', href: '/venues' },
-  { label: 'Events', href: '/events' },
-  { label: 'Airplay', href: '/airplay' },
-  { label: 'Future', href: '/future' },
-  { label: 'Charts', href: '/charts' },
   { label: 'Network', href: '/network' },
-  { label: 'Opus Collective', href: '/collective' },
-  { label: 'Opus Verified', href: '/verified' },
   { label: 'About', href: '/about' },
 ];

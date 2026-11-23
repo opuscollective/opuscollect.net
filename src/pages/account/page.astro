@@ -3,25 +3,32 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getMyProfile } from '@/server/profiles';
 import { profileReleases } from '@/server/releases';
-import { getPageConfig, PAGE_SECTIONS } from '@/server/page-config';
+import { getPageConfig, GROUP_SECTIONS, PAGE_SECTIONS } from '@/server/page-config';
+import { clanWorks, getClanByHandle, isClanAdmin } from '@/server/clans';
 import '@/styles/app.css';
 export const prerender = false;
 
 const user = Astro.locals.user;
 if (!user) return Astro.redirect('/sign-in?next=/account/page');
 const env = Astro.locals.runtime.env;
-const p = await getMyProfile(env.DB, user.id);
+const groupHandle = Astro.url.searchParams.get('group');
+const clan = groupHandle ? await getClanByHandle(env.DB, groupHandle) : null;
+if (groupHandle && (!clan || !(await isClanAdmin(env.DB, clan, user.id)))) return Astro.redirect('/clans/mine');
+const p = clan ? { id: clan.id, handle: clan.handle } : await getMyProfile(env.DB, user.id);
 if (!p) return Astro.redirect('/start');
-const page = await getPageConfig(env.WAITLIST, p.id);
-const record = await profileReleases(env.DB, user.id);
+const sections = clan ? GROUP_SECTIONS : PAGE_SECTIONS;
+const page = await getPageConfig(env.WAITLIST, p.id, sections);
+const record = clan ? (await clanWorks(env.DB, clan.id)).map((w) => ({ id: w.id, title: w.title })) : await profileReleases(env.DB, user.id);
+const pubUrl = clan ? `/c/${clan.handle}` : `/${p.handle}`;
+const apiUrl = clan ? `/api/page?group=${encodeURIComponent(clan.handle)}` : '/api/page';
 const origin = Astro.url.origin;
 ---
 <BaseLayout title="Customize your page" noindex assistant={false} messages={false}>
   <section class="app">
     <div class="app__wrap pg" style="margin-inline:auto">
-      <p class="t-meta app__kicker">Your page</p>
-      <h1 class="app__title">Make it yours.</h1>
-      <p class="dim">Choose what people see first. These settings shape your profile and your link for Instagram, TikTok and anywhere else.</p>
+      <p class="t-meta app__kicker">{clan ? clan.name : 'Your page'}</p>
+      <h1 class="app__title">{clan ? 'Shape the group page.' : 'Make it yours.'}</h1>
+      <p class="dim">Choose what people see first. {clan ? 'Choose what people see first when they step into your group.' : 'These settings shape your profile and your link for Instagram, TikTok and anywhere else.'}</p>
 
       <form class="pg__form" data-page novalidate>
         <label class="field"><span>Tagline</span><input class="input" name="tagline" maxlength="90" value={page.tagline} placeholder="One line about what you do" /></label>
@@ -47,14 +54,14 @@ const origin = Astro.url.origin;
         <div data-status class="form-status" role="status"></div>
         <div class="pg__row">
           <button class="btn-app" type="submit">Save</button>
-          <a class="btn-app btn-app--ghost" href={`/${p.handle}`}>See my page</a>
-          <a class="btn-app btn-app--ghost" href={`/${p.handle}/links`}>See my link</a>
+          <a class="btn-app btn-app--ghost" href={pubUrl}>See the page</a>
+          {!clan && <a class="btn-app btn-app--ghost" href={`/${p.handle}/links`}>See my link</a>}
         </div>
-        <p class="dim pg__share">Your link: <b data-copy-url>{origin}/{p.handle}/links</b> <button type="button" class="pg__copy" data-copy>Copy</button></p>
+        {!clan && <p class="dim pg__share">Your link: <b data-copy-url>{origin}/{p.handle}/links</b> <button type="button" class="pg__copy" data-copy>Copy</button></p>}
       </form>
     </div>
   </section>
-  <script type="application/json" id="page-data" set:html={JSON.stringify({ page, labels: PAGE_SECTIONS })}></script>
+  <script type="application/json" id="page-data" set:html={JSON.stringify({ page, labels: sections, api: apiUrl })}></script>
 </BaseLayout>
 
 <style>
@@ -76,7 +83,7 @@ const origin = Astro.url.origin;
 </style>
 
 <script>
-  const data = JSON.parse(document.getElementById('page-data')!.textContent!) as { page: { links: { label: string; url: string }[]; order: string[]; hide: string[] }; labels: Record<string, string> };
+  const data = JSON.parse(document.getElementById('page-data')!.textContent!) as { api: string; page: { links: { label: string; url: string }[]; order: string[]; hide: string[] }; labels: Record<string, string> };
   const form = document.querySelector<HTMLFormElement>('[data-page]')!;
   const links = form.querySelector<HTMLUListElement>('[data-links]')!;
   const order = form.querySelector<HTMLUListElement>('[data-order]')!;
@@ -114,7 +121,7 @@ const origin = Astro.url.origin;
       hide: [...order.children].filter((li) => !(li.querySelector('input') as HTMLInputElement).checked).map((li) => (li as HTMLElement).dataset.k),
     };
     status.className = 'form-status'; status.textContent = 'Saving…';
-    const r = await fetch('/api/page', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await fetch(data.api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     if (r.ok) { status.textContent = 'Saved.'; } else { status.className = 'form-status notice notice--error'; status.textContent = (await r.json().catch(() => ({}))).error ?? 'Couldn’t save.'; }
   });
   form.querySelector('[data-copy]')?.addEventListener('click', async (e) => {
