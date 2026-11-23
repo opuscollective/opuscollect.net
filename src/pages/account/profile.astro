@@ -32,9 +32,22 @@ const linkFields = [
 
       {welcome && !user.emailVerified && <p class="notice" style="margin-top:20px">Welcome to Opus. We sent a confirmation link to <b>{user.email}</b>. You can build your profile now and publish once your email is confirmed.</p>}
 
+      {p?.status === 'published' && (
+        <div class="pe-live" data-live data-url={`https://opuscollect.net/m/${p.handle}`}>
+          <p class="pe-live__t">Your page is live.</p>
+          <p class="pe-live__u">opuscollect.net/m/{p.handle}</p>
+          <p class="pe-live__s">Give this link to anyone. They don’t need an account to see it.</p>
+          <div class="pe-live__a">
+            <button type="button" class="btn-app" data-copy>Copy link</button>
+            <button type="button" class="btn-app btn-app--ghost" data-share hidden>Share</button>
+            <a class="btn-app btn-app--ghost" href={`/m/${p.handle}`} target="_blank" rel="noopener">View page</a>
+          </div>
+        </div>
+      )}
+
       <div class="notice" style="margin-top:20px" data-state>
         {p?.status === 'published'
-          ? <span><b>Published.</b> Your profile is public at <a class="link" href={`/m/${p.handle}`}>opuscollect.net/m/{p.handle}</a>.</span>
+          ? <span><b>Published.</b></span>
           : missing && missing.length
             ? <span><b>Draft.</b> To publish, add: {missing.join(', ')}.</span>
             : p ? <span><b>Draft.</b> Ready to publish.</span> : <span><b>New profile.</b> Nothing is public until you publish.</span>}
@@ -182,6 +195,12 @@ const linkFields = [
 </BaseLayout>
 
 <style>
+  .pe-live { margin-top: 24px; padding: clamp(22px, 4vw, 34px); border-radius: 22px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); position: relative; overflow: hidden; isolation: isolate; }
+  .pe-live::before { content: ''; position: absolute; z-index: -1; inset: -40% -10% auto 30%; height: 240px; filter: blur(40px); background: radial-gradient(50% 60% at 50% 40%, rgba(154,174,255,.26), transparent 70%); pointer-events: none; }
+  .pe-live__t { margin: 0; font-size: clamp(1.7rem, 1.3rem + 1.6vw, 2.4rem); font-weight: 300; letter-spacing: -0.045em; line-height: 1.05; }
+  .pe-live__u { margin: 12px 0 0; font-size: clamp(1rem, .9rem + .6vw, 1.3rem); font-weight: 300; word-break: break-all; }
+  .pe-live__s { margin: 6px 0 0; font-size: 14px; color: var(--text-3); }
+  .pe-live__a { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
   /* Recognition look: thin type, soft wash, hairline panels, pill pickers. */
   :global(main:has([data-profile])) { position: relative; isolation: isolate; }
   :global(main:has([data-profile]))::before { content: ''; position: absolute; z-index: -1; inset: 0 -10% auto; height: 420px; pointer-events: none; filter: blur(44px);
@@ -376,6 +395,19 @@ const linkFields = [
     const r = await fetch('/api/profile/image?slot=cover', { method: 'DELETE' });
     if (r.ok) { const el = document.querySelector<HTMLElement>('[data-cover-preview]')!; el.style.backgroundImage = ''; el.textContent = 'Optional cover image'; (e.target as HTMLElement).remove(); }
   });
+
+  // ----- "Your page is live": copy and share the public link -----
+  const live = document.querySelector<HTMLElement>('[data-live]');
+  if (live) {
+    const url = live.dataset.url!;
+    const copy = live.querySelector<HTMLButtonElement>('[data-copy]')!;
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(url); copy.textContent = 'Copied'; } catch { copy.textContent = 'Press and hold the link to copy'; }
+      setTimeout(() => (copy.textContent = 'Copy link'), 2200);
+    });
+    const share = live.querySelector<HTMLButtonElement>('[data-share]')!;
+    if (navigator.share) { share.hidden = false; share.addEventListener('click', () => navigator.share({ url, title: 'My page on Opus' }).catch(() => {})); }
+  }
 
   const saved = new URLSearchParams(location.search).get('saved');
   if (saved) {
