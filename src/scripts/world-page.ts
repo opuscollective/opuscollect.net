@@ -169,10 +169,12 @@ export function initWorld(root: HTMLElement) {
   // The View switcher already offers Map / Split / List, so there is no separate "Show list" control.
   const rz = $<HTMLElement>('[data-rz]');
   const collapseBtn = $<HTMLButtonElement>('[data-collapse]');
-  const RZ_KEY = 'opus.world.panel.v1';
+  // v2: the widest size is the default (Bogo 2026-11-24); widths saved under v1 are dropped so nobody stays on the thin panel.
+  const RZ_KEY = 'opus.world.panel.v2';
   const RZ_MIN = 340;
   const rzMax = () => Math.max(RZ_MIN, Math.min(640, Math.round(innerWidth * 0.5)));
   let panelW: number | null = null; let collapsed = false;
+  try { localStorage.removeItem('opus.world.panel.v1'); } catch { /* private mode */ }
   try { const sv = JSON.parse(localStorage.getItem(RZ_KEY) || 'null'); if (sv) { panelW = Number(sv.w) || null; collapsed = !!sv.c; } } catch { /* defaults */ }
   const saveRz = () => { try { localStorage.setItem(RZ_KEY, JSON.stringify({ w: panelW, c: collapsed })); } catch { /* private mode */ } };
   function applyRz(resizeMap = true) {

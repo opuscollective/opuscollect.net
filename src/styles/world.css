@@ -4,7 +4,7 @@
 
 .world {
   /* Directory: about a third of the screen (min 340px, max 520px); resizable and collapsible on desktop (see world-page.ts). */
-  --panel-w: clamp(340px, 32vw, 520px);
+  --panel-w: clamp(340px, 50vw, 640px); /* the default is the widest the resizer allows (see rzMax in world-page.ts) */
   position: relative;
   display: grid;
   /* The directory is always on the left, the map on the right: the same on every Opus World page and on the homepage. */
@@ -932,3 +932,13 @@ html:not([data-motion='fluid']) .wx, html:not([data-motion='fluid']) .wx.is-in, 
 .pv__ovf a { display: grid; place-items: center; width: 30px; height: 30px; margin-left: -8px; border-radius: 50%; border: 2px solid var(--bg); background: var(--surface-hover, #2a2a2e) center / cover no-repeat; color: var(--text-2); font-size: 12px; text-decoration: none; }
 .pv__ovf a:first-child { margin-left: 0; }
 .pv__ovf--sq a { border-radius: 7px; }
+
+/* People open centered (round photo, name, city, actions), like their full profile. Studios, venues and organizations keep the banner. */
+.pv--musician .pv__hero { display: grid; place-items: center; padding-top: 40px; }
+.pv--musician .pv__hero::after { content: none; }
+.pv--musician .pv__hero .im { width: clamp(120px, 34%, 152px); max-height: none; aspect-ratio: 1; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 1px var(--line-faint, rgba(128,128,128,.2)), 0 18px 40px -18px rgba(0,0,0,.45); }
+.pv--musician .pv__head, .pv--musician.pv--loading .pv__head { margin-top: 18px; align-items: center; text-align: center; }
+.pv--musician .pv__title, .pv--musician .pv__roles, .pv--musician .pv__conns { justify-content: center; }
+.pv--musician .pv__genres { text-wrap: balance; }
+.pv--musician .pv__conns { margin-top: 10px; }
+.pv--musician .pv__why { text-align: center; }
