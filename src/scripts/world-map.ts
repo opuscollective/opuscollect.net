@@ -201,7 +201,8 @@ export async function mountWorldMap(
     style: buildStyle(countries),
     center: opts.camera?.center ?? [-40, 28],
     zoom: opts.camera?.zoom ?? homeZoom(),
-    minZoom: 0.4,
+    // The opening view is as far out as World goes (Bogo 2026-11-24): the Earth never shrinks to a dot.
+    minZoom: homeZoom(),
     maxZoom: 17,
     attributionControl: { compact: true },
     dragRotate: false,
@@ -264,7 +265,7 @@ export async function mountWorldMap(
       const c = map.getCenter();
       const reach = map.getZoom() < 2.2 ? 0.42 : 0.2; // cosine of the furthest angle from the centre that still shows
       // Member markers always win; then names in order (continents, oceans, cities), each only where there is room.
-      const taken = [...map.getContainer().querySelectorAll<HTMLElement>('.maplibregl-marker:not(.gl-label)')].map((m) => m.getBoundingClientRect());
+      const taken = [...map.getContainer().querySelectorAll<HTMLElement>('.maplibregl-marker:not(.gl-label), .wm-place span')].map((m) => m.getBoundingClientRect());
       for (const { l, inner } of names) {
         const cos = Math.sin(l.lat * R) * Math.sin(c.lat * R) + Math.cos(l.lat * R) * Math.cos(c.lat * R) * Math.cos((l.lng - c.lng) * R);
         const r = inner.getBoundingClientRect();
@@ -447,12 +448,12 @@ export async function mountWorldMap(
       place = new maplibregl.Marker({ element: pe }).setLngLat([p.lng, p.lat]).addTo(map);
     },
     resetView() { stop(); map.flyTo({ padding: base(), zoom: homeZoom(), duration: dur(1100), essential: true }); },
-    zoomOut() { stop(); map.easeTo({ zoom: Math.max(1.2, map.getZoom() - 3), duration: dur(800) }); },
+    zoomOut() { stop(); map.easeTo({ zoom: Math.max(homeZoom(), map.getZoom() - 3), duration: dur(800) }); },
     getCenter: () => { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
     getBounds: () => map.getBounds(),
     getZoom: () => map.getZoom(),
     getCamera: () => { const c = map.getCenter(); return { center: [c.lng, c.lat], zoom: map.getZoom() }; },
-    resize: () => map.resize(),
+    resize: () => { map.resize(); map.setMinZoom(homeZoom()); },
     reframe() {
       const p = base(), c = map.getPadding();
       if (p.left === c.left && p.bottom === c.bottom && !c.top && !c.right) return;
