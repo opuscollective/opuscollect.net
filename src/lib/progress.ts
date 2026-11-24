@@ -18,6 +18,8 @@ export interface Stats {
   connections: number;      // accepted connections
   connectionCities: number; // distinct metro areas among their connections
   connectionCountries: number;
+  awayConnections: number;  // accepted connections with members based outside this member's home city
+  awayParties: number;      // listening parties they hosted that were pinned to a city other than home
   groups: number;           // groups where they are an active member
   partiesHosted: number;    // listening parties they hosted that ran and ended
   partyPeak: number;        // the most listeners in one of their rooms at once
@@ -27,7 +29,7 @@ export interface Stats {
 }
 
 export const NO_STATS: Stats = {
-  works: 0, creditsEarned: 0, creditsGiven: 0, connections: 0, connectionCities: 0, connectionCountries: 0,
+  works: 0, creditsEarned: 0, creditsGiven: 0, connections: 0, connectionCities: 0, connectionCountries: 0, awayConnections: 0, awayParties: 0,
   groups: 0, partiesHosted: 0, partyPeak: 0, published: false, hasPhoto: false, verified: false,
 };
 
@@ -75,7 +77,7 @@ export function levelOf(pts: number): Level {
   };
 }
 
-export type AchievementGroup = 'work' | 'credits' | 'people' | 'live' | 'standing';
+export type AchievementGroup = 'work' | 'credits' | 'people' | 'travel' | 'live' | 'standing';
 export interface Achievement {
   id: string; name: string; group: AchievementGroup;
   /** What it took, as shown to everyone. */
@@ -102,8 +104,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'connections-10', name: 'Connector', group: 'people', how: '10 connections', title: 'Connector', stat: 'connections', need: 10, tier: 1 },
   { id: 'connections-50', name: 'Well Connected', group: 'people', how: '50 connections', title: 'Well Connected', stat: 'connections', need: 50, tier: 2 },
   { id: 'connections-150', name: 'Hub', group: 'people', how: '150 connections', title: 'The Hub', stat: 'connections', need: 150, tier: 3 },
-  { id: 'cities-3', name: 'Three Cities', group: 'people', how: 'Connections in 3 cities', title: 'Bridge Builder', stat: 'connectionCities', need: 3, tier: 2 },
-  { id: 'countries-3', name: 'Worldwide', group: 'people', how: 'Connections in 3 countries', title: 'Worldwide', stat: 'connectionCountries', need: 3, tier: 3 },
+  { id: 'cities-3', name: 'Three Cities', group: 'travel', how: 'Connections in 3 cities', title: 'Bridge Builder', stat: 'connectionCities', need: 3, tier: 2 },
+  { id: 'countries-3', name: 'Worldwide', group: 'travel', how: 'Connections in 3 countries', title: 'Worldwide', stat: 'connectionCountries', need: 3, tier: 3 },
+  { id: 'away-1', name: 'New Territory', group: 'travel', how: 'Connected with someone based outside their home city', stat: 'awayConnections', need: 1, tier: 1 },
+  { id: 'away-10', name: 'Road Tested', group: 'travel', how: '10 connections outside their home city', title: 'Traveler', stat: 'awayConnections', need: 10, tier: 2 },
+  { id: 'cities-8', name: 'Eight Cities', group: 'travel', how: 'Connections in 8 cities', title: 'Nomad', stat: 'connectionCities', need: 8, tier: 3 },
+  { id: 'away-party', name: 'Away Game', group: 'travel', how: 'Hosted a listening party in a city away from home', title: 'On Tour', stat: 'awayParties', need: 1, tier: 2 },
   { id: 'in-a-group', name: 'In a Group', group: 'people', how: 'Active member of a group', stat: 'groups', need: 1, tier: 1 },
 
   { id: 'host', name: 'Host', group: 'live', how: 'Hosted a listening party', title: 'Host', stat: 'partiesHosted', need: 1, tier: 1 },
@@ -111,7 +117,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: 'full-room', name: 'Full Room', group: 'live', how: '25 people in one listening party at once', title: 'Full Room', stat: 'partyPeak', need: 25, tier: 3 },
 ];
 
-export const GROUP_LABEL: Record<AchievementGroup, string> = { work: 'Work', credits: 'Credits', people: 'People', live: 'Live', standing: 'Standing' };
+export const GROUP_LABEL: Record<AchievementGroup, string> = { work: 'Work', credits: 'Credits', people: 'People', travel: 'Travel', live: 'Live', standing: 'Standing' };
 
 const num = (v: Stats[keyof Stats]) => (typeof v === 'number' ? v : v ? 1 : 0);
 

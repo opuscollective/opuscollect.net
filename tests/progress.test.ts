@@ -53,3 +53,10 @@ test('reserved looks fall back unless the account is the founder', () => {
   assert.equal(pageStyle('rose', 'grid', 'founder').backdrop, 'grid');
   assert.equal(pageStyle('nope', 'nope').accent.key, 'ice');
 });
+
+test('travel achievements read real connections away from home, never self-marked cities', () => {
+  const travel = ACHIEVEMENTS.filter((a) => a.group === 'travel');
+  assert.ok(travel.length >= 4);
+  for (const a of travel) assert.ok(['awayConnections', 'awayParties', 'connectionCities', 'connectionCountries'].includes(a.stat));
+  assert.equal(achievements({ ...NO_STATS, awayConnections: 1 }).find((a) => a.id === 'away-1')!.earned, true);
+});

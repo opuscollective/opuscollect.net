@@ -917,6 +917,40 @@ export function initWorld(root: HTMLElement) {
       el.classList.add('is-out'); setTimeout(() => el.remove(), 600); res();
     }, 1100));
   }
+  /**
+   * New territory: a signed-in member shared their location and the nearest Opus city isn't their home city.
+   * Only the city is used, and nothing is saved unless they press a button. Copy is working copy.
+   */
+  async function newTerritory(c: { name: string; region?: string; country: string }) {
+    const id = metroId(c);
+    type Travel = { signedIn: boolean; home?: { id: string; name: string | null } | null; away?: { id: string } | null; cities?: string[] };
+    let t: Travel;
+    try { t = await (await fetch('/api/travel', { credentials: 'same-origin' })).json(); } catch { return; }
+    if (!t.signedIn || !t.home) return;
+    const backHome = t.home.id === id;
+    if (backHome ? !t.away : t.away?.id === id) return; // nothing new to say
+    document.querySelector('.terr')?.remove();
+    const el = document.createElement('aside');
+    el.className = 'terr'; el.setAttribute('role', 'status');
+    const post = (body: object) => fetch('/api/travel', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.ok);
+    const close = () => { el.classList.remove('is-in'); setTimeout(() => el.remove(), 400); };
+    const done = (text: string) => { el.querySelector('.terr__row')!.remove(); el.querySelector('p')!.textContent = text; setTimeout(close, 3200); };
+    el.innerHTML = backHome
+      ? `<small>Welcome home</small><b>Back in ${esc(c.name)}.</b><p>Your page still says you’re away.</p><div class="terr__row"><button type="button" class="btn-app" data-t="home">I’m home</button><button type="button" class="btn-app btn-app--ghost" data-t="x">Not now</button></div>`
+      : `<small>New territory</small><b>You’re in ${esc(c.name)}.</b><p>Away from ${esc(t.home.name ?? 'home')}. See who’s making music here and connect.</p><div class="terr__row"><button type="button" class="btn-app" data-t="here">I’m here now</button>${t.cities?.includes(id) ? '' : '<button type="button" class="btn-app btn-app--ghost" data-t="add">Add to my cities</button>'}<button type="button" class="btn-app btn-app--ghost" data-t="x">Not now</button></div>`;
+    el.addEventListener('click', async (e) => {
+      const act = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-t]')?.dataset.t;
+      if (!act) return;
+      if (act === 'x') return close();
+      el.querySelectorAll('button').forEach((b) => (b.disabled = true));
+      const ok = await post(act === 'home' ? { action: 'home' } : { action: act, city: id });
+      if (!ok) return done('That didn’t save. You can set it in Customize page.');
+      done(act === 'here' ? `Your page now says “In ${c.name} now”.` : act === 'add' ? `${c.name} is in your territory.` : 'Welcome back. Your page shows you at home.');
+    });
+    document.body.append(el);
+    // After the camera has settled on the city.
+    setTimeout(() => el.classList.add('is-in'), reduceMotion.matches ? 0 : 2600);
+  }
   $('[data-where-open]').addEventListener('click', showWhere);
   $('[data-where-world]').addEventListener('click', () => answer({ mode: 'world' }));
   $('[data-where-me]').addEventListener('click', () => {
@@ -927,7 +961,7 @@ export function initWorld(root: HTMLElement) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const near = nearestCity(CITIES, { lat: pos.coords.latitude, lng: pos.coords.longitude });
-        if (near && near.km < 1500) answer({ mode: 'city', name: near.city.name }, near.city);
+        if (near && near.km < 1500) { answer({ mode: 'city', name: near.city.name }, near.city); newTerritory(near.city); }
         else { whereBtns().forEach((b) => (b.disabled = false)); whereNote.textContent = 'There’s no Opus city near you yet. Enter a city or explore worldwide.'; }
       },
       () => { whereBtns().forEach((b) => (b.disabled = false)); whereNote.textContent = 'Location is off. Enter a city or explore worldwide.'; },

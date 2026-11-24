@@ -5,7 +5,7 @@ import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import FounderMark from '@/components/ui/FounderMark.astro';
 import OpusMark from '@/components/ui/OpusMark.astro';
 import Journey from '@/components/profile/Journey.astro';
-import { memberStats } from '@/server/progress';
+import { connectionMetros, homeMetroOf, memberStats } from '@/server/progress';
 import { levelOf, points, resolveTitle } from '@/lib/progress';
 import { pageStyle } from '@/lib/page-style';
 import { SPECIALTIES, allSpecialties } from '@/data/specialties';
@@ -81,7 +81,24 @@ const show = (k: 'works' | 'credits' | 'about' | 'journey') => !page.hide.includ
 // The look the member chose, and their standing: all from recorded activity or the account itself.
 const founder = p.distinction === 'founder';
 const look = pageStyle(page.accent, page.backdrop, p.distinction);
-const stats = await memberStats(db, ownerId, p);
+const metros = await connectionMetros(db, ownerId);
+const stats = await memberStats(db, ownerId, p, metros);
+// Travel: home is the profile city. "Now in" and marked cities are the member's own word; connection counts are real.
+const homeMetro = homeMetroOf(p.placeId);
+const showPlace = p.locationVisibility === 'city' || p.locationVisibility === 'metro';
+const awayCity = showPlace && page.away && page.away !== homeMetro ? PLACE_BY_ID.get(page.away) : undefined;
+const cityHref = (name: string) => (CITIES.some((c) => c.name === name) ? '/world/' + citySlug(name) : '/world?city=' + encodeURIComponent(name));
+const territory = (() => {
+  if (!showPlace) return [];
+  const out: { id: string; name: string; kind: 'home' | 'connected' | 'marked'; n: number }[] = [];
+  const seen = new Set<string>();
+  const add = (id: string | null, kind: 'home' | 'connected' | 'marked', n = 0) => { const pl = id ? PLACE_BY_ID.get(id) : undefined; if (!pl || seen.has(pl.id)) return; seen.add(pl.id); out.push({ id: pl.id, name: pl.name, kind, n }); };
+  const count = (id: string | null) => metros.find((m) => m.metro === id)?.n ?? 0;
+  add(homeMetro, 'home', count(homeMetro));
+  for (const m of metros) add(m.metro, 'connected', m.n);
+  for (const id of page.cities) add(id, 'marked');
+  return out;
+})();
 const lv = levelOf(points(stats));
 const title = resolveTitle(page.title || (founder ? 'founder' : ''), stats, p.distinction);
 const rail = show('journey');
@@ -130,7 +147,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           )}
           {page.tagline && <p class="mp__tag">{page.tagline}</p>}
           <ul class="mp__facts" role="list">
-            {where && <li>{where && worldCity ? <a class="mp__where" href={CITIES.some((c) => c.name === worldCity) ? `/world/${citySlug(worldCity)}` : `/world?city=${encodeURIComponent(worldCity)}`}>{where}</a> : where}</li>}
+            {awayCity && <li class="is-away"><a class="mp__where" href={cityHref(awayCity.name)}>In {awayCity.name} now</a></li>}
+            {where && <li>{awayCity && 'Home: '}{where && worldCity ? <a class="mp__where" href={CITIES.some((c) => c.name === worldCity) ? `/world/${citySlug(worldCity)}` : `/world?city=${encodeURIComponent(worldCity)}`}>{where}</a> : where}</li>}
             {p.genres.length > 0 && <li>{p.genres.slice(0, 3).join(', ')}</li>}
             {hire.length > 0 && <li class="is-on">For hire</li>}
             <li><b>{connections.toLocaleString('en-US')}</b> {connections === 1 ? 'connection' : 'connections'}</li>
@@ -371,6 +389,18 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
         {rail && (
           <aside class="mp__rail" id="journey" style={`order:${ord('journey')}`} aria-label="Level and achievements">
             <Journey stats={stats} pins={page.pins} isOwner={isOwner} firstName={p.displayName.split(' ')[0] ?? p.displayName} />
+            {(territory.length > 1 || (isOwner && showPlace)) && (
+              <section class="tr" aria-label="Territory">
+                <h2 class="tr__h">Territory <span>{territory.length} {territory.length === 1 ? 'city' : 'cities'}</span></h2>
+                <ul class="tr__list" role="list">{territory.map((t) => (
+                  <li class:list={{ 'is-home': t.kind === 'home', 'is-on': t.n > 0, 'is-now': awayCity?.id === t.id }}>
+                    <a href={cityHref(t.name)}><i aria-hidden="true"></i><b>{t.name}</b></a>
+                    <small>{[t.kind === 'home' ? 'Home' : null, awayCity?.id === t.id ? 'Here now' : null, t.n > 0 ? t.n + (t.n === 1 ? ' connection' : ' connections') : t.kind === 'marked' && awayCity?.id !== t.id ? 'Been here' : null].filter(Boolean).join(' · ')}</small>
+                  </li>
+                ))}</ul>
+                {isOwner && <p class="tr__fine">{territory.length <= 1 && 'Mark the cities you work in or visit. '}<a class="link" href="/account/page#cities">Edit your cities</a></p>}
+              </section>
+            )}
           </aside>
         )}
       </div>
@@ -509,6 +539,22 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__ess.is-one .mp__ess-n { max-width: 52ch; font-size: 16px; -webkit-line-clamp: 6; }
   /* All work, by year. */
   /* All work: the rest of the catalogue as a quieter shelf of smaller covers, grouped by year. */
+  .mp__facts .is-away a { color: var(--pf-ink); }
+  .tr { margin-top: 14px; padding: 22px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .tr__h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 12px; font-size: 16px; font-weight: 500; letter-spacing: -0.02em; }
+  .tr__h span { font-size: 12.5px; font-weight: 400; color: var(--text-3); }
+  .tr__list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .tr__list li:first-child { border-top: 0; padding-top: 0; }
+  .tr__list a { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
+  .tr__list a:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  .tr__list b { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; }
+  .tr__list small { flex: none; font-size: 12.5px; color: var(--text-3); }
+  /* Marked by the member: a ring. Real connections there: filled. Home: the accent. */
+  .tr__list i { flex: none; width: 9px; height: 9px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text-3); }
+  .tr__list .is-on i { background: var(--text-2); box-shadow: none; }
+  .tr__list .is-home i { background: var(--pf-ink); box-shadow: 0 0 0 3px var(--pf-soft); }
+  .tr__list .is-now small { color: var(--pf-ink); }
+  .tr__fine { margin: 12px 0 0; font-size: 12.5px; color: var(--text-3); }
   .mp__rows { border-top: 1px solid var(--line); }
   .mp__rows a { display: flex; align-items: center; gap: 16px; padding: 12px 4px; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none; transition: background var(--dur, .15s) var(--ease, ease); }
   .mp__rows a:hover { background: var(--surface-hover); }

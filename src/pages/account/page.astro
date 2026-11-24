@@ -8,6 +8,8 @@ import { clanWorks, getClanByHandle, isClanAdmin } from '@/server/clans';
 import { memberStats } from '@/server/progress';
 import { NO_STATS, achievements, titleOptions } from '@/lib/progress';
 import { accentsFor, backdropsFor, pageStyle } from '@/lib/page-style';
+import { homeMetroOf } from '@/server/progress';
+import { PLACES, PLACE_BY_ID } from '@/data/places';
 import '@/styles/app.css';
 import '@/styles/profile.css';
 export const prerender = false;
@@ -35,6 +37,9 @@ const earned = achievements(stats).filter((a) => a.earned);
 const look = pageStyle(page.accent, page.backdrop, distinction);
 const accents = accentsFor(distinction);
 const backdrops = backdropsFor(distinction);
+const homeId = me ? homeMetroOf(me.placeId) : null;
+const homeName = homeId ? PLACE_BY_ID.get(homeId)?.name ?? null : null;
+const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId).sort((a, b) => a.name.localeCompare(b.name));
 ---
 <BaseLayout title="Customize your page" noindex assistant={false} messages={false}>
   <section class="app">
@@ -99,6 +104,27 @@ const backdrops = backdropsFor(distinction);
           </fieldset>
         )}
 
+        {!clan && (
+          <fieldset class="pg__sec" id="cities">
+            <legend>Cities <small>Your home city, where you are now, and the cities you work in or visit.</small></legend>
+            <p class="pg__home">Home: <b>{homeName ?? 'Not set'}</b> <a class="link" href="/account/profile">Change in Edit profile</a></p>
+            <label class="field"><span>Where you are now <small class="dim">Set this when you travel. Your page says “In … now” until you switch back.</small></span>
+              <select class="input" name="away">
+                <option value="">At home{homeName ? ' (' + homeName + ')' : ''}</option>
+                {metroList.map((c) => <option value={c.id} selected={page.away === c.id}>{c.name}{c.region ? ', ' + c.region : ''}</option>)}
+              </select>
+            </label>
+            <p class="pg__lab">Cities you’ve been <small>Shown on your page as your territory. Connections you make in a city are counted there automatically.</small></p>
+            <ul class="pg__cities" data-cities role="list"></ul>
+            <div class="pg__cityadd">
+              <select class="input" data-city-pick aria-label="Add a city">
+                <option value="">Add a city…</option>
+                {metroList.map((c) => <option value={c.id}>{c.name}{c.region ? ', ' + c.region : ''}</option>)}
+              </select>
+            </div>
+          </fieldset>
+        )}
+
         <fieldset class="pg__sec">
           <legend>Link buttons <small>Up to 8. They appear on your page and your link.</small></legend>
           <ul class="pg__links" data-links role="list"></ul>
@@ -120,7 +146,7 @@ const backdrops = backdropsFor(distinction);
       </form>
     </div>
   </section>
-  <script type="application/json" id="page-data" set:html={JSON.stringify({ page, labels: sections, api: apiUrl })}></script>
+  <script type="application/json" id="page-data" set:html={JSON.stringify({ page, labels: sections, api: apiUrl, cities: page.cities, cityNames: Object.fromEntries(metroList.map((c) => [c.id, c.name])) })}></script>
 </BaseLayout>
 
 <style>
@@ -156,6 +182,11 @@ const backdrops = backdropsFor(distinction);
   .pg__bd span { display: block; aspect-ratio: 16 / 7; border-radius: 10px; box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--line); }
   .pg__title { margin-top: 20px; }
   .pg__pins { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
+  .pg__home { margin: 0 0 16px; font-size: 14px; color: var(--text-2); }
+  .pg__home b { color: var(--text); font-weight: 500; }
+  .pg__cities { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+  :global(.pg__cities li) { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); font-size: 13px; }
+  .pg__cityadd { max-width: 320px; }
   .pg__row { display: flex; flex-wrap: wrap; gap: 10px; }
   .pg__share { font-size: 13px; }
   .pg__copy { border: 0; background: none; color: var(--text); text-decoration: underline; cursor: pointer; font: inherit; }
@@ -197,6 +228,20 @@ const backdrops = backdropsFor(distinction);
   const capPins = () => { const n = pins.filter((c) => c.checked).length; pins.forEach((c) => (c.disabled = !c.checked && n >= 4)); };
   pins.forEach((c) => c.addEventListener('change', capPins)); capPins();
 
+  // Cities: chips for the cities the member marked; the picker adds one.
+  const cityNames = (data as unknown as { cityNames: Record<string, string>; cities: string[] }).cityNames;
+  const cityBox = form.querySelector<HTMLUListElement>('[data-cities]');
+  const cityPick = form.querySelector<HTMLSelectElement>('[data-city-pick]');
+  const addCity = (id: string) => {
+    if (!cityBox || !cityNames[id] || cityBox.querySelector('[data-id="' + id + '"]') || cityBox.children.length >= 24) return;
+    const li = document.createElement('li'); li.dataset.id = id;
+    li.append(cityNames[id]!);
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'pg__mini'; x.textContent = '×'; x.setAttribute('aria-label', 'Remove ' + cityNames[id]);
+    x.addEventListener('click', () => li.remove()); li.append(x); cityBox.append(li);
+  };
+  (data as unknown as { cities: string[] }).cities.forEach(addCity);
+  cityPick?.addEventListener('change', () => { addCity(cityPick.value); cityPick.value = ''; });
+
   const ess = [...form.querySelectorAll<HTMLInputElement>('[data-ess] input[type=checkbox]')];
   const capEss = () => { const n = ess.filter((c) => c.checked).length; ess.forEach((c) => (c.disabled = !c.checked && n >= 6)); };
   ess.forEach((c) => c.addEventListener('change', capEss)); capEss();
@@ -206,6 +251,7 @@ const backdrops = backdropsFor(distinction);
     const fd = new FormData(form);
     const body = {
       tagline: fd.get('tagline'), featured: fd.get('featured') || null,
+      away: fd.get('away') ?? '', cities: cityBox ? [...cityBox.children].map((li) => (li as HTMLElement).dataset.id) : [],
       accent: fd.get('accent') ?? '', backdrop: fd.get('backdrop') ?? '', title: fd.get('title') ?? '', pins: pins.filter((c) => c.checked).map((c) => c.value),
       essentials: [...form.querySelectorAll<HTMLElement>('[data-ess] li')].filter((li) => (li.querySelector('input[type=checkbox]') as HTMLInputElement).checked).map((li) => li.dataset.id),
       notes: Object.fromEntries([...form.querySelectorAll<HTMLElement>('[data-ess] li')].map((li) => [li.dataset.id, (li.querySelector('[data-note]') as HTMLInputElement).value]).filter(([, v]) => v)),
