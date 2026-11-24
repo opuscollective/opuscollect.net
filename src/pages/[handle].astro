@@ -46,6 +46,7 @@ const connections = await connectionCount(db, ownerId);
 const people = connections > 0 ? await profileConnections(db, ownerId, viewer?.id ?? null).catch(() => ({ faces: [], mutual: 0 })) : { faces: [], mutual: 0 };
 // What a signed-in visitor shares with this member: mutual connections and works they both appear on. Nothing is shown without overlap.
 const shared = viewer && !isOwner ? await overlap(db, viewer.id, ownerId).catch(() => NO_OVERLAP) : NO_OVERLAP;
+const sharedNames = shared.mutuals.slice(0, 2).map((x) => x.name.split(' ')[0]!);
 const firstNames = people.faces.slice(0, 2).map((f) => f.name.split(' ')[0]);
 // The member's record: releases they put out, plus releases where they confirmed a credit.
 const record = await profileReleases(db, ownerId);
@@ -122,7 +123,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               ))}
             </ul>
           )}
-          {connections > 0 && (
+          {/* When the visitor shares something with this member, that row replaces the general one. */}
+          {connections > 0 && shared.mutualCount === 0 && shared.works.length === 0 && (
             <div class="mp__people">
               {people.faces.length > 0 && <span class="mp__faces" aria-hidden="true">{people.faces.map((f) => (
                 <a href={`/${f.handle}`} tabindex="-1" title={f.name} style={f.photoKey ? `background-image:url(${mediaUrl(f.photoKey)})` : ''}>{!f.photoKey && f.name.slice(0, 1)}</a>
@@ -134,16 +136,21 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           )}
           {(shared.mutualCount > 0 || shared.works.length > 0) && (
             <div class="mp__shared">
-              {shared.mutualCount > 0 && (
-                <p><span class="mp__faces">{shared.mutuals.slice(0, 4).map((f) => (
+              <span class="mp__faces">
+                {shared.mutuals.slice(0, 3).map((f) => (
                   <a href={`/${f.handle}`} title={f.name} style={f.photo ? `background-image:url(${f.photo})` : ''}>{!f.photo && f.name.slice(0, 1)}</a>
-                ))}</span><span><b>{shared.mutualCount} mutual {shared.mutualCount === 1 ? 'connection' : 'connections'}</b></span></p>
-              )}
-              {shared.works.length > 0 && (
-                <p><span class="mp__faces mp__faces--sq">{shared.works.slice(0, 4).map((w) => (
-                  <a href={`/r/${w.id}`} title={w.title} style={w.cover ? `background-image:url(${w.cover})` : ''}>{!w.cover && w.title.slice(0, 1)}</a>
-                ))}</span><span><b>{shared.works.length} {shared.works.length === 1 ? 'work' : 'works'} together</b> <small>{shared.works.slice(0, 2).map((w) => w.title).join(', ')}{shared.works.length > 2 && ` and ${shared.works.length - 2} more`}</small></span></p>
-              )}
+                ))}
+                {shared.works.slice(0, 3).map((w) => (
+                  <a class="is-sq" href={`/r/${w.id}`} title={w.title} style={w.cover ? `background-image:url(${w.cover})` : ''}>{!w.cover && w.title.slice(0, 1)}</a>
+                ))}
+              </span>
+              <p>
+                {shared.mutualCount > 0 && (sharedNames.length > 0
+                  ? <>You both know {sharedNames.map((n, i) => <>{i > 0 && ', '}<b>{n}</b></>)}{shared.mutualCount > sharedNames.length && ` and ${shared.mutualCount - sharedNames.length} ${shared.mutualCount - sharedNames.length === 1 ? 'other' : 'others'}`}</>
+                  : `${shared.mutualCount} mutual ${shared.mutualCount === 1 ? 'connection' : 'connections'}`)}
+                {shared.mutualCount > 0 && shared.works.length > 0 && <i aria-hidden="true"> · </i>}
+                {shared.works.length > 0 && <>Together on {shared.works.slice(0, 2).map((w, i) => <>{i > 0 && ', '}<b>{w.title}</b></>)}{shared.works.length > 2 && ` and ${shared.works.length - 2} more`}</>}
+              </p>
             </div>
           )}
           <div class="mp__actions">
@@ -392,12 +399,13 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__faces { display: inline-flex; flex: none; }
   .mp__faces a { display: grid; place-items: center; width: 34px; height: 34px; margin-left: -9px; border-radius: 50%; border: 2px solid var(--bg); background: var(--surface-hover, #ddd) center / cover no-repeat; color: var(--text-2); font-size: 12px; font-weight: 500; text-decoration: none; }
   .mp__faces a:first-child { margin-left: 0; }
-  .mp__faces--sq a { border-radius: 8px; }
-  .mp__shared { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 10px 28px; margin-top: 14px; padding: 10px 18px; border: 1px solid var(--line); border-radius: 999px; }
-  .mp__shared p { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 14px; color: var(--text-2); }
+  .mp__faces a.is-sq { border-radius: 8px; }
+  .mp__shared { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 14px; }
+  .mp__shared .mp__faces a { width: 28px; height: 28px; margin-left: -7px; }
+  .mp__shared .mp__faces a:first-child { margin-left: 0; }
+  .mp__shared p { margin: 0; font-size: 14px; color: var(--text-3); text-wrap: balance; }
   .mp__shared b { font-weight: 500; color: var(--text); }
-  .mp__shared small { font-size: 13px; color: var(--text-3); }
-  @media (max-width: 640px) { .mp__shared { border-radius: 18px; flex-direction: column; align-items: flex-start; } }
+  .mp__shared i { font-style: normal; opacity: 0.6; }
   .mp__people-t b { color: var(--text); font-weight: 500; }
   .mp__groups { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 22px; }
   .mp__groups a { display: inline-flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13px; text-decoration: none; transition: box-shadow var(--dur) var(--ease); }

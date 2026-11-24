@@ -101,8 +101,8 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
       <p class="wc__where">${PIN}<span>${esc(placeText(l))}</span>${conns}</p>
       ${status}
     </header>
-    ${actions}
     ${l.kind === 'musician' && !d.isSample ? '<div class="pv__overlap" data-pv-overlap hidden></div>' : ''}
+    ${actions}
     ${body}
   </div>
 </article>`;
@@ -122,19 +122,17 @@ export const previewError = (msg: string, retry: boolean) => `<div class="pv pv-
 
 /** What the signed-in visitor shares with this member (see /api/world/:id/overlap). Empty string when nothing overlaps. */
 export interface OverlapView { connected?: boolean; mutualCount: number; mutuals: { handle: string; name: string; photo: string | null }[]; works: { id: string; title: string; cover: string | null; year: string }[] }
+/** One quiet row: overlapping faces of mutual connections and covers of shared works, then one line naming them. */
 export function overlapHtml(o: OverlapView): string {
-  let h = '';
+  if (o.mutualCount <= 0 && o.works.length === 0) return '';
+  const faces = o.mutuals.slice(0, 3).map((m) => `<a href="/${esc(m.handle)}" title="${esc(m.name)}"${m.photo ? ` style="background-image:url('${esc(m.photo)}')"` : ''}>${m.photo ? '' : esc(m.name.slice(0, 1))}</a>`).join('');
+  const thumbs = o.works.slice(0, 3).map((w) => `<a class="is-sq" href="/r/${esc(w.id)}" title="${esc(w.title)}"${w.cover ? ` style="background-image:url('${esc(w.cover)}')"` : ''}>${w.cover ? '' : esc(w.title.slice(0, 1))}</a>`).join('');
+  const list = (xs: string[], total: number, more: string) => xs.map((x) => `<b>${esc(x)}</b>`).join(', ') + (total > xs.length ? ` and ${total - xs.length} ${more}` : '');
+  const parts: string[] = [];
   if (o.mutualCount > 0) {
-    const faces = o.mutuals.slice(0, 4).map((m) => `<a href="/${esc(m.handle)}" title="${esc(m.name)}"${m.photo ? ` style="background-image:url('${esc(m.photo)}')"` : ''}>${m.photo ? '' : esc(m.name.slice(0, 1))}</a>`).join('');
     const names = o.mutuals.slice(0, 2).map((m) => m.name.split(' ')[0]!);
-    const rest = o.mutualCount - names.length;
-    const who = names.length ? names.join(', ') + (rest > 0 ? ` and ${rest} ${rest === 1 ? 'other' : 'others'}` : '') : '';
-    h += `<p class="pv__ov">${faces ? `<span class="pv__ovf">${faces}</span>` : ''}<span><b>${o.mutualCount} mutual ${o.mutualCount === 1 ? 'connection' : 'connections'}</b>${who ? `<small>${esc(who)}</small>` : ''}</span></p>`;
+    parts.push(names.length ? `You both know ${list(names, o.mutualCount, o.mutualCount - names.length === 1 ? 'other' : 'others')}` : `${o.mutualCount} mutual ${o.mutualCount === 1 ? 'connection' : 'connections'}`);
   }
-  if (o.works.length > 0) {
-    const thumbs = o.works.slice(0, 4).map((w) => `<a href="/r/${esc(w.id)}" title="${esc(w.title)}"${w.cover ? ` style="background-image:url('${esc(w.cover)}')"` : ''}>${w.cover ? '' : esc(w.title.slice(0, 1))}</a>`).join('');
-    const t = o.works.slice(0, 2).map((w) => w.title).join(', ') + (o.works.length > 2 ? ` and ${o.works.length - 2} more` : '');
-    h += `<p class="pv__ov"><span class="pv__ovf pv__ovf--sq">${thumbs}</span><span><b>${o.works.length} ${o.works.length === 1 ? 'work' : 'works'} together</b><small>${esc(t)}</small></span></p>`;
-  }
-  return h;
+  if (o.works.length > 0) parts.push(`Together on ${list(o.works.slice(0, 2).map((w) => w.title), o.works.length, 'more')}`);
+  return `${faces || thumbs ? `<span class="pv__ovf">${faces}${thumbs}</span>` : ''}<p class="pv__ov">${parts.join('<i aria-hidden="true"> · </i>')}</p>`;
 }

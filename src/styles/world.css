@@ -920,14 +920,16 @@ html:not([data-motion='fluid']) .wx, html:not([data-motion='fluid']) .wx.is-in, 
 @media (prefers-reduced-motion: reduce) { .pv__covers img { transition: none; } }
 
 /* Preview: what you share with this member (signed in, real data only). */
-.pv__overlap { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; padding: 12px 14px; border: 1px solid var(--line, var(--c-line)); border-radius: 14px; }
-.pv__ov { display: flex; align-items: center; gap: 12px; margin: 0; }
-.pv__ov b { display: block; font-size: 13.5px; font-weight: 500; color: var(--text); }
-.pv__ov small { display: block; font-size: 12px; color: var(--text-3); }
+.pv__overlap { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 14px; }
+.pv__overlap[hidden] { display: none; }
+.pv__ov { margin: 0; min-width: 0; font-size: 13px; line-height: 1.4; color: var(--text-3); text-wrap: balance; }
+.pv__ov b { font-weight: 500; color: var(--text); }
+.pv__ov i { font-style: normal; color: var(--c-fg-ghost); }
 .pv__ovf { display: inline-flex; flex: none; }
-.pv__ovf a { display: grid; place-items: center; width: 30px; height: 30px; margin-left: -8px; border-radius: 50%; border: 2px solid var(--bg); background: var(--surface-hover, #2a2a2e) center / cover no-repeat; color: var(--text-2); font-size: 12px; text-decoration: none; }
+.pv__ovf a { display: grid; place-items: center; width: 26px; height: 26px; margin-left: -7px; border-radius: 50%; border: 2px solid var(--c-surface-1, var(--bg)); background: var(--surface-hover, #2a2a2e) center / cover no-repeat; color: var(--text-2); font-size: 11px; text-decoration: none; }
 .pv__ovf a:first-child { margin-left: 0; }
-.pv__ovf--sq a { border-radius: 7px; }
+.pv__ovf a.is-sq { border-radius: 7px; }
+.pv__ovf a:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 1px; }
 
 /* People open centered (round photo, name, city, actions), like their full profile. Studios, venues and organizations keep the banner. */
 .pv--musician .pv__hero { display: grid; place-items: center; padding-top: 40px; }
