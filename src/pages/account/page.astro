@@ -7,6 +7,7 @@ import { getPageConfig, GROUP_SECTIONS, PAGE_SECTIONS } from '@/server/page-conf
 import { clanWorks, getClanByHandle, isClanAdmin } from '@/server/clans';
 import { memberStats } from '@/server/progress';
 import { NO_STATS, achievements, titleOptions } from '@/lib/progress';
+import { SHOWCASE, canShowcase } from '@/lib/showcase';
 import { accentsFor, backdropsFor, pageStyle } from '@/lib/page-style';
 import { homeMetroOf } from '@/server/progress';
 import { PLACES, PLACE_BY_ID } from '@/data/places';
@@ -22,6 +23,7 @@ const clan = groupHandle ? await getClanByHandle(env.DB, groupHandle) : null;
 if (groupHandle && (!clan || !(await isClanAdmin(env.DB, clan, user.id)))) return Astro.redirect('/clans/mine');
 const p = clan ? { id: clan.id, handle: clan.handle } : await getMyProfile(env.DB, user.id);
 if (!p) return Astro.redirect('/start');
+const showcase = !clan && canShowcase((p as { verification?: string }).verification);
 const sections = clan ? GROUP_SECTIONS : PAGE_SECTIONS;
 const page = await getPageConfig(env.WAITLIST, p.id, sections);
 const record = clan ? (await clanWorks(env.DB, clan.id)).map((w) => ({ id: w.id, title: w.title })) : await profileReleases(env.DB, user.id);
@@ -51,10 +53,10 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId).so
       <form class="pg__form" data-page novalidate>
         <label class="field"><span>Tagline</span><input class="input" name="tagline" maxlength="90" value={page.tagline} placeholder="One line about what you do" /></label>
 
-        {!clan && (
+        {!clan && showcase && (
           <fieldset class="pg__sec">
-            <legend>Essentials <small>Up to six works that lead your page. A line about each says what it is and what it means.</small></legend>
-            {record.length === 0 && <p class="dim">Add a work first, then choose your essentials here.</p>}
+            <legend>{SHOWCASE.name} <small>Up to six works that lead your page. A line about each says what it is and what it means.</small></legend>
+            {record.length === 0 && <p class="dim">Add a work first, then choose what leads your page here.</p>}
             <ul class="pg__ess" data-ess role="list">
               {record.map((r) => (
                 <li data-id={r.id}>
@@ -65,11 +67,12 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId).so
             </ul>
           </fieldset>
         )}
-        {clan && (<label class="field"><span>Featured work</span>
+        {(clan || !showcase) && (<label class="field"><span>Featured work</span>
           <select class="input" name="featured">
             <option value="">{record.length ? 'My latest (automatic)' : 'Nothing yet. Add a work first'}</option>
             {record.map((r) => <option value={r.id} selected={page.featured === r.id}>{r.title}</option>)}
           </select>
+          {!clan && <small class="dim pg__lock">One work leads your page. {SHOWCASE.name}, a showcase of up to six works with your own line on each, opens with Opus Verified.</small>}
         </label>)}
 
         {!clan && (

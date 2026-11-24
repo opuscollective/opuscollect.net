@@ -1,0 +1,20 @@
+---
+/** "Made with N people": the other members with a confirmed credit on a work. Shown only when there is at least one. */
+import { mediaUrl } from '@/server/profiles';
+import type { MadeWith } from '@/server/releases';
+interface Props { with?: MadeWith; faces?: boolean }
+const { with: w, faces = true } = Astro.props;
+---
+{w && w.n > 0 && (
+  <span class="mw" title={w.people.map((x) => x.name).join(', ') + (w.n > w.people.length ? ' and ' + (w.n - w.people.length) + ' more' : '')}>
+    {faces && <span class="mw__f" aria-hidden="true">{w.people.slice(0, 3).map((x) => x.photoKey ? <i style={'background-image:url(' + mediaUrl(x.photoKey) + ')'}></i> : <i>{x.name.slice(0, 1).toUpperCase()}</i>)}</span>}
+    <span>{'Made with ' + w.n.toLocaleString('en-US') + (w.n === 1 ? ' person' : ' people')}</span>
+  </span>
+)}
+
+<style>
+  .mw { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); white-space: nowrap; }
+  .mw__f { display: inline-flex; }
+  .mw__f i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-2, var(--line)) center / cover no-repeat; box-shadow: 0 0 0 2px var(--bg); font-style: normal; font-size: 10px; font-weight: 500; color: var(--text-2); }
+  .mw__f i + i { margin-left: -6px; }
+</style>

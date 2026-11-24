@@ -2,6 +2,7 @@
 /** The member's link-in-bio page: opuscollect.net/<handle>/links. One compact page for any social profile. */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SPECIALTIES, allSpecialties } from '@/data/specialties';
+import { canShowcase, showcasePicks } from '@/lib/showcase';
 import { visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
 import { profileReleases } from '@/server/releases';
@@ -25,7 +26,7 @@ if (!found) return Astro.redirect('/world');
 const { profile: p, isOwner, ownerId } = found;
 const page = await getPageConfig(Astro.locals.runtime.env.WAITLIST, p.id);
 const record = await profileReleases(db, ownerId);
-const featured = record.find((x) => x.id === (page.essentials[0] ?? page.featured)) ?? record[0] ?? null;
+const featured = record.find((x) => x.id === showcasePicks(page, canShowcase(p.verification)).featured) ?? record[0] ?? null;
 const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
 const where = visibleLabel(p.placeId, p.locationVisibility);
 // Where people listen (and the website) stay full buttons; social profiles are the icon row.

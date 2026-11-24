@@ -2,6 +2,7 @@
 import { CITIES, citySlug } from '@/data/cities';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
+import MadeWith from '@/components/profile/MadeWith.astro';
 import FounderMark from '@/components/ui/FounderMark.astro';
 import OpusMark from '@/components/ui/OpusMark.astro';
 import Journey from '@/components/profile/Journey.astro';
@@ -10,12 +11,13 @@ import { connectionMetros, homeMetroOf, memberStats } from '@/server/progress';
 import { levelOf, points, resolveTitle } from '@/lib/progress';
 import { pageStyle } from '@/lib/page-style';
 import { SPECIALTIES, allSpecialties } from '@/data/specialties';
+import { SHOWCASE, canShowcase, showcasePicks } from '@/lib/showcase';
 import { PLACE_BY_ID, visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
 import { relationship, DEFAULT_INTRO, INTRO_MAX, profileConnections } from '@/server/connections';
 import { NO_OVERLAP, overlap } from '@/server/overlap';
 import { connectionCount } from '@/server/messages';
-import { profileReleases } from '@/server/releases';
+import { madeWith, profileReleases } from '@/server/releases';
 import { RELEASE_KINDS } from '@/data/music';
 import { getPageConfig } from '@/server/page-config';
 import { listHireServices } from '@/server/hire';
@@ -58,6 +60,7 @@ const sharedNames = shared.mutuals.slice(0, 2).map((x) => x.name.split(' ')[0]!)
 const firstNames = people.faces.slice(0, 2).map((f) => f.name.split(' ')[0]);
 // The member's record: releases they put out, plus releases where they confirmed a credit.
 const record = await profileReleases(db, ownerId);
+const made = await madeWith(db, record.map((x) => x.id), ownerId);
 // Bands and other groups this member accepted. Invitations are shown to the member only.
 const clans = await membershipsOf(db, ownerId).catch(() => []);
 const invites = isOwner ? await myInvites(db, ownerId).catch(() => []) : [];
@@ -65,9 +68,11 @@ const links = Object.entries(p.links).filter(([, v]) => !!v);
 const hire = HIRE_ENABLED && (p.status === 'published' || isOwner) ? await listHireServices(db, p.id).catch(() => []) : [];
 const usd = (c: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(c / 100);
 const page = await getPageConfig(Astro.locals.runtime.env.WAITLIST, p.id);
-// Essentials lead the page; with none chosen, the latest work leads on its own. Then all work, by year.
-const essentials = (page.essentials.map((id) => record.find((x) => x.id === id)).filter(Boolean) as typeof record).slice(0, 6);
-const lead = essentials.length ? essentials : record[0] ? [record[0]] : [];
+// Signatures (the showcase, see src/lib/showcase.ts) lead the page; with none chosen, the latest work leads on its own. Then all work, by year.
+const picks = showcasePicks(page, canShowcase(p.verification));
+const essentials = (picks.full.map((id) => record.find((x) => x.id === id)).filter(Boolean) as typeof record).slice(0, 6);
+const featuredWork = record.find((x) => x.id === picks.featured) ?? null;
+const lead = essentials.length ? essentials : featuredWork ? [featuredWork] : record[0] ? [record[0]] : [];
 const noteOf = (id: string) => page.notes[id] ?? '';
 const byYear = (() => {
   const m = new Map<string, typeof record>();
@@ -308,7 +313,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
             <section class="mp__sec" id="works" style={`order:${ord('works')}`}>
               {lead.length > 0 ? (
                 <>
-                  <h2 class="mp__h">{essentials.length ? 'Essentials' : 'Latest'}</h2>
+                  <h2 class="mp__h">{essentials.length ? SHOWCASE.name : featuredWork ? SHOWCASE.featured : 'Latest'}</h2>
                   <ul class:list={['mp__ess', { 'is-one': lead.length === 1 }]} style={'--cols:' + essCols} role="list">{lead.map((x, i) => (
                     <li>
                       <a href={`/r/${x.id}`}>
@@ -317,7 +322,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                           <small>{RELEASE_KINDS[x.kind]} · {x.released ? (x.releaseDate?.slice(0, 4) ?? "Out now") : "Coming"}</small>
                           <b>{x.title}</b>
                           {byLine(x) && <em>{byLine(x)}</em>}
-                          {noteOf(x.id) ? <span class="mp__ess-n">{noteOf(x.id)}</span> : isOwner ? <span class="mp__ess-n is-hint">Add a line about this work in Customize page.</span> : null}
+                          <span class="mp__ess-mw"><MadeWith with={made.get(x.id)} /></span>
+                          {noteOf(x.id) ? <span class="mp__ess-n">{noteOf(x.id)}</span> : isOwner && essentials.length ? <span class="mp__ess-n is-hint">Add a line about this work in Customize page.</span> : null}
                         </span>
                       </a>
                     </li>
@@ -330,9 +336,11 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                           <li><a href={`/r/${x.id}`}>
                             <span class="mp__row-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
                             <span class="mp__row-t">
-                              <b>{x.title}{essentialIds.has(x.id) && <i>Essential</i>}</b>
+                              <b>{x.title}{essentialIds.has(x.id) && <i>{SHOWCASE.one}</i>}</b>
                               <small>{[RELEASE_KINDS[x.kind], byLine(x)].filter(Boolean).join(' · ')}</small>
+                              <span class="mp__row-mwp"><MadeWith with={made.get(x.id)} faces={false} /></span>
                             </span>
+                            <span class="mp__row-mw"><MadeWith with={made.get(x.id)} /></span>
                             <span class="mp__row-y">{yearOf(x)}</span>
                           </a></li>
                         ))}</ul>
@@ -344,8 +352,9 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                             <li><a href={`/r/${x.id}`}>
                               <span class="mp__row-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
                               <span class="mp__row-t">
-                                <b>{x.title}{essentialIds.has(x.id) && <i>Essential</i>}</b>
+                                <b>{x.title}{essentialIds.has(x.id) && <i>{SHOWCASE.one}</i>}</b>
                                 <small>{[RELEASE_KINDS[x.kind], byLine(x)].filter(Boolean).join(' · ')}</small>
+                                <MadeWith with={made.get(x.id)} faces={false} />
                                 {noteOf(x.id) && !essentialIds.has(x.id) && <span class="mp__row-n">{noteOf(x.id)}</span>}
                               </span>
                             </a></li>
@@ -520,7 +529,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__where:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
   .mp__tile, .mp__ess-cover, .mp__row-cover { display: block; background: linear-gradient(135deg, hsl(var(--c, 220) 45% 42%), hsl(calc(var(--c, 220) + 50) 55% 30%)) center / cover no-repeat; }
   .mp__tile { aspect-ratio: 1; border-radius: 10px; }
-  /* Essentials: covers lead, each with its own line on what it is and what it means. */
+  /* Signatures: covers lead, each with its own line on what it is and what it means. */
   .mp__ess { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 32px 22px; }
   .mp__ess a { display: flex; flex-direction: column; gap: 14px; color: inherit; text-decoration: none; }
   .mp__ess-cover { aspect-ratio: 1; border-radius: 12px; box-shadow: 0 24px 50px -30px rgba(0, 0, 0, .55); transition: transform .25s ease; }
@@ -531,7 +540,12 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__ess-t em { display: none; }
   .mp__ess-n { order: 2; margin-top: 4px; font-size: 14px; line-height: 1.5; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .mp__ess-n.is-hint { color: var(--text-3); }
-  /* One essential reads as a deliberate hero: cover left, the story right, nothing empty. */
+  .mp__ess-mw { order: 3; margin-top: 8px; }
+  .mp__ess-mw:empty, .mp__row-mw:empty { display: none; }
+  .mp__row-mw { flex: none; }
+  .mp__row-mwp { display: none; }
+  @media (max-width: 600px) { .mp__row-mw { display: none; } .mp__row-mwp { display: block; } .mp__row-mwp:empty { display: none; } }
+  /* One signature reads as a deliberate hero: cover left, the story right, nothing empty. */
   .mp__ess.is-one { grid-template-columns: minmax(0, 1fr); }
   .mp__ess.is-one a { flex-direction: row; align-items: center; gap: clamp(22px, 4vw, 48px); }
   .mp__ess.is-one a { padding: clamp(14px, 2vw, 22px); border-radius: 24px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
