@@ -12,7 +12,7 @@ export const SITE = {
   promise: 'The world is within reach.',
   supporting: 'Create connections that create opportunity.',
   /** Homepage hero, launch pass (brief 2026-11-21): the value of World on the first screen. */
-  /** The product the homepage introduces, shown as a small title above the headline. Working title (Bogo is choosing between "Opus World" and "Opus Earth"): change it here only. */
+  /** The product the homepage introduces, shown as the hero's headline, with heroHeadline as the single line beneath it. Working title (Bogo is choosing between "Opus World" and "Opus Earth"): change it here only. */
   heroProduct: 'Opus World',
   heroHeadline: 'Create connections that create opportunity.',
   heroLine: 'Find artists, producers and engineers in your city. See their work. Connect.',
