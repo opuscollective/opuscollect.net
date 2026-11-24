@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { GROUP_SECTIONS, getPageConfig, savePageConfig } from '@/server/page-config';
 import { getClanByHandle, isClanAdmin } from '@/server/clans';
 import { getMyProfile } from '@/server/profiles';
+import { canShowcase } from '@/lib/showcase';
 import { limit } from '@/server/ratelimit';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
@@ -36,6 +37,10 @@ export const POST: APIRoute = async ({ locals, request, url }) => {
     }
     const p = await getMyProfile(env.DB, locals.user.id);
     if (!p) throw new HttpError(404, 'Set up your profile first.');
-    return json({ page: await savePageConfig(env.WAITLIST, p.id, await readJson(request)) });
+    const body = await readJson<Record<string, unknown>>(request);
+    // The full showcase is for Verified members. Picks and lines saved earlier are kept, never dropped,
+    // so they return when the member is verified.
+    if (!canShowcase(p.verification)) { const cur = await getPageConfig(env.WAITLIST, p.id); body.essentials = cur.essentials; body.notes = cur.notes; }
+    return json({ page: await savePageConfig(env.WAITLIST, p.id, body) });
   } catch (e) { return fail(e); }
 };

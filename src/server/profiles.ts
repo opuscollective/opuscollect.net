@@ -2,6 +2,7 @@
  * Musician profiles: read, validate, save, publish, photos.
  * All validation happens here on the server. Public reads never expose private fields.
  */
+import { SOCIALS, SOCIAL_KEYS, expandHandle, type SocialKey } from '@/data/socials';
 import { RESERVED } from '@/server/usernames';
 import { SPECIALTY_KEYS, type Specialty } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
@@ -10,17 +11,10 @@ import { limit } from './ratelimit';
 import type { SessionUser } from './session';
 import type { LocationVisibility } from '@/types/directory';
 
-export const LINK_KEYS = ['spotify', 'appleMusic', 'soundcloud', 'youtube', 'instagram', 'tiktok', 'website'] as const;
-export type LinkKey = (typeof LINK_KEYS)[number];
-const LINK_HOSTS: Record<LinkKey, string[] | null> = {
-  spotify: ['open.spotify.com', 'spotify.com'],
-  appleMusic: ['music.apple.com'],
-  soundcloud: ['soundcloud.com', 'on.soundcloud.com'],
-  youtube: ['youtube.com', 'youtu.be', 'music.youtube.com'],
-  instagram: ['instagram.com'],
-  tiktok: ['tiktok.com'],
-  website: null, // any https site
-};
+/** Profile links: the list lives in src/data/socials.ts (labels, hosts, icons). */
+export const LINK_KEYS = SOCIAL_KEYS;
+export type LinkKey = SocialKey;
+const LINK_HOSTS = Object.fromEntries(SOCIALS.map((x) => [x.key, x.hosts])) as Record<LinkKey, string[] | null>;
 
 export interface Credit { title: string; role: string; artist: string; year: string; url: string }
 export interface PortfolioItem { title: string; url: string }
@@ -46,6 +40,8 @@ export interface ProfileData {
   portfolio: PortfolioItem[];
   status: 'draft' | 'published' | 'hidden';
   verification: 'none' | 'verified' | 'revoked';
+  /** A standing granted on the account by hand (migration 0016), never earned or bought. Only 'founder' exists. */
+  distinction: 'founder' | null;
   updatedAt: number;
 }
 
@@ -54,6 +50,8 @@ interface Row {
   photo_key: string | null; cover_key: string | null; open_to_collab: number; show_on_map: number; location_visibility: LocationVisibility | null; links: string; credits: string; achievements: string;
   collaborations: string; portfolio: string; status: ProfileData['status']; verification: ProfileData['verification']; updated_at: number;
   owner_user_id: string;
+  /** Absent until migration 0016 is applied. */
+  distinction?: string | null;
 }
 
 const parse = <T>(s: string, fallback: T): T => { try { return JSON.parse(s) as T; } catch { return fallback; } };
@@ -72,7 +70,10 @@ async function hydrate(db: D1Database, r: Row): Promise<ProfileData> {
     placeId: r.place_id, bio: r.bio, openToCollab: !!r.open_to_collab, showOnMap: r.show_on_map !== 0, locationVisibility: r.location_visibility ?? 'city', photoKey: r.photo_key, coverKey: r.cover_key,
     links: parse(r.links, {}), credits: parse(r.credits, []), achievements: parse(r.achievements, []),
     collaborations: parse(r.collaborations, []), portfolio: parse(r.portfolio, []),
-    status: r.status, verification: r.verification, updatedAt: r.updated_at,
+    status: r.status,
+    // The founder is verified regardless of the verification column.
+    verification: r.distinction === 'founder' ? 'verified' : r.verification,
+    distinction: r.distinction === 'founder' ? 'founder' : null, updatedAt: r.updated_at,
   };
 }
 
@@ -151,7 +152,7 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
 
   const linksIn = (body.links && typeof body.links === 'object' ? body.links : {}) as Record<string, unknown>;
   const links: Partial<Record<LinkKey, string>> = {};
-  for (const k of LINK_KEYS) { const u = cleanUrl(linksIn[k], LINK_HOSTS[k]); if (u) links[k] = u; }
+  for (const k of LINK_KEYS) { const u = cleanUrl(expandHandle(k, linksIn[k]), LINK_HOSTS[k]); if (u) links[k] = u; }
 
   const credits: Credit[] = list(body.credits, 30).map((c) => {
     const o = (c ?? {}) as Record<string, unknown>;

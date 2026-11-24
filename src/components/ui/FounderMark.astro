@@ -1,0 +1,16 @@
+---
+/**
+ * Founder mark. Shown only for an account whose profile has distinction = 'founder' (migration 0016).
+ * It is granted on the account, never earned, applied for or bought.
+ */
+import OpusMark from './OpusMark.astro';
+interface Props { label?: boolean; size?: number }
+const { label = true, size = 13 } = Astro.props;
+---
+<span class="fmark" title="Founder of Opus"><OpusMark size={size} />{label ? <span>Founder</span> : <span class="sr-only">Founder of Opus</span>}</span>
+
+<style>
+  .fmark { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px 0 8px; border-radius: 999px; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; line-height: 1; white-space: nowrap;
+    /* Gold lettering on a hairline, no fill: a detail, not a theme. */
+    color: color-mix(in oklab, #c99a3c 78%, var(--text)); box-shadow: inset 0 0 0 1px color-mix(in oklab, #c99a3c 45%, transparent); }
+</style>

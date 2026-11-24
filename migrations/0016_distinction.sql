@@ -1,0 +1,14 @@
+-- A standing on the account that is granted by hand, never earned, applied for or bought.
+-- The only value today is 'founder' (Bogo). It gives the profile the Founder mark, the Founder
+-- title and the founder-only look, and counts as verified everywhere the profile is read through
+-- src/server/profiles.ts. Additive: no existing column or row changes.
+--
+-- Granting it is a separate, deliberate statement (not part of this migration, so it can never
+-- land on the wrong account). Replace <handle> with the founder's username:
+--
+--   UPDATE profiles SET distinction = 'founder', verification = 'verified', verified_at = unixepoch() * 1000
+--   WHERE handle = '<handle>' AND kind = 'musician';
+--   INSERT INTO verification_events (id, profile_id, action, admin_id, reason, created_at)
+--   SELECT lower(hex(randomblob(16))), id, 'granted', NULL, 'Founder of Opus', unixepoch() * 1000
+--   FROM profiles WHERE handle = '<handle>' AND kind = 'musician';
+ALTER TABLE profiles ADD COLUMN distinction TEXT CHECK (distinction IS NULL OR distinction IN ('founder'));

@@ -50,7 +50,18 @@ Use design tokens (`tokens.css`, `--m-*` motion tokens) and the shared product s
 - Every product is one word: World, Music, Charts, Network, Collective, Future. Studios live under World, Releases under Music. Verified is a trust feature, not a top-level nav item.
 - Desktop nav is centered (logo left, controls right) on a translucent header at the very top.
 - The assistant is named "Opus": V1 = structured intents and real navigation, **no generative AI**. Shown as one dark glass "Opus" chip everywhere. Not AI-first.
-- Terminology: **Specialty**, never "Discipline"; multiple specialties with one **Primary Specialty**.
+- Terminology: **Specialty**, never "Discipline"; multiple specialties with one **Primary Specialty**. Profile headers and World cards show the Primary Specialty only; the others sit in About (Bogo 2026-11-24).
+
+## Profiles: look, founder, progress
+- Profile = `src/pages/[handle].astro`; link-in-bio = `[handle]/links.astro`; editor = `/account/page`. Page settings live in KV `page:<profileId>` (`src/server/page-config.ts`), no migration.
+- Look: accent + backdrop keys from the fixed palette in `src/lib/page-style.ts`, drawn in `src/styles/profile.css` (`.pf`, `.pf-bd[data-backdrop]`). Add options there; never free-form colours.
+- Founder: `profiles.distinction = 'founder'` (migration 0016), set by hand with the SQL in that migration's header. It implies verified and the Founder mark (gold lettering on a hairline) plus a 1px gold ring on the photo. Bogo 2026-11-24: keep it subtle, no gold banner or themed page; the founder customizes the banner like any member. Gold is only an optional accent for the founder. Never hardcode a handle.
+- Travel: home city = the profile city. `away` (where the member says they are now) and `cities` (marked by the member) live in the KV page settings; `/api/travel` reads and changes them. World shows a "New territory" card only after Use My Location puts a signed-in member in a non-home city; only the city id is used, nothing is saved without a tap. Marked cities earn nothing; travel achievements read real connections and parties.
+- Greeting: `src/lib/greeting.ts` (time of day at home, "Welcome to <city>" when away; lines are working copy). Shown above the homepage hero title for signed-in members and as the Happening headline. Time comes from the viewer's clock, city from saved home/away only.
+- Happening (working name): `/world/happening`, in World's sub-nav. `src/server/happening.ts` gathers real parties, events, studios and members for one metro; quiet cities get the designed empty state. `?city=<slug or metro id>` switches city.
+- Social links: one list in `src/data/socials.ts` (hosts, placeholder, Opus-drawn line icon; no icon package). Stored in the profile's existing `links`; a bare @handle is expanded on save. Shown by `SocialRow.astro` on the profile and link page. Add a service there only.
+- Signatures (was "Essentials"; Bogo's name, 2026-11-24): the showcase of up to six works with the member's line on each, for Verified members only, no works minimum. Everyone else leads with one Featured work. Name and gate live in `src/lib/showcase.ts`; storage keys still say `essentials`, and `/api/page` keeps an unverified member's saved picks. Each work shows "Made with N people" (`madeWith` in `src/server/releases.ts`, `MadeWith.astro`): other members with a confirmed credit, nothing when there are none. No scores or ratings.
+- Levels, achievements, titles: `src/lib/progress.ts` (rules, names) + `src/server/progress.ts` (counts from existing tables, nothing stored). Real activity only; connections are capped so they can't carry a level. Names are proposed copy until Bogo confirms.
 
 ## Design rules
 - "Apple-inspired presentation. Opus-original interaction." Cinematic technology meets editorial minimalism.
@@ -59,6 +70,7 @@ Use design tokens (`tokens.css`, `--m-*` motion tokens) and the shared product s
 - Homepage hero is approved, **do not redesign**: headline "Your world of music." (centered, one line on desktop), sub "Make connections around the world." Buttons: "Explore World →" (primary) and "Join" (straight to registration). Hero text in the lower half; Earth never cut off; globe auto-spins, not draggable. Product tiles: one name, one value line, one primary action, one real visual demo, no redundant secondary buttons.
 - World: directory always on the left (~46% panel), listing-feed cards (Zillow-like): big 3:2 photos, details beneath, ~3px gaps, sharp corners. Desktop profiles slide out as a card to the right of the directory with the map still visible. Homepage card grid capped at 1480px.
 - **Verified** badge: saturated Opus blue seal with white check. Green is only for "Open to collaborate". Verification is earned, never bought. Credits use Confirmed / Self-reported / Awaiting confirmation / Not on Opus, never "verified".
+- **No dropdowns for cities, anywhere** (Bogo 2026-11-23, repeated 2026-11-24). A city is always chosen with the type-to-search box `src/components/business/PlaceSelect.astro` (city, suburb or US ZIP; `src/scripts/city-field.ts`). Never a `<select>` of cities or countries, and don't build a second picker.
 - Accent: restrained icy blue (#a9c7ec); sage (#9fcaa9) only for availability.
 - **Charts: no pay-to-rank and no fabricated metrics.** Until real data exists it is an honest "Coming soon" preview.
 - **Placeholder/sample data must be visibly labeled**, never presented as real members.

@@ -171,6 +171,33 @@ export async function profileReleases(db: D1Database, userId: string): Promise<P
   }));
 }
 
+export interface MadeWith { n: number; people: { name: string; photoKey: string | null }[] }
+
+/**
+ * Who a work was made with: the other Opus members with a confirmed credit on it. This is what only
+ * Opus knows about a work. Confirmed credits only; a work with none is simply absent from the map.
+ */
+export async function madeWith(db: D1Database, releaseIds: string[], exceptUserId: string): Promise<Map<string, MadeWith>> {
+  const out = new Map<string, MadeWith>();
+  const ids = releaseIds.slice(0, 90);
+  if (!ids.length) return out;
+  try {
+    const { results } = await db.prepare(
+      `SELECT c.release_id AS rid, c.user_id AS uid, MAX(coalesce(p.display_name, c.name)) AS name, MAX(p.photo_key) AS photo
+       FROM release_credits c
+       LEFT JOIN profiles p ON p.owner_user_id = c.user_id AND p.kind = 'musician' AND p.status = 'published'
+       WHERE c.status = 'confirmed' AND c.user_id IS NOT NULL AND c.user_id <> ? AND c.release_id IN (${ids.map(() => '?').join(',')})
+       GROUP BY c.release_id, c.user_id ORDER BY (MAX(p.photo_key) IS NULL), name`).bind(exceptUserId, ...ids)
+      .all<{ rid: string; uid: string; name: string; photo: string | null }>();
+    for (const x of results) {
+      const m = out.get(x.rid) ?? { n: 0, people: [] };
+      m.n++; if (m.people.length < 4) m.people.push({ name: x.name, photoKey: x.photo });
+      out.set(x.rid, m);
+    }
+  } catch { /* fail soft: no line shown */ }
+  return out;
+}
+
 // ---------- writes ----------
 
 async function myMusicianProfile(db: D1Database, userId: string) {

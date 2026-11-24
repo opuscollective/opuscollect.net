@@ -5,7 +5,15 @@ import { getMyProfile } from '@/server/profiles';
 import { profileReleases } from '@/server/releases';
 import { getPageConfig, GROUP_SECTIONS, PAGE_SECTIONS } from '@/server/page-config';
 import { clanWorks, getClanByHandle, isClanAdmin } from '@/server/clans';
+import { memberStats } from '@/server/progress';
+import { NO_STATS, achievements, titleOptions } from '@/lib/progress';
+import { SHOWCASE, canShowcase } from '@/lib/showcase';
+import { accentsFor, backdropsFor, pageStyle } from '@/lib/page-style';
+import { homeMetroOf } from '@/server/progress';
+import { PLACES, PLACE_BY_ID } from '@/data/places';
+import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import '@/styles/app.css';
+import '@/styles/profile.css';
 export const prerender = false;
 
 const user = Astro.locals.user;
@@ -16,12 +24,25 @@ const clan = groupHandle ? await getClanByHandle(env.DB, groupHandle) : null;
 if (groupHandle && (!clan || !(await isClanAdmin(env.DB, clan, user.id)))) return Astro.redirect('/clans/mine');
 const p = clan ? { id: clan.id, handle: clan.handle } : await getMyProfile(env.DB, user.id);
 if (!p) return Astro.redirect('/start');
+const showcase = !clan && canShowcase((p as { verification?: string }).verification);
 const sections = clan ? GROUP_SECTIONS : PAGE_SECTIONS;
 const page = await getPageConfig(env.WAITLIST, p.id, sections);
 const record = clan ? (await clanWorks(env.DB, clan.id)).map((w) => ({ id: w.id, title: w.title })) : await profileReleases(env.DB, user.id);
 const pubUrl = clan ? `/c/${clan.handle}` : `/${p.handle}`;
 const apiUrl = clan ? `/api/page?group=${encodeURIComponent(clan.handle)}` : '/api/page';
 const origin = Astro.url.origin;
+// Look, title and showcase are for member pages. Titles and achievements come only from what the member has earned.
+const me = clan ? null : await getMyProfile(env.DB, user.id);
+const distinction = me?.distinction ?? null;
+const stats = me ? await memberStats(env.DB, user.id, me) : NO_STATS;
+const titles = titleOptions(stats, distinction);
+const earned = achievements(stats).filter((a) => a.earned);
+const look = pageStyle(page.accent, page.backdrop, distinction);
+const accents = accentsFor(distinction);
+const backdrops = backdropsFor(distinction);
+const homeId = me ? homeMetroOf(me.placeId) : null;
+const homeName = homeId ? PLACE_BY_ID.get(homeId)?.name ?? null : null;
+const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId);
 ---
 <BaseLayout title="Customize your page" noindex assistant={false} messages={false}>
   <section class="app">
@@ -33,10 +54,10 @@ const origin = Astro.url.origin;
       <form class="pg__form" data-page novalidate>
         <label class="field"><span>Tagline</span><input class="input" name="tagline" maxlength="90" value={page.tagline} placeholder="One line about what you do" /></label>
 
-        {!clan && (
+        {!clan && showcase && (
           <fieldset class="pg__sec">
-            <legend>Essentials <small>Up to six works that lead your page. A line about each says what it is and what it means.</small></legend>
-            {record.length === 0 && <p class="dim">Add a work first, then choose your essentials here.</p>}
+            <legend>{SHOWCASE.name} <small>Up to six works that lead your page. A line about each says what it is and what it means.</small></legend>
+            {record.length === 0 && <p class="dim">Add a work first, then choose what leads your page here.</p>}
             <ul class="pg__ess" data-ess role="list">
               {record.map((r) => (
                 <li data-id={r.id}>
@@ -47,12 +68,60 @@ const origin = Astro.url.origin;
             </ul>
           </fieldset>
         )}
-        {clan && (<label class="field"><span>Featured work</span>
+        {(clan || !showcase) && (<label class="field"><span>Featured work</span>
           <select class="input" name="featured">
             <option value="">{record.length ? 'My latest (automatic)' : 'Nothing yet. Add a work first'}</option>
             {record.map((r) => <option value={r.id} selected={page.featured === r.id}>{r.title}</option>)}
           </select>
+          {!clan && <small class="dim pg__lock">One work leads your page. {SHOWCASE.name}, a showcase of up to six works with your own line on each, opens with Opus Verified.</small>}
         </label>)}
+
+        {!clan && (
+          <fieldset class="pg__sec pf" id="look" data-look style={look.css}>
+            <legend>Look <small>Your colour and backdrop style your profile and your link.</small></legend>
+            <p class="pg__lab">Accent</p>
+            <div class="pg__sw" role="radiogroup" aria-label="Accent colour">
+              {accents.map((a) => (
+                <label title={a.label}><input type="radio" name="accent" value={a.key} checked={look.accent.key === a.key} data-h={a.h} data-s={a.s} /><span style={'--h:' + a.h + ';--s:' + a.s + '%'}></span><em>{a.label}</em></label>
+              ))}
+            </div>
+            <p class="pg__lab">Backdrop <small>Shown as your banner. A banner photo, if you add one in Edit profile, sits on top.</small></p>
+            <div class="pg__bd" role="radiogroup" aria-label="Backdrop">
+              {backdrops.map((b) => (
+                <label><input type="radio" name="backdrop" value={b.key} checked={look.backdrop === b.key} /><span class="pf-bd" data-backdrop={b.key}></span><em>{b.label}</em></label>
+              ))}
+            </div>
+            <label class="field pg__title"><span>Title <small class="dim">Worn under your name. You unlock titles by reaching milestones.</small></span>
+              <select class="input" name="title">
+                <option value="">No title</option>
+                {titles.map((t) => <option value={t.key} selected={(page.title || (distinction === 'founder' ? 'founder' : '')) === t.key}>{t.label} ({t.from})</option>)}
+              </select>
+            </label>
+            {earned.length > 0 && (
+              <>
+                <p class="pg__lab">Showcase <small>Up to 4 achievements shown first.</small></p>
+                <div class="pg__pins" data-pins>
+                  {earned.map((a) => <label><input type="checkbox" value={a.id} checked={page.pins.includes(a.id)} /> {a.name}</label>)}
+                </div>
+              </>
+            )}
+          </fieldset>
+        )}
+
+        {!clan && (
+          <fieldset class="pg__sec" id="cities">
+            <legend>Cities <small>Your home city, where you are now, and the cities you work in or visit.</small></legend>
+            <p class="pg__home">Home: <b>{homeName ?? 'Not set'}</b> <a class="link" href="/account/profile">Change in Edit profile</a></p>
+            <label class="field"><span>Where you are now <small class="dim">Set this when you travel. Your page says “In … now” until you switch back.</small></span>
+<PlaceSelect name="away" selected={page.away || null} placeholder="Type a city or ZIP code. Leave empty when you’re home" />
+            </label>
+            <p class="pg__lab">Cities you’ve been <small>Shown on your page as your territory. Connections you make in a city are counted there automatically.</small></p>
+            <ul class="pg__cities" data-cities role="list"></ul>
+            <div class="pg__cityadd">
+              <div data-city-pick><PlaceSelect name="cityAdd" placeholder="Add a city: type its name or a ZIP code" /></div>
+            </div>
+          </fieldset>
+        )}
 
         <fieldset class="pg__sec">
           <legend>Link buttons <small>Up to 8. They appear on your page and your link.</small></legend>
@@ -75,7 +144,7 @@ const origin = Astro.url.origin;
       </form>
     </div>
   </section>
-  <script type="application/json" id="page-data" set:html={JSON.stringify({ page, labels: sections, api: apiUrl })}></script>
+  <script type="application/json" id="page-data" set:html={JSON.stringify({ page, labels: sections, api: apiUrl, cities: page.cities, cityNames: Object.fromEntries(metroList.map((c) => [c.id, c.name])) })}></script>
 </BaseLayout>
 
 <style>
@@ -96,6 +165,26 @@ const origin = Astro.url.origin;
   :global(.pg__order label) { flex: 1; display: flex; gap: 10px; align-items: center; }
   :global(.pg__mini) { border: 0; background: none; color: var(--text-2); font: inherit; cursor: pointer; padding: 4px 8px; }
   :global(.pg__mini:hover) { color: var(--text); }
+  .pg__lab { margin: 18px 0 10px; font-size: 14px; font-weight: 500; }
+  .pg__lab:first-of-type { margin-top: 0; }
+  .pg__lab small { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--text-3); }
+  .pg__sw { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+  .pg__sw label { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+  .pg__sw input, .pg__bd input { position: absolute; opacity: 0; pointer-events: none; }
+  .pg__sw span { width: 36px; height: 36px; border-radius: 50%; background: hsl(var(--h) var(--s) 62%); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--line-strong); }
+  .pg__sw input:checked + span, .pg__bd input:checked + span { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+  .pg__sw input:focus-visible + span, .pg__bd input:focus-visible + span { outline: 2px solid var(--focus, var(--text)); outline-offset: 5px; }
+  .pg__sw em, .pg__bd em { font-style: normal; font-size: 12px; color: var(--text-3); }
+  .pg__bd { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 14px 12px; }
+  .pg__bd label { display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
+  .pg__bd span { display: block; aspect-ratio: 16 / 7; border-radius: 10px; box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--line); }
+  .pg__title { margin-top: 20px; }
+  .pg__pins { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
+  .pg__home { margin: 0 0 16px; font-size: 14px; color: var(--text-2); }
+  .pg__home b { color: var(--text); font-weight: 500; }
+  .pg__cities { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+  :global(.pg__cities li) { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); font-size: 13px; }
+  .pg__cityadd { max-width: 320px; }
   .pg__row { display: flex; flex-wrap: wrap; gap: 10px; }
   .pg__share { font-size: 13px; }
   .pg__copy { border: 0; background: none; color: var(--text); text-decoration: underline; cursor: pointer; font: inherit; }
@@ -130,6 +219,33 @@ const origin = Astro.url.origin;
   };
   data.page.order.forEach(addSection);
 
+  // Look: the previews follow the chosen accent; the showcase holds at most four.
+  const lookBox = form.querySelector<HTMLElement>('[data-look]');
+  form.querySelectorAll<HTMLInputElement>('input[name=accent]').forEach((r) => r.addEventListener('change', () => { lookBox?.style.setProperty('--pf-h', r.dataset.h!); lookBox?.style.setProperty('--pf-s', r.dataset.s + '%'); }));
+  const pins = [...form.querySelectorAll<HTMLInputElement>('[data-pins] input')];
+  const capPins = () => { const n = pins.filter((c) => c.checked).length; pins.forEach((c) => (c.disabled = !c.checked && n >= 4)); };
+  pins.forEach((c) => c.addEventListener('change', capPins)); capPins();
+
+  // Cities: chips for the cities the member marked; the picker adds one.
+  const cityNames = (data as unknown as { cityNames: Record<string, string>; cities: string[] }).cityNames;
+  const cityBox = form.querySelector<HTMLUListElement>('[data-cities]');
+  const cityPick = form.querySelector<HTMLInputElement>('[data-city-pick] [data-cf-value]');
+  const cityText = form.querySelector<HTMLInputElement>('[data-city-pick] [data-cf-text]');
+  const addCity = (id: string) => {
+    if (!cityBox || !cityNames[id] || cityBox.querySelector('[data-id="' + id + '"]') || cityBox.children.length >= 24) return;
+    const li = document.createElement('li'); li.dataset.id = id;
+    li.append(cityNames[id]!);
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'pg__mini'; x.textContent = '×'; x.setAttribute('aria-label', 'Remove ' + cityNames[id]);
+    x.addEventListener('click', () => li.remove()); li.append(x); cityBox.append(li);
+  };
+  (data as unknown as { cities: string[] }).cities.forEach(addCity);
+  // Choosing a city from the search adds it as a chip and clears the box for the next one.
+  cityPick?.addEventListener('change', () => {
+    if (!cityPick.value) return;
+    addCity(cityPick.value);
+    if (cityText) { cityText.value = ''; cityText.dispatchEvent(new Event('input')); cityText.blur(); }
+  });
+
   const ess = [...form.querySelectorAll<HTMLInputElement>('[data-ess] input[type=checkbox]')];
   const capEss = () => { const n = ess.filter((c) => c.checked).length; ess.forEach((c) => (c.disabled = !c.checked && n >= 6)); };
   ess.forEach((c) => c.addEventListener('change', capEss)); capEss();
@@ -139,6 +255,8 @@ const origin = Astro.url.origin;
     const fd = new FormData(form);
     const body = {
       tagline: fd.get('tagline'), featured: fd.get('featured') || null,
+      away: fd.get('away') ?? '', cities: cityBox ? [...cityBox.children].map((li) => (li as HTMLElement).dataset.id) : [],
+      accent: fd.get('accent') ?? '', backdrop: fd.get('backdrop') ?? '', title: fd.get('title') ?? '', pins: pins.filter((c) => c.checked).map((c) => c.value),
       essentials: [...form.querySelectorAll<HTMLElement>('[data-ess] li')].filter((li) => (li.querySelector('input[type=checkbox]') as HTMLInputElement).checked).map((li) => li.dataset.id),
       notes: Object.fromEntries([...form.querySelectorAll<HTMLElement>('[data-ess] li')].map((li) => [li.dataset.id, (li.querySelector('[data-note]') as HTMLInputElement).value]).filter(([, v]) => v)),
       links: [...links.children].map((li) => ({ label: (li.querySelector('[data-l]') as HTMLInputElement).value, url: (li.querySelector('[data-u]') as HTMLInputElement).value })).filter((l) => l.label || l.url),

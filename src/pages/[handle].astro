@@ -2,13 +2,22 @@
 import { CITIES, citySlug } from '@/data/cities';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
+import MadeWith from '@/components/profile/MadeWith.astro';
+import FounderMark from '@/components/ui/FounderMark.astro';
+import OpusMark from '@/components/ui/OpusMark.astro';
+import Journey from '@/components/profile/Journey.astro';
+import SocialRow from '@/components/profile/SocialRow.astro';
+import { connectionMetros, homeMetroOf, memberStats } from '@/server/progress';
+import { levelOf, points, resolveTitle } from '@/lib/progress';
+import { pageStyle } from '@/lib/page-style';
 import { SPECIALTIES, allSpecialties } from '@/data/specialties';
+import { SHOWCASE, canShowcase, showcasePicks } from '@/lib/showcase';
 import { PLACE_BY_ID, visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
 import { relationship, DEFAULT_INTRO, INTRO_MAX, profileConnections } from '@/server/connections';
 import { NO_OVERLAP, overlap } from '@/server/overlap';
 import { connectionCount } from '@/server/messages';
-import { profileReleases } from '@/server/releases';
+import { madeWith, profileReleases } from '@/server/releases';
 import { RELEASE_KINDS } from '@/data/music';
 import { getPageConfig } from '@/server/page-config';
 import { listHireServices } from '@/server/hire';
@@ -18,6 +27,7 @@ import { recordView } from '@/server/views';
 import '@/styles/app.css';
 import '@/styles/clans.css';
 import '@/styles/music.css';
+import '@/styles/profile.css';
 export const prerender = false;
 
 const handle = Astro.params.handle ?? '';
@@ -50,17 +60,19 @@ const sharedNames = shared.mutuals.slice(0, 2).map((x) => x.name.split(' ')[0]!)
 const firstNames = people.faces.slice(0, 2).map((f) => f.name.split(' ')[0]);
 // The member's record: releases they put out, plus releases where they confirmed a credit.
 const record = await profileReleases(db, ownerId);
+const made = await madeWith(db, record.map((x) => x.id), ownerId);
 // Bands and other groups this member accepted. Invitations are shown to the member only.
 const clans = await membershipsOf(db, ownerId).catch(() => []);
 const invites = isOwner ? await myInvites(db, ownerId).catch(() => []) : [];
-const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
 const links = Object.entries(p.links).filter(([, v]) => !!v);
 const hire = HIRE_ENABLED && (p.status === 'published' || isOwner) ? await listHireServices(db, p.id).catch(() => []) : [];
 const usd = (c: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(c / 100);
 const page = await getPageConfig(Astro.locals.runtime.env.WAITLIST, p.id);
-// Essentials lead the page; with none chosen, the latest work leads on its own. Then all work, by year.
-const essentials = (page.essentials.map((id) => record.find((x) => x.id === id)).filter(Boolean) as typeof record).slice(0, 6);
-const lead = essentials.length ? essentials : record[0] ? [record[0]] : [];
+// Signatures (the showcase, see src/lib/showcase.ts) lead the page; with none chosen, the latest work leads on its own. Then all work, by year.
+const picks = showcasePicks(page, canShowcase(p.verification));
+const essentials = (picks.full.map((id) => record.find((x) => x.id === id)).filter(Boolean) as typeof record).slice(0, 6);
+const featuredWork = record.find((x) => x.id === picks.featured) ?? null;
+const lead = essentials.length ? essentials : featuredWork ? [featuredWork] : record[0] ? [record[0]] : [];
 const noteOf = (id: string) => page.notes[id] ?? '';
 const byYear = (() => {
   const m = new Map<string, typeof record>();
@@ -70,9 +82,37 @@ const byYear = (() => {
 const essentialIds = new Set(essentials.map((x) => x.id));
 const hue = [...p.handle].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 0);
 const photo = p.photoKey ? mediaUrl(p.photoKey) : null;
-const show = (k: 'works' | 'credits' | 'about') => !page.hide.includes(k);
+const show = (k: 'works' | 'credits' | 'about' | 'journey') => !page.hide.includes(k);
+// The look the member chose, and their standing: all from recorded activity or the account itself.
+const founder = p.distinction === 'founder';
+const look = pageStyle(page.accent, page.backdrop, p.distinction);
+const metros = await connectionMetros(db, ownerId);
+const stats = await memberStats(db, ownerId, p, metros);
+// Travel: home is the profile city. "Now in" and marked cities are the member's own word; connection counts are real.
+const homeMetro = homeMetroOf(p.placeId);
+const showPlace = p.locationVisibility === 'city' || p.locationVisibility === 'metro';
+const awayCity = showPlace && page.away && page.away !== homeMetro ? PLACE_BY_ID.get(page.away) : undefined;
+const cityHref = (name: string) => (CITIES.some((c) => c.name === name) ? '/world/' + citySlug(name) : '/world?city=' + encodeURIComponent(name));
+const territory = (() => {
+  if (!showPlace) return [];
+  const out: { id: string; name: string; kind: 'home' | 'connected' | 'marked'; n: number }[] = [];
+  const seen = new Set<string>();
+  const add = (id: string | null, kind: 'home' | 'connected' | 'marked', n = 0) => { const pl = id ? PLACE_BY_ID.get(id) : undefined; if (!pl || seen.has(pl.id)) return; seen.add(pl.id); out.push({ id: pl.id, name: pl.name, kind, n }); };
+  const count = (id: string | null) => metros.find((m) => m.metro === id)?.n ?? 0;
+  add(homeMetro, 'home', count(homeMetro));
+  for (const m of metros) add(m.metro, 'connected', m.n);
+  for (const id of page.cities) add(id, 'marked');
+  return out;
+})();
+const lv = levelOf(points(stats));
+const title = resolveTitle(page.title || (founder ? 'founder' : ''), stats, p.distinction);
+const rail = show('journey');
+// Few works read best as a short list; a bigger catalogue becomes a shelf of covers by year.
+const asRows = record.length <= 8;
+const essCols = Math.min(lead.length, rail ? 3 : 4);
+const yearOf = (x: (typeof record)[number]) => x.releaseDate?.slice(0, 4) ?? (x.released ? '' : 'Coming');
 const ord = (k: string) => page.order.indexOf(k as never);
-const hasAbout = !!(p.bio || p.achievements.length || p.collaborations.length || p.portfolio.length);
+const hasAbout = !!(roles.length > 1 || p.bio || p.achievements.length || p.collaborations.length || p.portfolio.length);
 const releaseLine = (x: (typeof record)[number]) => [x.artist && (!x.own || !x.roles.includes('Primary Artist')) ? x.artist : null, x.own && x.roles.length === 1 && x.roles[0] === 'Primary Artist' ? null : x.roles.length ? x.roles.join(', ') : null, RELEASE_KINDS[x.kind], x.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ');
 const byLine = (x: (typeof record)[number]) => [x.artist && (!x.own || !x.roles.includes('Primary Artist')) ? x.artist : null, x.own && x.roles.length === 1 && x.roles[0] === 'Primary Artist' ? null : x.roles.length ? x.roles.join(', ') : null].filter(Boolean).join(' · ');
 const isEmpty = !record.length && !p.credits.length && !hasAbout;
@@ -91,26 +131,36 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
       </span>
     </div>
   )}
-  <article class="mp" style={`--mp-hue:${hue}`}>
-    <div class="mp__wash" aria-hidden="true" style={photo ? `background-image:url(${photo})` : ''}></div>
+  <article class:list={['mp', 'pf', { 'is-founder': founder, 'has-rail': rail }]} style={`--mp-hue:${hue};${look.css}`}>
+    <div class="mp__wash" aria-hidden="true"></div>
     <div class="mp__inner">
-      <div class:list={['mp__banner', { 'has-cover': !!p.coverKey }]} role="img" aria-label={p.coverKey ? `Banner of ${p.displayName}` : undefined} aria-hidden={p.coverKey ? undefined : 'true'} style={(p.coverKey ? `background-image:url(${mediaUrl(p.coverKey)});` : photo ? `--b-img:url(${photo});` : '')}></div>
+      <div class:list={['mp__banner', 'pf-bd', { 'has-cover': !!p.coverKey }]} data-backdrop={look.backdrop} role="img" aria-label={p.coverKey ? `Banner of ${p.displayName}` : undefined} aria-hidden={p.coverKey ? undefined : 'true'}>
+        {p.coverKey && <span class="mp__cover" style={`background-image:url(${mediaUrl(p.coverKey)})`}></span>}
+      </div>
       <header class:list={['mp__head', { 'no-photo': !photo }]}>
         <div class="mp__photo" style={`view-transition-name:pf-${p.handle};` + (photo ? `background-image:url(${photo})` : '')} role="img" aria-label={photo ? `Photo of ${p.displayName}` : p.displayName}>{!photo && initials(p.displayName)}</div>
         <div class="mp__id">
-          <p class="mp__kicker">{roles.length ? roles.slice(0, 3).join(' · ') : 'Opus member'}{p.verification === 'verified' && <VerifiedBadge size={16} />}</p>
-          <h1 class="mp__name">{p.displayName}</h1>
+          <p class="mp__kicker">{roles[0] ?? 'Opus member'}</p>
+          <h1 class="mp__name"><span>{p.displayName}</span>{p.verification === 'verified' && <VerifiedBadge size={22} />}</h1>
+          {(title || founder || rail) && (
+            <p class="mp__rank">
+              {founder && <FounderMark />}
+              {title && !(founder && title === 'Founder') && <span class="mp__title">{title}</span>}
+              {rail && <a class="mp__lv" href="#journey">Level {lv.level}{title !== lv.name && <> · {lv.name}</>}</a>}
+            </p>
+          )}
           {page.tagline && <p class="mp__tag">{page.tagline}</p>}
           <ul class="mp__facts" role="list">
-            {where && <li>{where && worldCity ? <a class="mp__where" href={CITIES.some((c) => c.name === worldCity) ? `/world/${citySlug(worldCity)}` : `/world?city=${encodeURIComponent(worldCity)}`}>{where}</a> : where}</li>}
+            {awayCity && <li class="is-away"><a class="mp__where" href={cityHref(awayCity.name)}>In {awayCity.name} now</a></li>}
+            {where && <li>{awayCity && 'Home: '}{where && worldCity ? <a class="mp__where" href={CITIES.some((c) => c.name === worldCity) ? `/world/${citySlug(worldCity)}` : `/world?city=${encodeURIComponent(worldCity)}`}>{where}</a> : where}</li>}
             {p.genres.length > 0 && <li>{p.genres.slice(0, 3).join(', ')}</li>}
             {hire.length > 0 && <li class="is-on">For hire</li>}
             <li><b>{connections.toLocaleString('en-US')}</b> {connections === 1 ? 'connection' : 'connections'}</li>
           </ul>
-          {links.length + page.links.length > 0 && (
+          {links.length > 0 && <div class="mp__soc"><SocialRow links={p.links} /></div>}
+          {page.links.length > 0 && (
             <ul class="mp__chips" role="list">
               {page.links.map((l) => <li><a href={l.url} target="_blank" rel="noopener nofollow ugc">{l.label} ↗</a></li>)}
-              {links.map(([k, v]) => <li><a href={v} target="_blank" rel="noopener nofollow ugc">{LINK_LABEL[k] ?? k} ↗</a></li>)}
             </ul>
           )}
           {clans.length > 0 && (
@@ -263,8 +313,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
             <section class="mp__sec" id="works" style={`order:${ord('works')}`}>
               {lead.length > 0 ? (
                 <>
-                  <h2 class="mp__h">{essentials.length ? 'Essentials' : 'Latest'}</h2>
-                  <ul class:list={['mp__ess', { 'is-one': lead.length === 1 }]} role="list">{lead.map((x, i) => (
+                  <h2 class="mp__h">{essentials.length ? SHOWCASE.name : featuredWork ? SHOWCASE.featured : 'Latest'}</h2>
+                  <ul class:list={['mp__ess', { 'is-one': lead.length === 1 }]} style={'--cols:' + essCols} role="list">{lead.map((x, i) => (
                     <li>
                       <a href={`/r/${x.id}`}>
                         <span class="mp__ess-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
@@ -272,7 +322,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                           <small>{RELEASE_KINDS[x.kind]} · {x.released ? (x.releaseDate?.slice(0, 4) ?? "Out now") : "Coming"}</small>
                           <b>{x.title}</b>
                           {byLine(x) && <em>{byLine(x)}</em>}
-                          {noteOf(x.id) ? <span class="mp__ess-n">{noteOf(x.id)}</span> : isOwner ? <span class="mp__ess-n is-hint">Add a line about this work in Customize page.</span> : null}
+                          <span class="mp__ess-mw"><MadeWith with={made.get(x.id)} /></span>
+                          {noteOf(x.id) ? <span class="mp__ess-n">{noteOf(x.id)}</span> : isOwner && essentials.length ? <span class="mp__ess-n is-hint">Add a line about this work in Customize page.</span> : null}
                         </span>
                       </a>
                     </li>
@@ -280,6 +331,20 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                   {record.length > 1 && (
                     <>
                       <h2 class="mp__h">All work <span>{record.length}</span></h2>
+                      {asRows ? (
+                        <ul class="mp__rows" role="list">{record.map((x, i) => (
+                          <li><a href={`/r/${x.id}`}>
+                            <span class="mp__row-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
+                            <span class="mp__row-t">
+                              <b>{x.title}{essentialIds.has(x.id) && <i>{SHOWCASE.one}</i>}</b>
+                              <small>{[RELEASE_KINDS[x.kind], byLine(x)].filter(Boolean).join(' · ')}</small>
+                              <span class="mp__row-mwp"><MadeWith with={made.get(x.id)} faces={false} /></span>
+                            </span>
+                            <span class="mp__row-mw"><MadeWith with={made.get(x.id)} /></span>
+                            <span class="mp__row-y">{yearOf(x)}</span>
+                          </a></li>
+                        ))}</ul>
+                      ) : (
                       <div class="mp__years">{byYear.map(([year, items]) => (
                         <section class="mp__year">
                           <h3>{year}</h3>
@@ -287,14 +352,16 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                             <li><a href={`/r/${x.id}`}>
                               <span class="mp__row-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
                               <span class="mp__row-t">
-                                <b>{x.title}{essentialIds.has(x.id) && <i>Essential</i>}</b>
+                                <b>{x.title}{essentialIds.has(x.id) && <i>{SHOWCASE.one}</i>}</b>
                                 <small>{[RELEASE_KINDS[x.kind], byLine(x)].filter(Boolean).join(' · ')}</small>
+                                <MadeWith with={made.get(x.id)} faces={false} />
                                 {noteOf(x.id) && !essentialIds.has(x.id) && <span class="mp__row-n">{noteOf(x.id)}</span>}
                               </span>
                             </a></li>
                           ))}</ul>
                         </section>
                       ))}</div>
+                      )}
                     </>
                   )}
                 </>
@@ -321,12 +388,30 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {show('about') && hasAbout && (
             <section class="mp__sec" style={`order:${ord('about')}`}><h2 class="mp__h">About</h2>
               {p.bio && <p class="mp__bio">{p.bio}</p>}
+              {roles.length > 1 && <p class="mp__also"><span>Also</span> {roles.slice(1).join(' · ')}</p>}
               {p.achievements.length > 0 && <ul class="mp__list" role="list">{p.achievements.map((a) => <li>{a}</li>)}</ul>}
               {p.collaborations.length > 0 && <ul class="mp__tags" role="list">{p.collaborations.map((a) => <li>{a}</li>)}</ul>}
               {p.portfolio.length > 0 && <ul class="mp__links" role="list">{p.portfolio.map((x) => <li><a href={x.url} target="_blank" rel="noopener nofollow ugc">{x.title || new URL(x.url).hostname} ↗</a></li>)}</ul>}
             </section>
           )}
         </div>
+        {rail && (
+          <aside class="mp__rail" id="journey" style={`order:${ord('journey')}`} aria-label="Level and achievements">
+            <Journey stats={stats} pins={page.pins} isOwner={isOwner} firstName={p.displayName.split(' ')[0] ?? p.displayName} />
+            {(territory.length > 1 || (isOwner && showPlace)) && (
+              <section class="tr" aria-label="Territory">
+                <h2 class="tr__h">Territory <span>{territory.length} {territory.length === 1 ? 'city' : 'cities'}</span></h2>
+                <ul class="tr__list" role="list">{territory.map((t) => (
+                  <li class:list={{ 'is-home': t.kind === 'home', 'is-on': t.n > 0, 'is-now': awayCity?.id === t.id }}>
+                    <a href={cityHref(t.name)}><i aria-hidden="true"></i><b>{t.name}</b></a>
+                    <small>{[t.kind === 'home' ? 'Home' : null, awayCity?.id === t.id ? 'Here now' : null, t.n > 0 ? t.n + (t.n === 1 ? ' connection' : ' connections') : t.kind === 'marked' && awayCity?.id !== t.id ? 'Been here' : null].filter(Boolean).join(' · ')}</small>
+                  </li>
+                ))}</ul>
+                {isOwner && <p class="tr__fine">{territory.length <= 1 && 'Mark the cities you work in or visit. '}<a class="link" href="/account/page#cities">Edit your cities</a></p>}
+              </section>
+            )}
+          </aside>
+        )}
       </div>
       )}
     </div>
@@ -375,13 +460,13 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__tags li.is-primary { border-color: var(--c-accent-line); color: var(--text); }
   .mp__links { display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
   .mp { position: relative; overflow: hidden; }
-  .mp__wash { position: absolute; inset: -80px -80px auto; height: 620px; background: radial-gradient(60% 80% at 25% 20%, hsl(var(--mp-hue) 55% 45% / .5), transparent 70%), var(--surface-sunken) center / cover no-repeat; filter: blur(70px) saturate(1.3); opacity: .55; -webkit-mask-image: linear-gradient(#000 30%, transparent); mask-image: linear-gradient(#000 30%, transparent); pointer-events: none; }
-  .mp__inner { position: relative; max-width: 1180px; margin: 0 auto; padding: clamp(36px, 6vw, 72px) var(--gutter) 96px; }
+  /* A quiet glow in the member's accent behind the top of the page. */
+  .mp__wash { position: absolute; inset: 0 0 auto; height: 560px; background: radial-gradient(70% 100% at 50% 0%, hsl(var(--pf-h) var(--pf-s) 55% / .22), transparent 70%); pointer-events: none; }
+  :global([data-theme='light']) .mp__wash { opacity: .5; }
+  .mp__inner { position: relative; max-width: 1240px; margin: 0 auto; padding: clamp(20px, 3vw, 36px) var(--gutter) 96px; }
   /* Banner across the top, a round photo overlapping its lower edge, then who they are. */
-  .mp__inner { padding-top: clamp(20px, 3vw, 36px); }
-  .mp__banner { position: relative; height: clamp(150px, 21vw, 270px); border-radius: 22px; overflow: hidden; background: radial-gradient(70% 120% at 20% 0%, hsl(var(--mp-hue) 55% 48% / .9), transparent 70%), linear-gradient(135deg, hsl(var(--mp-hue) 40% 36%), hsl(calc(var(--mp-hue) + 60) 45% 20%)) center / cover no-repeat; }
-  .mp__banner:not(.has-cover)::before { content: ''; position: absolute; inset: -30px; background: var(--b-img, none) center / cover no-repeat; filter: blur(34px) saturate(1.4); opacity: .75; }
-  .mp__banner.has-cover { background-size: cover; background-position: center; }
+  .mp__banner { height: clamp(150px, 19vw, 250px); border-radius: 22px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+  .mp__cover { position: absolute; inset: 0; background: center / cover no-repeat; }
   .mp__head { display: block; text-align: center; padding: 0 clamp(4px, 2vw, 28px); }
   .mp__photo { margin-inline: auto; position: relative; z-index: 1; width: clamp(120px, 14vw, 168px); margin-top: calc(clamp(120px, 14vw, 168px) / -2); margin-inline: auto; border: 5px solid var(--bg); aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font-size: clamp(48px, 7vw, 88px); font-weight: 300; letter-spacing: -0.04em; color: #fff; background: linear-gradient(145deg, hsl(var(--mp-hue) 45% 38%), hsl(calc(var(--mp-hue) + 50) 50% 22%)) center / cover no-repeat; box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .55); }
   .mp__id { margin-top: 26px; display: flex; flex-direction: column; align-items: center; }
@@ -389,6 +474,16 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
   .mp__tag { margin-inline: auto; }
   .mp__kicker { display: flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-2); }
+  .mp__rank { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px; margin-top: 14px; }
+  .mp__title { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--pf-ink); box-shadow: inset 0 0 0 1px hsl(var(--pf-h) var(--pf-s) 60% / .45); background: var(--pf-soft); }
+  .mp__lv { font-size: 13px; color: var(--text-2); text-decoration: none; font-variant-numeric: tabular-nums; }
+  .mp__lv:hover { color: var(--text); }
+  /* Founder: one hairline of gold on the photo. The mark carries the rest; the name stays plain. */
+  .mp__also { margin-top: 14px; font-size: 14px; color: var(--text-2); }
+  .mp__also span { margin-right: 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
+  .is-founder .mp__photo { box-shadow: 0 0 0 1px color-mix(in oklab, #c99a3c 70%, transparent); }
+  .mp__name { display: flex; align-items: center; justify-content: center; gap: .22em; }
+  .mp__name span { min-width: 0; }
   .mp__name { margin-top: 8px; font-size: clamp(2.6rem, 1.4rem + 4vw, 5rem); line-height: .98; overflow-wrap: break-word; }
   .mp__tag { margin-top: 14px; font-size: clamp(16px, 1.4vw, 20px); color: var(--text-2); max-width: 46ch; }
   .mp__facts { display: flex; flex-wrap: wrap; gap: 6px 0; margin-top: 18px; font-size: 14px; color: var(--text-2); }
@@ -412,13 +507,21 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__groups a:hover { box-shadow: inset 0 0 0 1px var(--text-3); }
   .mp__gl { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-hover, #eee) center / cover; color: var(--text-2); font-weight: 500; }
   .mp__gn { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .mp__soc { margin-top: 18px; }
+  .mp__soc + .mp__chips { margin-top: 12px; }
   .mp__chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
   .mp__chips a { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13px; text-decoration: none; }
   .mp__chips a:hover { background: var(--surface-hover); }
   .mp__actions { margin-top: 22px; }
   .mp__new { margin-top: 56px; color: var(--text-2); font-size: 17px; }
-  .mp__grid { margin-top: clamp(40px, 6vw, 72px); }
-  .mp__main { display: flex; flex-direction: column; gap: 64px; }
+  /* Body: the work on the left, level and achievements in a rail on the right. Without the rail, one centred column. */
+  .mp__grid { margin-top: clamp(36px, 5vw, 60px); display: flex; flex-direction: column; gap: 56px; max-width: 860px; margin-inline: auto; }
+  .mp__main { display: contents; }
+  @media (min-width: 1000px) {
+    .has-rail .mp__grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: clamp(40px, 5vw, 72px); align-items: start; max-width: none; }
+    .has-rail .mp__main { display: flex; flex-direction: column; gap: 56px; min-width: 0; }
+    .mp__rail { position: sticky; top: calc(var(--hdr-h) + 72px); order: 0 !important; }
+  }
   .mp__h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; font-size: 22px; font-weight: 500; letter-spacing: -0.03em; }
   .mp__h span { font-size: 14px; font-weight: 400; color: var(--text-3); }
   .mp__sec .mp__h:not(:first-child) { margin-top: 56px; }
@@ -426,8 +529,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__where:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
   .mp__tile, .mp__ess-cover, .mp__row-cover { display: block; background: linear-gradient(135deg, hsl(var(--c, 220) 45% 42%), hsl(calc(var(--c, 220) + 50) 55% 30%)) center / cover no-repeat; }
   .mp__tile { aspect-ratio: 1; border-radius: 10px; }
-  /* Essentials: covers lead, each with its own line on what it is and what it means. */
-  .mp__ess { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 22px; }
+  /* Signatures: covers lead, each with its own line on what it is and what it means. */
+  .mp__ess { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 32px 22px; }
   .mp__ess a { display: flex; flex-direction: column; gap: 14px; color: inherit; text-decoration: none; }
   .mp__ess-cover { aspect-ratio: 1; border-radius: 12px; box-shadow: 0 24px 50px -30px rgba(0, 0, 0, .55); transition: transform .25s ease; }
   .mp__ess a:hover .mp__ess-cover { transform: translateY(-3px); }
@@ -437,14 +540,45 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__ess-t em { display: none; }
   .mp__ess-n { order: 2; margin-top: 4px; font-size: 14px; line-height: 1.5; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .mp__ess-n.is-hint { color: var(--text-3); }
-  /* One essential reads as a deliberate hero: cover left, the story right, nothing empty. */
+  .mp__ess-mw { order: 3; margin-top: 8px; }
+  .mp__ess-mw:empty, .mp__row-mw:empty { display: none; }
+  .mp__row-mw { flex: none; }
+  .mp__row-mwp { display: none; }
+  @media (max-width: 600px) { .mp__row-mw { display: none; } .mp__row-mwp { display: block; } .mp__row-mwp:empty { display: none; } }
+  /* One signature reads as a deliberate hero: cover left, the story right, nothing empty. */
   .mp__ess.is-one { grid-template-columns: minmax(0, 1fr); }
   .mp__ess.is-one a { flex-direction: row; align-items: center; gap: clamp(22px, 4vw, 48px); }
-  .mp__ess.is-one .mp__ess-cover { flex: none; width: clamp(180px, 30vw, 320px); }
+  .mp__ess.is-one a { padding: clamp(14px, 2vw, 22px); border-radius: 24px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .mp__ess.is-one .mp__ess-cover { flex: none; width: clamp(180px, 24vw, 300px); }
   .mp__ess.is-one .mp__ess-t b { font-size: clamp(1.8rem, 1rem + 2.4vw, 3rem); letter-spacing: -0.04em; }
   .mp__ess.is-one .mp__ess-n { max-width: 52ch; font-size: 16px; -webkit-line-clamp: 6; }
   /* All work, by year. */
   /* All work: the rest of the catalogue as a quieter shelf of smaller covers, grouped by year. */
+  .mp__facts .is-away a { color: var(--pf-ink); }
+  .tr { margin-top: 14px; padding: 22px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .tr__h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 12px; font-size: 16px; font-weight: 500; letter-spacing: -0.02em; }
+  .tr__h span { font-size: 12.5px; font-weight: 400; color: var(--text-3); }
+  .tr__list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .tr__list li:first-child { border-top: 0; padding-top: 0; }
+  .tr__list a { display: inline-flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; min-width: 0; }
+  .tr__list a:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  .tr__list b { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; }
+  .tr__list small { flex: none; font-size: 12.5px; color: var(--text-3); }
+  /* Marked by the member: a ring. Real connections there: filled. Home: the accent. */
+  .tr__list i { flex: none; width: 9px; height: 9px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text-3); }
+  .tr__list .is-on i { background: var(--text-2); box-shadow: none; }
+  .tr__list .is-home i { background: var(--pf-ink); box-shadow: 0 0 0 3px var(--pf-soft); }
+  .tr__list .is-now small { color: var(--pf-ink); }
+  .tr__fine { margin: 12px 0 0; font-size: 12.5px; color: var(--text-3); }
+  .mp__rows { border-top: 1px solid var(--line); }
+  .mp__rows a { display: flex; align-items: center; gap: 16px; padding: 12px 4px; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none; transition: background var(--dur, .15s) var(--ease, ease); }
+  .mp__rows a:hover { background: var(--surface-hover); }
+  .mp__rows .mp__row-cover { flex: none; width: 60px; border-radius: 8px; }
+  .mp__rows .mp__row-t { flex: 1; }
+  .mp__rows .mp__row-t b { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+  .mp__rows .mp__row-t b i { display: inline-block; margin: 0; }
+  .mp__rows .mp__row-t small { font-size: 13.5px; }
+  .mp__row-y { flex: none; font-size: 14px; color: var(--text-3); font-variant-numeric: tabular-nums; }
   .mp__years { display: flex; flex-direction: column; gap: 34px; }
   .mp__year h3 { margin: 0 0 14px; font-size: 14px; font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
   .mp__year ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 148px), 1fr)); gap: 22px 16px; }
@@ -486,7 +620,10 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
     .mp__photo { width: 112px; margin-top: -56px; }
     .mp__name { font-size: clamp(2.1rem, 10vw, 3rem); }
     .mp__ess.is-one a { flex-direction: column; align-items: flex-start; }
-    .mp__ess.is-one .mp__ess-cover { width: min(100%, 300px); }
+    .mp__ess.is-one .mp__ess-cover { width: 100%; }
+    .mp__ess.is-one a { align-items: stretch; }
+    .mp__ess { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mp__ess.is-one { grid-template-columns: minmax(0, 1fr); }
     .mp__year ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 </style>

@@ -3,8 +3,9 @@
  * and in what order). Stored in KV as `page:<profileId>` so it needs no database change.
  */
 import { cleanUrl } from './profiles';
+import { PLACE_BY_ID } from '@/data/places';
 
-export const PAGE_SECTIONS: Record<string, string> = { works: 'Works', credits: 'Credits', about: 'About' };
+export const PAGE_SECTIONS: Record<string, string> = { works: 'Works', journey: 'Level and achievements', credits: 'Credits', about: 'About' };
 /** Groups arrange their own sections. */
 export const GROUP_SECTIONS: Record<string, string> = { members: 'Members', works: 'Works', events: 'Upcoming' };
 export type PageSection = string;
@@ -13,9 +14,21 @@ export interface PageLink { label: string; url: string }
 /** Essentials: the works a member puts first (up to MAX_ESSENTIALS), and a short line per work on what it is and means. */
 export const MAX_ESSENTIALS = 6;
 export const NOTE_MAX = 220;
-export interface PageConfig { tagline: string; featured: string | null; links: PageLink[]; order: PageSection[]; hide: PageSection[]; essentials: string[]; notes: Record<string, string> }
+export interface PageConfig { tagline: string; featured: string | null; links: PageLink[]; order: PageSection[]; hide: PageSection[]; essentials: string[]; notes: Record<string, string>;
+  /** Look: keys from src/lib/page-style.ts. Empty = the default for the account. */
+  accent: string; backdrop: string;
+  /** The title worn under the name: 'level', 'founder' or 'a:<achievement id>'. Shown only while earned. */
+  title: string;
+  /** Achievements the member puts first in their showcase (ids, up to MAX_PINS). */
+  pins: string[];
+  /** Travel. `away`: the metro the member says they are in right now ('' = at home; home is the profile city).
+   *  `cities`: metros the member marked as places they have been or regularly are. Self-marked: they earn nothing. */
+  away: string; cities: string[] }
+export const MAX_PINS = 4;
+export const MAX_CITIES = 24;
+const isMetro = (v: unknown): v is string => typeof v === 'string' && PLACE_BY_ID.get(v)?.kind === 'metro';
 
-export const DEFAULT_PAGE: PageConfig = { tagline: '', featured: null, links: [], order: ['works', 'credits', 'about'], hide: [], essentials: [], notes: {} };
+export const DEFAULT_PAGE: PageConfig = { tagline: '', featured: null, links: [], order: ['works', 'journey', 'credits', 'about'], hide: [], essentials: [], notes: {}, accent: '', backdrop: '', title: '', pins: [], away: '', cities: [] };
 
 export function cleanPage(raw: unknown, sections: Record<string, string> = PAGE_SECTIONS): PageConfig {
   const keys = Object.keys(sections);
@@ -40,7 +53,10 @@ export function cleanPage(raw: unknown, sections: Record<string, string> = PAGE_
     const t = String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
     if (id(k) && t && Object.keys(notes).length < 60) notes[k] = t;
   }
-  return { tagline, featured, links, order, hide, essentials, notes };
+  const key = (v: unknown) => (typeof v === 'string' && /^[a-z0-9:-]{1,40}$/.test(v) ? v : '');
+  const pins = [...new Set((Array.isArray(o.pins) ? o.pins : []).map(key).filter(Boolean))].slice(0, MAX_PINS);
+  return { tagline, featured, links, order, hide, essentials, notes, accent: key(o.accent), backdrop: key(o.backdrop), title: key(o.title), pins,
+    away: isMetro(o.away) ? o.away : '', cities: [...new Set((Array.isArray(o.cities) ? o.cities : []).filter(isMetro))].slice(0, MAX_CITIES) };
 }
 
 export async function getPageConfig(kv: KVNamespace | undefined, profileId: string, sections: Record<string, string> = PAGE_SECTIONS): Promise<PageConfig> {

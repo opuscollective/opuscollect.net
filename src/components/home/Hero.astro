@@ -15,6 +15,8 @@ const topCities = CITIES.slice(0, 8);
 
   <div class="hero__stage" data-hero-stage>
     <!-- The product, presented: name, promise, supporting line, actions. The Earth below is its demonstration. -->
+    <!-- Signed-in members are greeted by time of day, or welcomed to the city they're in (filled below; empty for visitors). -->
+    <p class="hero__greet" data-hero-greet hidden><a href="/world/happening"><b data-greet-line></b> <span data-greet-sub></span></a></p>
     <h1 id="hero-title" class="hero__title">
       <span class="hero__line"><span class="hero-in" style="--i:1">{SITE.heroProduct}</span></span>
     </h1>
@@ -49,6 +51,21 @@ const topCities = CITIES.slice(0, 8);
    * Location is never asked for here.
    */
   const hero = document.querySelector<HTMLElement>('[data-hero]')!;
+
+  // A personal hello for signed-in members: the member's saved home or current city, and their own clock.
+  if (document.cookie.split('; ').includes('opus_in=1')) {
+    import('@/lib/greeting').then(async ({ greeting, dayOfYear }) => {
+      const t = await fetch('/api/travel', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { signedIn?: boolean; name?: string; home?: { name: string | null } | null; away?: { name: string | null } | null } | null;
+      if (!t?.signedIn) return;
+      const now = new Date();
+      const g = greeting({ name: t.name, hour: now.getHours(), day: dayOfYear(now), home: t.home?.name, away: t.away?.name });
+      const el = hero.querySelector<HTMLElement>('[data-hero-greet]')!;
+      el.querySelector('[data-greet-line]')!.textContent = g.line;
+      el.querySelector('[data-greet-sub]')!.textContent = g.sub;
+      el.hidden = false;
+      window.dispatchEvent(new Event('resize')); // the Earth sits under the words; let it re-place
+    });
+  }
 
   /*
    * Desktop and tablets (Bogo, 2026-11-14): the words sit above the Earth, whose crown starts just below
@@ -335,6 +352,10 @@ const topCities = CITIES.slice(0, 8);
 
   /* Launch layout (brief, 2026-11-21): copy on the left, the globe on the right, on wide screens. Narrower screens
      keep the stacked composition above, with the same words. */
+  .hero__greet { margin: 0 0 16px; font-size: clamp(14px, 0.8rem + 0.3vw, 17px); line-height: 1.4; }
+  .hero__greet a { color: rgba(244, 242, 238, 0.72); text-decoration: none; }
+  .hero__greet b { font-weight: 500; color: #f4f2ee; }
+  .hero__greet a:hover span { text-decoration: underline; text-underline-offset: 3px; }
   .hero__eyebrow { margin: 0 0 18px; font-size: 14px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(244, 242, 238, 0.7); }
   .hero__title { text-wrap: balance; }
   @media (max-width: 999px) {

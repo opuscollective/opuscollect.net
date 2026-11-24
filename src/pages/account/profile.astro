@@ -1,4 +1,5 @@
 ---
+import { SOCIALS } from '@/data/socials';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SPECIALTIES } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
@@ -15,10 +16,7 @@ const welcome = Astro.url.searchParams.has('welcome');
 
 
 const p = profile;
-const linkFields = [
-  ['spotify', 'Spotify', 'open.spotify.com/artist/…'], ['appleMusic', 'Apple Music', 'music.apple.com/…'], ['soundcloud', 'SoundCloud', 'soundcloud.com/…'],
-  ['youtube', 'YouTube', 'youtube.com/@…'], ['instagram', 'Instagram', 'instagram.com/…'], ['tiktok', 'TikTok', 'tiktok.com/@…'], ['website', 'Website', 'yourname.com'],
-] as const;
+const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
 ---
 <BaseLayout title="Edit profile" noindex assistant={false} messages={false}>
   <section class="app">

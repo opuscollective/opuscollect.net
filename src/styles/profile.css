@@ -1,0 +1,36 @@
+/**
+ * Profile look: the accent and backdrop a member chooses (src/lib/page-style.ts). Shared by the
+ * profile, the link-in-bio page and the previews in Customize page. Set --pf-h and --pf-s on a parent.
+ * Backdrops are drawn in CSS so they stay crisp at any size; they are dark in both themes, like a cover.
+ */
+.pf { --pf-h: 213; --pf-s: 62%;
+  --pf-c: hsl(var(--pf-h) var(--pf-s) 66%);
+  /* Accent as readable text or line on the page in either theme. */
+  --pf-ink: color-mix(in oklab, hsl(var(--pf-h) var(--pf-s) 55%) 72%, var(--text));
+  --pf-soft: hsl(var(--pf-h) var(--pf-s) 60% / .14);
+}
+.pf-bd { position: relative; overflow: hidden; isolation: isolate; background-color: hsl(var(--pf-h) calc(var(--pf-s) * .45) 9%); }
+.pf-bd::before, .pf-bd::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: -1; }
+/* A fine grain keeps large gradients from banding. */
+.pf-bd::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: .07; mix-blend-mode: overlay; }
+
+.pf-bd[data-backdrop='aura']::before { background:
+  radial-gradient(55% 130% at 14% -10%, hsl(var(--pf-h) var(--pf-s) 58% / .9), transparent 62%),
+  radial-gradient(45% 120% at 88% 110%, hsl(calc(var(--pf-h) + 38) var(--pf-s) 48% / .7), transparent 66%),
+  radial-gradient(40% 90% at 60% 0%, hsl(calc(var(--pf-h) - 30) var(--pf-s) 40% / .45), transparent 70%); }
+.pf-bd[data-backdrop='horizon']::before { background:
+  radial-gradient(90% 160% at 50% 150%, transparent 59.6%, hsl(var(--pf-h) var(--pf-s) 82% / .95) 60%, hsl(var(--pf-h) var(--pf-s) 56% / .55) 63%, hsl(var(--pf-h) var(--pf-s) 40% / .16) 74%, transparent 88%),
+  radial-gradient(90% 160% at 50% 150%, hsl(var(--pf-h) calc(var(--pf-s) * .6) 5%) 59.6%, transparent 60%); }
+.pf-bd[data-backdrop='waves']::before { background: linear-gradient(100deg, hsl(var(--pf-h) var(--pf-s) 70%), hsl(calc(var(--pf-h) + 40) var(--pf-s) 60%));
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='36' viewBox='0 0 240 36'%3E%3Cpath d='M0 18c30 0 30-13 60-13s30 26 60 26 30-26 60-26 30 13 60 13' fill='none' stroke='%23000' stroke-width='1.1'/%3E%3C/svg%3E") 0 0 / 240px 36px, linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
+  -webkit-mask-composite: source-in; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='36' viewBox='0 0 240 36'%3E%3Cpath d='M0 18c30 0 30-13 60-13s30 26 60 26 30-26 60-26 30 13 60 13' fill='none' stroke='%23000' stroke-width='1.1'/%3E%3C/svg%3E") 0 0 / 240px 36px, linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent); mask-composite: intersect; opacity: .7; }
+.pf-bd[data-backdrop='waves'] { background-image: radial-gradient(70% 140% at 50% 120%, hsl(var(--pf-h) var(--pf-s) 40% / .5), transparent 70%); }
+.pf-bd[data-backdrop='grid']::before { background:
+  linear-gradient(hsl(var(--pf-h) var(--pf-s) 75% / .28) 1px, transparent 1px) 0 0 / 44px 44px,
+  linear-gradient(90deg, hsl(var(--pf-h) var(--pf-s) 75% / .28) 1px, transparent 1px) 0 0 / 44px 44px;
+  -webkit-mask: radial-gradient(70% 120% at 50% 100%, #000, transparent 75%); mask: radial-gradient(70% 120% at 50% 100%, #000, transparent 75%); }
+.pf-bd[data-backdrop='grid'] { background-image: radial-gradient(60% 110% at 50% 115%, hsl(var(--pf-h) var(--pf-s) 50% / .55), transparent 70%); }
+.pf-bd[data-backdrop='spotlight']::before { background:
+  radial-gradient(26% 130% at 50% -25%, hsl(var(--pf-h) var(--pf-s) 88% / .85), hsl(var(--pf-h) var(--pf-s) 60% / .35) 55%, transparent 80%),
+  radial-gradient(70% 60% at 50% 110%, hsl(var(--pf-h) var(--pf-s) 50% / .4), transparent 75%); }
+.pf-bd[data-backdrop='plain']::before { background: radial-gradient(120% 140% at 50% 0%, hsl(var(--pf-h) calc(var(--pf-s) * .7) 22%), transparent 75%); }

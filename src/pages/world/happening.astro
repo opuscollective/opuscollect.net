@@ -1,0 +1,173 @@
+---
+/**
+ * Happening (working name): what is going on in the member's city, without searching.
+ * The city is the one they're in now if they set it, else their home city; anyone can switch city.
+ * Everything listed is real: live and upcoming listening parties, events, studios and members there.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
+import { PLACES, PLACE_BY_ID } from '@/data/places';
+import { citySlug } from '@/data/cities';
+import { getMyProfile } from '@/server/profiles';
+import { getPageConfig } from '@/server/page-config';
+import { homeMetroOf } from '@/server/progress';
+import { followedIds } from '@/server/cities';
+import { happeningIn } from '@/server/happening';
+import { greeting } from '@/lib/greeting';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const env = Astro.locals.runtime.env;
+const metros = PLACES.filter((p) => p.kind === 'metro');
+const me = user ? await getMyProfile(env.DB, user.id).catch(() => null) : null;
+const page = me ? await getPageConfig(env.WAITLIST, me.id) : null;
+const home = me ? homeMetroOf(me.placeId) : null;
+const away = page?.away && page.away !== home ? page.away : null;
+// ?city= takes a city id or its World address (atlanta).
+const q = Astro.url.searchParams.get('city') ?? '';
+const asked = metros.find((p) => p.id === q || citySlug(p.name) === q.toLowerCase())?.id ?? null;
+const cityId = asked ?? away ?? home;
+const h = cityId ? await happeningIn(env, cityId, user?.id ?? null) : null;
+const nameOf = (id: string | null) => (id ? PLACE_BY_ID.get(id)?.name ?? null : null);
+// The member's own cities, for one-tap switching: where they are, home, cities they follow, cities they marked.
+const followed = user ? await followedIds(env, user.id).catch(() => []) : [];
+const mine = [...new Set([away, home, ...followed, ...(page?.cities ?? [])].filter((x): x is string => !!x && PLACE_BY_ID.has(x)))].slice(0, 8);
+const SUGGEST = ['Birmingham', 'Atlanta', 'Nashville', 'Los Angeles', 'New York', 'London', 'Lagos'].map((n) => metros.find((p) => p.name === n)).filter((p) => !!p);
+const chips = mine.length ? mine.map((id) => PLACE_BY_ID.get(id)!) : SUGGEST;
+const firstName = me?.displayName.split(/\s+/)[0] ?? '';
+// Greeting: personal only when it's the member's own city. The page fills in the time of day from the viewer's clock.
+const own = !!me && !!h && (h.city.id === away || h.city.id === home);
+const hello = h && own ? greeting({ name: firstName, hour: 12, home: nameOf(home), away: nameOf(away) }) : null;
+const quiet = !!h && h.items.length === 0 && h.mine.length === 0;
+---
+<BaseLayout title={h ? 'Happening in ' + h.city.name : 'Happening'} description="What’s going on in your city on Opus: listening parties, events, studios and the people making music there." noindex>
+  <ProductNav product="world" current="happening" />
+  <section class="app hp">
+    <div class="hp__wrap">
+      <header class="hp__head">
+        <p class="t-meta app__kicker">Happening{h && <> · {h.city.name}</>}</p>
+        {h ? (
+          <h1 class="hp__title" data-greet={own ? '1' : undefined} data-name={firstName} data-home={nameOf(home) ?? ''} data-away={nameOf(away) ?? ''}>{hello ? (away ? hello.line : 'Hello, ' + firstName + '.') : 'Happening in ' + h.city.name + '.'}</h1>
+        ) : <h1 class="hp__title">What’s happening near you.</h1>}
+        {h ? <p class="hp__sub">{hello ? hello.sub : 'Listening parties, events, studios and the people making music here.'}</p>
+          : <p class="hp__sub">{user ? 'Add your city to your profile and this page opens on it.' : 'Choose a city to see what’s going on there.'}</p>}
+        <nav class="hp__cities" aria-label="Cities">
+          {chips.map((c) => <a href={'/world/happening?city=' + citySlug(c.name)} aria-current={h?.city.id === c.id ? 'page' : undefined}>{c.name}{c.id === home && <small>Home</small>}{c.id === away && <small>Here now</small>}</a>)}
+          {user && !me?.placeId && <a href="/account/profile">Set your home city</a>}
+        </nav>
+      </header>
+
+      {h && (
+        <div class="hp__grid">
+          <div class="hp__main">
+            {h.mine.length > 0 && (
+              <section class="hp__sec">
+                <h2 class="hp__h">For you</h2>
+                <ul class="hp__rows" role="list">{h.mine.map((m) => (
+                  <li><a href={m.href}><span class="hp__t"><b>{m.title}</b><small>{m.when}</small></span><span class="hp__pill">{m.role}</span></a></li>
+                ))}</ul>
+              </section>
+            )}
+            <section class="hp__sec">
+              <h2 class="hp__h">On in {h.city.name}{h.items.length > 0 && <span>{h.items.length}</span>}</h2>
+              {h.items.length > 0 ? (
+                <ul class="hp__rows" role="list">{h.items.map((x) => (
+                  <li><a href={x.href}>
+                    <span class="hp__img" style={x.image ? 'background-image:url(' + x.image + ')' : undefined} aria-hidden="true">{!x.image && x.title.slice(0, 1)}</span>
+                    <span class="hp__t"><b>{x.title}</b><small>{[x.when, x.by].filter(Boolean).join(' · ')}</small></span>
+                    {x.live ? <span class="hp__pill is-live">Live{x.listening ? ' · ' + x.listening + ' listening' : ''}</span> : <span class="hp__pill">{x.tag}</span>}
+                  </a></li>
+                ))}</ul>
+              ) : (
+                <div class="hp__quiet">
+                  <b>Quiet in {h.city.name} right now.</b>
+                  <p>Nothing is scheduled yet. Start something, or step into World and connect with who’s here.</p>
+                  <div class="row">
+                    <a class="btn-app" href="/party/new">Host a listening party</a>
+                    <a class="btn-app btn-app--ghost" href="/events/new">Post an event</a>
+                  </div>
+                </div>
+              )}
+            </section>
+            <p class="hp__world"><a class="btn-app btn-app--ghost" href={'/world/' + h.slug}>Open {h.city.name} in World</a>{!quiet && <a class="link" href="/events">All events</a>}</p>
+          </div>
+
+          <aside class="hp__side">
+            <section class="hp__card">
+              <h2 class="hp__h">Studios nearby</h2>
+              {h.studios.length > 0 ? (
+                <ul class="hp__mini" role="list">{h.studios.map((s) => (
+                  <li><a href={s.href}><span class="hp__img is-sm" style={s.photo ? 'background-image:url(' + s.photo + ')' : undefined} aria-hidden="true">{!s.photo && s.name.slice(0, 1)}</span><span class="hp__t"><b>{s.name}{s.isSample && <i>Sample</i>}</b><small>{s.line || 'Recording studio'}</small></span></a></li>
+                ))}</ul>
+              ) : <p class="hp__none">No studios listed in {h.city.name} yet. <a class="link" href="/business">List yours</a></p>}
+              {h.studios.length > 0 && <p class="hp__more"><a class="link" href="/studios">Find a studio</a></p>}
+            </section>
+            <section class="hp__card">
+              <h2 class="hp__h">{h.anyNew ? 'New on Opus here' : 'People here'}</h2>
+              {h.people.length > 0 ? (
+                <ul class="hp__mini" role="list">{h.people.slice(0, 6).map((p) => (
+                  <li><a href={p.href}><span class="hp__img is-sm is-round" style={p.photo ? 'background-image:url(' + p.photo + ')' : undefined} aria-hidden="true">{!p.photo && p.name.slice(0, 1)}</span><span class="hp__t"><b>{p.name}{p.isNew && <i>New</i>}</b><small>{p.specialty}</small></span></a></li>
+                ))}</ul>
+              ) : <p class="hp__none">No members in {h.city.name} yet. You could be the first.</p>}
+              <p class="hp__more"><a class="link" href={'/world/' + h.slug}>Connect in World</a></p>
+            </section>
+          </aside>
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // The time of day comes from the viewer's own clock, so the greeting is finished here.
+  import { greeting, dayOfYear } from '@/lib/greeting';
+  const el = document.querySelector<HTMLElement>('[data-greet]');
+  if (el) {
+    const now = new Date();
+    el.textContent = greeting({ name: el.dataset.name, hour: now.getHours(), day: dayOfYear(now), home: el.dataset.home || null, away: el.dataset.away || null }).line;
+  }
+</script>
+
+<style>
+  .hp__wrap { max-width: 1180px; margin: 0 auto; }
+  .hp__title { margin: 6px 0 0; font-size: clamp(2.4rem, 1.4rem + 3.6vw, 4.6rem); font-weight: 300; letter-spacing: -0.045em; line-height: 1; text-wrap: balance; }
+  .hp__sub { margin: 14px 0 0; font-size: clamp(16px, 1.3vw, 19px); color: var(--text-2); }
+  .hp__cities { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+  .hp__cities a { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13.5px; text-decoration: none; }
+  .hp__cities a:hover { background: var(--surface-hover); }
+  .hp__cities a[aria-current] { background: var(--text); color: var(--bg); box-shadow: none; }
+  .hp__cities small { font-size: 11px; opacity: .65; }
+  .hp__grid { display: grid; gap: 40px; margin-top: clamp(32px, 5vw, 56px); }
+  @media (min-width: 960px) { .hp__grid { grid-template-columns: minmax(0, 1fr) 340px; gap: clamp(40px, 5vw, 72px); align-items: start; } }
+  .hp__main { display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+  .hp__side { display: flex; flex-direction: column; gap: 14px; }
+  .hp__h { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; font-size: 20px; font-weight: 500; letter-spacing: -0.03em; }
+  .hp__h span { font-size: 14px; font-weight: 400; color: var(--text-3); }
+  .hp__card { padding: 22px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .hp__card .hp__h { font-size: 16px; }
+  .hp__rows { border-top: 1px solid var(--line); }
+  .hp__rows a, .hp__mini a { display: flex; align-items: center; gap: 16px; color: inherit; text-decoration: none; }
+  .hp__rows a { padding: 14px 4px; border-bottom: 1px solid var(--line); }
+  .hp__rows a:hover { background: var(--surface-hover); }
+  .hp__mini { display: grid; gap: 12px; }
+  .hp__mini a { gap: 12px; }
+  .hp__mini a:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  .hp__img { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 10px; background: var(--surface-sunken) center / cover no-repeat; color: var(--text-3); font-weight: 500; }
+  .hp__img.is-sm { width: 42px; height: 42px; border-radius: 8px; font-size: 14px; }
+  .hp__img.is-round { border-radius: 50%; }
+  .hp__t { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .hp__t b { font-size: 16px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.25; }
+  .hp__mini .hp__t b { font-size: 14px; }
+  .hp__t b i { margin-left: 8px; padding: 1px 7px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); font-style: normal; font-size: 10.5px; font-weight: 400; color: var(--text-3); vertical-align: middle; }
+  .hp__t small { font-size: 13px; color: var(--text-3); line-height: 1.4; }
+  .hp__pill { flex: none; display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); font-size: 12px; color: var(--text-2); white-space: nowrap; }
+  .hp__pill.is-live { box-shadow: none; background: var(--text); color: var(--bg); }
+  .hp__quiet { padding: clamp(24px, 4vw, 40px); border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); }
+  .hp__quiet b { display: block; font-size: clamp(1.4rem, 1rem + 1.2vw, 2rem); font-weight: 300; letter-spacing: -0.035em; }
+  .hp__quiet p { margin: 8px 0 20px; max-width: 46ch; color: var(--text-2); line-height: 1.5; }
+  .hp__world { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 0; }
+  .hp__none { margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.5; }
+  .hp__more { margin: 14px 0 0; font-size: 13px; }
+  @media (max-width: 600px) { .hp__rows .hp__pill:not(.is-live) { display: none; } .hp__img { width: 52px; height: 52px; } }
+</style>

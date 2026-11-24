@@ -1,0 +1,22 @@
+---
+/** A member's social and streaming links as one quiet row of icons. Used on the profile and the link-in-bio page. */
+import { socialLinks } from '@/data/socials';
+interface Props { links: Record<string, string | undefined>; size?: number }
+const { links, size = 20 } = Astro.props;
+const items = socialLinks(links);
+---
+{items.length > 0 && (
+  <ul class="soc" role="list" aria-label="Links">
+    {items.map((s) => (
+      <li><a href={s.url} target="_blank" rel="noopener nofollow ugc me" title={s.label} aria-label={s.label}>
+        <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={s.icon} />{s.fill && <path d={s.fill} fill="currentColor" stroke="none" />}</svg>
+      </a></li>
+    ))}
+  </ul>
+)}
+
+<style>
+  .soc { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .soc a { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--text-2); box-shadow: inset 0 0 0 1px var(--line); transition: color .15s, box-shadow .15s, background .15s; }
+  .soc a:hover { color: var(--text); background: var(--surface-hover); box-shadow: inset 0 0 0 1px var(--pf-ink, var(--line-strong)); }
+</style>
