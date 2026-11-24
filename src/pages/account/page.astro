@@ -1,5 +1,6 @@
 ---
 /** Customize your page: tagline, featured work, link buttons, section order. The same settings drive your profile and your link-in-bio page. */
+import { SOCIALS } from '@/data/socials';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getMyProfile } from '@/server/profiles';
 import { profileReleases } from '@/server/releases';
@@ -23,6 +24,7 @@ const groupHandle = Astro.url.searchParams.get('group');
 const clan = groupHandle ? await getClanByHandle(env.DB, groupHandle) : null;
 if (groupHandle && (!clan || !(await isClanAdmin(env.DB, clan, user.id)))) return Astro.redirect('/clans/mine');
 const p = clan ? { id: clan.id, handle: clan.handle } : await getMyProfile(env.DB, user.id);
+const mySocials: Record<string, string | undefined> = !clan && p && 'links' in p ? (p.links as Record<string, string | undefined>) : {};
 if (!p) return Astro.redirect('/start');
 const showcase = !clan && canShowcase((p as { verification?: string }).verification);
 const sections = clan ? GROUP_SECTIONS : PAGE_SECTIONS;
@@ -123,8 +125,14 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId);
           </fieldset>
         )}
 
-        <fieldset class="pg__sec">
-          <legend>Link buttons <small>Up to 8. They appear on your page and your link.</small></legend>
+        <fieldset class="pg__sec" id="links">
+          <legend>Links <small>{clan ? 'Up to 8 buttons on your page.' : 'Where your work lives, plus up to 8 buttons of your own. They appear on your page and your link.'}</small></legend>
+          {!clan && (
+            <div class="pg__socials" data-socials>
+              {SOCIALS.map((x) => <label class="field"><span>{x.label}</span><input class="input" data-social={x.key} value={mySocials[x.key] ?? ''} placeholder={x.placeholder} inputmode="url" autocapitalize="off" spellcheck="false" /></label>)}
+            </div>
+          )}
+          {!clan && <p class="pg__sub">Your own buttons</p>}
           <ul class="pg__links" data-links role="list"></ul>
           <button type="button" class="btn-app btn-app--ghost" data-add-link>Add a link</button>
         </fieldset>
@@ -159,6 +167,10 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId);
   .pg__ess-t b { font-weight: 500; }
   .pg__ess-t small { color: var(--text-3); }
   .pg__links, .pg__order { display: grid; gap: 8px; margin-bottom: 12px; }
+  .pg__socials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; margin-bottom: 18px; }
+  #links { scroll-margin-top: 84px; }
+  .pg__sub { margin: 0 0 8px; font-size: 13px; color: var(--text-3); }
+  @media (max-width: 600px) { .pg__socials { grid-template-columns: 1fr; } }
   .pg__order { margin: 0; }
   :global(.pg__links li) { display: grid; grid-template-columns: 1fr 1.6fr auto; gap: 8px; }
   :global(.pg__order li) { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
@@ -260,6 +272,7 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId);
       essentials: [...form.querySelectorAll<HTMLElement>('[data-ess] li')].filter((li) => (li.querySelector('input[type=checkbox]') as HTMLInputElement).checked).map((li) => li.dataset.id),
       notes: Object.fromEntries([...form.querySelectorAll<HTMLElement>('[data-ess] li')].map((li) => [li.dataset.id, (li.querySelector('[data-note]') as HTMLInputElement).value]).filter(([, v]) => v)),
       links: [...links.children].map((li) => ({ label: (li.querySelector('[data-l]') as HTMLInputElement).value, url: (li.querySelector('[data-u]') as HTMLInputElement).value })).filter((l) => l.label || l.url),
+      ...(form.querySelector('[data-socials]') ? { socials: Object.fromEntries([...form.querySelectorAll<HTMLInputElement>('[data-social]')].map((i) => [i.dataset.social, i.value.trim()])) } : {}),
       order: [...order.children].map((li) => (li as HTMLElement).dataset.k),
       hide: [...order.children].filter((li) => !(li.querySelector('input') as HTMLInputElement).checked).map((li) => (li as HTMLElement).dataset.k),
     };

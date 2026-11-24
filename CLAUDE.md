@@ -63,6 +63,16 @@ Use design tokens (`tokens.css`, `--m-*` motion tokens) and the shared product s
 - Signatures (was "Essentials"; Bogo's name, 2026-11-24): the showcase of up to six works with the member's line on each, for Verified members only, no works minimum. Everyone else leads with one Featured work. Name and gate live in `src/lib/showcase.ts`; storage keys still say `essentials`, and `/api/page` keeps an unverified member's saved picks. Each work shows "Made with N people" (`madeWith` in `src/server/releases.ts`, `MadeWith.astro`): other members with a confirmed credit, nothing when there are none. No scores or ratings.
 - Levels, achievements, titles: `src/lib/progress.ts` (rules, names) + `src/server/progress.ts` (counts from existing tables, nothing stored). Real activity only; connections are capped so they can't carry a level. Names are proposed copy until Bogo confirms.
 
+## Joining, email and real people (Bogo 2026-11-24)
+- Opus is a directory of real people: **nobody is public, counted or able to connect until their email is confirmed.** One account per email. Gate: `EMAIL_CONFIRM_REQUIRED` in `src/lib/features.ts` (leave `true`). Public lists and counts read `status = 'published'`, and publishing needs a confirmed email.
+- Sign-up (`/sign-up`) is email + password, then straight away the 6-digit code box (`src/components/auth/ConfirmCode.astro`, `/api/auth/confirm-code`, `sendConfirmCode` in `src/server/auth.ts`). The field is `autocomplete="one-time-code"` so phones offer the code from Mail. "I'll confirm later" stays a quiet text link: they can build a profile but don't appear in World.
+- Setup (`/start`) is one screen: photo, name, role, city. Confirmed members go live on save; unconfirmed ones get the code box, then one tap. Adding a first work is optional, offered on the "Your page is live" screen.
+- No email service is connected yet (Resend is a hard requirement before launch). Until then no code can arrive in production; previews show the code on screen ("Preview only"), never production. `EMAIL_SENDING` in `features.ts` only picks the sign-in form's default (password while false). Sign-in remembers the last method per device (`opus.signin.method`).
+- Bot check: Cloudflare Turnstile on sign-up, on only when both `TURNSTILE_SITE_KEY` (variable) and `TURNSTILE_SECRET_KEY` (secret) are set (`src/server/turnstile.ts`).
+- "Show me in World" (`profiles.in_world`, migration 0017): off keeps the page and link but leaves World's directory, map and counts. The code checks the column exists (`src/server/schema.ts`), so it is safe before the migration is applied.
+- A member changes their artist name in Edit profile; never a second account.
+- Social links and link buttons are edited in one place, Customize page (`/account/page#links`); a profile save that sends no `links` keeps them.
+
 ## Design rules
 - "Apple-inspired presentation. Opus-original interaction." Cinematic technology meets editorial minimalism.
 - Premium = **consistency**: World must look and behave identically from every entry point and stay sharp when zoomed. Differentiate from Apple (e.g. Opus OC location marker, not a blue dot).

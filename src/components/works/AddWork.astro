@@ -217,7 +217,7 @@ const today = new Date().toISOString().slice(0, 10);
             showResults(d.results);
             findNote.textContent = d.results.length ? 'Pick your song.' : 'No match. Paste a link instead, or fill it in below.';
           }
-        } catch (err) { if (mine === seq) findNote.textContent = (err as Error).message; }
+        } catch { if (mine === seq) { results.hidden = true; findNote.textContent = 'Search isn’t available right now. Fill in the title and artwork below instead; it takes a minute.'; } }
       }, 350);
     });
     findIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });

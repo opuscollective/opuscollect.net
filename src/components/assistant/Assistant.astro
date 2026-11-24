@@ -155,8 +155,8 @@ import OpusMark from '../ui/OpusMark.astro';
   .oa-launch:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
   /* In World the map is the page: the launcher shrinks to the mark alone. */
   @media (min-width: 761px) {
-    :global(body:has([data-world])) .oa-launch { width: 34px; padding: 0; justify-content: center; }
-    :global(body:has([data-world])) .oa-launch__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    :global(body:is(:has([data-world]), :has(.pf))) .oa-launch { width: 34px; padding: 0; justify-content: center; }
+    :global(body:is(:has([data-world]), :has(.pf))) .oa-launch__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   }
   :global(.oa-open) .oa-launch { opacity: 0; pointer-events: none; transform: translateY(6px); }
   /* Step aside where something else owns the bottom of the screen. */

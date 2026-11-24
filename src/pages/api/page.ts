@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { GROUP_SECTIONS, getPageConfig, savePageConfig } from '@/server/page-config';
 import { getClanByHandle, isClanAdmin } from '@/server/clans';
-import { getMyProfile } from '@/server/profiles';
+import { getMyProfile, saveLinks } from '@/server/profiles';
 import { canShowcase } from '@/lib/showcase';
 import { limit } from '@/server/ratelimit';
 import { HttpError, fail, json, readJson } from '@/server/util';
@@ -41,6 +41,8 @@ export const POST: APIRoute = async ({ locals, request, url }) => {
     // The full showcase is for Verified members. Picks and lines saved earlier are kept, never dropped,
     // so they return when the member is verified.
     if (!canShowcase(p.verification)) { const cur = await getPageConfig(env.WAITLIST, p.id); body.essentials = cur.essentials; body.notes = cur.notes; }
-    return json({ page: await savePageConfig(env.WAITLIST, p.id, body) });
+    // Social links live on the profile itself; they are edited here so links have one home.
+    const socials = body.socials && typeof body.socials === 'object' ? await saveLinks(env.DB, p.id, body.socials) : undefined;
+    return json({ page: await savePageConfig(env.WAITLIST, p.id, body), socials });
   } catch (e) { return fail(e); }
 };

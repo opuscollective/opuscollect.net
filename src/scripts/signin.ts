@@ -4,7 +4,7 @@
  * the Worker checks the code (/api/auth/login-verify).
  */
 import '@/styles/signin.css';
-import { EMAIL_CONFIRM_REQUIRED } from '@/lib/features';
+import { EMAIL_SENDING } from '@/lib/features';
 
 /** How this person signed in last time on this device, so the form opens on it. Never the email or anything secret. */
 const METHOD_KEY = 'opus.signin.method';
@@ -12,7 +12,7 @@ type Method = 'code' | 'password';
 const savedMethod = (): Method => {
   try { const m = localStorage.getItem(METHOD_KEY); if (m === 'code' || m === 'password') return m; } catch { /* default below */ }
   // Nothing remembered: emailed codes when email works, the password form while it doesn't (see features.ts).
-  return EMAIL_CONFIRM_REQUIRED ? 'code' : 'password';
+  return EMAIL_SENDING ? 'code' : 'password';
 };
 const remember = (m: Method) => { try { localStorage.setItem(METHOD_KEY, m); } catch { /* fine */ } };
 

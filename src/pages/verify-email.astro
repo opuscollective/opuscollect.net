@@ -16,6 +16,7 @@ if (ok && me) {
   const [studio, profile] = await Promise.all([getMyStudio(env.DB, me.id).catch(() => null), getMyProfile(env.DB, me.id).catch(() => null)]);
   if (studio && !profile) dest = { href: '/business', label: 'Continue to your studio' };
   else if (!profile) dest = { href: '/start', label: 'Set up your profile' };
+  else if (profile.status !== 'published') dest = { href: '/start', label: 'Go live in World' };
 }
 ---
 <BaseLayout title={ok ? 'Email confirmed' : 'Confirm your email'} noindex>

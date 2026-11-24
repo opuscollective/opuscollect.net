@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { readInvite } from '@/server/clans';
+import { turnstileOn } from '@/server/turnstile';
+import ConfirmCode from '@/components/auth/ConfirmCode.astro';
 import '@/styles/app.css';
 export const prerender = false;
 const raw = Astro.url.searchParams.get('next') ?? '';
@@ -16,6 +18,9 @@ const joining = !!inviteClan && Astro.url.searchParams.get('join') === '1';
 const after = next || (goal ? GOALS[goal] : '/start');
 if (Astro.locals.user) return Astro.redirect(inviteClan ? `/clans/invite/${inviteToken}` : next || (goal ? GOALS[goal] : '/account'));
 const choosing = !next && !goal && !joining;
+// Bot check (Cloudflare Turnstile): shown only when both keys are set on the Worker. See src/server/turnstile.ts.
+const env = Astro.locals.runtime.env;
+const turnstileKey = turnstileOn(env) ? env.TURNSTILE_SITE_KEY! : '';
 const signInHref = joining ? `/sign-in?invite=${inviteToken}&join=1` : after && after !== '/start' ? `/sign-in?next=${encodeURIComponent(after)}` : '/sign-in';
 const OPTIONS = [
   { key: 'individual', title: 'Individual', line: 'Artists and professionals', href: '/sign-up?setup=individual' },
@@ -53,9 +58,10 @@ const OPTIONS = [
         </>
       ) : (
         <>
+          <div data-su-account>
           <p class="t-meta app__kicker"><a class="link" href={joining ? `/clans/invite/${inviteToken}` : '/sign-up'}>← {joining ? 'Back' : 'Change'}</a></p>
           <h1 class="su__title">Create your account.</h1>
-          <p class="su__lead">{joining ? `You’ll join ${inviteClan!.name} as soon as your account is ready.` : goal === 'group' ? 'One account, one email. Next, you’ll set up your group.' : 'An email and a password. Next: your photo, your name, what you do and where.'}</p>
+          <p class="su__lead">{joining ? `You’ll join ${inviteClan!.name} as soon as your account is ready.` : goal === 'group' ? 'One account, one email. Next, you’ll set up your group.' : 'An email and a password. We’ll email you a code, then it’s your photo, your name, what you do and where.'}</p>
 
           <form class="form" data-signup data-next={after} data-invite={joining ? inviteToken : ''} novalidate>
             <label class="field"><span>Email</span>
@@ -68,23 +74,47 @@ const OPTIONS = [
             <label class="field check"><input type="checkbox" name="agree" required />
               <span>I agree to the <a class="link" href="/legal#terms" target="_blank">Terms</a> and <a class="link" href="/legal#privacy" target="_blank">Privacy Policy</a>.</span>
             </label>
+            {turnstileKey && <div class="cf-turnstile" data-sitekey={turnstileKey} data-theme="auto" data-size="flexible" data-action="signup"></div>}
             <div data-status class="form-status"></div>
             <button class="btn-app btn-app--block" type="submit">Create account</button>
+            <p class="su__one">One account per person. You can change your artist name any time without making a new one.</p>
           </form>
           <p class="app__alt">Already a member? <a href={signInHref}>Sign in</a></p>
+          </div>
+          <!-- Step two, in the same breath: the code we just emailed. Confirmed here, live in World minutes later. -->
+          <div class="su__code" data-su-code hidden>
+            <h1 class="su__title" tabindex="-1" data-su-code-title>Enter your code.</h1>
+            <p class="su__lead">We sent a 6-digit code to <b data-su-email></b>. It confirms you’re a real person, and it’s the only thing between you and World.</p>
+            <ConfirmCode />
+            <p class="su__later"><a href={after} data-su-later>I’ll confirm later</a><span>. You can set up your profile, but you won’t appear in World until you do.</span></p>
+          </div>
         </>
       )}
     </div>
   </section>
+  {turnstileKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 </BaseLayout>
 <script>
   import { bindForm, values } from '@/scripts/form';
   const form = document.querySelector<HTMLFormElement>('[data-signup]');
   if (form) bindForm(form, {
     url: '/api/auth/register',
-    body: (f) => ({ ...values(f), ...(form.dataset.invite ? { invite: form.dataset.invite, join: true } : {}) }),
+    body: (f) => ({ ...values(f), turnstile: new FormData(f).get('cf-turnstile-response') ?? undefined, ...(form.dataset.invite ? { invite: form.dataset.invite, join: true } : {}) }),
     busyLabel: 'Creating account…',
-    onSuccess: (d) => { try { localStorage.setItem('opus.signin.method', 'password'); } catch { /* fine */ } location.href = (d.joined as { href?: string } | null)?.href || (form.dataset.invite ? `/clans/invite/${form.dataset.invite}` : form.dataset.next || '/start'); },
+    // A failed attempt uses up the bot check; ask for a fresh one.
+    onError: () => { (window as unknown as { turnstile?: { reset(): void } }).turnstile?.reset(); },
+    onSuccess: (d) => {
+      try { localStorage.setItem('opus.signin.method', 'password'); } catch { /* fine */ }
+      const next = (d.joined as { href?: string } | null)?.href || (form.dataset.invite ? `/clans/invite/${form.dataset.invite}` : form.dataset.next || '/start');
+      // The account exists and the code is on its way: show the code box right here.
+      const box = document.querySelector<HTMLElement>('[data-su-code]')!;
+      document.querySelector<HTMLElement>('[data-su-account]')!.hidden = true;
+      box.hidden = false;
+      box.querySelector('[data-su-email]')!.textContent = String((form.elements.namedItem('email') as HTMLInputElement).value).trim();
+      box.querySelector<HTMLAnchorElement>('[data-su-later]')!.href = next;
+      box.querySelector('[data-cc]')!.dispatchEvent(new CustomEvent('opus:cc', { detail: { emailStatus: d.emailStatus, devCode: d.devCode, next } }));
+      scrollTo({ top: 0 });
+    },
   });
 </script>
 <style>
@@ -108,6 +138,13 @@ const OPTIONS = [
   [data-signup] .check { flex-direction: row; align-items: center; gap: 12px; font-size: 13.5px; }
   [data-signup] .check > span { text-transform: none; letter-spacing: 0; font-size: 13.5px; color: var(--text-2); }
   [data-signup] .check input { margin: 0; }
+  .su__code .su__lead { margin-bottom: 28px; }
+  .su__code .su__lead b { font-weight: 500; color: var(--text); word-break: break-all; }
+  /* Doing it later is possible, and quiet on purpose. */
+  .su__later { margin: 26px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-3); text-align: center; }
+  .su__later a { color: var(--text-3); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+  .su__later a:hover { color: var(--text); }
+  .su__one { margin: -6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-3); text-align: center; }
   [data-signup] .btn-app--block { min-height: 54px; border-radius: 999px; font-weight: 400; font-size: 16px; }
   .su { max-width: 560px; }
   .app__wrap.su:has(.su__opts) { max-width: 980px; text-align: center; }

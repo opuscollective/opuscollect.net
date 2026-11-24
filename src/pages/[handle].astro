@@ -76,7 +76,7 @@ const lead = essentials.length ? essentials : featuredWork ? [featuredWork] : re
 const noteOf = (id: string) => page.notes[id] ?? '';
 const byYear = (() => {
   const m = new Map<string, typeof record>();
-  for (const x of record) { const y = x.releaseDate?.slice(0, 4) ?? (x.released ? 'Earlier' : 'Coming'); m.set(y, [...(m.get(y) ?? []), x]); }
+  for (const x of record) { const y = x.releaseDate?.slice(0, 4) ?? (x.released ? 'Earlier' : 'In the works'); m.set(y, [...(m.get(y) ?? []), x]); }
   return [...m.entries()];
 })();
 const essentialIds = new Set(essentials.map((x) => x.id));
@@ -110,7 +110,7 @@ const rail = show('journey');
 // Few works read best as a short list; a bigger catalogue becomes a shelf of covers by year.
 const asRows = record.length <= 8;
 const essCols = Math.min(lead.length, rail ? 3 : 4);
-const yearOf = (x: (typeof record)[number]) => x.releaseDate?.slice(0, 4) ?? (x.released ? '' : 'Coming');
+const yearOf = (x: (typeof record)[number]) => x.releaseDate?.slice(0, 4) ?? '';
 const ord = (k: string) => page.order.indexOf(k as never);
 const hasAbout = !!(roles.length > 1 || p.bio || p.achievements.length || p.collaborations.length || p.portfolio.length);
 const releaseLine = (x: (typeof record)[number]) => [x.artist && (!x.own || !x.roles.includes('Primary Artist')) ? x.artist : null, x.own && x.roles.length === 1 && x.roles[0] === 'Primary Artist' ? null : x.roles.length ? x.roles.join(', ') : null, RELEASE_KINDS[x.kind], x.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ');
@@ -319,7 +319,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                       <a href={`/r/${x.id}`}>
                         <span class="mp__ess-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
                         <span class="mp__ess-t">
-                          <small>{RELEASE_KINDS[x.kind]} · {x.released ? (x.releaseDate?.slice(0, 4) ?? "Out now") : "Coming"}</small>
+                          <small>{[RELEASE_KINDS[x.kind], x.released ? (x.releaseDate?.slice(0, 4) ?? "Out now") : x.releaseDate ? "Coming" : ""].filter(Boolean).join(" · ")}</small>
                           <b>{x.title}</b>
                           {byLine(x) && <em>{byLine(x)}</em>}
                           <span class="mp__ess-mw"><MadeWith with={made.get(x.id)} /></span>

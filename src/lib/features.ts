@@ -5,13 +5,16 @@
 export const HIRE_ENABLED = false;
 
 /**
- * Email confirmation. OFF for now: no email service is connected yet (Resend isn't set up), so a confirmation
- * link can never arrive and nobody could publish or connect. While this is false, members can publish, appear
- * in World and connect right away; confirming is still asked for, as "confirm your email to secure your account",
- * with a resend button on the account page. Sign-in also opens on the password form, because emailed codes
- * can't arrive either.
- * Flip to true once email sends for real: every gate (publish, connect, events, groups, parties, chat) and the
- * emailed-code sign-in default come back exactly as before. Nothing else needs to change.
- * (Coordinator's call on 2026-11-24, awaiting Bogo's yes.)
+ * Email confirmation is REQUIRED (Bogo, 2026-11-24): Opus is a directory of real people, so nobody is public,
+ * counted, or able to connect, message, join groups or host until their email is confirmed. A member can fill in
+ * their whole profile first; confirming is the last step. One account per email. Leave this true.
+ * (false lets unconfirmed members publish; it exists only so the gate lives in one place.)
  */
-export const EMAIL_CONFIRM_REQUIRED = false;
+export const EMAIL_CONFIRM_REQUIRED = true;
+
+/**
+ * Whether Opus can send email yet. False until Resend (or Cloudflare Email) is connected. It only chooses what
+ * the sign-in form opens on for someone with no remembered method: the password form while emailed codes can't
+ * arrive, emailed codes once they can. Flip to true when email sends for real.
+ */
+export const EMAIL_SENDING = false;

@@ -7,7 +7,8 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SPECIALTIES } from '@/data/specialties';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
-import { getMyProfile, mediaUrl } from '@/server/profiles';
+import { getMyProfile, mediaUrl, missingForPublish } from '@/server/profiles';
+import ConfirmCode from '@/components/auth/ConfirmCode.astro';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -16,13 +17,15 @@ if (!user) return Astro.redirect('/sign-up?next=/start');
 const db = Astro.locals.runtime.env.DB;
 const profile = await getMyProfile(db, user.id);
 const live = profile?.status === 'published';
-// A draft that already exists is finished in the full editor, which keeps everything else the member has added.
-if (profile && !live) return Astro.redirect('/account/profile');
-const step = live ? 2 : 1;
-// When email confirmation is required and still pending, setup saves a draft and says so.
+// Confirming your email is the last step before going public: real people only, one account per email.
 const canPublish = user.emailVerified;
+// A saved draft that still needs something other than the email (a photo, say) is finished in the full editor.
+const stillMissing = profile && !live ? missingForPublish(profile, true) : [];
+if (profile && !live && stillMissing.length) return Astro.redirect('/account/profile');
+// 1 You (the form) · 2 Confirm (check your email, or one tap to go live once confirmed) · 3 Live
+const step = live ? 3 : profile ? 2 : 1;
 
-const STEPS = ['You', 'Live'];
+const STEPS = ['You', 'Confirm', 'Live'];
 ---
 <BaseLayout title="Set up Opus" noindex assistant={false} messages={false}>
   <section class="app app--center">
@@ -34,7 +37,7 @@ const STEPS = ['You', 'Live'];
       {step === 1 && (
         <>
           <h1 class="app__title">Who are you on Opus?</h1>
-          <p class="app__lead">Four things and you’re in World. You can add the rest later.</p>
+          <p class="app__lead">{canPublish ? 'Four things and you’re in World. You can add the rest later.' : 'Four things, then confirm your email and you’re in World. You can add the rest later.'}</p>
           <form class="form" data-basics data-has-photo={profile?.photoKey ? '1' : ''} data-can-publish={canPublish ? '1' : ''} novalidate>
             <div class="st__photo">
               <div class="st__face" data-photo-preview style={profile?.photoKey ? `background-image:url(${mediaUrl(profile.photoKey)})` : ''}>
@@ -56,7 +59,6 @@ const STEPS = ['You', 'Live'];
               <PlaceSelect selected={profile?.placeId ?? null} required />
               <small>Type your city or ZIP code. Only your city is ever shown, never an address.</small>
             </label>
-            {!canPublish && <p class="notice">We sent a confirmation link to <b>{user.email}</b>. Your page goes live once your email is confirmed.</p>}
             <div data-status class="form-status"></div>
             <button class="btn-app btn-app--block" type="submit" data-go>Go live in World</button>
             <p class="st__fine" data-fine>Your page goes public when you press this. You can unpublish any time.</p>
@@ -64,7 +66,28 @@ const STEPS = ['You', 'Live'];
         </>
       )}
 
-      {step === 2 && profile && (
+      {step === 2 && profile && !canPublish && (
+        <div class="st__confirm" data-confirm>
+          <h1 class="app__title">Enter your code.</h1>
+          <p class="app__lead">Your profile is saved. Confirm <b>{user.email}</b> and you can go live in World. Press “Send a new code” and type the 6 digits we email you.</p>
+          <ConfirmCode next="/start" />
+          <p class="st__fine">Opus is a directory of real people, so every member confirms an email before they appear. <a class="link" href="/account/profile">Keep building my profile</a></p>
+        </div>
+      )}
+
+      {step === 2 && profile && canPublish && (
+        <div class="st__confirm">
+          <h1 class="app__title">Email confirmed.</h1>
+          <p class="app__lead">You’re ready. One tap and <b>{profile.displayName}</b> is live in World.</p>
+          <div class="st__next">
+            <button class="btn-app btn-app--block" type="button" data-publish>Go live in World</button>
+            <a class="btn-app btn-app--ghost btn-app--block" href="/account/profile">Edit my profile first</a>
+          </div>
+          <p class="st__fine" data-publish-status role="alert"></p>
+        </div>
+      )}
+
+      {step === 3 && profile && (
         <>
           <div class="st__live" data-live data-url={`https://opuscollect.net/${profile.handle}`}>
             <h1 class="st__live-t">Your page is live.</h1>
@@ -101,7 +124,7 @@ const STEPS = ['You', 'Live'];
     // Without a photo the profile can be saved but not shown in World, and the button says so.
     const canPublish = form.dataset.canPublish === '1';
     const label = () => {
-      if (!canPublish) { go.textContent = 'Save my profile'; fine.textContent = 'Saved as a draft only you can see until your email is confirmed.'; return; }
+      if (!canPublish) { go.textContent = 'Continue'; fine.textContent = 'Saved as a draft. You’ll appear in World once you confirm your email.'; return; }
       go.textContent = hasPhoto() ? 'Go live in World' : 'Save for now';
       fine.textContent = hasPhoto() ? 'Your page goes public when you press this. You can unpublish any time.' : 'Add a photo to go live in World. Without one, this saves as a draft only you can see.';
     };
@@ -142,7 +165,7 @@ const STEPS = ['You', 'Live'];
           form.dataset.hasPhoto = '1'; photo = null;
         }
         if (hasPhoto() && canPublish) { await save(true); location.href = '/start'; }
-        else location.href = canPublish ? '/account/profile' : '/account/profile?welcome';
+        else location.href = canPublish ? '/account/profile' : '/start';
       } catch (err) {
         const field = (err as { field?: string }).field;
         const host = field ? form.querySelector<HTMLElement>(`[name="${field}"]`)?.closest('.field') : null;
@@ -155,6 +178,16 @@ const STEPS = ['You', 'Live'];
       }
     });
   }
+
+  // Confirmed: publish the saved profile as it is.
+  const pub = document.querySelector<HTMLButtonElement>('[data-publish]');
+  pub?.addEventListener('click', async () => {
+    pub.disabled = true;
+    const r = await fetch('/api/profile', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ publishOnly: true }) });
+    if (r.ok) { location.href = '/start'; return; }
+    document.querySelector<HTMLElement>('[data-publish-status]')!.textContent = ((await r.json().catch(() => ({}))) as { error?: string }).error ?? 'Something went wrong. Please try again.';
+    pub.disabled = false;
+  });
 
   // "Your page is live": copy and share the public link.
   const live = document.querySelector<HTMLElement>('[data-live]');
@@ -187,6 +220,8 @@ const STEPS = ['You', 'Live'];
   .st__file { position: relative; overflow: hidden; }
   .st__file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
   .st__file:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .st__why { margin: 14px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-3); }
+  .st__fine :global(.link) { color: var(--text); }
   .st__fine { margin: 14px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-3); text-align: center; }
   .st__live { position: relative; isolation: isolate; overflow: hidden; padding: clamp(24px, 5vw, 36px); border-radius: 22px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
   .st__live::before { content: ''; position: absolute; z-index: -1; inset: -40% -10% auto 30%; height: 240px; filter: blur(40px); background: radial-gradient(50% 60% at 50% 40%, rgba(154,174,255,.26), transparent 70%); pointer-events: none; }

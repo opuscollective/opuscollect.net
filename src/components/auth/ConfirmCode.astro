@@ -1,0 +1,72 @@
+---
+/**
+ * The 6-digit email code box, used right after sign-up and anywhere a member still has to confirm.
+ * The field is marked as a one-time code so phones offer the code straight from Mail; pasting fills it and
+ * six digits submit by themselves. The Worker checks the code (/api/auth/confirm-code); nothing here is trusted.
+ * `next`: where to go once confirmed (default: reload). The host page can hand over what sign-up returned with
+ *   el.dispatchEvent(new CustomEvent('opus:cc', { detail: { emailStatus, devCode, next } })).
+ */
+interface Props { next?: string }
+const { next = '' } = Astro.props;
+---
+<form class="cc" data-cc data-next={next} novalidate>
+  <label class="field"><span>Code</span>
+    <input class="input cc__code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" placeholder="000000" aria-describedby="cc-msg" required />
+  </label>
+  <p class="cc__msg" id="cc-msg" data-cc-msg role="status"></p>
+  <button class="btn-app btn-app--block" type="submit">Confirm</button>
+  <p class="cc__alt"><button type="button" class="cc__link" data-cc-resend>Send a new code</button></p>
+</form>
+<script>
+  type Sent = { emailStatus?: string; devCode?: string; next?: string; error?: string };
+  document.querySelectorAll<HTMLFormElement>('[data-cc]').forEach((form) => {
+    const code = form.elements.namedItem('code') as HTMLInputElement;
+    const msg = form.querySelector<HTMLElement>('[data-cc-msg]')!;
+    const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    const resend = form.querySelector<HTMLButtonElement>('[data-cc-resend]')!;
+    const say = (t: string, bad = false) => { msg.textContent = t; msg.classList.toggle('is-bad', bad); };
+    // What happened to the email: sent, or (previews with no email service) the code itself. Production never returns a code.
+    const sent = (d: Sent) => {
+      if (d.next) form.dataset.next = d.next;
+      if (d.devCode) say(`Preview only: email isn’t set up here yet. Your code is ${d.devCode}.`);
+      else if (d.emailStatus === 'unconfigured') say('Email isn’t sending yet on our side, so no code can arrive right now. You can finish this later.', true);
+      else if (d.emailStatus) say('Sent. It can take a few seconds to arrive.');
+    };
+    form.addEventListener('opus:cc', (e) => { sent((e as CustomEvent<Sent>).detail); code.focus(); });
+    let busy = false;
+    const confirm = async () => {
+      if (busy) return; busy = true; btn.disabled = true; say('');
+      try {
+        const r = await fetch('/api/auth/confirm-code', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: code.value }) });
+        const d = (await r.json().catch(() => ({}))) as Sent;
+        if (!r.ok) { say(d.error ?? 'That code didn’t work. Check it or send a new one.', true); code.select(); return; }
+        if (form.dataset.next) location.href = form.dataset.next; else location.reload();
+      } catch { say('We couldn’t reach Opus. Check your connection and try again.', true); }
+      finally { busy = false; btn.disabled = false; }
+    };
+    form.addEventListener('submit', (e) => { e.preventDefault(); void confirm(); });
+    code.addEventListener('input', () => { code.value = code.value.replace(/\D/g, '').slice(0, 6); if (code.value.length === 6) void confirm(); });
+    resend.addEventListener('click', async () => {
+      resend.disabled = true; say('Sending…');
+      const r = await fetch('/api/auth/resend-verification', { method: 'POST', credentials: 'same-origin' });
+      const d = (await r.json().catch(() => ({}))) as Sent;
+      if (!r.ok) say(d.error ?? 'Couldn’t send. Try again in a moment.', true);
+      else if (d.emailStatus === 'already') location.reload();
+      else { sent(d); code.value = ''; code.focus(); }
+      resend.disabled = false;
+    });
+  });
+</script>
+<style is:global>
+  .cc { display: flex; flex-direction: column; gap: 14px; }
+  .cc .cc__code { font-size: 28px; font-weight: 300; letter-spacing: 0.32em; text-align: center; font-variant-numeric: tabular-nums; min-height: 60px; padding-left: 0.32em; }
+  .cc .cc__code::placeholder { color: var(--line-strong); }
+  .cc__msg { margin: 0; min-height: 1.4em; font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
+  .cc__msg.is-bad { color: var(--danger); }
+  .cc__msg:empty { display: none; }
+  .cc__alt { margin: 0; text-align: center; font-size: 13.5px; }
+  .cc__link { border: 0; background: none; padding: 8px 6px; font: inherit; color: var(--text-2); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; cursor: pointer; }
+  .cc__link:hover { color: var(--text); }
+  .cc__link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .cc__link:disabled { opacity: 0.6; cursor: wait; }
+</style>

@@ -74,8 +74,8 @@ async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | n
     bio: r.bio, cover: mediaUrl(r.cover_key) ?? undefined, gallery: [] as string[], links, featured, credits,
     releases: l.kind === 'musician'
       ? (await profileReleases(db, r.owner_user_id).catch(() => [])).slice(0, 6).map((x) => ({
-          title: x.title, url: '/r/' + x.id, upcoming: !x.released, cover: mediaUrl(x.coverKey), year: x.released ? x.releaseDate?.slice(0, 4) ?? '' : 'Coming',
-          meta: [x.artist && !x.own ? x.artist : '', x.roles.join(', '), RELEASE_KINDS[x.kind], x.released ? x.releaseDate?.slice(0, 4) ?? '' : 'Coming'].filter(Boolean).join(' · '),
+          title: x.title, url: '/r/' + x.id, upcoming: !x.released, cover: mediaUrl(x.coverKey), year: x.released ? x.releaseDate?.slice(0, 4) ?? '' : x.releaseDate ? 'Coming' : '',
+          meta: [x.artist && !x.own ? x.artist : '', x.roles.join(', '), RELEASE_KINDS[x.kind], x.released ? x.releaseDate?.slice(0, 4) ?? '' : x.releaseDate ? 'Coming' : ''].filter(Boolean).join(' · '),
         }))
       : [],
     achievements: parse<string[]>(r.achievements, []).filter((a) => typeof a === 'string').slice(0, 4),

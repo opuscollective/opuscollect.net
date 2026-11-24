@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { ctxFrom, login, loginWithCode, register, requestLoginCode, requestReset, resendVerification, resetPassword } from '@/server/auth';
+import { confirmWithCode, ctxFrom, login, loginWithCode, register, requestLoginCode, requestReset, resendVerification, resetPassword } from '@/server/auth';
 import { joinByInvite } from '@/server/clans';
 import { destroySession } from '@/server/session';
 import { HttpError, fail, json, readJson } from '@/server/util';
@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ params, request, cookies, locals }) => {
         if (body.join === true && typeof body.invite === 'string') {
           try { const j = await joinByInvite(env, r.id, body.invite); joined = { href: j.clan.href, name: j.clan.name }; } catch { /* the account is made; they can retry from the invite link */ }
         }
-        return json({ ok: true, emailStatus: r.email_status, joined });
+        return json({ ok: true, emailStatus: r.email_status, ...(r.devCode ? { devCode: r.devCode } : {}), joined });
       }
       case 'login-code':
         return json(await requestLoginCode(ctx, await readJson(request)));
@@ -57,7 +57,11 @@ export const POST: APIRoute = async ({ params, request, cookies, locals }) => {
       case 'resend-verification': {
         if (!locals.user) throw new HttpError(401, 'Please sign in first.');
         const r = await resendVerification(ctx, locals.user);
-        return json({ ok: true, emailStatus: r });
+        return json({ ok: true, emailStatus: r.status, ...('devCode' in r && r.devCode ? { devCode: r.devCode } : {}) });
+      }
+      case 'confirm-code': {
+        if (!locals.user) throw new HttpError(401, 'Please sign in first.');
+        return json(await confirmWithCode(ctx, locals.user, await readJson(request)));
       }
       default:
         throw new HttpError(404, 'Not found.');
