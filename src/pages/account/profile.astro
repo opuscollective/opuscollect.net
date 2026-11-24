@@ -318,6 +318,7 @@ const p = profile;
     onSuccess: async (d) => {
       // New member with a photo chosen during setup: upload it now that the profile exists, then publish if asked.
       let dest = `/account/profile?saved=${intent}`;
+      if (intent === 'publish') { try { sessionStorage.setItem('opus.world.fresh', String(Date.now())); } catch { /* fine */ } }
       if (pendingPhoto) {
         const r = await fetch('/api/profile/image?slot=photo', { method: 'POST', headers: { 'content-type': pendingPhoto.type }, body: pendingPhoto });
         if (r.ok && intent === 'publish') {

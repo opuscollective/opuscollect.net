@@ -16,6 +16,6 @@ export const GET: APIRoute = async ({ locals, url }) => {
     const body = url.searchParams.has('summary')
       ? { cities: byCity(listings), stats: stats(listings), includesSample }
       : { listings, stats: stats(listings), includesSample };
-    return json(body, { headers: { 'cache-control': 'public, max-age=60, stale-while-revalidate=300' } });
+    return json(body, { headers: { 'cache-control': 'public, max-age=20, stale-while-revalidate=40' } });
   } catch (e) { return fail(e); }
 };

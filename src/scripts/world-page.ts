@@ -37,7 +37,7 @@ const VIEW_KEY = 'opus.world.view.v2';
 /** Results near a searched city when there is no map to follow (List view), in km. */
 const NEAR_KM = 100;
 
-export function initWorld(root: HTMLElement) {
+export async function initWorld(root: HTMLElement) {
   const $ = <T extends Element = HTMLElement>(s: string) => root.querySelector<T>(s)!;
   const results = $('[data-results]');
   const empty = $('[data-empty]');
@@ -116,9 +116,22 @@ export function initWorld(root: HTMLElement) {
   let from: From | null = readFrom();
   // A plain /world visit (nothing asked for in the address) also gets the question the first time.
   const plain = location.pathname.replace(/\/$/, '') === '/world' && !params.get('city') && !f.text && !f.kinds.length && !params.get('p');
+  // A category page opened with nothing else asked for (/musicians, /studios, /organizations): it keeps the visitor's city too.
+  const bare = !params.get('city') && !f.text && !params.get('p');
+  // Members are never asked: Opus already knows their city (where they say they are now, else home). It is
+  // remembered on this device like any answer, so the next visit is instant.
+  if (!from && (entering || bare) && document.cookie.split('; ').includes('opus_in=1')) {
+    try {
+      const ctl = new AbortController(); const stop = setTimeout(() => ctl.abort(), 1500);
+      const t = (await (await fetch('/api/travel', { credentials: 'same-origin', signal: ctl.signal })).json()) as { signedIn?: boolean; home?: { name: string | null } | null; away?: { name: string | null } | null };
+      clearTimeout(stop);
+      const name = t.signedIn ? t.away?.name ?? t.home?.name : null;
+      if (name && findCity(name)) { from = { mode: 'city', name }; saveFrom(from); }
+    } catch { /* ask, as for a visitor */ }
+  }
   const asking = !from && (entering || plain);
   // Answered before: go straight there, without asking again.
-  if (!asking && from?.mode === 'city' && (entering || plain)) params.set('city', from.name);
+  if (!asking && from?.mode === 'city' && (entering || bare)) params.set('city', from.name);
   if (asking) root.dataset.entry = 'ask';
   else if (handoff) root.dataset.entry = 'arrive';
   else delete root.dataset.entry;
@@ -320,11 +333,13 @@ export function initWorld(root: HTMLElement) {
       ls = ls.filter((l) => hasPoint(l) && km(place!, metroOf(l)) <= NEAR_KM);
     }
     const score = (l: Listing) => (isVerified(l) ? 0 : 1);
+    // Opus is about people: in a mixed list they come first, then groups, then studios (never paid placement).
+    const rank = (l: Listing) => (l.kind === 'musician' ? 0 : l.kind === 'organization' ? 1 : 2);
     ls.sort((a, b) => {
       if (sort === 'name') return a.name.localeCompare(b.name);
       if (sort === 'recent') return b.id.localeCompare(a.id);
-      // Recommended: verified first, then a fair mix of kinds (never paid placement).
-      return score(a) - score(b) || a.id.localeCompare(b.id);
+      // Recommended: people first, verified first within each kind.
+      return rank(a) - rank(b) || score(a) - score(b) || a.id.localeCompare(b.id);
     });
     return ls;
   }
@@ -1136,7 +1151,10 @@ export function initWorld(root: HTMLElement) {
   // ---------- Data: real published members from the directory API ----------
   async function load() {
     try {
-      const r = await fetch('/api/world');
+      // Someone who just went live sees themselves straight away (the shared list is cached for a few seconds).
+      let fresh = '';
+      try { const at = Number(sessionStorage.getItem('opus.world.fresh')); if (at && Date.now() - at < 10 * 60_000) fresh = `?fresh=${at}`; } catch { /* cached list */ }
+      const r = await fetch(`/api/world${fresh}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = (await r.json()) as { listings: Listing[]; stats: WorldStats; includesSample: boolean };
       ALL = d.listings;

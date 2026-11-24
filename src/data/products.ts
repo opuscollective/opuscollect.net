@@ -16,7 +16,8 @@ export const PRODUCTS: Record<string, ProductDef> = {
       { key: 'map', label: 'Map', href: '/world' },
       // Working name (Bogo asked for a "what's happening" tab; one word per product).
       { key: 'happening', label: 'Happening', href: '/world/happening' },
-      { key: 'people', label: 'People', href: '/musicians' },
+      // People, Groups and Studios are also the category pills inside the map; "People" lived here too and dropped the
+      // visitor's city, so it is the pill only now (checklist 2026-11-24; the wider navigation is Bogo's pending decision).
       { key: 'clans', label: 'Groups', href: '/clans' },
       { key: 'cities', label: 'My Cities', href: '/world/cities' },
       { key: 'studios', label: 'Studios', href: '/studios' },
