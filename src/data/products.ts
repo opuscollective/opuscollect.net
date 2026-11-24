@@ -14,6 +14,8 @@ export const PRODUCTS: Record<string, ProductDef> = {
     key: 'world', name: 'World', href: '/world',
     items: [
       { key: 'map', label: 'Map', href: '/world' },
+      // Working name (Bogo asked for a "what's happening" tab; one word per product).
+      { key: 'happening', label: 'Happening', href: '/world/happening' },
       { key: 'people', label: 'People', href: '/musicians' },
       { key: 'clans', label: 'Groups', href: '/clans' },
       { key: 'cities', label: 'My Cities', href: '/world/cities' },

@@ -57,6 +57,8 @@ Use design tokens (`tokens.css`, `--m-*` motion tokens) and the shared product s
 - Look: accent + backdrop keys from the fixed palette in `src/lib/page-style.ts`, drawn in `src/styles/profile.css` (`.pf`, `.pf-bd[data-backdrop]`). Add options there; never free-form colours.
 - Founder: `profiles.distinction = 'founder'` (migration 0016), set by hand with the SQL in that migration's header. It implies verified, the Founder mark and the founder-only look. Never hardcode a handle.
 - Travel: home city = the profile city. `away` (where the member says they are now) and `cities` (marked by the member) live in the KV page settings; `/api/travel` reads and changes them. World shows a "New territory" card only after Use My Location puts a signed-in member in a non-home city; only the city id is used, nothing is saved without a tap. Marked cities earn nothing; travel achievements read real connections and parties.
+- Greeting: `src/lib/greeting.ts` (time of day at home, "Welcome to <city>" when away; lines are working copy). Shown above the homepage hero title for signed-in members and as the Happening headline. Time comes from the viewer's clock, city from saved home/away only.
+- Happening (working name): `/world/happening`, in World's sub-nav. `src/server/happening.ts` gathers real parties, events, studios and members for one metro; quiet cities get the designed empty state. `?city=<slug or metro id>` switches city.
 - Levels, achievements, titles: `src/lib/progress.ts` (rules, names) + `src/server/progress.ts` (counts from existing tables, nothing stored). Real activity only; connections are capped so they can't carry a level. Names are proposed copy until Bogo confirms.
 
 ## Design rules

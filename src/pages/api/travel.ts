@@ -8,9 +8,9 @@ import { HttpError, fail, json, readJson } from '@/server/util';
 
 export const prerender = false;
 
-const view = (home: string | null, away: string, cities: string[]) => {
+const view = (home: string | null, away: string, cities: string[], displayName = '') => {
   const name = (id: string | null) => (id ? PLACE_BY_ID.get(id)?.name ?? null : null);
-  return { signedIn: true, home: home ? { id: home, name: name(home) } : null, away: away ? { id: away, name: name(away) } : null, cities };
+  return { signedIn: true, name: displayName.trim().split(/\s+/)[0] ?? '', home: home ? { id: home, name: name(home) } : null, away: away ? { id: away, name: name(away) } : null, cities };
 };
 
 /** GET: the member's home city (their profile city), where they say they are now, and the cities they marked. Only city ids, never a position. */
@@ -21,7 +21,7 @@ export const GET: APIRoute = async ({ locals }) => {
     const p = await getMyProfile(env.DB, locals.user.id);
     if (!p) return json({ signedIn: true, home: null, away: null, cities: [] });
     const page = await getPageConfig(env.WAITLIST, p.id);
-    return json(view(homeMetroOf(p.placeId), page.away, page.cities));
+    return json(view(homeMetroOf(p.placeId), page.away, page.cities, p.displayName));
   } catch (e) { return fail(e); }
 };
 
@@ -47,6 +47,6 @@ export const POST: APIRoute = async ({ locals, request }) => {
     else throw new HttpError(400, 'Unknown action.');
     if (cities.size > MAX_CITIES) throw new HttpError(400, `You can mark up to ${MAX_CITIES} cities.`);
     const saved = await savePageConfig(env.WAITLIST, p.id, { ...page, away, cities: [...cities] });
-    return json(view(home, saved.away, saved.cities));
+    return json(view(home, saved.away, saved.cities, p.displayName));
   } catch (e) { return fail(e); }
 };
