@@ -52,6 +52,12 @@ Use design tokens (`tokens.css`, `--m-*` motion tokens) and the shared product s
 - The assistant is named "Opus": V1 = structured intents and real navigation, **no generative AI**. Shown as one dark glass "Opus" chip everywhere. Not AI-first.
 - Terminology: **Specialty**, never "Discipline"; multiple specialties with one **Primary Specialty**.
 
+## Profiles: look, founder, progress
+- Profile = `src/pages/[handle].astro`; link-in-bio = `[handle]/links.astro`; editor = `/account/page`. Page settings live in KV `page:<profileId>` (`src/server/page-config.ts`), no migration.
+- Look: accent + backdrop keys from the fixed palette in `src/lib/page-style.ts`, drawn in `src/styles/profile.css` (`.pf`, `.pf-bd[data-backdrop]`). Add options there; never free-form colours.
+- Founder: `profiles.distinction = 'founder'` (migration 0016), set by hand with the SQL in that migration's header. It implies verified, the Founder mark and the founder-only look. Never hardcode a handle.
+- Levels, achievements, titles: `src/lib/progress.ts` (rules, names) + `src/server/progress.ts` (counts from existing tables, nothing stored). Real activity only; connections are capped so they can't carry a level. Names are proposed copy until Bogo confirms.
+
 ## Design rules
 - "Apple-inspired presentation. Opus-original interaction." Cinematic technology meets editorial minimalism.
 - Premium = **consistency**: World must look and behave identically from every entry point and stay sharp when zoomed. Differentiate from Apple (e.g. Opus OC location marker, not a blue dot).

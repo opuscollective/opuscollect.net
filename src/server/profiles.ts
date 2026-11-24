@@ -46,6 +46,8 @@ export interface ProfileData {
   portfolio: PortfolioItem[];
   status: 'draft' | 'published' | 'hidden';
   verification: 'none' | 'verified' | 'revoked';
+  /** A standing granted on the account by hand (migration 0016), never earned or bought. Only 'founder' exists. */
+  distinction: 'founder' | null;
   updatedAt: number;
 }
 
@@ -54,6 +56,8 @@ interface Row {
   photo_key: string | null; cover_key: string | null; open_to_collab: number; show_on_map: number; location_visibility: LocationVisibility | null; links: string; credits: string; achievements: string;
   collaborations: string; portfolio: string; status: ProfileData['status']; verification: ProfileData['verification']; updated_at: number;
   owner_user_id: string;
+  /** Absent until migration 0016 is applied. */
+  distinction?: string | null;
 }
 
 const parse = <T>(s: string, fallback: T): T => { try { return JSON.parse(s) as T; } catch { return fallback; } };
@@ -72,7 +76,10 @@ async function hydrate(db: D1Database, r: Row): Promise<ProfileData> {
     placeId: r.place_id, bio: r.bio, openToCollab: !!r.open_to_collab, showOnMap: r.show_on_map !== 0, locationVisibility: r.location_visibility ?? 'city', photoKey: r.photo_key, coverKey: r.cover_key,
     links: parse(r.links, {}), credits: parse(r.credits, []), achievements: parse(r.achievements, []),
     collaborations: parse(r.collaborations, []), portfolio: parse(r.portfolio, []),
-    status: r.status, verification: r.verification, updatedAt: r.updated_at,
+    status: r.status,
+    // The founder is verified regardless of the verification column.
+    verification: r.distinction === 'founder' ? 'verified' : r.verification,
+    distinction: r.distinction === 'founder' ? 'founder' : null, updatedAt: r.updated_at,
   };
 }
 
