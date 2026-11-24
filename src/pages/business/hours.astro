@@ -33,6 +33,7 @@ const upcomingClosed = closed.filter((c) => c.day >= today);
                 <input class="input" type="time" step="900" data-start value={first ? hhmm(first.start_min) : '10:00'} aria-label={`${DAYS[wd]} opening time`} />
                 <span>to</span>
                 <input class="input" type="time" step="900" data-end value={first ? hhmm(first.end_min) : '18:00'} aria-label={`${DAYS[wd]} closing time`} />
+                <span class="hbar" aria-hidden="true">{r.map((x) => <i style={`left:${(x.start_min / 1440) * 100}%;width:${(Math.max(0, Math.min(1440, x.end_min || 1440) - x.start_min) / 1440) * 100}%`}></i>)}</span>
                 {r.length > 1 && <span title="This day has more than one time range; saving keeps only the first.">+{r.length - 1} more</span>}
               </div>
             </div>

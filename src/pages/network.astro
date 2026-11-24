@@ -276,6 +276,14 @@ const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' }
   .nw__tools .input { flex: 1; min-width: 0; }
   .nw__tools .select { width: auto; max-width: 220px; }
   .nw__list { margin: 0; padding: 0; list-style: none; }
+  /* Connections as people, not table rows: a card each, big photo first. */
+  .nw__list[data-list] { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-top: 18px; }
+  .nw__list[data-list] .nw__row { display: flex; flex-direction: column; align-items: stretch; gap: 14px; padding: 22px; border: 1px solid var(--line-faint); border-radius: 22px; background: var(--surface); }
+  .nw__list[data-list] .nw__who { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .nw__list[data-list] .nw__av { width: 84px; height: 84px; font-size: 30px; font-weight: 300; background-image: linear-gradient(145deg, var(--surface-sunken), var(--surface-hover, #ddd)); }
+  .nw__list[data-list] .nw__id b { font-size: 19px; letter-spacing: -0.02em; }
+  .nw__list[data-list] .nw__row[hidden] { display: none; }
+  .nw__list[data-list] .nw__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; }
   .nw__row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 20px; padding: 14px 0; border-bottom: 1px solid var(--line-faint); }
   .nw__row[hidden] { display: none; }
   .nw__who { display: flex; align-items: center; gap: 14px; min-width: 0; color: var(--text); }
@@ -292,7 +300,8 @@ const LABEL = { connections: 'Connections', received: 'Received', sent: 'Sent' }
   .nw__row--req { grid-template-columns: minmax(0, 1fr) auto; }
   .nw__row--req .nw__acts { grid-column: 1 / -1; padding-left: 62px; }
   .nw__intro { grid-column: 1 / -1; margin: 0; padding: 12px 14px; margin-left: 62px; border-radius: 12px; background: var(--surface-sunken); font-size: 15px; line-height: 1.55; color: var(--text); white-space: pre-line; overflow-wrap: anywhere; }
-  .nw__empty { padding: 32px 0; }
+  .nw__empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 56px 16px; }
+  .nw__empty::before { content: ''; width: 72px; height: 72px; margin-bottom: 16px; border-radius: 50%; background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent, #a9c7ec) 55%, transparent), transparent 70%), var(--surface-sunken); box-shadow: inset 0 0 0 1px var(--line-faint); }
   .nw__empty h2 { margin: 0 0 6px; font-size: 20px; }
   .nw__none { padding: 16px 0; }
   .nw__blocked { margin-top: 28px; }

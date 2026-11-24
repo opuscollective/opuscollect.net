@@ -9,7 +9,7 @@
 .bz-copy h1 { margin: 0; font-size: clamp(2.4rem, 1.2rem + 4.4vw, 4.6rem); font-weight: 600; letter-spacing: -0.05em; line-height: 1; color: var(--text); text-wrap: balance; }
 .bz-lead { margin: 0; max-width: 32ch; font-size: clamp(1.05rem, .98rem + .4vw, 1.3rem); line-height: 1.4; color: var(--text-2); }
 .bz-fine { margin: 0; max-width: 46ch; font-size: 13.5px; line-height: 1.55; color: var(--text-3); }
-.bz-go { display: inline-flex; align-items: center; height: 44px; padding: 0 22px; border-radius: 999px; background: #0071e3; color: #fff; font-weight: 500; font-size: 15px; }
+.bz-go { display: inline-flex; align-items: center; height: 44px; padding: 0 22px; border-radius: 999px; background: #1a1a1d; color: #fff; font-weight: 500; font-size: 15px; }
 .bz-go:hover { opacity: .9; }
 .bz-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .bz-roll { margin: 0; padding: 0; list-style: none; }

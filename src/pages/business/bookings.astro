@@ -21,6 +21,7 @@ const TABS = [
   { key: 'past', label: 'Past', empty: 'Finished, declined, cancelled and expired bookings show here.' },
 ] as const;
 const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project');
+const tile = (ms: number | null) => (ms ? { m: new Intl.DateTimeFormat('en-US', { timeZone: studio.timezone, month: 'short' }).format(new Date(ms)), d: new Intl.DateTimeFormat('en-US', { timeZone: studio.timezone, day: 'numeric' }).format(new Date(ms)) } : null);
 const SOURCE: Record<string, string> = { directory: 'World', link: 'Booking link', direct: 'Direct' };
 ---
 <BusinessShell title="Bookings" section="bookings" studio={studio} pending={pending}
@@ -34,6 +35,7 @@ const SOURCE: Record<string, string> = { directory: 'World', link: 'Booking link
         {groups[tb.key].length === 0 ? <p class="empty"><b>Nothing here.</b>{tb.empty}</p> : (
           <ul class="blist" role="list">{groups[tb.key].map((b) => (
             <li class="bitem" data-booking={b.id}>
+              <span class="bitem__d" aria-hidden="true">{tile(b.start_at) ? <><small>{tile(b.start_at)!.m}</small><b>{tile(b.start_at)!.d}</b></> : <b>↗</b>}</span>
               <div>
                 <p class="bitem__when">{b.service_name} · {when(b)}</p>
                 <p class="bitem__who">{b.customer_name} · <a class="link" href={`mailto:${b.customer_email}`}>{b.customer_email}</a>{b.customer_phone && ` · ${b.customer_phone}`}</p>

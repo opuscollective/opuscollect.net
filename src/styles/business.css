@@ -214,3 +214,42 @@ html:not([data-motion='fluid']) .skel { animation: none; }
 .up__w { font-weight: 500; font-size: 15px; }
 .up__s { font-size: 13px; color: var(--text-3); margin-top: 2px; }
 @media (max-width: 860px) { .vp { grid-template-columns: 1fr; } .dz__strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } .up__i { grid-template-columns: 56px minmax(0, 1fr); } .up__i .pill { display: none; } }
+
+/* Studio tools, one look with the dashboard: calmer panels, designed empty states, visual rows. */
+.panel { border-radius: 22px; }
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 44px 16px 36px; color: var(--text-3); }
+.empty::before { content: ''; width: 64px; height: 64px; margin-bottom: 14px; border-radius: 50%; background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--c-accent, #a9c7ec) 55%, transparent), transparent 70%), var(--surface-sunken); box-shadow: inset 0 0 0 1px var(--line-faint); }
+.empty b { font-size: 17px; font-weight: 500; letter-spacing: -0.02em; }
+.empty { max-width: 46ch; margin-inline: auto; }
+/* Bookings */
+.bitem { grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 8px 16px; }
+.bitem__d { display: grid; place-items: center; align-content: center; width: 56px; height: 56px; border-radius: 14px; background: var(--surface-sunken); line-height: 1; }
+.bitem__d small { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
+.bitem__d b { margin-top: 3px; font-size: 22px; font-weight: 400; letter-spacing: -0.03em; }
+.bitem__msg { grid-column: 2 / -1; }
+.tabs { gap: 6px; border-bottom: 0; padding: 4px; width: max-content; max-width: 100%; border-radius: 999px; background: var(--surface-sunken); }
+.tabs button { min-height: 38px; padding: 0 16px; border-radius: 999px; border: 0; }
+.tabs button[aria-selected='true'] { background: var(--surface); box-shadow: 0 1px 3px var(--shadow-c, rgba(0,0,0,.12)); border: 0; }
+@media (max-width: 640px) { .bitem { grid-template-columns: 56px minmax(0, 1fr); } .bitem__actions { grid-column: 1 / -1; } .bitem__msg { grid-column: 1 / -1; } }
+/* Customers */
+.cu { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 4px; }
+.cu__c { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px 14px; align-items: center; padding: 18px; border-radius: 18px; background: var(--surface-sunken); }
+.cu__av { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; font-size: 20px; color: #fff; background: linear-gradient(145deg, hsl(var(--h) 45% 40%), hsl(calc(var(--h) + 50) 50% 24%)); }
+.cu__id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cu__id b { font-weight: 500; font-size: 16px; }
+.cu__id a, .cu__id small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.cu__n { grid-column: 1 / -1; display: flex; gap: 18px; font-size: 13px; color: var(--text-3); }
+.cu__n b { color: var(--text); font-weight: 400; font-size: 18px; margin-right: 3px; font-variant-numeric: tabular-nums; }
+.cu__bar { grid-column: 1 / -1; height: 4px; border-radius: 4px; background: var(--line-faint); overflow: hidden; }
+.cu__bar i { display: block; height: 100%; border-radius: 4px; background: var(--c-accent, #a9c7ec); }
+.cu__last { grid-column: 1 / -1; font-size: 12px; color: var(--text-3); }
+/* Services */
+.svc { align-items: center; }
+.svc b { font-size: 17px; letter-spacing: -0.02em; }
+.svc__price { padding: 7px 16px; border-radius: 999px; background: var(--surface-sunken); font-size: 17px; font-weight: 400; }
+/* Hours: a day strip shows when you're open */
+.hours__row { grid-template-columns: 110px auto minmax(0, 1fr); }
+.hours__times { flex-wrap: wrap; }
+.hbar { position: relative; flex: 1 1 140px; min-width: 100px; height: 8px; border-radius: 8px; background: var(--surface-sunken); overflow: hidden; }
+.hbar i { position: absolute; top: 0; bottom: 0; border-radius: 8px; background: var(--c-accent, #a9c7ec); }
+.hours__row.is-closed .hbar { opacity: .3; }
