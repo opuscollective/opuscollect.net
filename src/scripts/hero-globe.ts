@@ -3,7 +3,6 @@
  * and the browser supports WebGL. Markers are city-level aggregates of listings.
  */
 import { motion } from '@/lib/motion';
-import { sunAt } from '@/lib/sun';
 
 export interface CityPoint { city: string; country: string; lat: number; lng: number; count: number }
 /** Where the homepage camera stopped, handed to World so its map opens at the same view. */
@@ -22,12 +21,11 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   type Ring = { lat: number; lng: number; me?: boolean };
   const cityRings: Ring[] = points.filter((p) => p.count >= 5);
 
-  // A photographed-from-space Earth, in layers (sources and licences in public/images/earth/SOURCES.md):
-  // NASA Blue Marble surface, a separate cloud shell, NASA Black Marble city lights on the night side,
-  // a water mask for sun glint on the oceans, an elevation map for relief, and a thin sunlit atmosphere.
-  // Phones start with 2K textures, desktops with 4K; big, sharp screens move up to the 8K surface once idle.
+  // The Earth at night, the same on every side (Bogo 2026-11-24): NASA Black Marble, city lights lifted, under a
+  // thin, evenly lit atmosphere. No day side, clouds or sun, so it looks the same whichever way it is turned.
+  // Sources and licences in public/images/earth/SOURCES.md.
+  // Phones start with a 2K texture and move to 4K when they dive in; desktops start with 4K.
   const phone = matchMedia('(max-width: 760px)').matches || Math.max(screen.width, screen.height) < 900;
-  const dpr = devicePixelRatio || 1;
   const size = phone ? 2048 : 4096;
   const loader = new THREE.TextureLoader();
   let aniso = 4;
@@ -39,24 +37,9 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     res(t);
   }, undefined, rej));
   const E = '/images/earth';
-  const [day, night, clouds, water, height] = await Promise.all([
-    tex(`${E}/earth-day-${size}.webp`), tex(`${E}/earth-night-${size}.webp`), tex(`${E}/earth-clouds-${size}.webp`, false),
-    tex(`${E}/earth-water-4096.webp`, false), tex(`${E}/topology-2048.webp`, false),
-  ]);
-  /** A direction from latitude and longitude, on the same axes as three-globe's own coordinates. */
-  const polar = (lat: number, lng: number) => {
-    const phi = ((90 - lat) * Math.PI) / 180, theta = ((90 - lng) * Math.PI) / 180;
-    return new THREE.Vector3(Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta));
-  };
-  const sunDir = new THREE.Vector3();
-  const setSun = () => { const [lng, lat] = sunAt(new Date()); sunDir.copy(polar(lat, lng)); };
-  setSun();
+  const night = await tex(`${E}/earth-night-${size}.webp`);
   const earth = new THREE.ShaderMaterial({
-    uniforms: {
-      dayMap: { value: day }, nightMap: { value: night }, cloudMap: { value: clouds }, waterMap: { value: water }, heightMap: { value: height },
-      heightTexel: { value: new THREE.Vector2(1 / 2048, 1 / 1024) },
-      sunDir: { value: sunDir },
-    },
+    uniforms: { nightMap: { value: night } },
     vertexShader: VERT,
     fragmentShader: FRAG,
   });
@@ -65,7 +48,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     .globeMaterial(earth)
     .showGlobe(true)
     .showGraticules(false)
-    // The atmosphere is drawn below as a sunlit shell, so the built-in, evenly lit halo is off.
+    // The atmosphere is drawn below as a thin shell, so the built-in halo is off.
     // No country lines either: a photograph from space has none.
     .showAtmosphere(false)
     // City markers: icy points sized by listing count
@@ -90,50 +73,28 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     .ringPropagationSpeed((d: object) => ((d as Ring).me ? 0.9 : 0.8))
     .ringRepeatPeriod((d: object) => ((d as Ring).me ? 1200 : 2200));
 
-  // Layers above the surface: clouds just over the ground, then the thin atmosphere.
+  // Above the surface: the thin atmosphere.
   const R = globe.getGlobeRadius();
-  const cloudMat = new THREE.ShaderMaterial({
-    uniforms: { cloudMap: { value: clouds }, sunDir: { value: sunDir } },
-    vertexShader: VERT, fragmentShader: CLOUD_FRAG, transparent: true, depthWrite: false,
-  });
-  const cloudMesh = new THREE.Mesh(new THREE.SphereGeometry(R * 1.004, 128, 96), cloudMat);
   const airMat = new THREE.ShaderMaterial({
-    uniforms: { sunDir: { value: sunDir }, R: { value: R }, Ra: { value: R * 1.032 } },
+    uniforms: { R: { value: R }, Ra: { value: R * 1.032 } },
     vertexShader: VERT, fragmentShader: AIR_FRAG, side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   });
   const airMesh = new THREE.Mesh(new THREE.SphereGeometry(R * 1.032, 128, 96), airMat);
-  // three-globe turns its sphere so the map lines up with its coordinates; the shells take the same turn.
-  const surface = globe.scene().getObjectByProperty('material', earth);
-  if (surface) { cloudMesh.rotation.copy(surface.rotation); airMesh.rotation.copy(surface.rotation); }
-  globe.scene().add(cloudMesh, airMesh);
+  globe.scene().add(airMesh);
   // Sharp filtering at grazing angles near the edge of the planet.
   aniso = Math.min(8, globe.renderer().capabilities.getMaxAnisotropy());
-  for (const t of [day, night, clouds, water]) { t.anisotropy = aniso; t.needsUpdate = true; }
+  night.anisotropy = aniso; night.needsUpdate = true;
 
-  // Sharper imagery when it can show: the 8K surface on big, dense screens (once the page settles),
-  // and 4K layers on phones when they dive in.
-  const want8k = !phone && Math.max(screen.width, screen.height) * dpr >= 2400 && globe.renderer().capabilities.maxTextureSize >= 8192;
-  let sharp = !phone && !want8k;
-  const upgrade8k = () => tex(`${E}/earth-day-8192.webp`).then((d) => { earth.uniforms.dayMap!.value = d; day.dispose(); }).catch(() => { /* keep 4K */ });
+  // Sharper imagery on phones when they dive in.
+  let sharp = !phone;
   const sharpen = () => {
     if (sharp) return;
     sharp = true;
-    if (want8k) { upgrade8k(); return; }
-    Promise.all([tex(`${E}/earth-day-4096.webp`), tex(`${E}/earth-night-4096.webp`), tex(`${E}/earth-clouds-4096.webp`, false)])
-      .then(([d, n, c]) => {
-        earth.uniforms.dayMap!.value = d; earth.uniforms.nightMap!.value = n; earth.uniforms.cloudMap!.value = c; cloudMat.uniforms.cloudMap!.value = c;
-      })
-      .catch(() => { /* keep the lighter textures */ });
+    tex(`${E}/earth-night-4096.webp`).then((n) => { earth.uniforms.nightMap!.value = n; night.dispose(); }).catch(() => { /* keep the lighter texture */ });
   };
-  if (want8k) {
-    const idle = (window as unknown as { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
-    if (idle) idle(sharpen, { timeout: 4000 }); else setTimeout(sharpen, 2500);
-  }
   /** Close up, the member dots and rings would be blobs: the World map shows them properly instead. */
   const quiet = (on: boolean) => { globe.pointsData(on ? [] : points); globe.ringsData(on ? [] : cityRings); };
 
-  // The sun keeps moving while the page is open.
-  setInterval(setSun, 60_000);
 
   // Continents and oceans named the way a map from space does: spaced capitals for land, italics for water.
   type Label = { lat: number; lng: number; text: string; kind: 'land' | 'sea' | 'me' };
@@ -342,7 +303,7 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   };
 }
 
-/** World-space normal, position and texture coordinate, shared by the surface, clouds and atmosphere. */
+/** World-space normal, position and texture coordinate, shared by the surface and atmosphere. */
 const VERT = `
 varying vec3 vN;
 varying vec3 vPos;
@@ -355,118 +316,47 @@ void main() {
   gl_Position = projectionMatrix * viewMatrix * wp;
 }`;
 
-/** Sunlight colour: warm and low near the terminator, near white when the sun is high. */
-const SUN = `
-vec3 sunColor(float h) { return mix(vec3(1.0, 0.74, 0.55), vec3(1.0, 0.98, 0.95), smoothstep(0.0, 0.22, h)); }
-float cloudAlpha(float c) { return smoothstep(0.1, 0.85, c); }
+/** The colour of the air at the planet's edge. */
+const SKY = `
 const vec3 SKY = vec3(0.30, 0.50, 1.0);
 `;
 
 /**
- * The surface, lit by the real sun. All maths is in linear light; the output is converted to sRGB at the end.
- * Daylight: Blue Marble colour x sunlight, with relief from the elevation map, soft cloud shadows,
- * a sun glint on water, and blue haze toward the edge of the planet. Night: Black Marble city lights,
- * dimmed under clouds, fading in across a soft twilight band.
+ * The surface: Black Marble as photographed, with the city lights lifted so they read at a glance, and a soft
+ * blue haze toward the edge of the planet. Nothing depends on a sun, so every side looks the same.
  */
 const FRAG = `
-uniform sampler2D dayMap;
 uniform sampler2D nightMap;
-uniform sampler2D cloudMap;
-uniform sampler2D waterMap;
-uniform sampler2D heightMap;
-uniform vec2 heightTexel;
-uniform vec3 sunDir;
 varying vec3 vN;
 varying vec3 vPos;
 varying vec2 vUv;
-${SUN}
+${SKY}
 void main() {
   vec3 N = normalize(vN);
   vec3 V = normalize(cameraPosition - vPos);
-  vec3 L = normalize(sunDir);
-  float water = texture2D(waterMap, vUv).r;
-
-  // Relief: tilt the normal along the slope of the elevation map (land only).
-  vec3 east = normalize(cross(vec3(0.0, 1.0, 0.0), N) + vec3(1e-5, 0.0, 0.0));
-  vec3 north = cross(N, east);
-  float hl = texture2D(heightMap, vUv - vec2(heightTexel.x, 0.0)).r;
-  float hr = texture2D(heightMap, vUv + vec2(heightTexel.x, 0.0)).r;
-  float hd = texture2D(heightMap, vUv - vec2(0.0, heightTexel.y)).r;
-  float hu = texture2D(heightMap, vUv + vec2(0.0, heightTexel.y)).r;
-  vec3 Nb = normalize(N - 0.9 * (1.0 - water) * ((hr - hl) * east + (hu - hd) * north));
-
-  float h = dot(N, L);
-  float diff = clamp(dot(Nb, L), 0.0, 1.0);
-  float dayK = smoothstep(-0.08, 0.1, h);
-  vec3 sun = sunColor(h);
-
-  // Cloud shadows land a little away from the sun.
-  vec2 toSun = vec2(dot(L, east), dot(L, north));
-  float shade = cloudAlpha(texture2D(cloudMap, vUv - toSun * 0.0012).r);
-  float overhead = cloudAlpha(texture2D(cloudMap, vUv).r);
-
-  vec3 albedo = texture2D(dayMap, vUv).rgb;
-  vec3 col = albedo * sun * diff * 1.4 * (1.0 - 0.4 * shade * dayK);
-
-  // Sun glint: a tight highlight and a broad sheen, on open water only.
-  vec3 H = normalize(L + V);
-  float nh = max(dot(N, H), 0.0);
   float nv = max(dot(N, V), 0.0);
-  float fres = 0.02 + 0.98 * pow(1.0 - nv, 5.0);
-  float glint = pow(nh, 160.0) * 1.1 + pow(nh, 18.0) * 0.06;
-  col += water * (1.0 - overhead) * glint * sun * dayK * (0.4 + fres);
-
-  // Atmosphere seen through: blue haze growing toward the limb on the lit side.
-  float rim = pow(1.0 - nv, 2.2);
-  col = mix(col, SKY * (0.18 + 0.7 * diff) * sun, rim * 0.6 * smoothstep(-0.2, 0.45, h));
-  col += SKY * 0.012 * dayK;
-
-  // Night: city lights and a faint glow of the land, under the clouds.
   vec3 n = texture2D(nightMap, vUv).rgb;
   float lum = dot(n, vec3(0.2126, 0.7152, 0.0722));
-  vec3 lights = smoothstep(0.02, 0.5, lum) * vec3(1.0, 0.78, 0.48) * 1.3 * (1.0 - 0.75 * overhead);
-  float nightK = 1.0 - smoothstep(-0.16, 0.06, h);
-  col += (n * 0.2 + lights) * nightK;
-
+  vec3 lights = smoothstep(0.05, 0.55, lum) * vec3(1.0, 0.9, 0.74) * 1.1;
+  // A soft blue-gray air over the whole planet (the look of World's globe), then a thin brighter edge.
+  vec3 col = n * 1.5 + vec3(0.04, 0.068, 0.145) + lights;
+  float rim = pow(1.0 - nv, 3.0);
+  col = mix(col, vec3(0.42, 0.56, 0.86), rim * 0.7);
   gl_FragColor = vec4(col, 1.0);
-  #include <colorspace_fragment>
-}`;
-
-/** The cloud shell: white where the sun reaches it, warm at the terminator, nearly invisible at night. */
-const CLOUD_FRAG = `
-uniform sampler2D cloudMap;
-uniform vec3 sunDir;
-varying vec3 vN;
-varying vec3 vPos;
-varying vec2 vUv;
-${SUN}
-void main() {
-  vec3 N = normalize(vN);
-  vec3 V = normalize(cameraPosition - vPos);
-  vec3 L = normalize(sunDir);
-  float a = cloudAlpha(texture2D(cloudMap, vUv).r);
-  float h = dot(N, L);
-  float lit = clamp(h * 1.05 + 0.04, 0.0, 1.0);
-  vec3 col = vec3(0.96) * sunColor(h) * lit * 1.18;
-  float rim = pow(1.0 - max(dot(N, V), 0.0), 2.2);
-  col = mix(col, SKY * lit, rim * 0.35);
-  float alpha = a * 0.95 * (0.12 + 0.88 * smoothstep(-0.25, 0.08, h));
-  gl_FragColor = vec4(col, alpha);
   #include <colorspace_fragment>
 }`;
 
 /**
  * The atmosphere: a thin shell seen edge-on. For each pixel, how close the line of sight passes to the
- * ground sets how much air it crosses; the side facing the sun glows blue, the night side barely at all.
+ * ground sets how much air it crosses. Evenly lit all the way around.
  */
 const AIR_FRAG = `
-uniform vec3 sunDir;
 uniform float R;
 uniform float Ra;
 varying vec3 vN;
 varying vec3 vPos;
 varying vec2 vUv;
-${SUN}
+${SKY}
 void main() {
   vec3 ro = cameraPosition;
   vec3 rd = normalize(vPos - ro);
@@ -474,9 +364,7 @@ void main() {
   float d = length(cp);
   float hgt = clamp((d - R) / (Ra - R), 0.0, 1.0);
   float dens = exp(-hgt * 4.5) * (1.0 - hgt);
-  float s = dot(normalize(cp), normalize(sunDir));
-  float sunK = smoothstep(-0.3, 0.45, s);
-  vec3 col = mix(SKY, vec3(0.55, 0.72, 1.0), 0.25) * dens * (0.05 + 0.95 * sunK) * 1.15;
+  vec3 col = mix(SKY, vec3(0.55, 0.72, 1.0), 0.25) * dens * 0.5;
   float a = clamp(max(col.r, max(col.g, col.b)), 0.0, 1.0);
   gl_FragColor = vec4(col, a);
   #include <colorspace_fragment>

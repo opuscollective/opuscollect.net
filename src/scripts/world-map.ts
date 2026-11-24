@@ -16,7 +16,6 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import { hasPoint, type Listing } from '@/types/directory';
-import { sunAt, sunlight, dayAmount } from '@/lib/sun';
 import { aggregate, levelForZoom, nextZoom, placePoints, type Aggregate, type GeoLevel } from '@/lib/world-geo';
 
 const OFM = 'https://tiles.openfreemap.org';
@@ -42,46 +41,26 @@ function readPalette(): Palette {
 }
 
 /**
- * The Earth from space, the same picture as the homepage globe: NASA Blue Marble where the sun is up,
- * city lights where it is night, with the same soft twilight band. Painted once into a canvas in Web Mercator
- * (the night side is a low-resolution mask, scaled up, so the edge stays soft) and repainted every few minutes.
+ * The Earth from space, the same picture as the homepage globe: the Earth at night with its city lights, the same
+ * on every side (Bogo 2026-11-24). Drawn once into a canvas in Web Mercator.
  * The imagery is 4096 px around the Earth, so it is shown only while it is sharp (to zoom ~3) and then hands
  * over to the street map, which is sharp at every zoom.
  */
 const EARTH_COORDS: [[number, number], [number, number], [number, number], [number, number]] = [[-180, 85.0511], [180, 85.0511], [180, -85.0511], [-180, -85.0511]];
 const loadImg = (src: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = rej; i.src = src; });
+/** The night air laid over the planet. Also fills the polar caps, which Web Mercator imagery cannot reach. */
+const AIR = 'rgb(44, 58, 84)';
 async function earthCanvas(size: 2048 | 4096) {
-  const [day, night] = await Promise.all([loadImg(`/images/earth/day-mercator-${size}.webp`), loadImg(`/images/earth/night-mercator-${size}.webp`)]);
+  const night = await loadImg(`/images/earth/night-mercator-${size}.webp`);
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
-  const paint = () => {
-    const sun = sunAt(new Date());
-    const M = 256;
-    const mask = document.createElement('canvas'); mask.width = mask.height = M;
-    const mctx = mask.getContext('2d')!;
-    const px = mctx.createImageData(M, M);
-    for (let y = 0; y < M; y++) {
-      const lat = (Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 0.5)) / M))) * 180) / Math.PI;
-      for (let x = 0; x < M; x++) {
-        const lng = -180 + ((x + 0.5) / M) * 360;
-        px.data[(y * M + x) * 4 + 3] = Math.round((1 - dayAmount(sunlight(lat, lng, sun))) * 255);
-      }
-    }
-    mctx.putImageData(px, 0, 0);
-    // Night lights only where it is night, then laid over the day picture.
-    const nightLayer = document.createElement('canvas'); nightLayer.width = nightLayer.height = size;
-    const nctx = nightLayer.getContext('2d')!;
-    nctx.drawImage(night, 0, 0, size, size);
-    nctx.globalCompositeOperation = 'destination-in';
-    nctx.imageSmoothingQuality = 'high';
-    nctx.drawImage(mask, 0, 0, size, size);
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(day, 0, 0, size, size);
-    ctx.drawImage(nightLayer, 0, 0);
-    nightLayer.width = 0; // free it now
-  };
-  paint();
-  return { canvas, paint };
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(night, 0, 0, size, size);
+  // A soft blue-gray air over the whole planet, matching the homepage Earth; the city lights stay bright.
+  ctx.globalCompositeOperation = 'screen';
+  ctx.fillStyle = AIR;
+  ctx.fillRect(0, 0, size, size);
+  return { canvas };
 }
 
 const sky = (C: Palette) => ({
@@ -92,7 +71,7 @@ const sky = (C: Palette) => ({
   'sky-horizon-blend': 0.6,
   'horizon-fog-blend': 0.6,
   'fog-ground-blend': 0.9,
-  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 3, 0.6, 5, 0] as maplibregl.ExpressionSpecification,
+  'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.4, 3, 0.3, 5, 0] as maplibregl.ExpressionSpecification,
 });
 
 /** Repaints an existing map in the current theme, keeping its data, markers and camera. */
@@ -112,8 +91,8 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
   return {
     version: 8,
     projection: { type: 'globe' },
-    // Lights the atmosphere around the globe, so it has the same blue rim as the homepage Earth.
-    light: { anchor: 'map', position: [1.5, 90, 80] },
+    // Lights the atmosphere from a fixed side of the screen, so the thin lit rim is the same whichever way the globe is turned.
+    light: { anchor: 'viewport', position: [1.5, 0, 180] },
     glyphs: `${OFM}/fonts/{fontstack}/{range}.pbf`,
     sky: sky(C),
     sources: {
@@ -249,15 +228,11 @@ export async function mountWorldMap(
   if (earth) {
     // The Earth from space, under the street map, handing over to it before the imagery could soften.
     map.addSource('earth', { type: 'canvas', canvas: earth.canvas, coordinates: EARTH_COORDS, animate: false });
+    const fade = ['interpolate', ['linear'], ['zoom'], 0, 1, 3.1, 1, 3.9, 0] as maplibregl.ExpressionSpecification;
+    map.addLayer({ id: 'earth-caps', type: 'background', paint: { 'background-color': AIR, 'background-opacity': fade } }, 'omt-water');
     map.addLayer({ id: 'earth', type: 'raster', source: 'earth',
       paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 1, 3.1, 1, 3.9, 0], 'raster-fade-duration': 0, 'raster-resampling': 'linear' } }, 'omt-water');
   }
-  // Keep the night side where it really is: repaint the Earth every five minutes.
-  const sunTimer = earth ? setInterval(() => {
-    earth.paint();
-    const src = map.getSource('earth') as maplibregl.CanvasSource | undefined;
-    if (src) { src.play(); requestAnimationFrame(() => src.pause()); }
-  }, 5 * 60_000) : 0;
 
   // Groups that would overlap on screen merge into one count (summed), then split as you zoom in.
   map.addSource('listings', {
@@ -436,6 +411,6 @@ export async function mountWorldMap(
       if (worldwide && !reduce) spinning = true; // the moveend handler starts the spin
     },
     ready: () => firstIdle,
-    destroy() { clearInterval(sunTimer); window.removeEventListener('opus:theme', onTheme); window.removeEventListener('opus:motion', onMotionChange); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
+    destroy() { window.removeEventListener('opus:theme', onTheme); window.removeEventListener('opus:motion', onMotionChange); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
   };
 }
