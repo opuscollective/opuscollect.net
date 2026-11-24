@@ -55,7 +55,7 @@ const OPTIONS = [
         <>
           <p class="t-meta app__kicker"><a class="link" href={joining ? `/clans/invite/${inviteToken}` : '/sign-up'}>← {joining ? 'Back' : 'Change'}</a></p>
           <h1 class="su__title">Create your account.</h1>
-          <p class="su__lead">{joining ? `You’ll join ${inviteClan!.name} as soon as your account is ready.` : goal === 'group' ? 'One account, one email. Next, you’ll set up your group.' : 'Your name, what you do and where. It takes a minute.'}</p>
+          <p class="su__lead">{joining ? `You’ll join ${inviteClan!.name} as soon as your account is ready.` : goal === 'group' ? 'One account, one email. Next, you’ll set up your group.' : 'An email and a password. Next: your photo, your name, what you do and where.'}</p>
 
           <form class="form" data-signup data-next={after} data-invite={joining ? inviteToken : ''} novalidate>
             <label class="field"><span>Email</span>
@@ -84,7 +84,7 @@ const OPTIONS = [
     url: '/api/auth/register',
     body: (f) => ({ ...values(f), ...(form.dataset.invite ? { invite: form.dataset.invite, join: true } : {}) }),
     busyLabel: 'Creating account…',
-    onSuccess: (d) => { location.href = (d.joined as { href?: string } | null)?.href || (form.dataset.invite ? `/clans/invite/${form.dataset.invite}` : form.dataset.next || '/start'); },
+    onSuccess: (d) => { try { localStorage.setItem('opus.signin.method', 'password'); } catch { /* fine */ } location.href = (d.joined as { href?: string } | null)?.href || (form.dataset.invite ? `/clans/invite/${form.dataset.invite}` : form.dataset.next || '/start'); },
   });
 </script>
 <style>

@@ -1,10 +1,22 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { verifyEmail } from '@/server/auth';
+import { getMyStudio } from '@/server/business';
+import { getMyProfile } from '@/server/profiles';
+import { EMAIL_CONFIRM_REQUIRED } from '@/lib/features';
 import '@/styles/app.css';
 export const prerender = false;
 const token = Astro.url.searchParams.get('token') ?? '';
-const ok = token ? await verifyEmail(Astro.locals.runtime.env, token) : false;
+const env = Astro.locals.runtime.env;
+const ok = token ? await verifyEmail(env, token) : false;
+// Continue where they were: a studio owner with no member profile goes to the studio dashboard, everyone else to their profile.
+const me = Astro.locals.user;
+let dest = { href: '/account/profile', label: 'Continue to your profile' };
+if (ok && me) {
+  const [studio, profile] = await Promise.all([getMyStudio(env.DB, me.id).catch(() => null), getMyProfile(env.DB, me.id).catch(() => null)]);
+  if (studio && !profile) dest = { href: '/business', label: 'Continue to your studio' };
+  else if (!profile) dest = { href: '/start', label: 'Set up your profile' };
+}
 ---
 <BaseLayout title={ok ? 'Email confirmed' : 'Confirm your email'} noindex>
   <section class="app app--center">
@@ -13,8 +25,8 @@ const ok = token ? await verifyEmail(Astro.locals.runtime.env, token) : false;
       {ok ? (
         <>
           <h1 class="app__title">Your email is confirmed.</h1>
-          <p class="app__lead">You can now publish your profile and connect with other members.</p>
-          <p class="app__alt"><a class="btn-app" href={Astro.locals.user ? '/account/profile' : '/sign-in?next=/account/profile'}>Continue to your profile</a></p>
+          <p class="app__lead">{EMAIL_CONFIRM_REQUIRED ? 'You can now publish and connect with other members.' : 'Your account is secured.'}</p>
+          <p class="app__alt"><a class="btn-app" href={me ? dest.href : '/sign-in?next=/account'}>{me ? dest.label : 'Sign in to continue'}</a></p>
         </>
       ) : (
         <>

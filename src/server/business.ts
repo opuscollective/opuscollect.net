@@ -3,6 +3,7 @@
  * Every write checks that the signed-in user owns the studio. Public reads never include
  * the private address, customer data or internal notes.
  */
+import { EMAIL_CONFIRM_REQUIRED } from '@/lib/features';
 import { HttpError, audit, now, randomId, str } from './util';
 import { limit } from './ratelimit';
 import { RESERVED, cleanUrl, slugify, mediaUrl } from './profiles';
@@ -118,7 +119,7 @@ export async function studioChecklist(db: D1Database, s: Studio, emailVerified: 
   const rules = await getRules(db, s.id);
   const needsHours = services.some((x) => x.mode === 'session');
   const steps = [
-    { key: 'email', label: 'Confirm your email address', done: emailVerified, href: '/account' },
+    ...(EMAIL_CONFIRM_REQUIRED ? [{ key: 'email', label: 'Confirm your email address', done: emailVerified, href: '/account' }] : []),
     { key: 'details', label: 'Studio name, type, city and a description (40+ characters)', done: !!(s.name && s.placeId && s.bio.trim().length >= 40), href: '/business/studio' },
     { key: 'photo', label: 'A main photo of the studio', done: !!s.photoKey, href: '/business/studio#photos' },
     { key: 'services', label: 'At least one service with a price', done: services.length > 0, href: '/business/services' },

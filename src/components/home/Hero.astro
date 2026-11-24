@@ -21,10 +21,14 @@ const topCities = CITIES.slice(0, 8);
       <span class="hero__line"><span class="hero-in" style="--i:1">{SITE.heroProduct}</span></span>
     </h1>
     <p class="hero__say hero-in" style="--i:3">{SITE.heroHeadline}</p>
+    <!-- Who it's for, in plain words: a cold visitor should know this is for music people before they scroll. -->
+    <p class="hero__for hero-in" style="--i:4">{SITE.heroFor}</p>
 
     <div class="hero__ctas hero-in" style="--i:5">
       <a class="hero__go hero__join" href="/sign-up?next=/start" data-hero-mark>Join Opus</a>
       <a class="hero__mark" href="/world" data-hero-open>Explore World</a>
+      <!-- Studio owners get their own way in, here on the page (not only in the footer). -->
+      <p class="hero__studios">{SITE.heroStudios.lead} <a href={SITE.heroStudios.href}>{SITE.heroStudios.action}<span aria-hidden="true"> →</span></a></p>
     </div>
 
     <!-- Accessible fallback, shown when WebGL is not available -->
@@ -280,6 +284,11 @@ const topCities = CITIES.slice(0, 8);
   .hero__stage { gap: 0; }
   /* The one line under the product name. Direct: name, line, two actions, then the Earth does the rest. */
   .hero__say { margin: clamp(8px, 1vw, 14px) 0 0; max-width: 26em; font-size: clamp(1.15rem, 0.9rem + 1.1vw, 1.9rem); font-weight: 400; line-height: 1.2; letter-spacing: -0.02em; color: rgba(244, 242, 238, 0.88); text-wrap: balance; }
+  .hero__for { margin: clamp(10px, 1vw, 14px) 0 0; max-width: 30em; font-size: clamp(1rem, 0.92rem + 0.35vw, 1.2rem); line-height: 1.4; letter-spacing: -0.01em; color: rgba(244, 242, 238, 0.72); text-wrap: balance; }
+  .hero__studios { flex-basis: 100%; margin: 4px 0 0; font-size: 14.5px; line-height: 1.4; color: rgba(244, 242, 238, 0.7); text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6); }
+  .hero__studios a { color: #f4f2ee; font-weight: 500; text-decoration: underline; text-decoration-color: rgba(244, 242, 238, 0.4); text-underline-offset: 4px; padding: 10px 2px; }
+  .hero__studios a:hover { text-decoration-color: #f4f2ee; }
+  .hero__studios a:focus-visible { outline: 2px solid #a9c7ec; outline-offset: 2px; border-radius: 4px; }
   .hero__title { margin: 0; font-size: clamp(4rem, 8.4vw, 9.5rem); line-height: 0.9; letter-spacing: -0.06em; font-weight: 600; color: #f4f2ee; }
   .hero__promise { margin: clamp(10px, 1.2vw, 18px) 0 0; font-size: clamp(1.7rem, 3.1vw, 3.4rem); line-height: 1.08; letter-spacing: -0.035em; font-weight: 500; color: #f4f2ee; }
   .hero__value { margin: clamp(12px, 1.2vw, 18px) 0 0; font-size: clamp(1.14rem, 0.96rem + 0.48vw, 1.55rem); line-height: 1.35; letter-spacing: -0.018em; color: rgba(244, 242, 238, 0.82); }

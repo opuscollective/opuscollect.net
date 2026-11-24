@@ -133,7 +133,7 @@ export async function verifyEmail(env: Env, token: string) {
 }
 
 export async function resendVerification(ctx: Ctx, user: SessionUser) {
-  if (user.emailVerified) return 'already' as const;
+  if (user.emailConfirmed) return 'already' as const;
   await limit(ctx.env.DB, `verify:user:${user.id}`, 5, 60 * MIN);
   return sendVerification(ctx, user);
 }

@@ -26,6 +26,7 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
       <p class="app__lead">{p ? 'Changes save as a draft until you publish. Published profiles appear in World at city level only.' : 'A photo, your name, what you do and where. Add the rest whenever you like.'}</p>
 
       {welcome && !user.emailVerified && <p class="notice" style="margin-top:20px">Welcome to Opus. We sent a confirmation link to <b>{user.email}</b>. You can build your profile now and publish once your email is confirmed.</p>}
+      {user.emailVerified && !user.emailConfirmed && p?.status === 'published' && <p class="notice" style="margin-top:20px"><a class="link" href="/account">Confirm your email to secure your account</a>. Your page stays live either way.</p>}
 
       {p?.status === 'published' && (
         <div class="pe-live" data-live data-url={`https://opuscollect.net/${p.handle}`}>
@@ -75,7 +76,7 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
         <!-- Photos -->
         <div class="panel">
           <h2>Photos</h2>
-          <p class="dim">A clear photo of you. JPEG or WebP. Location data is removed from every photo you upload.</p>
+          <p class="dim">A clear photo of you. JPEG, PNG or WebP. Location data is removed from every photo you upload.</p>
           <div class="pe-photos">
             <div class="pe-photo">
               <div class="pe-photo__img" data-photo-preview style={p?.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''}>{!p?.photoKey && <span>No photo</span>}</div>
@@ -165,8 +166,9 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
 
         </details>
 
-        <div data-status class="form-status"></div>
         <div class="pe-actions">
+          <!-- Messages about saving and publishing sit with the buttons, which stay in view. -->
+          <div data-status class="form-status pe-actions__status"></div>
           <button class="btn-app btn-app--ghost" type="submit" data-intent="save">{p?.status === 'published' ? 'Save' : 'Save draft'}</button>
           {p && <a class="btn-app btn-app--ghost" href={`/${p.handle}`} target="_blank" data-preview>Preview</a>}
           {p?.status === 'published'
@@ -213,6 +215,7 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
   .pe-rows { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 14px; }
   .pe-rows:empty { margin: 8px 0; }
   .pe-actions { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding: 14px 0; background: linear-gradient(to top, var(--c-bg) 70%, transparent); }
+  .pe-actions__status { flex: 1 1 100%; margin: 0; }
   @media (max-width: 600px) { .pe-actions { justify-content: stretch; } .pe-actions .btn-app { flex: 1 1 40%; } .pe-actions [data-intent="publish"] { flex-basis: 100%; order: -1; } }
   :global(.pe-row) { display: grid; gap: 8px; grid-template-columns: 1fr auto; align-items: center; }
   :global(.pe-row--credit) { grid-template-columns: 2fr 1.2fr 1.4fr 0.7fr 2fr auto; }
@@ -398,6 +401,9 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
   const saved = new URLSearchParams(location.search).get('saved');
   if (saved) {
     const st = document.querySelector<HTMLElement>('[data-state]');
-    if (st) st.insertAdjacentHTML('afterbegin', `<b>${saved === 'publish' ? 'Saved and published.' : saved === 'unpublish' ? 'Unpublished.' : 'Draft saved.'}</b> `);
+    // One line, not two: "Saved and published." replaces "Published."; a saved draft keeps what is still missing.
+    if (st && saved === 'publish') st.innerHTML = '<span><b>Saved and published.</b></span>';
+    else if (st && saved === 'unpublish') st.insertAdjacentHTML('afterbegin', '<b>Unpublished.</b> ');
+    else if (st) { const b = st.querySelector('b'); if (b) b.textContent = b.textContent === 'Published.' ? 'Saved.' : 'Draft saved.'; }
   }
 </script>

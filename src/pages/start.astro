@@ -1,13 +1,13 @@
 ---
 /**
- * Quick setup after joining: (1) name, role and city, (2) start or add a release, (3) what's left to appear in World.
- * Each step saves on its own, so people can stop at any point and pick up later.
+ * Quick setup after joining, in one screen: photo, name, what you do and where. Saving it publishes the profile
+ * (a photo is the only thing that can hold it back), so a new member is in World within the two-minute rule.
+ * Then: "Your page is live", with the next things to do. Adding a first work is offered there, never required.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SPECIALTIES } from '@/data/specialties';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
-import { getMyProfile, missingForPublish } from '@/server/profiles';
-import { listMyReleases } from '@/server/releases';
+import { getMyProfile, mediaUrl } from '@/server/profiles';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -15,11 +15,14 @@ const user = Astro.locals.user;
 if (!user) return Astro.redirect('/sign-up?next=/start');
 const db = Astro.locals.runtime.env.DB;
 const profile = await getMyProfile(db, user.id);
-const releases = profile ? await listMyReleases(db, user.id).catch(() => []) : [];
-const step = !profile ? 1 : Astro.url.searchParams.has('done') || releases.length ? 3 : 2;
-const missing = profile ? missingForPublish(profile, user.emailVerified) : [];
+const live = profile?.status === 'published';
+// A draft that already exists is finished in the full editor, which keeps everything else the member has added.
+if (profile && !live) return Astro.redirect('/account/profile');
+const step = live ? 2 : 1;
+// When email confirmation is required and still pending, setup saves a draft and says so.
+const canPublish = user.emailVerified;
 
-const STEPS = ['You', 'Your first work', 'Done'];
+const STEPS = ['You', 'Live'];
 ---
 <BaseLayout title="Set up Opus" noindex assistant={false} messages={false}>
   <section class="app app--center">
@@ -31,56 +34,53 @@ const STEPS = ['You', 'Your first work', 'Done'];
       {step === 1 && (
         <>
           <h1 class="app__title">Who are you on Opus?</h1>
-          <p class="app__lead">Three things to start. You can add the rest later, and nothing is public until you publish.</p>
-          <form class="form" data-basics novalidate>
-            <label class="field"><span>Artist or professional name</span><input class="input" name="displayName" maxlength="80" required autocomplete="nickname" /></label>
+          <p class="app__lead">Four things and you’re in World. You can add the rest later.</p>
+          <form class="form" data-basics data-has-photo={profile?.photoKey ? '1' : ''} data-can-publish={canPublish ? '1' : ''} novalidate>
+            <div class="st__photo">
+              <div class="st__face" data-photo-preview style={profile?.photoKey ? `background-image:url(${mediaUrl(profile.photoKey)})` : ''}>
+                {!profile?.photoKey && <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="24" cy="18" r="8"/><path d="M8 43c0-8.800 7.200-15 16-15s16 6.200 16 15"/></svg>}
+              </div>
+              <div class="st__photo-txt">
+                <label class="btn-app btn-app--ghost st__file"><span data-photo-label>{profile?.photoKey ? 'Change photo' : 'Add your photo'}</span><input type="file" accept="image/jpeg,image/png,image/webp,image/heic" data-photo /></label>
+                <small data-photo-status role="status">A clear photo of you. People connect with faces.</small>
+              </div>
+            </div>
+            <label class="field"><span>Artist or professional name</span><input class="input" name="displayName" maxlength="80" required autocomplete="nickname" value={profile?.displayName ?? ''} /></label>
             <label class="field"><span>What do you do?</span>
               <select class="select" name="primarySpecialty" required>
                 <option value="">Choose your main role</option>
-                {Object.entries(SPECIALTIES).map(([k, s]) => <option value={k}>{s.label}</option>)}
+                {Object.entries(SPECIALTIES).map(([k, s]) => <option value={k} selected={profile?.primarySpecialty === k}>{s.label}</option>)}
               </select>
             </label>
             <label class="field"><span>Where are you based?</span>
-              <PlaceSelect required />
+              <PlaceSelect selected={profile?.placeId ?? null} required />
               <small>Type your city or ZIP code. Only your city is ever shown, never an address.</small>
             </label>
+            {!canPublish && <p class="notice">We sent a confirmation link to <b>{user.email}</b>. Your page goes live once your email is confirmed.</p>}
             <div data-status class="form-status"></div>
-            <button class="btn-app btn-app--block" type="submit">Continue</button>
+            <button class="btn-app btn-app--block" type="submit" data-go>Go live in World</button>
+            <p class="st__fine" data-fine>Your page goes public when you press this. You can unpublish any time.</p>
           </form>
         </>
       )}
 
-      {step === 2 && (
+      {step === 2 && profile && (
         <>
-          <h1 class="app__title">What are you working on?</h1>
-          <p class="app__lead">Start a release you’re making, or add one that’s already out. It builds your résumé on Opus, and you decide whether it shows on your profile.</p>
-          <form class="form" data-first-release novalidate style="margin-top:28px">
-            <label class="field"><span>Title</span><input class="input" name="title" maxlength="120" placeholder="A working title is fine" /></label>
-            <div class="st__pick">
-              <button type="submit" class="st__opt" value="new"><b>I’m working on it</b><small>Start a release. Add tracks, credit your team, and find people for it.</small></button>
-              <button type="submit" class="st__opt" value="past"><b>It’s already out</b><small>Add it to your record so it shows on your profile.</small></button>
+          <div class="st__live" data-live data-url={`https://opuscollect.net/${profile.handle}`}>
+            <h1 class="st__live-t">Your page is live.</h1>
+            <p class="st__live-u">opuscollect.net/{profile.handle}</p>
+            <p class="st__live-s">You’re in World now. Give this link to anyone; they don’t need an account to see it.</p>
+            <div class="st__live-a">
+              <button type="button" class="btn-app btn-app--ghost" data-copy>Copy link</button>
+              <button type="button" class="btn-app btn-app--ghost" data-share hidden>Share</button>
+              <a class="btn-app btn-app--ghost" href={`/${profile.handle}`}>View page</a>
             </div>
-            <p class="dim" data-status role="alert"></p>
-          </form>
-          <p class="app__alt"><a href="/start?done=1">Skip for now</a></p>
-        </>
-      )}
-
-      {step === 3 && profile && (
-        <>
-          <h1 class="app__title">You’re on Opus.</h1>
-          <p class="app__lead">
-            {profile.status === 'published'
-              ? 'Your profile is live in World.'
-              : missing.length
-                ? `To appear in World, add: ${missing.join(', ').toLowerCase()}.`
-                : 'Everything’s ready. Publish your profile to appear in World.'}
-          </p>
-          <div class="st__next">
-            {profile.status !== 'published' && <a class="btn-app btn-app--block" href="/account/profile">Finish your profile</a>}
-            <a class="btn-app btn-app--ghost btn-app--block" href="/works/mine">Your works</a>
-            <a class="btn-app btn-app--ghost btn-app--block" href={`/${profile.handle}`}>See your profile</a>
           </div>
+          <div class="st__next">
+            <a class="btn-app btn-app--block" href="/world">Find people in World</a>
+            <a class="btn-app btn-app--ghost btn-app--block" href="/works/mine?add=1">Add your first work</a>
+          </div>
+          {!user.emailConfirmed && <p class="st__fine"><a class="link" href="/account">Confirm your email to secure your account</a> when you have a moment.</p>}
         </>
       )}
     </div>
@@ -88,38 +88,111 @@ const STEPS = ['You', 'Your first work', 'Done'];
 </BaseLayout>
 
 <script>
-  import { bindForm } from '@/scripts/form';
-  const basics = document.querySelector<HTMLFormElement>('[data-basics]');
-  if (basics) bindForm(basics, { url: '/api/profile', busyLabel: 'Saving…', onSuccess: () => { location.href = '/start'; } });
-  // Step 2 creates the release in Works, then opens its builder.
-  const first = document.querySelector<HTMLFormElement>('[data-first-release]');
-  first?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = (e as SubmitEvent).submitter as HTMLButtonElement | null;
-    const msg = first.querySelector<HTMLElement>('[data-status]')!;
-    first.querySelectorAll('button').forEach((b) => (b.disabled = true)); msg.textContent = '';
-    const title = (first.elements.namedItem('title') as HTMLInputElement).value;
-    const r = await fetch('/api/releases', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title, past: btn?.value === 'past' }) });
-    const d = (await r.json().catch(() => ({}))) as { id?: string; error?: string };
-    if (r.ok && d.id) location.href = `/works/${d.id}`;
-    else { first.querySelectorAll('button').forEach((b) => (b.disabled = false)); msg.textContent = d.error ?? 'Something went wrong. Please try again.'; }
-  });
+  import { status, values } from '@/scripts/form';
+  import { prepareImage } from '@/scripts/image';
+
+  const form = document.querySelector<HTMLFormElement>('[data-basics]');
+  if (form) {
+    const go = form.querySelector<HTMLButtonElement>('[data-go]')!;
+    const fine = form.querySelector<HTMLElement>('[data-fine]')!;
+    const photoStatus = form.querySelector<HTMLElement>('[data-photo-status]')!;
+    let photo: Blob | null = null;
+    const hasPhoto = () => !!photo || form.dataset.hasPhoto === '1';
+    // Without a photo the profile can be saved but not shown in World, and the button says so.
+    const canPublish = form.dataset.canPublish === '1';
+    const label = () => {
+      if (!canPublish) { go.textContent = 'Save my profile'; fine.textContent = 'Saved as a draft only you can see until your email is confirmed.'; return; }
+      go.textContent = hasPhoto() ? 'Go live in World' : 'Save for now';
+      fine.textContent = hasPhoto() ? 'Your page goes public when you press this. You can unpublish any time.' : 'Add a photo to go live in World. Without one, this saves as a draft only you can see.';
+    };
+    label();
+    form.querySelector<HTMLInputElement>('[data-photo]')!.addEventListener('change', async (e) => {
+      const input = e.target as HTMLInputElement;
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        // Re-encoded in the browser: resized, squared, and stripped of location data before it leaves the device.
+        photo = await prepareImage(file, 800, 'square');
+        const el = form.querySelector<HTMLElement>('[data-photo-preview]')!;
+        el.style.backgroundImage = `url(${URL.createObjectURL(photo)})`; el.replaceChildren();
+        form.querySelector('[data-photo-label]')!.textContent = 'Change photo';
+        photoStatus.textContent = 'Looks good.';
+      } catch (err) { photoStatus.textContent = err instanceof Error ? err.message : 'That image could not be read.'; }
+      input.value = ''; label();
+    });
+
+    const save = async (publish: boolean) => {
+      const v = values(form);
+      const r = await fetch('/api/profile', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ displayName: v.displayName, primarySpecialty: v.primarySpecialty, placeId: v.placeId, ...(publish ? { publish: true } : {}) }) });
+      const d = (await r.json().catch(() => ({}))) as { error?: string; field?: string };
+      if (!r.ok) throw Object.assign(new Error(d.error ?? 'Something went wrong. Please try again.'), { field: d.field });
+    };
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      form.querySelectorAll('.field.has-error').forEach((f) => f.classList.remove('has-error'));
+      form.querySelectorAll('.field__error').forEach((f) => f.remove());
+      status(form, '', 'ok'); form.querySelector<HTMLElement>('[data-status]')!.className = 'form-status';
+      go.disabled = true; go.textContent = 'Saving…';
+      try {
+        await save(false);
+        if (photo) {
+          const r = await fetch('/api/profile/image?slot=photo', { method: 'POST', headers: { 'content-type': photo.type }, body: photo });
+          if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as { error?: string }).error ?? 'Your details are saved, but the photo didn’t upload. Try it again.');
+          form.dataset.hasPhoto = '1'; photo = null;
+        }
+        if (hasPhoto() && canPublish) { await save(true); location.href = '/start'; }
+        else location.href = canPublish ? '/account/profile' : '/account/profile?welcome';
+      } catch (err) {
+        const field = (err as { field?: string }).field;
+        const host = field ? form.querySelector<HTMLElement>(`[name="${field}"]`)?.closest('.field') : null;
+        if (host) {
+          host.classList.add('has-error');
+          const p = document.createElement('p'); p.className = 'field__error'; p.setAttribute('role', 'alert'); p.textContent = (err as Error).message;
+          host.append(p); host.querySelector<HTMLElement>('input, select')?.focus();
+        } else status(form, (err as Error).message, 'error');
+        go.disabled = false; label();
+      }
+    });
+  }
+
+  // "Your page is live": copy and share the public link.
+  const live = document.querySelector<HTMLElement>('[data-live]');
+  if (live) {
+    const url = live.dataset.url!;
+    const copy = live.querySelector<HTMLButtonElement>('[data-copy]')!;
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(url); copy.textContent = 'Copied'; } catch { copy.textContent = 'Press and hold the link to copy'; }
+      setTimeout(() => (copy.textContent = 'Copy link'), 2200);
+    });
+    const share = live.querySelector<HTMLButtonElement>('[data-share]')!;
+    if (navigator.share) { share.hidden = false; share.addEventListener('click', () => navigator.share({ url, title: 'My page on Opus' }).catch(() => {})); }
+  }
 </script>
 
 <style>
-  .st { max-width: 620px; }
+  .st { max-width: 560px; }
   .st__steps { display: flex; gap: 8px 20px; flex-wrap: wrap; margin: 0 0 28px; padding: 0; list-style: none; font-size: 13px; color: var(--text-3); }
   .st__steps li { display: inline-flex; align-items: center; gap: 8px; }
   .st__steps span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-strong); font-size: 11px; }
   .st__steps .is-now { color: var(--text); }
   .st__steps .is-now span { background: var(--text); color: var(--bg); border-color: var(--text); }
   .st__steps .is-done span { background: var(--surface); }
-  .st__pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .st__opt { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 18px; text-align: left; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); color: var(--text); cursor: pointer; transition: border-color var(--dur) var(--ease); }
-  .st__opt:hover { border-color: var(--text); }
-  .st__opt b { font-weight: 500; font-size: 16px; }
-  .st__opt small { font-size: 13px; line-height: 1.45; color: var(--text-3); }
-  .st__opt:disabled { opacity: 0.6; cursor: wait; }
-  @media (max-width: 560px) { .st__pick { grid-template-columns: 1fr; } }
-  .st__next { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+  :global(.st .app__title) { font-weight: 300; letter-spacing: -0.045em; }
+  /* The photo leads: it is the one thing people skip, and the one thing World needs. */
+  .st__photo { display: flex; align-items: center; gap: 18px; }
+  .st__face { flex: none; display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text-3); }
+  .st__photo-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+  .st__photo-txt small { font-size: 13px; line-height: 1.45; color: var(--text-3); }
+  .st__file { position: relative; overflow: hidden; }
+  .st__file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+  .st__file:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .st__fine { margin: 14px 0 0; font-size: 13px; line-height: 1.5; color: var(--text-3); text-align: center; }
+  .st__live { position: relative; isolation: isolate; overflow: hidden; padding: clamp(24px, 5vw, 36px); border-radius: 22px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .st__live::before { content: ''; position: absolute; z-index: -1; inset: -40% -10% auto 30%; height: 240px; filter: blur(40px); background: radial-gradient(50% 60% at 50% 40%, rgba(154,174,255,.26), transparent 70%); pointer-events: none; }
+  .st__live-t { margin: 0; font-size: clamp(2rem, 1.5rem + 2.2vw, 2.8rem); font-weight: 300; letter-spacing: -0.045em; line-height: 1.05; }
+  .st__live-u { margin: 12px 0 0; font-size: clamp(1rem, .9rem + .6vw, 1.3rem); font-weight: 300; word-break: break-all; }
+  .st__live-s { margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-3); }
+  .st__live-a { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+  .st__next { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
 </style>

@@ -196,6 +196,19 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
       const r = c.getBoundingClientRect();
       c.classList.toggle('is-cut', r.left < Math.max(box.left, 0) + 6 || r.right > Math.min(box.right, innerWidth) - 6);
     }
+    // Names never sit on top of each other: chips win, then cities in list order; a name that would touch one
+    // already placed steps out until the Earth has turned enough to give it room.
+    const kept: DOMRect[] = [];
+    const showing = (e: HTMLElement) => e.style.opacity !== '0';
+    for (const c of el.querySelectorAll<HTMLElement>('.gl-chip:not(.is-cut)')) if (showing(c)) kept.push(c.getBoundingClientRect());
+    const padX = 14, pad = 4;
+    for (const c of el.querySelectorAll<HTMLElement>('.gl-label--city, .gl-label--land, .gl-label--sea')) {
+      if (!showing(c)) { c.classList.remove('is-crowded'); continue; }
+      const r = c.getBoundingClientRect();
+      const hit = kept.some((k) => r.left < k.right + padX && r.right > k.left - padX && r.top < k.bottom + pad && r.bottom > k.top - pad);
+      c.classList.toggle('is-crowded', hit);
+      if (!hit) kept.push(r);
+    }
   }, 300);
 
   const controls = globe.controls();
