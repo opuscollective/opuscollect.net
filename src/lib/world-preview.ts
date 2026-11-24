@@ -41,7 +41,8 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
   let status = '';
   let conns = '';
   if (l.kind === 'musician') {
-    const sp = allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s]?.label ?? s);
+    // The card names the Primary Specialty only; the rest live in About on the profile.
+    const sp = allSpecialties(l.primarySpecialty, l.specialties).slice(0, 1).map((s) => SPECIALTIES[s]?.label ?? s);
     roles = `<p class="pv__roles">${sp.map((s, i) => `<span${i === 0 ? ' class="is-primary"' : ''}>${esc(s)}</span>`).join('')}</p>${l.genres.length ? `<p class="pv__genres">${esc(l.genres.join(' · '))}</p>` : ''}`;
     status = HIRE_ENABLED && l.forHire ? '<p class="wc__status is-live">For hire</p>' : '';
     // One quiet line with the city: "Birmingham, AL · 12 connections".

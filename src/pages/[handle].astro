@@ -107,7 +107,7 @@ const asRows = record.length <= 8;
 const essCols = Math.min(lead.length, rail ? 3 : 4);
 const yearOf = (x: (typeof record)[number]) => x.releaseDate?.slice(0, 4) ?? (x.released ? '' : 'Coming');
 const ord = (k: string) => page.order.indexOf(k as never);
-const hasAbout = !!(p.bio || p.achievements.length || p.collaborations.length || p.portfolio.length);
+const hasAbout = !!(roles.length > 1 || p.bio || p.achievements.length || p.collaborations.length || p.portfolio.length);
 const releaseLine = (x: (typeof record)[number]) => [x.artist && (!x.own || !x.roles.includes('Primary Artist')) ? x.artist : null, x.own && x.roles.length === 1 && x.roles[0] === 'Primary Artist' ? null : x.roles.length ? x.roles.join(', ') : null, RELEASE_KINDS[x.kind], x.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ');
 const byLine = (x: (typeof record)[number]) => [x.artist && (!x.own || !x.roles.includes('Primary Artist')) ? x.artist : null, x.own && x.roles.length === 1 && x.roles[0] === 'Primary Artist' ? null : x.roles.length ? x.roles.join(', ') : null].filter(Boolean).join(' · ');
 const isEmpty = !record.length && !p.credits.length && !hasAbout;
@@ -131,12 +131,11 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
     <div class="mp__inner">
       <div class:list={['mp__banner', 'pf-bd', { 'has-cover': !!p.coverKey }]} data-backdrop={look.backdrop} role="img" aria-label={p.coverKey ? `Banner of ${p.displayName}` : undefined} aria-hidden={p.coverKey ? undefined : 'true'}>
         {p.coverKey && <span class="mp__cover" style={`background-image:url(${mediaUrl(p.coverKey)})`}></span>}
-        {look.backdrop === 'laurel' && !p.coverKey && <span class="mp__sigil"><OpusMark size={300} /></span>}
       </div>
       <header class:list={['mp__head', { 'no-photo': !photo }]}>
         <div class="mp__photo" style={`view-transition-name:pf-${p.handle};` + (photo ? `background-image:url(${photo})` : '')} role="img" aria-label={photo ? `Photo of ${p.displayName}` : p.displayName}>{!photo && initials(p.displayName)}</div>
         <div class="mp__id">
-          <p class="mp__kicker">{roles.length ? roles.slice(0, 3).join(' · ') : 'Opus member'}</p>
+          <p class="mp__kicker">{roles[0] ?? 'Opus member'}</p>
           <h1 class="mp__name"><span>{p.displayName}</span>{p.verification === 'verified' && <VerifiedBadge size={22} />}</h1>
           {(title || founder || rail) && (
             <p class="mp__rank">
@@ -380,6 +379,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           {show('about') && hasAbout && (
             <section class="mp__sec" style={`order:${ord('about')}`}><h2 class="mp__h">About</h2>
               {p.bio && <p class="mp__bio">{p.bio}</p>}
+              {roles.length > 1 && <p class="mp__also"><span>Also</span> {roles.slice(1).join(' · ')}</p>}
               {p.achievements.length > 0 && <ul class="mp__list" role="list">{p.achievements.map((a) => <li>{a}</li>)}</ul>}
               {p.collaborations.length > 0 && <ul class="mp__tags" role="list">{p.collaborations.map((a) => <li>{a}</li>)}</ul>}
               {p.portfolio.length > 0 && <ul class="mp__links" role="list">{p.portfolio.map((x) => <li><a href={x.url} target="_blank" rel="noopener nofollow ugc">{x.title || new URL(x.url).hostname} ↗</a></li>)}</ul>}
@@ -458,8 +458,6 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   /* Banner across the top, a round photo overlapping its lower edge, then who they are. */
   .mp__banner { height: clamp(150px, 19vw, 250px); border-radius: 22px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
   .mp__cover { position: absolute; inset: 0; background: center / cover no-repeat; }
-  @media (max-width: 760px) { .mp__sigil { display: none; } }
-  .mp__sigil { position: absolute; right: 6%; top: 50%; transform: translateY(-50%); color: #e9cf8c; opacity: .13; }
   .mp__head { display: block; text-align: center; padding: 0 clamp(4px, 2vw, 28px); }
   .mp__photo { margin-inline: auto; position: relative; z-index: 1; width: clamp(120px, 14vw, 168px); margin-top: calc(clamp(120px, 14vw, 168px) / -2); margin-inline: auto; border: 5px solid var(--bg); aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font-size: clamp(48px, 7vw, 88px); font-weight: 300; letter-spacing: -0.04em; color: #fff; background: linear-gradient(145deg, hsl(var(--mp-hue) 45% 38%), hsl(calc(var(--mp-hue) + 50) 50% 22%)) center / cover no-repeat; box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .55); }
   .mp__id { margin-top: 26px; display: flex; flex-direction: column; align-items: center; }
@@ -471,11 +469,12 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__title { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--pf-ink); box-shadow: inset 0 0 0 1px hsl(var(--pf-h) var(--pf-s) 60% / .45); background: var(--pf-soft); }
   .mp__lv { font-size: 13px; color: var(--text-2); text-decoration: none; font-variant-numeric: tabular-nums; }
   .mp__lv:hover { color: var(--text); }
-  /* Founder: a gold ring on the photo and a gold cast on the name. */
-  .is-founder .mp__photo { box-shadow: 0 0 0 2px #d9b45c, 0 0 44px -4px rgba(217, 180, 92, .6); }
+  /* Founder: one hairline of gold on the photo. The mark carries the rest; the name stays plain. */
+  .mp__also { margin-top: 14px; font-size: 14px; color: var(--text-2); }
+  .mp__also span { margin-right: 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
+  .is-founder .mp__photo { box-shadow: 0 0 0 1px color-mix(in oklab, #c99a3c 70%, transparent); }
   .mp__name { display: flex; align-items: center; justify-content: center; gap: .22em; }
   .mp__name span { min-width: 0; }
-  .is-founder .mp__name span { background: linear-gradient(180deg, var(--text) 35%, color-mix(in oklab, #c99a3c 78%, var(--text))); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .08em; }
   .mp__name { margin-top: 8px; font-size: clamp(2.6rem, 1.4rem + 4vw, 5rem); line-height: .98; overflow-wrap: break-word; }
   .mp__tag { margin-top: 14px; font-size: clamp(16px, 1.4vw, 20px); color: var(--text-2); max-width: 46ch; }
   .mp__facts { display: flex; flex-wrap: wrap; gap: 6px 0; margin-top: 18px; font-size: 14px; color: var(--text-2); }

@@ -28,7 +28,6 @@ export const BACKDROPS: readonly Backdrop[] = [
   { key: 'grid', label: 'Grid' },
   { key: 'spotlight', label: 'Spotlight' },
   { key: 'plain', label: 'Plain' },
-  { key: 'laurel', label: 'Founder', reserved: 'founder' },
 ];
 
 export const DEFAULT_ACCENT = 'ice';
@@ -43,11 +42,10 @@ export interface PageStyle { accent: Accent; backdrop: string; css: string }
 
 /**
  * Resolve saved keys to a style. Unknown or reserved keys fall back, so a saved choice can never
- * show a look the account isn't entitled to. A founder with no choice gets the founder look.
+ * show a look the account isn't entitled to. The founder starts from the same defaults as everyone; gold is an accent they may pick.
  */
 export function pageStyle(accentKey: string | null | undefined, backdropKey: string | null | undefined, distinction: string | null = null): PageStyle {
-  const founder = distinction === 'founder';
-  const accent = accentsFor(distinction).find((a) => a.key === accentKey) ?? ACCENTS.find((a) => a.key === (founder ? 'gold' : DEFAULT_ACCENT))!;
-  const backdrop = (backdropsFor(distinction).find((b) => b.key === backdropKey) ?? BACKDROPS.find((b) => b.key === (founder ? 'laurel' : DEFAULT_BACKDROP))!).key;
+  const accent = accentsFor(distinction).find((a) => a.key === accentKey) ?? ACCENTS.find((a) => a.key === DEFAULT_ACCENT)!;
+  const backdrop = (backdropsFor(distinction).find((b) => b.key === backdropKey) ?? BACKDROPS.find((b) => b.key === DEFAULT_BACKDROP)!).key;
   return { accent, backdrop, css: `--pf-h:${accent.h};--pf-s:${accent.s}%` };
 }

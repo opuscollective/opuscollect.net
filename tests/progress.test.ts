@@ -49,7 +49,9 @@ test('next up lists the closest unearned achievements', () => {
 test('reserved looks fall back unless the account is the founder', () => {
   assert.equal(pageStyle('gold', 'laurel').accent.key, 'ice');
   assert.equal(pageStyle('gold', 'laurel').backdrop, 'aura');
-  assert.equal(pageStyle('', '', 'founder').accent.key, 'gold');
+  assert.equal(pageStyle('gold', 'laurel', 'founder').accent.key, 'gold');
+  assert.equal(pageStyle('gold', 'laurel', 'founder').backdrop, 'aura');
+  assert.equal(pageStyle('', '', 'founder').accent.key, 'ice');
   assert.equal(pageStyle('rose', 'grid', 'founder').backdrop, 'grid');
   assert.equal(pageStyle('nope', 'nope').accent.key, 'ice');
 });

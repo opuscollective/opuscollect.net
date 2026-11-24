@@ -50,12 +50,12 @@ Use design tokens (`tokens.css`, `--m-*` motion tokens) and the shared product s
 - Every product is one word: World, Music, Charts, Network, Collective, Future. Studios live under World, Releases under Music. Verified is a trust feature, not a top-level nav item.
 - Desktop nav is centered (logo left, controls right) on a translucent header at the very top.
 - The assistant is named "Opus": V1 = structured intents and real navigation, **no generative AI**. Shown as one dark glass "Opus" chip everywhere. Not AI-first.
-- Terminology: **Specialty**, never "Discipline"; multiple specialties with one **Primary Specialty**.
+- Terminology: **Specialty**, never "Discipline"; multiple specialties with one **Primary Specialty**. Profile headers and World cards show the Primary Specialty only; the others sit in About (Bogo 2026-11-24).
 
 ## Profiles: look, founder, progress
 - Profile = `src/pages/[handle].astro`; link-in-bio = `[handle]/links.astro`; editor = `/account/page`. Page settings live in KV `page:<profileId>` (`src/server/page-config.ts`), no migration.
 - Look: accent + backdrop keys from the fixed palette in `src/lib/page-style.ts`, drawn in `src/styles/profile.css` (`.pf`, `.pf-bd[data-backdrop]`). Add options there; never free-form colours.
-- Founder: `profiles.distinction = 'founder'` (migration 0016), set by hand with the SQL in that migration's header. It implies verified, the Founder mark and the founder-only look. Never hardcode a handle.
+- Founder: `profiles.distinction = 'founder'` (migration 0016), set by hand with the SQL in that migration's header. It implies verified and the Founder mark (gold lettering on a hairline) plus a 1px gold ring on the photo. Bogo 2026-11-24: keep it subtle, no gold banner or themed page; the founder customizes the banner like any member. Gold is only an optional accent for the founder. Never hardcode a handle.
 - Travel: home city = the profile city. `away` (where the member says they are now) and `cities` (marked by the member) live in the KV page settings; `/api/travel` reads and changes them. World shows a "New territory" card only after Use My Location puts a signed-in member in a non-home city; only the city id is used, nothing is saved without a tap. Marked cities earn nothing; travel achievements read real connections and parties.
 - Greeting: `src/lib/greeting.ts` (time of day at home, "Welcome to <city>" when away; lines are working copy). Shown above the homepage hero title for signed-in members and as the Happening headline. Time comes from the viewer's clock, city from saved home/away only.
 - Happening (working name): `/world/happening`, in World's sub-nav. `src/server/happening.ts` gathers real parties, events, studios and members for one metro; quiet cities get the designed empty state. `?city=<slug or metro id>` switches city.
