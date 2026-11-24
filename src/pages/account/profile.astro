@@ -84,9 +84,9 @@ const linkFields = [
               <label class="btn-app btn-app--ghost pe-file">Upload photo<input type="file" accept="image/jpeg,image/png,image/webp,image/heic" data-upload="photo" /></label>
             </div>
             <div class="pe-cover">
-              <div class="pe-cover__img" data-cover-preview style={p?.coverKey ? `background-image:url(${mediaUrl(p.coverKey)})` : ''}>{!p?.coverKey && <span>Optional cover image</span>}</div>
+              <div class="pe-cover__img" data-cover-preview style={p?.coverKey ? `background-image:url(${mediaUrl(p.coverKey)})` : ''}>{!p?.coverKey && <span>Banner: a wide image across the top of your page</span>}</div>
               <div class="row">
-                <label class="btn-app btn-app--ghost pe-file">Upload cover<input type="file" accept="image/jpeg,image/png,image/webp" data-upload="cover" /></label>
+                <label class="btn-app btn-app--ghost pe-file">Upload banner<input type="file" accept="image/jpeg,image/png,image/webp" data-upload="cover" /></label>
                 {p?.coverKey && <button type="button" class="btn-app btn-app--ghost" data-remove="cover">Remove</button>}
               </div>
             </div>
@@ -208,7 +208,7 @@ const linkFields = [
   .pe-photos { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; margin-top: 16px; align-items: start; }
   .pe-photo, .pe-cover { display: flex; flex-direction: column; gap: 12px; }
   .pe-photo__img { width: 160px; height: 160px; border-radius: 50%; }
-  .pe-cover__img { width: 100%; aspect-ratio: 3 / 1; border-radius: var(--r-md); }
+  .pe-cover__img { width: 100%; aspect-ratio: 4 / 1; border-radius: var(--r-md); }
   .pe-photo__img, .pe-cover__img { display: grid; place-items: center; background: var(--surface-sunken) center / cover no-repeat; border: 1px solid var(--c-ink-600); color: var(--line-strong); font-size: 13px; }
   .pe-file { position: relative; overflow: hidden; width: max-content; }
   .pe-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
@@ -354,7 +354,7 @@ const linkFields = [
     if (!file) return;
     const slot = input.dataset.upload as 'photo' | 'cover';
     if (!data) {
-      if (slot === 'cover') { upStatus.textContent = 'You can add a cover once your profile is saved.'; input.value = ''; return; }
+      if (slot === 'cover') { upStatus.textContent = 'Save your profile first, then add a banner.'; input.value = ''; return; }
       // No profile yet: keep the cleaned photo here and upload it right after the first save.
       try {
         pendingPhoto = await prepareImage(file, 800, 'square');
@@ -381,7 +381,7 @@ const linkFields = [
   }));
   document.querySelector<HTMLButtonElement>('[data-remove="cover"]')?.addEventListener('click', async (e) => {
     const r = await fetch('/api/profile/image?slot=cover', { method: 'DELETE' });
-    if (r.ok) { const el = document.querySelector<HTMLElement>('[data-cover-preview]')!; el.style.backgroundImage = ''; el.textContent = 'Optional cover image'; (e.target as HTMLElement).remove(); }
+    if (r.ok) { const el = document.querySelector<HTMLElement>('[data-cover-preview]')!; el.style.backgroundImage = ''; el.textContent = 'Banner: a wide image across the top of your page'; (e.target as HTMLElement).remove(); }
   });
 
   // ----- "Your page is live": copy and share the public link -----
