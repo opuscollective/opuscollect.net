@@ -12,6 +12,8 @@ export const LOBBY_OPENS_MS = 30 * 60_000;       // the room opens this long bef
 export const SOON_MS = 24 * 3_600_000;           // "Starting soon" in World
 export const LISTED_AHEAD_MS = 14 * 86_400_000;  // how far ahead parties are listed
 export const PAUSE_LIMIT_MS = 30 * 60_000;       // a party left paused this long ends itself
+/** A live party appears on the homepage Earth only once this many people are in the room. Smaller ones still show in World. */
+export const HOME_LIVE_MIN = 100;
 export const MAX_LIVE_MS = 6 * 3_600_000;
 export const MAX_TRACKS = 30;
 export const MAX_AUDIO_BYTES = 95 * 1024 * 1024; // under the Workers request limit

@@ -36,7 +36,8 @@ const topCities = CITIES.slice(0, 8);
   import { findCity, citySlug } from '@/data/cities';
   import { motion } from '@/lib/motion';
   import { readFrom } from '@/scripts/world-entry';
-  import type { Handoff } from '@/scripts/hero-globe';
+  import type { Handoff, LiveChip } from '@/scripts/hero-globe';
+  import { HOME_LIVE_MIN } from '@/lib/party';
   type CityPoint = { city: string; country: string; lat: number; lng: number; count: number };
 
   /*
@@ -88,8 +89,16 @@ const topCities = CITIES.slice(0, 8);
   // Real member counts by city (aggregated to the metro, never exact locations).
   const summary: Promise<CityPoint[]> = fetch('/api/world?summary=1')
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-    .then((d: { cities: CityPoint[] }) => d.cities)
+    .then((d: { cities: CityPoint[]; includesSample?: boolean }) => { sample = !!d.includesSample; return d.cities; })
     .catch((err) => { console.error('Could not load member counts', err); return []; });
+  let sample = false;
+  // Listening parties that are live right now and big enough for the homepage (HOME_LIVE_MIN people in the room).
+  const liveNow: Promise<LiveChip[]> = fetch('/api/parties')
+    .then((r) => (r.ok ? r.json() : { parties: [] }))
+    .then((d: { parties: { href: string; title: string; city: string | null; lat: number | null; lng: number | null; live: boolean; listening?: number }[] }) => d.parties
+      .filter((p) => p.live && p.lat != null && p.lng != null && (p.listening ?? 0) >= HOME_LIVE_MIN)
+      .map((p) => ({ href: p.href, title: p.title, city: p.city, lat: p.lat!, lng: p.lng!, listening: p.listening! })))
+    .catch(() => []);
 
   async function boot() {
     if (!hasWebGL()) return fail();
@@ -97,6 +106,7 @@ const topCities = CITIES.slice(0, 8);
     try {
       const { mountHeroGlobe } = await import('@/scripts/hero-globe');
       api = await mountHeroGlobe(host, points, {
+        live: await liveNow, sample,
         onSelect: (p) => { const c = findCity(p.city); go(c?.lat ?? p.lat, c?.lng ?? p.lng, c ? `/world/${citySlug(c.name)}${qs()}` : `/world${qs()}`); },
       });
       host.classList.add('is-ready');

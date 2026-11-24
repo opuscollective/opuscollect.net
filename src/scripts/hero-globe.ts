@@ -17,7 +17,12 @@ export interface Handoff {
   at: number; image?: string;
 }
 
-export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts: { onSelect: (p: CityPoint) => void }) {
+/** A listening party big enough to show on the homepage Earth (real listener count, read from its room). */
+export interface LiveChip { href: string; title: string; city: string | null; lat: number; lng: number; listening: number }
+/** How many city chips float over the Earth at once. Few on purpose. */
+const CITY_CHIPS = { wide: 5, phone: 3 };
+
+export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts: { onSelect: (p: CityPoint) => void; live?: LiveChip[]; sample?: boolean }) {
   const [{ default: Globe }, THREE] = await Promise.all([import('globe.gl'), import('three')]);
   const reduce = motion() !== 'fluid';
   type Ring = { lat: number; lng: number; me?: boolean };
@@ -137,10 +142,43 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   setInterval(setSun, 60_000);
 
   // Continents, oceans and major cities named the way a map from space does (shared with World: src/data/globe-labels.ts).
-  type Label = GlobeLabel | { lat: number; lng: number; text: string; kind: 'me' };
-  const LABELS: Label[] = GLOBE_LABELS;
+  type Chip = { lat: number; lng: number; text: string; kind: 'chip'; point?: CityPoint; live?: LiveChip };
+  type Label = GlobeLabel | { lat: number; lng: number; text: string; kind: 'me' } | Chip;
+  // What is happening on Opus, on the Earth itself: the busiest cities with their real counts, and a LIVE badge
+  // where a listening party is on. A few at a time; each one opens that city or party.
+  const live = opts.live ?? [];
+  // Chips keep their distance from each other (live parties first), so the Earth never turns into a pile of boxes.
+  const apart = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) =>
+    Math.hypot(a.lat - b.lat, (((a.lng - b.lng + 540) % 360) - 180) * Math.cos((a.lat * Math.PI) / 180));
+  const narrow = el.clientWidth < 700;
+  const gap = narrow ? 26 : 12; // degrees; a phone's Earth is small, so chips sit further apart
+  const chips: Chip[] = [];
+  for (const l of live) if (chips.length < 3 && chips.every((c) => apart(c, l) > gap)) chips.push({ lat: l.lat, lng: l.lng, text: l.title, kind: 'chip', live: l });
+  const room = chips.length + (narrow ? CITY_CHIPS.phone : CITY_CHIPS.wide);
+  for (const p of [...points].sort((x, y) => y.count - x.count)) {
+    if (chips.length >= room) break;
+    if (chips.every((c) => apart(c, p) > gap)) chips.push({ lat: p.lat, lng: p.lng, text: p.city, kind: 'chip', point: p });
+  }
+  // A reference city name steps aside where a chip sits.
+  const LABELS: Label[] = [...GLOBE_LABELS.filter((l) => !(l.kind === 'city' && chips.some((c) => apart(c, l) < 6))), ...chips];
+  const safe = (t: string) => t.replace(/[&<>"]/g, '');
+  const chipEl = (c: Chip) => {
+    const a = document.createElement('a');
+    a.className = 'gl-chip' + (c.live ? ' gl-chip--live' : '');
+    if (c.live) {
+      a.href = c.live.href;
+      a.innerHTML = `<i></i><span><b>Live</b>${safe(c.live.title)}<small>${c.live.listening.toLocaleString()} listening${c.live.city ? ` · ${safe(c.live.city)}` : ''}</small></span>`;
+    } else {
+      const p = c.point!;
+      a.href = '/world';
+      a.innerHTML = `<i></i><span>${safe(p.city)}<small>${p.count.toLocaleString()} on Opus${opts.sample ? ' · <em>Sample</em>' : ''}</small></span>`;
+      a.addEventListener('click', (e) => { e.preventDefault(); opts.onSelect(p); });
+    }
+    return a;
+  };
   const labelEl = (d: object) => {
     const l = d as Label;
+    if (l.kind === 'chip') return chipEl(l);
     if (l.kind !== 'me') return globeLabelEl(l);
     const e = document.createElement('div');
     e.className = 'gl-label gl-label--me';
@@ -150,7 +188,15 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     return e;
   };
   globe.htmlElementsData(LABELS).htmlElement(labelEl).htmlAltitude(0.01)
-    .htmlElementVisibilityModifier((e, visible) => { e.style.opacity = visible ? '' : '0'; });
+    .htmlElementVisibilityModifier((e, visible) => { e.style.opacity = visible ? '' : '0'; if (e.classList.contains('gl-chip')) e.style.pointerEvents = visible ? 'auto' : 'none'; });
+  // A chip that would be cut off by the edge of the Earth's frame steps out until it is fully in view.
+  setInterval(() => {
+    const box = el.getBoundingClientRect();
+    for (const c of el.querySelectorAll<HTMLElement>('.gl-chip')) {
+      const r = c.getBoundingClientRect();
+      c.classList.toggle('is-cut', r.left < Math.max(box.left, 0) + 6 || r.right > Math.min(box.right, innerWidth) - 6);
+    }
+  }, 300);
 
   const controls = globe.controls();
   controls.autoRotate = !reduce;
