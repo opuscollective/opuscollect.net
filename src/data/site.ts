@@ -12,7 +12,7 @@ export const SITE = {
   promise: 'The world is within reach.',
   supporting: 'Create connections that create opportunity.',
   /** Homepage hero, launch pass (brief 2026-11-21): the value of World on the first screen. */
-  heroHeadline: 'Discover the people behind the music.',
+  heroHeadline: 'Create connections that create opportunity.',
   heroLine: 'Find artists, producers and engineers in your city. See their work. Connect.',
   description:
     'Opus Collective is the professional network for independent music. Discover artists, producers, engineers and songwriters, and earn Opus Verified recognition.',
