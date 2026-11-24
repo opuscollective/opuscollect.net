@@ -25,7 +25,8 @@ const db = Astro.locals.runtime.env.DB;
 const found = await getPublicProfile(db, handle, viewer?.id ?? null);
 if (!found) {
   Astro.response.status = 404;
-  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Profile not found · Opus Collective</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:var(--text);font-family:system-ui,sans-serif;text-align:center"><div><p style="color:var(--text-3);letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This profile isn’t available.</h1><p style="color:#a39da5">It may be unpublished or the address may have changed.</p><p><a href="/world" style="color:var(--text)">Explore World</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+  // Empty 404: Astro renders the site's own 404 page (header, footer, both themes).
+  return new Response(null, { status: 404, statusText: 'Not found' });
 }
 const { profile: p, isOwner, ownerId } = found;
 if (p.handle !== handle) return Astro.redirect(`/${p.handle}`, 301);
@@ -276,7 +277,6 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                 </>
               ) : (
                 <>
-                  <h2 class="mp__h">Works</h2>
                   <h2 class="mp__h">Works</h2>
                   <ul class="mp__shelf mp__shelf--ghost" role="list">{[0, 1, 2, 3].map((i) => <li><a href="/works/mine?add=1"><span class="mp__tile" style={`--c:${(hue + i * 40) % 360}`}></span><b>{i === 0 ? 'Add your first work' : ' '}</b><small>{i === 0 ? 'Search a song or paste a link' : ' '}</small></a></li>)}</ul>
                 </>

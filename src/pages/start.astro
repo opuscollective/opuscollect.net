@@ -19,7 +19,7 @@ const releases = profile ? await listMyReleases(db, user.id).catch(() => []) : [
 const step = !profile ? 1 : Astro.url.searchParams.has('done') || releases.length ? 3 : 2;
 const missing = profile ? missingForPublish(profile, user.emailVerified) : [];
 
-const STEPS = ['You', 'Your first release', 'Done'];
+const STEPS = ['You', 'Your first work', 'Done'];
 ---
 <BaseLayout title="Set up Opus" noindex assistant={false} messages={false}>
   <section class="app app--center">
@@ -53,7 +53,7 @@ const STEPS = ['You', 'Your first release', 'Done'];
       {step === 2 && (
         <>
           <h1 class="app__title">What are you working on?</h1>
-          <p class="app__lead">Start a release you’re making, or add one that’s already out. It builds your resume on Opus, and you decide whether it shows on your profile.</p>
+          <p class="app__lead">Start a release you’re making, or add one that’s already out. It builds your résumé on Opus, and you decide whether it shows on your profile.</p>
           <form class="form" data-first-release novalidate style="margin-top:28px">
             <label class="field"><span>Title</span><input class="input" name="title" maxlength="120" placeholder="A working title is fine" /></label>
             <div class="st__pick">

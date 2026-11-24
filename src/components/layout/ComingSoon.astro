@@ -1,8 +1,8 @@
 ---
 /** Holding page for routes planned in later phases, so navigation never 404s. */
 import Button from '../ui/Button.astro';
-interface Props { kicker: string; title: string; body: string; phase: string }
-const { kicker, title, body, phase } = Astro.props;
+interface Props { kicker: string; title: string; body: string; phase: string; primary?: { href: string; label: string } }
+const { kicker, title, body, phase, primary = { href: '/sign-up', label: 'Join Opus' } } = Astro.props;
 ---
 <section class="soon">
   <div class="container soon__inner">
@@ -11,7 +11,7 @@ const { kicker, title, body, phase } = Astro.props;
     <p class="t-lead">{body}</p>
     <slot />
     <div class="soon__ctas">
-      <Button href="/sign-up" arrow="right">Join Opus</Button>
+      <Button href={primary.href} arrow="right">{primary.label}</Button>
       <Button href="/" variant="secondary">Back home</Button>
     </div>
   </div>

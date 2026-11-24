@@ -61,7 +61,7 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
         </ul>
       </div>
     </section>
-    <section class="app">
+    <section class="app" style={!user ? 'min-height:0;padding-bottom:clamp(72px,9vw,128px)' : undefined}>
       <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
         <p class="notice">Studio tools are in early access while we pilot in Birmingham. Bookings are requests you accept or decline. Home studio addresses stay private.</p>
 

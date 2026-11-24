@@ -15,6 +15,7 @@ if (Astro.locals.user) return Astro.redirect(invite ? `/clans/invite/${invite}` 
 <BaseLayout title="Sign in" noindex assistant={false} messages={false}>
   <section class="app app--center">
     <div class="app__wrap">
+      <h1 class="sr-only">Sign in</h1>
       <div class="sm-inline" data-signin-mount data-next={next} data-invite={invite}></div>
     </div>
   </section>

@@ -25,7 +25,8 @@ const viewer = Astro.locals.user;
 const clan = await getClanByHandle(db, Astro.params.handle ?? '');
 const admin = clan ? await isClanAdmin(db, clan, viewer?.id) : false;
 if (!clan || (clan.status !== 'published' && !admin)) {
-  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Not found · Opus</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:#f2efea;font-family:system-ui,sans-serif;text-align:center"><div><p style="color:#8a858c;letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This page isn’t available.</h1><p style="color:#a39da5">The link may be wrong, or the page was taken down.</p><p><a href="/clans" style="color:#f2efea">Explore groups</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+  // Empty 404: Astro renders the site's own 404 page (header, footer, both themes).
+  return new Response(null, { status: 404, statusText: 'Not found' });
 }
 if (clan.handle !== Astro.params.handle) return Astro.redirect(clan.href, 301);
 

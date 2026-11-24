@@ -23,7 +23,7 @@
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .stat { padding: 18px; border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--surface); }
 .stat dt { font-size: 12px; color: var(--c-fg-ghost); }
-.stat dd { margin-top: 10px; font-size: 28px; letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums; }
+.stat dd { margin: 10px 0 0; font-size: 28px; letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .steps { display: flex; flex-direction: column; gap: 2px; margin-top: 16px; }
@@ -172,7 +172,7 @@ html:not([data-motion='fluid']) .skel { animation: none; }
 .sh::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(8, 8, 10, .88), rgba(8, 8, 10, .15) 70%); }
 .sh__in { position: relative; z-index: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 40px var(--gutter) clamp(28px, 4vw, 48px); }
 .sh__kick { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .75); }
-.sh h1 { margin-top: 10px; font-size: clamp(2.6rem, 1rem + 6vw, 6rem); line-height: .94; letter-spacing: -0.055em; font-weight: 600; overflow-wrap: anywhere; color: #fff; }
+.sh h1 { margin-top: 10px; font-size: clamp(2.6rem, 1rem + 6vw, 6rem); line-height: .94; letter-spacing: -0.055em; font-weight: 500; overflow-wrap: anywhere; color: #fff; }
 .sh__facts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; margin-top: 18px; font-size: 14px; color: rgba(255, 255, 255, .8); }
 .sh__facts b { color: #fff; font-weight: 500; }
 .sh__cta { margin-top: 22px; }
@@ -256,7 +256,7 @@ html:not([data-motion='fluid']) .skel { animation: none; }
 
 /* Hours: paint your week. One track per day, drag to open, drag the ends to adjust. */
 .hw__head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px 24px; align-items: flex-start; }
-.hw__presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.hw__presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chip { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface-sunken); color: var(--text); font: inherit; font-size: 13.5px; cursor: pointer; transition: background .15s; }
 .chip:hover { background: var(--surface-hover, #e8e8e8); }
 .chip:disabled { opacity: .35; cursor: default; }
