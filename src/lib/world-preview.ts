@@ -63,10 +63,11 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
       const t = `<b>${esc(c.title)}</b><small>${esc([c.role, c.artist, c.year].filter(Boolean).join(' · '))}</small>`;
       return `<li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<span>${t}</span>`}</li>`;
     }).join('');
-    const rel = (d.releases ?? []).map((r) => `<li><a href="${esc(r.url)}"><b>${esc(r.title)}</b><small>${esc(r.meta)}</small></a></li>`).join('');
+    // Releases as covers, with the title and year on the artwork. No artwork: a quiet tinted tile carries the same words.
+    const rel = (d.releases ?? []).map((r, i) => `<li><a href="${esc(r.url)}" title="${esc(r.meta)}"${r.cover ? '' : ` class="is-blank" style="--h:${(i * 47 + 210) % 360}"`}>${r.cover ? `<img src="${esc(r.cover)}" alt="" loading="lazy" decoding="async">` : ''}<span class="pv__cv"><b>${esc(r.title)}</b>${r.year ? `<small>${esc(r.year)}</small>` : ''}</span></a></li>`).join('');
     const links = d.links.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}${EXT}</a></li>`).join('');
     body = section('About', bio)
-      + section('Releases', rel ? `<ul class="pv__list">${rel}</ul>` : '')
+      + section('Releases', rel ? `<ul class="pv__covers" role="list">${rel}</ul>` : '')
       + section('Featured music', featured ? `<ul class="pv__list pv__list--media">${featured}</ul>` : '')
       + section('Selected credits', credits ? `<ul class="pv__list">${credits}</ul>` : '')
       + section('Highlights', d.achievements.length ? `<ul class="pv__bullets">${d.achievements.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : '')
@@ -99,6 +100,7 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
       ${status}
     </header>
     ${actions}
+    ${l.kind === 'musician' && !d.isSample ? '<div class="pv__overlap" data-pv-overlap hidden></div>' : ''}
     ${body}
   </div>
 </article>`;
@@ -115,3 +117,22 @@ export const previewError = (msg: string, retry: boolean) => `<div class="pv pv-
   <div class="pv__body"><p class="wp__empty-title">${esc(msg)}</p>
   <div class="wp__empty-actions">${retry ? '<button type="button" class="wp__btn" data-preview-retry>Try again</button>' : ''}<button type="button" class="wp__btn wp__btn--quiet" data-preview-close>Back to results</button></div></div>
 </div>`;
+
+/** What the signed-in visitor shares with this member (see /api/world/:id/overlap). Empty string when nothing overlaps. */
+export interface OverlapView { connected?: boolean; mutualCount: number; mutuals: { handle: string; name: string; photo: string | null }[]; works: { id: string; title: string; cover: string | null; year: string }[] }
+export function overlapHtml(o: OverlapView): string {
+  let h = '';
+  if (o.mutualCount > 0) {
+    const faces = o.mutuals.slice(0, 4).map((m) => `<a href="/${esc(m.handle)}" title="${esc(m.name)}"${m.photo ? ` style="background-image:url('${esc(m.photo)}')"` : ''}>${m.photo ? '' : esc(m.name.slice(0, 1))}</a>`).join('');
+    const names = o.mutuals.slice(0, 2).map((m) => m.name.split(' ')[0]!);
+    const rest = o.mutualCount - names.length;
+    const who = names.length ? names.join(', ') + (rest > 0 ? ` and ${rest} ${rest === 1 ? 'other' : 'others'}` : '') : '';
+    h += `<p class="pv__ov">${faces ? `<span class="pv__ovf">${faces}</span>` : ''}<span><b>${o.mutualCount} mutual ${o.mutualCount === 1 ? 'connection' : 'connections'}</b>${who ? `<small>${esc(who)}</small>` : ''}</span></p>`;
+  }
+  if (o.works.length > 0) {
+    const thumbs = o.works.slice(0, 4).map((w) => `<a href="/r/${esc(w.id)}" title="${esc(w.title)}"${w.cover ? ` style="background-image:url('${esc(w.cover)}')"` : ''}>${w.cover ? '' : esc(w.title.slice(0, 1))}</a>`).join('');
+    const t = o.works.slice(0, 2).map((w) => w.title).join(', ') + (o.works.length > 2 ? ` and ${o.works.length - 2} more` : '');
+    h += `<p class="pv__ov"><span class="pv__ovf pv__ovf--sq">${thumbs}</span><span><b>${o.works.length} ${o.works.length === 1 ? 'work' : 'works'} together</b><small>${esc(t)}</small></span></p>`;
+  }
+  return h;
+}

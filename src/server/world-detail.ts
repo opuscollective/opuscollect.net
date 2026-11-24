@@ -27,7 +27,7 @@ export interface ProfileDetail {
   featured: { title: string; url: string; platform: string }[];
   credits: Credit[];
   /** Published releases from Opus Music: ones they own or hold a confirmed credit on. */
-  releases: { title: string; meta: string; url: string; upcoming: boolean }[];
+  releases: { title: string; meta: string; url: string; upcoming: boolean; cover?: string | null; year?: string }[];
   achievements: string[];
   services: PreviewService[];
   equipment: string[];
@@ -73,7 +73,7 @@ async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | n
     bio: r.bio, cover: mediaUrl(r.cover_key) ?? undefined, gallery: [] as string[], links, featured, credits,
     releases: l.kind === 'musician'
       ? (await profileReleases(db, r.owner_user_id).catch(() => [])).slice(0, 6).map((x) => ({
-          title: x.title, url: '/r/' + x.id, upcoming: !x.released,
+          title: x.title, url: '/r/' + x.id, upcoming: !x.released, cover: mediaUrl(x.coverKey), year: x.released ? x.releaseDate?.slice(0, 4) ?? '' : 'Coming',
           meta: [x.artist && !x.own ? x.artist : '', x.roles.join(', '), RELEASE_KINDS[x.kind], x.released ? x.releaseDate?.slice(0, 4) ?? '' : 'Coming'].filter(Boolean).join(' · '),
         }))
       : [],

@@ -15,6 +15,7 @@ const topCities = CITIES.slice(0, 8);
 
   <div class="hero__stage" data-hero-stage>
     <!-- The product, presented: name, promise, supporting line, actions. The Earth below is its demonstration. -->
+    <p class="hero__product hero-in" style="--i:0">{SITE.heroProduct}</p>
     <h1 id="hero-title" class="hero__title">
       <span class="hero__line"><span class="hero-in" style="--i:1">{SITE.heroHeadline}</span></span>
     </h1>
@@ -250,6 +251,7 @@ const topCities = CITIES.slice(0, 8);
   .hero__stage > * { pointer-events: auto; }
   /* The product name leads; the promise follows close beneath; the line and actions after a breath. */
   .hero__stage { gap: 0; }
+  .hero__product { margin: 0 0 clamp(14px, 1.6vw, 22px); font-size: clamp(0.95rem, 0.85rem + 0.4vw, 1.25rem); font-weight: 400; letter-spacing: 0.01em; color: rgba(244, 242, 238, 0.72); }
   .hero__title { margin: 0; font-size: clamp(4rem, 8.4vw, 9.5rem); line-height: 0.9; letter-spacing: -0.06em; font-weight: 600; color: #f4f2ee; }
   .hero__promise { margin: clamp(10px, 1.2vw, 18px) 0 0; font-size: clamp(1.7rem, 3.1vw, 3.4rem); line-height: 1.08; letter-spacing: -0.035em; font-weight: 500; color: #f4f2ee; }
   .hero__value { margin: clamp(12px, 1.2vw, 18px) 0 0; font-size: clamp(1.14rem, 0.96rem + 0.48vw, 1.55rem); line-height: 1.35; letter-spacing: -0.018em; color: rgba(244, 242, 238, 0.82); }
