@@ -31,6 +31,8 @@ export interface CityGuideEntry {
   slug: string;
   name: string;
   region: string;
+  /** Optional designation shown above the city's name in World. Working copy, reword here only. */
+  title?: string;
   intro: string;
   /** Short paragraphs, shown behind "Music history". */
   history: string[];
@@ -41,6 +43,7 @@ export const CITY_GUIDES: Record<string, CityGuideEntry> = {
   birmingham: {
     id: 'us-al-birmingham',
     slug: 'birmingham',
+    title: 'Home of Opus',
     name: 'Birmingham',
     region: 'Alabama, United States',
     intro: 'Founded in 1871 where railroads crossed beside deposits of iron ore, coal and limestone, Birmingham grew so fast it was called the Magic City. Today it is a city of neighborhoods, venues and studios with a deep musical inheritance.',

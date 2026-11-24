@@ -18,7 +18,7 @@ import { initFollowButtons, followState } from '@/scripts/city-follow';
 import { motion } from '@/lib/motion';
 import type { WorldStats } from '@/lib/world';
 import { placeIndex, suggest, norm, type Place, type Suggestion } from '@/lib/world-search';
-import { previewHtml, previewSkeleton, previewError } from '@/lib/world-preview';
+import { previewHtml, previewSkeleton, previewError, overlapHtml, type OverlapView } from '@/lib/world-preview';
 import { installImageFallbacks } from '@/lib/media';
 import { CITIES, citySlug, findCity } from '@/data/cities';
 import { PLACES as AREAS, PLACE_BY_ID as AREA_BY_ID, metroId } from '@/data/places';
@@ -169,10 +169,12 @@ export function initWorld(root: HTMLElement) {
   // The View switcher already offers Map / Split / List, so there is no separate "Show list" control.
   const rz = $<HTMLElement>('[data-rz]');
   const collapseBtn = $<HTMLButtonElement>('[data-collapse]');
-  const RZ_KEY = 'opus.world.panel.v1';
+  // v2: the widest size is the default (Bogo 2026-11-24); widths saved under v1 are dropped so nobody stays on the thin panel.
+  const RZ_KEY = 'opus.world.panel.v2';
   const RZ_MIN = 340;
   const rzMax = () => Math.max(RZ_MIN, Math.min(640, Math.round(innerWidth * 0.5)));
   let panelW: number | null = null; let collapsed = false;
+  try { localStorage.removeItem('opus.world.panel.v1'); } catch { /* private mode */ }
   try { const sv = JSON.parse(localStorage.getItem(RZ_KEY) || 'null'); if (sv) { panelW = Number(sv.w) || null; collapsed = !!sv.c; } } catch { /* defaults */ }
   const saveRz = () => { try { localStorage.setItem(RZ_KEY, JSON.stringify({ w: panelW, c: collapsed })); } catch { /* private mode */ } };
   function applyRz(resizeMap = true) {
@@ -722,6 +724,18 @@ export function initWorld(root: HTMLElement) {
       if (token !== pvToken) return;
       pvBody.innerHTML = previewHtml(d.listing, d.detail);
       $('[data-preview-label]').textContent = d.listing.name;
+      // Signed-in visitors see what they share with this member. A separate, private request: the profile itself stays cacheable.
+      const slot = pvBody.querySelector<HTMLElement>('[data-pv-overlap]');
+      if (slot && document.documentElement.classList.contains('is-signed-in')) {
+        fetch(`/api/world/${encodeURIComponent(id)}/overlap`).then((x) => (x.ok ? x.json() : null)).then((o: OverlapView | null) => {
+          if (!o || token !== pvToken) return;
+          // Already connected: the card stops offering Connect; the button says so and opens their profile, where Message lives.
+          const cta = pvBody.querySelector<HTMLAnchorElement>('a.pv__btn:not(.pv__btn--quiet)');
+          if (o.connected && cta && /[?&]connect=1/.test(cta.href)) { cta.textContent = 'Connected'; cta.href = cta.href.replace(/[?&]connect=1/, ''); }
+          const html = overlapHtml(o);
+          if (html) { slot.innerHTML = html; slot.hidden = false; }
+        }).catch(() => {});
+      }
     } catch (err) {
       if (token !== pvToken) return;
       console.error('Preview failed', err);

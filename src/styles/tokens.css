@@ -53,15 +53,19 @@
   --logo-filter: invert(1);    /* the logo file is white; shown charcoal on light */
 
   /* Opus World map (MapLibre reads these at runtime) */
+  /* World street map (2026-11-24): continues the Earth's look. Blue water, softly toned land, green hinted, clear roads and names.
+     The earlier flat palette, to restore: bg #f1f1f3, water #dfe3e7, land #fafafa, park #eef1ec, border rgba(60,58,66,.28),
+     road #ffffff, road-major #e4e4e8, building #ececef, label #6b6670, horizon #e6e6e9. */
   --map-bg: #f1f1f3;
-  --map-water: #dfe3e7;
-  --map-land: #fafafa;
-  --map-park: #eef1ec;
-  --map-border: rgba(60, 58, 66, 0.28);
+  --map-water: #c9dcec;
+  --map-land: #f6f5f1;
+  --map-park: #dbe8d6;
+  --map-border: rgba(60, 66, 80, 0.3);
   --map-road: #ffffff;
-  --map-road-major: #e4e4e8;
-  --map-building: #ececef;
-  --map-label: #6b6670;
+  --map-road-major: #e3ddcf;
+  --map-building: #e9e7e1;
+  --map-label: #66707d;
+  --map-label-strong: #20252c;
   --map-horizon: #e6e6e9;
 }
 
@@ -108,15 +112,19 @@
   --wordmark: #1b1b1e;
   --logo-filter: none;
 
+  /* World street map (2026-11-24): continues the Earth's look instead of going flat black.
+     The earlier flat palette, to restore: bg #141416, water #0e0f11, land #1c1d21, park #181a1c, border rgba(214,220,230,.18),
+     road #26282d, road-major #31343b, building #202125, label #8e8890, horizon #16181c. */
   --map-bg: #141416;
-  --map-water: #0e0f11;
-  --map-land: #1c1d21;
-  --map-park: #181a1c;
-  --map-border: rgba(214, 220, 230, 0.18);
-  --map-road: #26282d;
-  --map-road-major: #31343b;
-  --map-building: #202125;
-  --map-label: #8e8890;
+  --map-water: #0d1a2c;
+  --map-land: #1c2128;
+  --map-park: #1a2a24;
+  --map-border: rgba(214, 224, 240, 0.22);
+  --map-road: #2d343e;
+  --map-road-major: #46505e;
+  --map-building: #252b33;
+  --map-label: #9aa5b4;
+  --map-label-strong: #e8ecf2;
   --map-horizon: #16181c;
 }
 @media (prefers-color-scheme: dark) {
@@ -132,8 +140,8 @@
     --danger: #e58a7f; --danger-line: rgba(229, 138, 127, 0.4); --danger-soft: rgba(229, 138, 127, 0.08); --warn-line: rgba(214, 180, 110, 0.4);
     --shadow-c: rgba(0, 0, 0, 0.5); --shadow-pop: 0 18px 48px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--line-strong);
     --paper-band: #f2efea; --wordmark: #1b1b1e; --logo-filter: none;
-    --map-bg: #141416; --map-water: #0e0f11; --map-land: #1c1d21; --map-park: #181a1c; --map-border: rgba(214, 220, 230, 0.18);
-    --map-road: #26282d; --map-road-major: #31343b; --map-building: #202125; --map-label: #8e8890; --map-horizon: #16181c;
+    --map-bg: #141416; --map-water: #0d1a2c; --map-land: #1c2128; --map-park: #1a2a24; --map-border: rgba(214, 224, 240, 0.22);
+    --map-road: #2d343e; --map-road-major: #46505e; --map-building: #252b33; --map-label: #9aa5b4; --map-label-strong: #e8ecf2; --map-horizon: #16181c;
   }
 }
 

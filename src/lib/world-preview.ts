@@ -39,11 +39,13 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
 
   let roles = '';
   let status = '';
+  let conns = '';
   if (l.kind === 'musician') {
     const sp = allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s]?.label ?? s);
     roles = `<p class="pv__roles">${sp.map((s, i) => `<span${i === 0 ? ' class="is-primary"' : ''}>${esc(s)}</span>`).join('')}</p>${l.genres.length ? `<p class="pv__genres">${esc(l.genres.join(' · '))}</p>` : ''}`;
     status = HIRE_ENABLED && l.forHire ? '<p class="wc__status is-live">For hire</p>' : '';
-    if (typeof d.connections === 'number' && !l.isSample) status += `<p class="pv__conns"><b>${d.connections.toLocaleString('en-US')}</b><span>${d.connections === 1 ? 'Connection' : 'Connections'}</span></p>`;
+    // One quiet line with the city: "Birmingham, AL · 12 connections".
+    if (typeof d.connections === 'number' && d.connections > 0 && !l.isSample) conns = `<span class="pv__cn">${d.connections.toLocaleString('en-US')} ${d.connections === 1 ? 'connection' : 'connections'}</span>`;
   } else {
     roles = `<p class="pv__roles"><span class="is-primary">${esc(kindLabel(l))}</span></p>`;
     if (l.kind === 'studio') {
@@ -63,10 +65,11 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
       const t = `<b>${esc(c.title)}</b><small>${esc([c.role, c.artist, c.year].filter(Boolean).join(' · '))}</small>`;
       return `<li>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<span>${t}</span>`}</li>`;
     }).join('');
-    const rel = (d.releases ?? []).map((r) => `<li><a href="${esc(r.url)}"><b>${esc(r.title)}</b><small>${esc(r.meta)}</small></a></li>`).join('');
+    // Releases as covers, with the title and year on the artwork. No artwork: a quiet tinted tile carries the same words.
+    const rel = (d.releases ?? []).map((r, i) => `<li><a href="${esc(r.url)}" title="${esc(r.meta)}"${r.cover ? '' : ` class="is-blank" style="--h:${(i * 47 + 210) % 360}"`}>${r.cover ? `<img src="${esc(r.cover)}" alt="" loading="lazy" decoding="async">` : ''}<span class="pv__cv"><b>${esc(r.title)}</b>${r.year ? `<small>${esc(r.year)}</small>` : ''}</span></a></li>`).join('');
     const links = d.links.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}${EXT}</a></li>`).join('');
     body = section('About', bio)
-      + section('Releases', rel ? `<ul class="pv__list">${rel}</ul>` : '')
+      + section('Releases', rel ? `<ul class="pv__covers" role="list">${rel}</ul>` : '')
       + section('Featured music', featured ? `<ul class="pv__list pv__list--media">${featured}</ul>` : '')
       + section('Selected credits', credits ? `<ul class="pv__list">${credits}</ul>` : '')
       + section('Highlights', d.achievements.length ? `<ul class="pv__bullets">${d.achievements.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>` : '')
@@ -95,9 +98,10 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
     <header class="pv__head">
       <div class="pv__title"><h2 id="pv-name">${esc(l.name)}</h2>${badgeHtml(l)}${sample}</div>
       ${roles}
-      <p class="wc__where">${PIN}<span>${esc(placeText(l))}</span></p>
+      <p class="wc__where">${PIN}<span>${esc(placeText(l))}</span>${conns}</p>
       ${status}
     </header>
+    ${l.kind === 'musician' && !d.isSample ? '<div class="pv__overlap" data-pv-overlap hidden></div>' : ''}
     ${actions}
     ${body}
   </div>
@@ -115,3 +119,20 @@ export const previewError = (msg: string, retry: boolean) => `<div class="pv pv-
   <div class="pv__body"><p class="wp__empty-title">${esc(msg)}</p>
   <div class="wp__empty-actions">${retry ? '<button type="button" class="wp__btn" data-preview-retry>Try again</button>' : ''}<button type="button" class="wp__btn wp__btn--quiet" data-preview-close>Back to results</button></div></div>
 </div>`;
+
+/** What the signed-in visitor shares with this member (see /api/world/:id/overlap). Empty string when nothing overlaps. */
+export interface OverlapView { connected?: boolean; mutualCount: number; mutuals: { handle: string; name: string; photo: string | null }[]; works: { id: string; title: string; cover: string | null; year: string }[] }
+/** One quiet row: overlapping faces of mutual connections and covers of shared works, then one line naming them. */
+export function overlapHtml(o: OverlapView): string {
+  if (o.mutualCount <= 0 && o.works.length === 0) return '';
+  const faces = o.mutuals.slice(0, 3).map((m) => `<a href="/${esc(m.handle)}" title="${esc(m.name)}"${m.photo ? ` style="background-image:url('${esc(m.photo)}')"` : ''}>${m.photo ? '' : esc(m.name.slice(0, 1))}</a>`).join('');
+  const thumbs = o.works.slice(0, 3).map((w) => `<a class="is-sq" href="/r/${esc(w.id)}" title="${esc(w.title)}"${w.cover ? ` style="background-image:url('${esc(w.cover)}')"` : ''}>${w.cover ? '' : esc(w.title.slice(0, 1))}</a>`).join('');
+  const list = (xs: string[], total: number, more: string) => xs.map((x) => `<b>${esc(x)}</b>`).join(', ') + (total > xs.length ? ` and ${total - xs.length} ${more}` : '');
+  const parts: string[] = [];
+  if (o.mutualCount > 0) {
+    const names = o.mutuals.slice(0, 2).map((m) => m.name.split(' ')[0]!);
+    parts.push(names.length ? `You both know ${list(names, o.mutualCount, o.mutualCount - names.length === 1 ? 'other' : 'others')}` : `${o.mutualCount} mutual ${o.mutualCount === 1 ? 'connection' : 'connections'}`);
+  }
+  if (o.works.length > 0) parts.push(`Together on ${list(o.works.slice(0, 2).map((w) => w.title), o.works.length, 'more')}`);
+  return `${faces || thumbs ? `<span class="pv__ovf">${faces}${thumbs}</span>` : ''}<p class="pv__ov">${parts.join('<i aria-hidden="true"> · </i>')}</p>`;
+}

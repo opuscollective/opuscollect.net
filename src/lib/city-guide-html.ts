@@ -34,7 +34,7 @@ export function cityGuideHeader(g: GuideCounts, o: { region?: string; entry?: Ci
 <div class="wg__banner${p ? '' : ' wg__banner--plain'}"${p ? ` style="--tone:${esc(p.tone)};--fx:${p.focusX ?? 50}%"` : ''}>
   ${img}
   <div class="wg__ov">
-    <div class="wg__id"><h2 class="wg__title" id="wg-title">${esc(g.name)}</h2><p class="wg__meta" aria-live="polite">${o.region ? `${esc(o.region)} · ` : ''}${esc(countsLine(g))}</p></div>
+    <div class="wg__id">${e?.title ? `<p class="wg__kicker">${esc(e.title)}</p>` : ''}<h2 class="wg__title" id="wg-title">${esc(g.name)}</h2><p class="wg__meta" aria-live="polite">${o.region ? `${esc(o.region)} · ` : ''}${esc(countsLine(g))}</p></div>
     ${follow}
   </div>
   ${credit}

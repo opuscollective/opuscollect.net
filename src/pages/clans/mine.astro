@@ -11,7 +11,7 @@ if (!user) return Astro.redirect('/sign-in?next=/clans/mine');
 const db = Astro.locals.runtime.env.DB;
 const [invites, mine] = await Promise.all([myInvites(db, user.id), membershipsOf(db, user.id, false)]);
 ---
-<BaseLayout title="My groups" description="Your bands, collectives, crews and labels on Opus." noindex>
+<BaseLayout title="My Groups" description="Your bands, collectives, crews and labels on Opus." noindex>
   <section class="app">
     <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
       <div class="row" style="justify-content:space-between">

@@ -6,6 +6,7 @@ import { SPECIALTIES, allSpecialties } from '@/data/specialties';
 import { PLACE_BY_ID, visibleLabel } from '@/data/places';
 import { getPublicProfile, mediaUrl } from '@/server/profiles';
 import { relationship, DEFAULT_INTRO, INTRO_MAX, profileConnections } from '@/server/connections';
+import { NO_OVERLAP, overlap } from '@/server/overlap';
 import { connectionCount } from '@/server/messages';
 import { profileReleases } from '@/server/releases';
 import { RELEASE_KINDS } from '@/data/music';
@@ -25,7 +26,8 @@ const db = Astro.locals.runtime.env.DB;
 const found = await getPublicProfile(db, handle, viewer?.id ?? null);
 if (!found) {
   Astro.response.status = 404;
-  return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Profile not found · Opus Collective</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#050506;color:var(--text);font-family:system-ui,sans-serif;text-align:center"><div><p style="color:var(--text-3);letter-spacing:.12em;font-size:12px;text-transform:uppercase">Opus</p><h1 style="font-weight:500">This profile isn’t available.</h1><p style="color:#a39da5">It may be unpublished or the address may have changed.</p><p><a href="/world" style="color:var(--text)">Explore World</a></p></div></body>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+  // Empty 404: Astro renders the site's own 404 page (header, footer, both themes).
+  return new Response(null, { status: 404, statusText: 'Not found' });
 }
 const { profile: p, isOwner, ownerId } = found;
 if (p.handle !== handle) return Astro.redirect(`/${p.handle}`, 301);
@@ -42,6 +44,9 @@ const rel = viewer ? await relationship(db, viewer.id, ownerId) : null;
 // Accepted connections only; never estimated.
 const connections = await connectionCount(db, ownerId);
 const people = connections > 0 ? await profileConnections(db, ownerId, viewer?.id ?? null).catch(() => ({ faces: [], mutual: 0 })) : { faces: [], mutual: 0 };
+// What a signed-in visitor shares with this member: mutual connections and works they both appear on. Nothing is shown without overlap.
+const shared = viewer && !isOwner ? await overlap(db, viewer.id, ownerId).catch(() => NO_OVERLAP) : NO_OVERLAP;
+const sharedNames = shared.mutuals.slice(0, 2).map((x) => x.name.split(' ')[0]!);
 const firstNames = people.faces.slice(0, 2).map((f) => f.name.split(' ')[0]);
 // The member's record: releases they put out, plus releases where they confirmed a credit.
 const record = await profileReleases(db, ownerId);
@@ -118,15 +123,34 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               ))}
             </ul>
           )}
-          {connections > 0 && (
+          {/* When the visitor shares something with this member, that row replaces the general one. */}
+          {connections > 0 && shared.mutualCount === 0 && shared.works.length === 0 && (
             <div class="mp__people">
               {people.faces.length > 0 && <span class="mp__faces" aria-hidden="true">{people.faces.map((f) => (
                 <a href={`/${f.handle}`} tabindex="-1" title={f.name} style={f.photoKey ? `background-image:url(${mediaUrl(f.photoKey)})` : ''}>{!f.photoKey && f.name.slice(0, 1)}</a>
               ))}</span>}
               <span class="mp__people-t">
                 {people.faces.length > 0 ? <>Connected with {firstNames.join(', ')}{connections > firstNames.length && ` and ${connections - firstNames.length} ${connections - firstNames.length === 1 ? 'other' : 'others'}`}</> : `${connections} ${connections === 1 ? 'connection' : 'connections'}`}
-                {people.mutual > 0 && <b> · {people.mutual} in common</b>}
               </span>
+            </div>
+          )}
+          {(shared.mutualCount > 0 || shared.works.length > 0) && (
+            <div class="mp__shared">
+              <span class="mp__faces">
+                {shared.mutuals.slice(0, 3).map((f) => (
+                  <a href={`/${f.handle}`} title={f.name} style={f.photo ? `background-image:url(${f.photo})` : ''}>{!f.photo && f.name.slice(0, 1)}</a>
+                ))}
+                {shared.works.slice(0, 3).map((w) => (
+                  <a class="is-sq" href={`/r/${w.id}`} title={w.title} style={w.cover ? `background-image:url(${w.cover})` : ''}>{!w.cover && w.title.slice(0, 1)}</a>
+                ))}
+              </span>
+              <p>
+                {shared.mutualCount > 0 && (sharedNames.length > 0
+                  ? <>You both know {sharedNames.map((n, i) => <>{i > 0 && ', '}<b>{n}</b></>)}{shared.mutualCount > sharedNames.length && ` and ${shared.mutualCount - sharedNames.length} ${shared.mutualCount - sharedNames.length === 1 ? 'other' : 'others'}`}</>
+                  : `${shared.mutualCount} mutual ${shared.mutualCount === 1 ? 'connection' : 'connections'}`)}
+                {shared.mutualCount > 0 && shared.works.length > 0 && <i aria-hidden="true"> · </i>}
+                {shared.works.length > 0 && <>Together on {shared.works.slice(0, 2).map((w, i) => <>{i > 0 && ', '}<b>{w.title}</b></>)}{shared.works.length > 2 && ` and ${shared.works.length - 2} more`}</>}
+              </p>
             </div>
           )}
           <div class="mp__actions">
@@ -277,7 +301,6 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               ) : (
                 <>
                   <h2 class="mp__h">Works</h2>
-                  <h2 class="mp__h">Works</h2>
                   <ul class="mp__shelf mp__shelf--ghost" role="list">{[0, 1, 2, 3].map((i) => <li><a href="/works/mine?add=1"><span class="mp__tile" style={`--c:${(hue + i * 40) % 360}`}></span><b>{i === 0 ? 'Add your first work' : ' '}</b><small>{i === 0 ? 'Search a song or paste a link' : ' '}</small></a></li>)}</ul>
                 </>
               )}
@@ -376,6 +399,13 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__faces { display: inline-flex; flex: none; }
   .mp__faces a { display: grid; place-items: center; width: 34px; height: 34px; margin-left: -9px; border-radius: 50%; border: 2px solid var(--bg); background: var(--surface-hover, #ddd) center / cover no-repeat; color: var(--text-2); font-size: 12px; font-weight: 500; text-decoration: none; }
   .mp__faces a:first-child { margin-left: 0; }
+  .mp__faces a.is-sq { border-radius: 8px; }
+  .mp__shared { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 14px; }
+  .mp__shared .mp__faces a { width: 28px; height: 28px; margin-left: -7px; }
+  .mp__shared .mp__faces a:first-child { margin-left: 0; }
+  .mp__shared p { margin: 0; font-size: 14px; color: var(--text-3); text-wrap: balance; }
+  .mp__shared b { font-weight: 500; color: var(--text); }
+  .mp__shared i { font-style: normal; opacity: 0.6; }
   .mp__people-t b { color: var(--text); font-weight: 500; }
   .mp__groups { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 22px; }
   .mp__groups a { display: inline-flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13px; text-decoration: none; transition: box-shadow var(--dur) var(--ease); }

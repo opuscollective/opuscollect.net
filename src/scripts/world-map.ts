@@ -17,12 +17,13 @@ import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import { hasPoint, type Listing } from '@/types/directory';
 import { sunAt, sunlight, dayAmount } from '@/lib/sun';
+import { GLOBE_LABELS, globeLabelEl } from '@/data/globe-labels';
 import { aggregate, levelForZoom, nextZoom, placePoints, type Aggregate, type GeoLevel } from '@/lib/world-geo';
 
 const OFM = 'https://tiles.openfreemap.org';
 
 /** Map colours come from the theme tokens (--map-* in styles/tokens.css), so the map follows Light and Dark. */
-interface Palette { bg: string; land: string; border: string; water: string; park: string; road: string; roadMajor: string; building: string; label: string; horizon: string }
+interface Palette { bg: string; land: string; border: string; water: string; park: string; road: string; roadMajor: string; building: string; label: string; labelStrong: string; horizon: string }
 
 function readPalette(): Palette {
   const cs = getComputedStyle(document.documentElement);
@@ -37,6 +38,7 @@ function readPalette(): Palette {
     roadMajor: v('--map-road-major', '#31343b'),
     building: v('--map-building', '#202125'),
     label: v('--map-label', '#8e8890'),
+    labelStrong: v('--map-label-strong', '#e6eaf0'),
     horizon: v('--map-horizon', '#16181c'),
   };
 }
@@ -99,9 +101,11 @@ const sky = (C: Palette) => ({
 function applyPalette(map: maplibregl.Map, C: Palette) {
   const paint: [string, string, string][] = [
     ['bg', 'background-color', C.water], ['land', 'fill-color', C.land], ['omt-water', 'fill-color', C.water],
-    ['omt-park', 'fill-color', C.park], ['omt-building', 'fill-color', C.building], ['omt-road-minor', 'line-color', C.road],
-    ['omt-road-major', 'line-color', C.roadMajor], ['borders', 'line-color', C.border], ['omt-place', 'text-color', C.label],
+    ['omt-park', 'fill-color', C.park], ['omt-green', 'fill-color', C.park], ['omt-building', 'fill-color', C.building], ['omt-road-minor', 'line-color', C.road],
+    ['omt-road-major', 'line-color', C.roadMajor], ['borders', 'line-color', C.border], ['omt-place', 'text-color', C.labelStrong],
     ['omt-place', 'text-halo-color', C.bg],
+    ...(['omt-country', 'omt-city-major'] as const).flatMap((id): [string, string, string][] => [[id, 'text-color', C.labelStrong], [id, 'text-halo-color', C.bg]]),
+    ['omt-state', 'text-color', C.label], ['omt-state', 'text-halo-color', C.bg],
   ];
   for (const [id, prop, value] of paint) if (map.getLayer(id)) map.setPaintProperty(id, prop, value);
   map.setSky(sky(C));
@@ -125,7 +129,10 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
       { id: 'land', type: 'fill', source: 'countries', paint: { 'fill-color': C.land } },
       // City detail (OpenFreeMap). Fades in as you zoom toward a city.
       { id: 'omt-water', type: 'fill', source: 'omt', 'source-layer': 'water', minzoom: 4, paint: { 'fill-color': C.water } },
-      { id: 'omt-park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 8, paint: { 'fill-color': C.park } },
+      // Woods and green land hinted from far out, parks closer in: the ground keeps some of the Earth's character.
+      { id: 'omt-green', type: 'fill', source: 'omt', 'source-layer': 'landcover', minzoom: 4, filter: ['in', ['get', 'class'], ['literal', ['wood', 'grass']]],
+        paint: { 'fill-color': C.park, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.35, 9, 0.6] } },
+      { id: 'omt-park', type: 'fill', source: 'omt', 'source-layer': 'park', minzoom: 7, paint: { 'fill-color': C.park } },
       { id: 'omt-building', type: 'fill', source: 'omt', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': C.building } },
       { id: 'omt-road-minor', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 10,
         filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary']]],
@@ -134,10 +141,24 @@ function buildStyle(countries: GeoJSON.FeatureCollection): StyleSpecification {
         filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
         paint: { 'line-color': C.roadMajor, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 16, 5] } },
       { id: 'borders', type: 'line', source: 'countries', paint: { 'line-color': C.border, 'line-width': ['interpolate', ['linear'], ['zoom'], 0, 0.4, 6, 1], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 0, 0.12, 3, 0.2, 4.5, 1] } },
+      // Names all the way down, so there is always a place to steer by: countries as the Earth imagery hands over,
+      // then states and the big cities, then every city and town. Each fades in rather than popping.
+      { id: 'omt-country', type: 'symbol', source: 'omt', 'source-layer': 'place', minzoom: 2.8, maxzoom: 7,
+        filter: ['==', ['get', 'class'], 'country'],
+        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 3, 11, 6, 15], 'text-letter-spacing': 0.16, 'text-transform': 'uppercase', 'text-max-width': 7 },
+        paint: { 'text-color': C.labelStrong, 'text-halo-color': C.bg, 'text-halo-width': 1.4, 'text-opacity': ['interpolate', ['linear'], ['zoom'], 2.8, 0, 3.4, 0.9, 6, 0.9, 7, 0] } },
+      { id: 'omt-state', type: 'symbol', source: 'omt', 'source-layer': 'place', minzoom: 3.8, maxzoom: 8,
+        filter: ['==', ['get', 'class'], 'state'],
+        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 4, 10, 7, 13], 'text-letter-spacing': 0.14, 'text-transform': 'uppercase', 'text-max-width': 7 },
+        paint: { 'text-color': C.label, 'text-halo-color': C.bg, 'text-halo-width': 1.2, 'text-opacity': ['interpolate', ['linear'], ['zoom'], 3.8, 0, 4.4, 0.85, 7, 0.85, 8, 0] } },
+      { id: 'omt-city-major', type: 'symbol', source: 'omt', 'source-layer': 'place', minzoom: 3, maxzoom: 5,
+        filter: ['all', ['==', ['get', 'class'], 'city'], ['<=', ['coalesce', ['get', 'rank'], 99], 5]],
+        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Noto Sans Bold'], 'text-size': 11.5, 'symbol-sort-key': ['coalesce', ['get', 'rank'], 99] },
+        paint: { 'text-color': C.labelStrong, 'text-halo-color': C.bg, 'text-halo-width': 1.3, 'text-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0, 3.5, 1] } },
       { id: 'omt-place', type: 'symbol', source: 'omt', 'source-layer': 'place', minzoom: 5,
         filter: ['in', ['get', 'class'], ['literal', ['city', 'town', 'suburb', 'neighbourhood']]],
-        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 14, 13], 'text-letter-spacing': 0.04 },
-        paint: { 'text-color': C.label, 'text-halo-color': C.bg, 'text-halo-width': 1.2 } },
+        layout: { 'text-field': ['get', 'name:latin'], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 11, 14, 13.5], 'text-letter-spacing': 0.03, 'symbol-sort-key': ['coalesce', ['get', 'rank'], 99] },
+        paint: { 'text-color': C.labelStrong, 'text-halo-color': C.bg, 'text-halo-width': 1.3 } },
     ],
   };
 }
@@ -200,7 +221,8 @@ export async function mountWorldMap(
     style: buildStyle(countries),
     center: opts.camera?.center ?? [-40, 28],
     zoom: opts.camera?.zoom ?? homeZoom(),
-    minZoom: 0.4,
+    // The opening view is as far out as World goes (Bogo 2026-11-24): the Earth never shrinks to a dot.
+    minZoom: homeZoom(),
     maxZoom: 17,
     attributionControl: { compact: true },
     dragRotate: false,
@@ -247,6 +269,34 @@ export async function mountWorldMap(
 
   await new Promise<void>((res) => map.on('load', () => res()));
   if (earth) {
+    // The same names as the homepage Earth, while the Earth imagery is showing.
+    // Shown on the near side only: toward the edge of the planet names would pile up, so they step back there.
+    const R = Math.PI / 180;
+    const names = GLOBE_LABELS.map((l) => {
+      const el = globeLabelEl(l);
+      new maplibregl.Marker({ element: el, opacityWhenCovered: '0' }).setLngLat([l.lng, l.lat]).addTo(map);
+      return { l, inner: el };
+    });
+    const hit = (a: DOMRect, b: DOMRect, pad: number) => a.left < b.right + pad && a.right + pad > b.left && a.top < b.bottom + pad && a.bottom + pad > b.top;
+    const placeNames = () => {
+      const off = map.getZoom() > 3.3;
+      map.getContainer().classList.toggle('labels-off', off);
+      if (off) return;
+      const c = map.getCenter();
+      const reach = map.getZoom() < 2.2 ? 0.42 : 0.2; // cosine of the furthest angle from the centre that still shows
+      // Member markers always win; then names in order (continents, oceans, cities), each only where there is room.
+      const taken = [...map.getContainer().querySelectorAll<HTMLElement>('.maplibregl-marker:not(.gl-label), .wm-place span')].map((m) => m.getBoundingClientRect());
+      for (const { l, inner } of names) {
+        const cos = Math.sin(l.lat * R) * Math.sin(c.lat * R) + Math.cos(l.lat * R) * Math.cos(c.lat * R) * Math.cos((l.lng - c.lng) * R);
+        const r = inner.getBoundingClientRect();
+        const far = cos < reach || taken.some((t) => hit(r, t, 4));
+        inner.classList.toggle('is-far', far);
+        if (!far) taken.push(r);
+      }
+    };
+    let namesRaf = 0;
+    const queueNames = () => { if (!namesRaf) namesRaf = requestAnimationFrame(() => { namesRaf = 0; placeNames(); }); };
+    map.on('move', queueNames); map.on('idle', queueNames); queueNames();
     // The Earth from space, under the street map, handing over to it before the imagery could soften.
     map.addSource('earth', { type: 'canvas', canvas: earth.canvas, coordinates: EARTH_COORDS, animate: false });
     map.addLayer({ id: 'earth', type: 'raster', source: 'earth',
@@ -418,12 +468,12 @@ export async function mountWorldMap(
       place = new maplibregl.Marker({ element: pe }).setLngLat([p.lng, p.lat]).addTo(map);
     },
     resetView() { stop(); map.flyTo({ padding: base(), zoom: homeZoom(), duration: dur(1100), essential: true }); },
-    zoomOut() { stop(); map.easeTo({ zoom: Math.max(1.2, map.getZoom() - 3), duration: dur(800) }); },
+    zoomOut() { stop(); map.easeTo({ zoom: Math.max(homeZoom(), map.getZoom() - 3), duration: dur(800) }); },
     getCenter: () => { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
     getBounds: () => map.getBounds(),
     getZoom: () => map.getZoom(),
     getCamera: () => { const c = map.getCenter(); return { center: [c.lng, c.lat], zoom: map.getZoom() }; },
-    resize: () => map.resize(),
+    resize: () => { map.resize(); map.setMinZoom(homeZoom()); },
     reframe() {
       const p = base(), c = map.getPadding();
       if (p.left === c.left && p.bottom === c.bottom && !c.top && !c.right) return;
