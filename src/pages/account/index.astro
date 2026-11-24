@@ -15,6 +15,12 @@ const pending = await db
   .bind(user.id).first<{ n: number }>().catch(() => null);
 ---
 <BaseLayout title="Your account" noindex>
+  <style>
+    .acct { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+    .acct .panel { margin: 0 !important; border-radius: 22px; }
+    .acct [data-verify-panel] { grid-column: 1 / -1; }
+    @media (max-width: 760px) { .acct { grid-template-columns: 1fr; } }
+  </style>
   <section class="app">
     <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
       <p class="t-meta app__kicker">Account</p>
@@ -23,7 +29,7 @@ const pending = await db
 
       {reset && <p class="notice notice--ok" style="margin-top:24px">Your password was changed. Other devices were signed out.</p>}
 
-      <div style="margin-top:32px">
+      <div class="acct" style="margin-top:32px">
         {!user.emailVerified && (
           <div class="panel" data-verify-panel>
             <h2>Confirm your email</h2>
@@ -42,7 +48,7 @@ const pending = await db
               <p class="dim">{profile.display_name} · {profile.status === 'published' ? 'Public in World' : 'Draft, only you can see it'}</p>
               <div class="row" style="margin-top:16px">
                 <a class="btn-app" href="/account/profile">Edit profile</a>
-                <a class="btn-app btn-app--ghost" href={`/m/${profile.handle}`}>View profile</a>
+                <a class="btn-app btn-app--ghost" href={`/${profile.handle}`}>View profile</a>
               </div>
             </>
           ) : (

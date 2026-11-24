@@ -17,7 +17,7 @@ export interface AssistantContext {
 }
 
 export type Action =
-  | { type: 'directory'; kind?: 'musician' | 'studio' | 'organization'; specialty?: Specialty; city?: string; verified?: boolean; collab?: boolean; studio?: 'commercial' | 'home' | 'remote'; q?: string }
+  | { type: 'directory'; kind?: 'musician' | 'studio' | 'organization'; specialty?: Specialty; city?: string; verified?: boolean; hire?: boolean; studio?: 'commercial' | 'home' | 'remote'; q?: string }
   | { type: 'page'; page: PageKey }
   | { type: 'signin'; next: PageKey };
 
@@ -67,13 +67,13 @@ export function actionHref(a: Action): string {
   if (a.type === 'signin') return `${PAGES.signin}?next=${encodeURIComponent(PAGES[a.next])}`;
   const u = new URLSearchParams();
   // A city on its own is a clean address: /world/<city>.
-  const onlyCity = a.city && !a.kind && !a.specialty && !a.verified && !a.collab && !a.studio && !a.q;
+  const onlyCity = a.city && !a.kind && !a.specialty && !a.verified && !a.hire && !a.studio && !a.q;
   if (onlyCity) return `/world/${citySlug(a.city!)}`;
   if (a.q) u.set('q', a.q);
   if (a.specialty) u.set('specialty', a.specialty);
   if (a.studio) u.set('studio', a.studio);
   if (a.verified) u.set('verified', '1');
-  if (a.collab) u.set('collab', '1');
+  if (a.hire) u.set('hire', '1');
   if (a.city) u.set('city', a.city);
   const kind = a.kind ?? (a.specialty ? 'musician' : undefined);
   const path = kind ? KIND_PATH[kind] : '/world';
@@ -147,7 +147,7 @@ export function respond(input: string, ctx: AssistantContext): Reply {
   const city = findCityIn(t);
   const specialty = findSpecialty(t);
   const verified = has(t, 'verified', 'verified members?') && !has(t, 'get verified', 'become verified', 'verification', 'how');
-  const collab = has(t, 'collab', 'collaborate', 'collaborators?', 'open to collaborate');
+  const collab = has(t, 'for hire', 'hire', 'hiring', 'freelance', 'freelancers?');
   const mine = has(t, 'my', 'mine', 'me');
 
   // ----- Help and explanations (answered here, with the page offered, not opened) -----
@@ -231,8 +231,8 @@ export function respond(input: string, ctx: AssistantContext): Reply {
   if (specialty || peopleWord || verified || collab) {
     const label = specialty ? SPECIALTIES[specialty].plural : verified && !peopleWord ? 'Opus Verified members' : 'Musicians';
     return {
-      text: `${label}${collab ? ' open to collaborate' : ''}${where}. Opening World.`,
-      action: { type: 'directory', kind: 'musician', specialty, city: city?.name, q: other, verified: verified || undefined, collab: collab || undefined },
+      text: `${label}${collab ? ' for hire' : ''}${where}. Opening World.`,
+      action: { type: 'directory', kind: 'musician', specialty, city: city?.name, q: other, verified: verified || undefined, hire: collab || undefined },
     };
   }
   if (city) return { text: `Opening World in ${city.name}.`, action: { type: 'directory', city: city.name } };

@@ -1,0 +1,125 @@
+---
+/**
+ * My World: everything you own or run on Opus, in one place. Your profile, works, studios (as many as you list),
+ * groups, bookings, the cities you follow and your Future. Counts are real; nothing is invented.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { membershipsOf } from '@/server/clans';
+import { mediaUrl } from '@/server/profiles';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/account/world');
+const env = Astro.locals.runtime.env;
+const db = env.DB;
+const one = async <T,>(q: string, ...b: unknown[]) => db.prepare(q).bind(...b).first<T>().catch(() => null);
+
+const profile = await one<{ handle: string; display_name: string; status: string; photo_key: string | null }>(
+  "SELECT handle, display_name, status, photo_key FROM profiles WHERE owner_user_id = ? AND kind = 'musician'", user.id);
+const groups = await membershipsOf(db, user.id, false).catch(() => []);
+const myBookings = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM bookings WHERE user_id = ? AND status IN ('requested','accepted')", user.id))?.n ?? 0;
+const nowD = new Date();
+const monthName = nowD.toLocaleDateString('en-US', { month: 'long' });
+const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
+const ICON: Record<string, string> = {
+  works: '<path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+  studio: '<path d="M3 21h18M5 21V8l7-4 7 4v13"/><path d="M10 21v-6h4v6"/>',
+  groups: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.5c3 0 6 1.6 6 5.5"/>',
+  network: '<circle cx="12" cy="12" r="2.5"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="20" r="2"/><path d="M6.5 7.5l4 3M17.5 7.5l-4 3M12 14.5V18"/>',
+  city: '<path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+};
+---
+<BaseLayout title="My World" noindex assistant={false}>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide mw" style="margin-inline:auto">
+      <p class="t-meta app__kicker">My World</p>
+      <h1 class="app__title">Everything that’s yours.</h1>
+
+      <div class="mw__me">
+        {profile ? (
+          <>
+            <span class="mw__av" style={profile.photo_key ? `background-image:url(${mediaUrl(profile.photo_key)})` : ''}></span>
+            <div class="mw__who"><b>{profile.display_name}</b><small>{state(profile.status)} · opuscollect.net/{profile.handle}</small></div>
+            <span class="mw__acts"><a class="btn-app" href="/me">See my page</a><a class="btn-app btn-app--ghost" href="/account/page">Customize</a><a class="btn-app btn-app--ghost" href="/account/profile">Edit</a></span>
+          </>
+        ) : (
+          <>
+            <div class="mw__who"><b>Set up your profile</b><small>It takes a minute.</small></div>
+            <span class="mw__acts"><a class="btn-app" href="/start">Start</a></span>
+          </>
+        )}
+      </div>
+
+      <div class="mw__grid">
+        <a class="mw__tile" href="/works/mine">
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.works}></svg>
+          <span class="mw__t">Works</span>
+          <span class="mw__s">Your releases, credits and résumé.</span>
+        </a>
+        <a class="mw__tile" href="/business">
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.studio}></svg>
+          <span class="mw__t">Studios</span>
+          <span class="mw__s">Studios you list, bookings and requests.</span>
+        </a>
+        <a class="mw__tile" href="/clans/mine">
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.groups}></svg>
+          <span class="mw__t">Groups</span>
+          <span class="mw__s">The bands and crews you’re in, and their chat.</span>
+        </a>
+        <a class="mw__tile" href="/network">
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.network}></svg>
+          <span class="mw__t">Network</span>
+          <span class="mw__s">Your connections and who’s waiting to connect.</span>
+        </a>
+        <a class="mw__tile" href="/future?tab=mine&view=calendar">
+          <span class="mw__date" aria-hidden="true"><small>{monthName}</small><b>{nowD.getDate()}</b></span>
+          <span class="mw__t">Future</span>
+          <span class="mw__s">Your sessions, releases and events, with a calendar.</span>
+        </a>
+        <a class="mw__tile" href="/world/cities">
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.city}></svg>
+          <span class="mw__t">Cities</span>
+          <span class="mw__s">The cities you follow and what’s happening there.</span>
+        </a>
+      </div>
+
+      <p class="mw__quick">
+        <a href="/works/mine?add=1">Add a work</a>
+        <a href="/account/bookings">Your bookings{myBookings ? ` (${myBookings})` : ''}</a>
+        <a href="/events/new">Create an event</a>
+        {groups.length > 0 && <a href="#group-chat" data-open-messages="group">Group chat</a>}
+        <a href="/account">Account settings</a>
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .mw { max-width: 1040px; }
+  .mw__me { display: flex; align-items: center; gap: 16px; margin-top: 32px; padding: 18px 22px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .mw__av { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; flex: none; }
+  .mw__who { flex: 1; min-width: 0; }
+  .mw__who b { display: block; font-size: 20px; font-weight: 400; letter-spacing: -0.02em; }
+  .mw__who small { color: var(--text-3); font-size: 13px; }
+  .mw__acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mw__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+  /* Tiles are navigation only: one centered icon (or today's date), a title and what you'll find inside. */
+  .mw__tile { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; text-align: center; gap: 8px; min-height: 250px; padding: 62px 24px 28px; border-radius: 24px; overflow: hidden; color: #f6f3ee; text-decoration: none;
+    background: linear-gradient(155deg, hsl(var(--h, 220) 28% 27%), hsl(calc(var(--h, 220) + 40) 34% 13%)); box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset; transition: transform .25s ease, box-shadow .25s ease; }
+  .mw__tile:nth-child(1) { --h: 12; } .mw__tile:nth-child(2) { --h: 212; } .mw__tile:nth-child(3) { --h: 148; }
+  .mw__tile:nth-child(4) { --h: 266; } .mw__tile:nth-child(5) { --h: 196; } .mw__tile:nth-child(6) { --h: 38; }
+  .mw__tile:hover { transform: translateY(-3px); box-shadow: 0 28px 50px -28px rgba(0, 0, 0, .65); }
+  .mw__tile:focus-visible { outline: 2px solid var(--c-accent, #a9c7ec); outline-offset: 3px; }
+  .mw__tile > svg { width: 56px; height: 56px; margin-bottom: 6px; fill: none; stroke: rgba(255, 255, 255, .78); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+  .mw__date { display: flex; flex-direction: column; align-items: center; line-height: 1; height: 62px; justify-content: center; margin-bottom: 6px; }
+  .mw__date small { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255, 255, 255, .7); }
+  .mw__date b { font-size: 48px; font-weight: 300; letter-spacing: -0.04em; margin-top: 4px; }
+  .mw__t { font-size: 24px; font-weight: 500; letter-spacing: -0.03em; }
+  .mw__s { max-width: 24ch; font-size: 14px; line-height: 1.4; color: rgba(255, 255, 255, .7); }
+  .mw__quick { display: flex; flex-wrap: wrap; gap: 6px 26px; margin-top: 26px; font-size: 14px; }
+  .mw__quick a { color: var(--text-2); }
+  .mw__quick a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+  @media (max-width: 860px) { .mw__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mw__me { flex-wrap: wrap; } .mw__acts { width: 100%; } .mw__acts .btn-app { flex: 1; padding-inline: 10px; } }
+  @media (max-width: 860px) { .mw__tile { min-height: 190px; padding: 36px 16px 20px; } .mw__t { font-size: 21px; } .mw__s { font-size: 13px; } }
+</style>

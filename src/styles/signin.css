@@ -1,0 +1,49 @@
+/* Sign-in popup and inline form. Self-contained so it works on every page. */
+.sm { width: min(420px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 22px; background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--line-faint), 0 40px 90px -30px rgba(0, 0, 0, 0.6); overflow: visible; }
+.sm::backdrop { background: rgba(10, 10, 12, 0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.sm[open] { animation: sm-in var(--m-modal, 360ms) var(--m-ease, ease) both; }
+.sm[open]::backdrop { animation: sm-fade var(--m-modal, 360ms) ease both; }
+@keyframes sm-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+@keyframes sm-fade { from { opacity: 0; } }
+.sm__x { position: absolute; top: 12px; right: 14px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: var(--text-3); font-size: 24px; line-height: 1; cursor: pointer; }
+.sm__x:hover { background: var(--surface-hover); color: var(--text); }
+.sm [data-mount], .sm-inline { padding: clamp(24px, 4vw, 36px); }
+.sm-inline { max-width: 420px; }
+.sm__step { display: grid; gap: 16px; }
+.sm__step[hidden] { display: none; }
+.sm__title { margin: 0; font-size: 28px; font-weight: 300; letter-spacing: -0.04em; line-height: 1.1; }
+.sm__lead { margin: -6px 0 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+.sm__field { display: grid; gap: 6px; font-size: 13px; color: var(--text-3); }
+.sm__field input { height: 46px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--surface-sunken); color: var(--text); font: inherit; font-size: 16px; box-shadow: inset 0 0 0 1px var(--line); }
+.sm__field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sm__code { text-align: center; font-size: 26px !important; letter-spacing: 0.4em; font-weight: 300; }
+.sm__btn { height: 46px; border: 0; border-radius: 999px; background: var(--text); color: var(--bg); font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity var(--m-hover, 160ms), transform var(--m-hover, 160ms); }
+.sm__btn:hover { opacity: 0.88; } .sm__btn:active { transform: scale(0.99); } .sm__btn:disabled { opacity: 0.5; cursor: wait; }
+.sm__msg { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--danger-soft, rgba(163, 54, 43, 0.08)); color: var(--danger, #a3362b); font-size: 13.5px; }
+.sm__dev { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--surface-sunken); color: var(--text-2); font-size: 13px; box-shadow: inset 0 0 0 1px var(--line); }
+.sm__alt { margin: 0; text-align: center; font-size: 13.5px; color: var(--text-3); }
+.sm__alt a, .sm__link { color: var(--text); text-decoration: underline; text-underline-offset: 3px; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .sm[open], .sm[open]::backdrop { animation: none; } }
+.sm *, .sm-inline * { box-sizing: border-box; }
+.sm__step { grid-template-columns: minmax(0, 1fr); }
+.sm__field input { width: 100%; }
+
+/* Recognition look: blurred wash, thin type, underline fields, pill action. */
+.sm { border-radius: 26px; overflow: hidden; }
+.sm [data-mount], .sm-inline { position: relative; isolation: isolate; padding: clamp(28px, 5vw, 44px); }
+.sm [data-mount]::before, .sm-inline::before { content: ''; position: absolute; z-index: -1; inset: -30% -20% auto; height: 260px; pointer-events: none; filter: blur(36px);
+  background: radial-gradient(50% 60% at 25% 30%, rgba(154,174,255,.24), transparent 70%), radial-gradient(40% 50% at 75% 20%, rgba(255,196,160,.16), transparent 70%); }
+.sm__title { font-size: clamp(2rem, 1.6rem + 1.6vw, 2.6rem); letter-spacing: -0.05em; }
+.sm__lead { color: var(--text-3); font-weight: 300; }
+.sm__field { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.sm__field input { background: transparent; box-shadow: none; border-radius: 0; border-bottom: 1px solid var(--line-strong); padding: 0; height: 46px; font-weight: 300; font-size: 18px; }
+.sm__field input:focus { outline: 0; border-bottom-color: var(--accent); }
+.sm__btn { height: 52px; font-weight: 400; font-size: 16px; }
+.sm__code { text-transform: none; }
+
+/* Links underline only on hover or keyboard focus. */
+.sm__alt a, .sm__link { text-decoration: none; }
+.sm__alt a:hover, .sm__link:hover, .sm__alt a:focus-visible, .sm__link:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.sm__alt a:focus-visible, .sm__link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.sm-inline .sm__alt a, .sm-inline .sm__link { text-decoration: none; }
+.sm-inline .sm__alt a:hover, .sm-inline .sm__link:hover { text-decoration: underline; }

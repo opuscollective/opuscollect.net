@@ -48,7 +48,6 @@ export async function requestConnection(env: Env, user: SessionUser, body: { to?
   if (!target || target.status !== 'published') throw new HttpError(404, 'That profile isn’t available.');
   if (target.owner_user_id === user.id) throw new HttpError(400, 'That’s your own profile.');
   if (await isBlockedEitherWay(db, user.id, target.owner_user_id)) throw new HttpError(403, 'You can’t connect with this member.');
-  if (!target.open_to_collab) throw new HttpError(403, 'This member isn’t taking new collaboration requests right now.');
   const raw = typeof body.message === 'string' ? body.message.trim() : '';
   if (raw.length > INTRO_MAX) throw new HttpError(400, `Keep your introduction to ${INTRO_MAX} characters.`, 'message');
   // Plain text only: line breaks are kept, other control characters dropped. Pages escape it when shown.
@@ -176,4 +175,21 @@ export async function listConnections(db: D1Database, userId: string) {
     connected: items.filter((i) => i.status === 'accepted'),
     blocked: blocked.results,
   };
+}
+
+/** Who a member is connected to, for their public page: recent faces (published profiles only) and, for a signed-in visitor, how many connections they share. */
+export async function profileConnections(db: D1Database, ownerId: string, viewerId: string | null) {
+  const faces = await db.prepare(`SELECT p.handle, p.display_name, p.photo_key FROM connections c
+      JOIN profiles p ON p.owner_user_id = (CASE WHEN c.requester_id = ?1 THEN c.addressee_id ELSE c.requester_id END) AND p.kind = 'musician' AND p.status = 'published'
+    WHERE (c.requester_id = ?1 OR c.addressee_id = ?1) AND c.status = 'accepted'
+      AND (?2 IS NULL OR NOT EXISTS (SELECT 1 FROM blocks k WHERE (k.blocker_id = ?2 AND k.blocked_id = p.owner_user_id) OR (k.blocker_id = p.owner_user_id AND k.blocked_id = ?2)))
+    ORDER BY COALESCE(c.responded_at, c.created_at) DESC LIMIT 6`).bind(ownerId, viewerId).all<{ handle: string; display_name: string; photo_key: string | null }>();
+  let mutual = 0;
+  if (viewerId && viewerId !== ownerId) {
+    const r = await db.prepare(`WITH mine AS (SELECT CASE WHEN requester_id = ?1 THEN addressee_id ELSE requester_id END AS u FROM connections WHERE (requester_id = ?1 OR addressee_id = ?1) AND status = 'accepted'),
+        theirs AS (SELECT CASE WHEN requester_id = ?2 THEN addressee_id ELSE requester_id END AS u FROM connections WHERE (requester_id = ?2 OR addressee_id = ?2) AND status = 'accepted')
+      SELECT COUNT(*) AS n FROM mine JOIN theirs USING (u)`).bind(viewerId, ownerId).first<{ n: number }>();
+    mutual = r?.n ?? 0;
+  }
+  return { faces: faces.results.map((f) => ({ handle: f.handle, name: f.display_name, photoKey: f.photo_key })), mutual };
 }

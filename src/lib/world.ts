@@ -1,4 +1,5 @@
 /** Pure helpers shared by the server render and the browser. No DOM access here. */
+import { HIRE_ENABLED } from './features.ts';
 import { ORG_CATEGORY_LABEL, hasPoint, type Listing, type ListingKind } from '@/types/directory';
 import { SPECIALTIES, allSpecialties, type Specialty } from '@/data/specialties';
 import { esc } from './html';
@@ -9,7 +10,7 @@ export interface WorldFilters {
   kinds: ListingKind[]; // empty = all
   specialty?: Specialty | '';
   genre?: string;
-  openToCollab?: boolean;
+  forHire?: boolean;
   studioType?: 'commercial' | 'home' | 'remote' | '';
   verifiedOnly: boolean;
   text: string;
@@ -23,7 +24,7 @@ export function matches(l: Listing, f: WorldFilters): boolean {
   if (f.verifiedOnly && !isVerified(l)) return false;
   if (f.specialty && (l.kind !== 'musician' || !allSpecialties(l.primarySpecialty, l.specialties).includes(f.specialty))) return false;
   if (f.genre && (l.kind !== 'musician' || !l.genres.includes(f.genre))) return false;
-  if (f.openToCollab && (l.kind !== 'musician' || !l.openToCollab)) return false;
+  if (HIRE_ENABLED && f.forHire && (l.kind !== 'musician' || !l.forHire)) return false;
   if (f.studioType && (l.kind !== 'studio' || l.studioType !== f.studioType)) return false;
   const words = keywordTokens(f.text);
   if (words.length) {
@@ -126,7 +127,7 @@ export function tileHtml(l: Listing, variant: 'wide' | 'portrait' | 'grid'): str
   const over = variant !== 'portrait';
   const media = imageHtml({ src: mainImage(l), seed: l.id, kind: l.kind, ratio: variant === 'wide' ? 'photo' : 'portrait', label: l.isSample ? undefined : initials(l.name) });
   const sample = l.isSample ? '<span class="wt__sample">Sample</span>' : '';
-  const status = l.kind === 'musician' && l.openToCollab ? '<span class="wt__live">Open to collaborate</span>' : '';
+  const status = HIRE_ENABLED && l.kind === 'musician' && l.forHire ? '<span class="wt__live">For hire</span>' : '';
   return `<article class="wt wt--${variant}${variant === 'grid' ? ' wt--wide' : ''} wt--${l.kind}" data-id="${esc(l.id)}">
   <div class="wt__media">${media}</div>
   <div class="wt__body">

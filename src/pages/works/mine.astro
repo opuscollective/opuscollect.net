@@ -42,7 +42,7 @@ const none = !failed && releases.length === 0;
           {releases.length > 0 && <p class="wk-mine__sub">{out.length} on your profile · {building.length} {building.length === 1 ? 'draft' : 'drafts'}</p>}
         </div>
         <div class="wk-mine__acts">
-          {profile?.status === 'published' && <a class="px-btn px-btn--text" href={`/m/${profile.handle}#works`}>View profile</a>}
+          {profile?.status === 'published' && <a class="px-btn px-btn--text" href={`/${profile.handle}#works`}>View profile</a>}
           <a class="px-btn px-btn--go" href="/works?add=1" data-add-work>Add Work</a>
         </div>
       </div>
@@ -68,7 +68,7 @@ const none = !failed && releases.length === 0;
               <a class="mu-req__cover" href={`/r/${r.releaseId}`} style={r.coverKey ? `background-image:url(${mediaUrl(r.coverKey)})` : ''} aria-label={r.releaseTitle}></a>
               <div class="mu-req__body">
                 <p><b>{roleLabel(r.role)}</b> on {r.trackTitle ? <>“{r.trackTitle}” from </> : null}<a class="link" href={`/r/${r.releaseId}`}>{r.releaseTitle}</a></p>
-                <p class="dim">From {r.fromHandle ? <a class="link" href={`/m/${r.fromHandle}`}>{r.from}</a> : r.from}{r.releaseStatus !== 'published' && ' · not released yet'}</p>
+                <p class="dim">From {r.fromHandle ? <a class="link" href={`/${r.fromHandle}`}>{r.from}</a> : r.from}{r.releaseStatus !== 'published' && ' · not released yet'}</p>
                 {r.note && <p class="mu-req__note">“{r.note}”</p>}
                 <div class="row"><button class="btn-app" data-answer="confirm">Confirm</button><button class="btn-app btn-app--ghost" data-answer="decline">Decline</button></div>
                 <p class="mw-err" data-answer-err role="alert"></p>

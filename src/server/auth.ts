@@ -6,7 +6,7 @@ import type { AstroCookies } from 'astro';
 import { DUMMY_HASH, hashPassword, passwordProblem, verifyPassword } from './password';
 import { limit } from './ratelimit';
 import { createSession, destroyOtherSessions, type SessionUser } from './session';
-import { resetPasswordMail, sendMail, verifyEmailMail, type EmailResult } from './email';
+import { loginCodeMail, resetPasswordMail, sendMail, verifyEmailMail, type EmailResult } from './email';
 import { HttpError, audit, isEmail, now, randomId, sha256 } from './util';
 
 const MIN = 60_000;
@@ -74,6 +74,53 @@ export async function login(ctx: Ctx, body: { email?: unknown; password?: unknow
   if (!user || !ok) throw new HttpError(401, 'That email and password don’t match an account.');
   await createSession(db, ctx.cookies, user.id, ctx.request.headers.get('user-agent'), ctx.secure);
   await audit(db, user.id, 'account.signed_in');
+  return { id: user.id };
+}
+
+const CODE_TTL_S = 10 * 60;
+const CODE_TRIES = 5;
+
+/**
+ * Sign in by emailed code. Always answers the same way so it can't reveal which emails have accounts.
+ * Codes live in KV for 10 minutes, hashed, with a try limit. Outside production with no email provider,
+ * the code is also returned (devCode) so previews can be tested; production never returns it.
+ */
+export async function requestLoginCode(ctx: Ctx, body: { email?: unknown }) {
+  const db = ctx.env.DB;
+  const email = normEmail(body.email);
+  if (!isEmail(email)) throw new HttpError(400, 'Enter a valid email address.', 'email');
+  await limit(db, `code:ip:${ctx.ip}`, 12, 15 * MIN);
+  await limit(db, `code:email:${email}`, 5, 15 * MIN);
+  const user = await db.prepare('SELECT id, email FROM users WHERE email = ?').bind(email).first<{ id: string; email: string }>();
+  if (!user) return { ok: true as const };
+  const code = String(crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000).padStart(6, '0');
+  await ctx.env.WAITLIST.put(`login:${email}`, JSON.stringify({ h: await sha256(`${user.id}:${code}`), n: 0, exp: Date.now() + CODE_TTL_S * 1000 }), { expirationTtl: CODE_TTL_S });
+  const sent = await sendMail(ctx.env, loginCodeMail(user.email, code));
+  await audit(db, user.id, 'account.login_code_sent');
+  return { ok: true as const, ...(sent === 'logged' && ctx.env.SITE_ENV !== 'production' ? { devCode: code } : {}) };
+}
+
+export async function loginWithCode(ctx: Ctx, body: { email?: unknown; code?: unknown }) {
+  const db = ctx.env.DB;
+  const email = normEmail(body.email);
+  const code = typeof body.code === 'string' ? body.code.replace(/\D/g, '').slice(0, 6) : '';
+  await limit(db, `codein:ip:${ctx.ip}`, 30, 15 * MIN);
+  await limit(db, `codein:email:${email}`, 12, 15 * MIN);
+  const bad = () => new HttpError(401, 'That code didn’t work. Check it or ask for a new one.');
+  const key = `login:${email}`;
+  const rec = code.length === 6 ? await ctx.env.WAITLIST.get<{ h: string; n: number; exp: number }>(key, 'json') : null;
+  const user = rec ? await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first<{ id: string }>() : null;
+  if (!rec || !user || rec.n >= CODE_TRIES) throw bad();
+  if (rec.h !== (await sha256(`${user.id}:${code}`))) {
+    const ttl = Math.max(60, Math.ceil((rec.exp - Date.now()) / 1000));
+    await ctx.env.WAITLIST.put(key, JSON.stringify({ ...rec, n: rec.n + 1 }), { expirationTtl: ttl });
+    throw bad();
+  }
+  await ctx.env.WAITLIST.delete(key);
+  // Receiving the code proves the address, so mark it verified.
+  await db.prepare('UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE id = ?').bind(now(), now(), user.id).run();
+  await createSession(db, ctx.cookies, user.id, ctx.request.headers.get('user-agent'), ctx.secure);
+  await audit(db, user.id, 'account.signed_in_code');
   return { id: user.id };
 }
 

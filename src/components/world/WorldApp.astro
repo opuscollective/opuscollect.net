@@ -1,4 +1,5 @@
 ---
+import { HIRE_ENABLED } from '@/lib/features';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import type { ListingKind } from '@/types/directory';
 import { SPECIALTIES } from '@/data/specialties';
@@ -120,6 +121,8 @@ const navCurrent = kind === 'studio' ? 'discover' : kind === 'musician' ? 'peopl
           <ViewSwitcher />
         </div>
 
+        <div class="wp__quick" data-quick role="group" aria-label="Quick filters"></div>
+
         <div class="wp__filters" id="w-filters" data-filters inert>
           <div class="wp__fin">
             <div class="wp__fgrid">
@@ -153,7 +156,7 @@ const navCurrent = kind === 'studio' ? 'discover' : kind === 'musician' ? 'peopl
             </div>
             <div class="wp__switches">
               <label class="wp__switch"><input type="checkbox" role="switch" data-verified /><span>Opus Verified only</span></label>
-              <label class="wp__switch" data-only="musician"><input type="checkbox" role="switch" data-collab /><span>Open to collaborate</span></label>
+              {HIRE_ENABLED && <label class="wp__switch" data-only="musician"><input type="checkbox" role="switch" data-hire /><span>For hire</span></label>}
               <label class="wp__switch"><input type="checkbox" role="switch" data-inview checked /><span>Only show the area on the map</span></label>
             </div>
             <div class="wp__factions">

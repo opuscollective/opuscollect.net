@@ -32,6 +32,14 @@ const today = new Date().toISOString().slice(0, 10);
     ) : (
       <>
         <form class="aw__body" data-aw-form novalidate>
+          <div class="aw__find" data-aw-find-box>
+            <label class="field"><span>Find your song</span>
+              <input class="input" type="search" data-aw-find placeholder="Search by song or artist, or paste a link" autocomplete="off" spellcheck="false" />
+            </label>
+            <ul class="aw__results" data-aw-results role="listbox" aria-label="Matches" hidden></ul>
+            <p class="aw__hint" data-aw-find-note>Pick a match and we fill in the title, artist, date and artwork. Not there? Paste a Spotify, Apple Music, YouTube or SoundCloud link, or just fill it in below.</p>
+          </div>
+
           <div class="aw__top">
             <label class="aw__art" data-aw-art>
               <input type="file" accept="image/jpeg,image/png,image/webp" data-aw-file aria-describedby="aw-art-hint" />
@@ -159,6 +167,61 @@ const today = new Date().toISOString().slice(0, 10);
       if (f && /^image\/(jpeg|png|webp)$/.test(f.type)) setArt(f);
     });
 
+    // ----- find your song: search Opus's catalog lookup, or paste a link, then review and add -----
+    const findIn = form.querySelector<HTMLInputElement>('[data-aw-find]')!;
+    const results = form.querySelector<HTMLUListElement>('[data-aw-results]')!;
+    const findNote = form.querySelector<HTMLElement>('[data-aw-find-note]')!;
+    const DEFAULT_NOTE = findNote.textContent!;
+    let pickedLinks: Record<string, string> = {};
+    type Found = { title: string; artist: string; album: string; kind: string; releaseDate: string; artwork: string; links: Record<string, string> };
+    let seq = 0, timer = 0;
+    const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+    const apiGet = async <T,>(path: string) => { const r = await fetch(path, { credentials: 'same-origin' }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error((d as { error?: string }).error ?? 'Lookup failed.'); return d as T; };
+    function showResults(list: Found[]) {
+      results.innerHTML = list.map((f, i) => `<li><button type="button" role="option" data-i="${i}">${f.artwork ? `<img src="${esc(f.artwork)}" alt="" width="44" height="44" loading="lazy" referrerpolicy="no-referrer" />` : '<span class="aw__nothumb"></span>'}<span><b>${esc(f.title)}</b><small>${esc([f.artist, f.album].filter(Boolean).join(' · '))}</small></span></button></li>`).join('');
+      results.hidden = list.length === 0;
+      results.onclick = (e) => { const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-i]'); if (b) pick(list[Number(b.dataset.i)]!); };
+    }
+    async function pick(f: Found) {
+      results.hidden = true; results.innerHTML = '';
+      (form!.querySelector('[name="title"]') as HTMLInputElement).value = f.title;
+      (form!.querySelector('[name="artist"]') as HTMLInputElement).value = f.artist;
+      const kindEl = form!.querySelector<HTMLInputElement>(`[name="kind"][value="${f.kind}"]`); if (kindEl) kindEl.checked = true;
+      if (f.releaseDate) { past.checked = true; past.dispatchEvent(new Event('change')); date.value = f.releaseDate; }
+      pickedLinks = f.links ?? {};
+      findIn.value = '';
+      findNote.textContent = `Filled in from “${f.title}” by ${f.artist}. Check it over, choose your role, and add it.`;
+      if (f.artwork) {
+        try {
+          const r = await fetch(`/api/works/artwork?url=${encodeURIComponent(f.artwork)}`, { credentials: 'same-origin' });
+          if (r.ok) { const b = await r.blob(); setArt(new File([b], 'artwork.jpg', { type: b.type })); }
+          else findNote.textContent += ' The artwork didn’t come through, so please upload it.';
+        } catch { findNote.textContent += ' The artwork didn’t come through, so please upload it.'; }
+      }
+    }
+    findIn.addEventListener('input', () => {
+      clearTimeout(timer);
+      const q = findIn.value.trim();
+      if (q.length < 2) { results.hidden = true; findNote.textContent = DEFAULT_NOTE; return; }
+      const mine = ++seq;
+      timer = window.setTimeout(async () => {
+        try {
+          findNote.textContent = 'Looking…';
+          if (/^https?:\/\//i.test(q)) {
+            const d = await apiGet<{ result: Found | null }>(`/api/works/link?url=${encodeURIComponent(q)}`);
+            if (mine !== seq) return;
+            if (d.result) { findNote.textContent = ''; await pick(d.result); } else findNote.textContent = 'We couldn’t read that link. Fill it in below instead.';
+          } else {
+            const d = await apiGet<{ results: Found[] }>(`/api/works/search?q=${encodeURIComponent(q)}`);
+            if (mine !== seq) return;
+            showResults(d.results);
+            findNote.textContent = d.results.length ? 'Pick your song.' : 'No match. Paste a link instead, or fill it in below.';
+          }
+        } catch (err) { if (mine === seq) findNote.textContent = (err as Error).message; }
+      }, 350);
+    });
+    findIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+
     // ----- role → artist -----
     const role = form.querySelector<HTMLSelectElement>('[name="role"]')!;
     const artistField = form.querySelector<HTMLElement>('[data-aw-artist]')!;
@@ -205,7 +268,7 @@ const today = new Date().toISOString().slice(0, 10);
       const fd = new FormData(form);
       const v = {
         title: String(fd.get('title') ?? '').trim(), kind: String(fd.get('kind') ?? 'single'), role: role.value,
-        artist: String(fd.get('artist') ?? '').trim(), past: past.checked, releaseDate: String(fd.get('releaseDate') ?? ''), description: String(fd.get('description') ?? '').trim(),
+        artist: String(fd.get('artist') ?? '').trim(), links: pickedLinks, past: past.checked, releaseDate: String(fd.get('releaseDate') ?? ''), description: String(fd.get('description') ?? '').trim(),
       };
       const problems: [string, string][] = [];
       if (!picked) problems.push(['artwork', 'Add the artwork.']);
@@ -261,7 +324,7 @@ const today = new Date().toISOString().slice(0, 10);
         ? 'It’s on your profile now, with its own page you can share.'
         : w.note || (w.profilePublished ? 'Saved as a draft.' : 'Saved as a draft. It shows on your profile once your profile is published.');
       const view = done!.querySelector<HTMLAnchorElement>('[data-aw-view]')!;
-      if (w.published && w.handle) { view.href = `/m/${w.handle}#works`; view.textContent = 'View on your profile'; }
+      if (w.published && w.handle) { view.href = `/${w.handle}#works`; view.textContent = 'View on your profile'; }
       else { view.href = `/r/${w.id}`; view.textContent = 'Preview your work'; }
       done!.querySelector<HTMLAnchorElement>('[data-aw-edit]')!.href = `/works/${w.id}#credits`;
       const share = done!.querySelector<HTMLButtonElement>('[data-aw-share]')!;
@@ -282,7 +345,7 @@ const today = new Date().toISOString().slice(0, 10);
       }
     });
     done.querySelector('[data-aw-again]')!.addEventListener('click', () => {
-      form.reset(); setArt(null); artistField.hidden = true; clearErrors();
+      form.reset(); setArt(null); artistField.hidden = true; clearErrors(); pickedLinks = {}; results.hidden = true; findNote.textContent = DEFAULT_NOTE;
       done.hidden = true; form.hidden = false; heading.textContent = 'Add Work';
       form.querySelector<HTMLInputElement>('[name="title"]')!.focus();
     });
@@ -292,6 +355,15 @@ const today = new Date().toISOString().slice(0, 10);
 </script>
 
 <style>
+  .aw__find { display: grid; gap: 8px; margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--line-faint); }
+  .aw__results { list-style: none; margin: 0; padding: 4px; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); max-height: 280px; overflow: auto; }
+  .aw__results[hidden] { display: none; }
+  :global(.aw__results button) { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  :global(.aw__results button:hover), :global(.aw__results button:focus-visible) { background: var(--surface-hover); outline: 0; }
+  :global(.aw__results img), :global(.aw__nothumb) { width: 44px; height: 44px; border-radius: 4px; object-fit: cover; background: var(--surface-sunken); flex: none; }
+  :global(.aw__results span) { display: grid; min-width: 0; }
+  :global(.aw__results b) { font-weight: 400; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  :global(.aw__results small) { font-size: 13px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .aw { width: min(560px, calc(100vw - 32px)); max-height: calc(100svh - 48px); margin: auto; padding: 0; border: 0; border-radius: 6px; background: var(--surface); color: var(--text);
     box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--line-faint); overflow: auto; overscroll-behavior: contain;
     opacity: 0; transform: translateY(10px) scale(0.985); transition: opacity var(--m-modal) var(--m-ease), transform var(--m-modal) var(--m-spring); }

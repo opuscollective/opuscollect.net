@@ -12,7 +12,7 @@ export const SITE = {
   promise: 'The world is within reach.',
   supporting: 'Create connections that create opportunity.',
   /** Homepage hero, launch pass (brief 2026-11-21): the value of World on the first screen. */
-  heroHeadline: 'Discover the people behind the music.',
+  heroHeadline: 'Create connections that create opportunity.',
   heroLine: 'Find artists, producers and engineers in your city. See their work. Connect.',
   description:
     'Opus Collective is the professional network for independent music. Discover artists, producers, engineers and songwriters, and earn Opus Verified recognition.',
@@ -37,6 +37,11 @@ export const NAV: NavItem[] = [
         { label: 'People', href: '/musicians' },
         { label: 'Groups', href: '/clans' },
         { label: 'Verified members', href: '/world?verified=1' },
+      ] },
+      { title: 'Studios', links: [
+        { label: 'Find a studio', href: '/studios' },
+        { label: 'List your studio', href: '/business' },
+        { label: 'Your bookings', href: '/account/bookings' },
       ] },
       { title: 'Cities', links: [
         { label: 'Birmingham', href: '/world/birmingham' },
@@ -123,23 +128,15 @@ export const NAV: NavItem[] = [
 
 /** Signed-in account menu. Business and settings live here, not in the main nav. */
 /** The Create menu (signed in): start something new. First in the account menu on desktop and phones. */
-/** The header shows only these two; every other section is reachable from the homepage and the footer. */
-export const HEADER_NAV = (): NavItem[] => NAV.filter((n) => n.label === 'World' || n.label === 'Works');
+/** The header shows World and Network (Bogo 2026-11-23: Works is out of the header for launch; its pages stay reachable by URL and the footer). */
+export const HEADER_NAV = (): NavItem[] => NAV.filter((n) => n.label === 'World' || n.label === 'Network');
 
-export const CREATE_MENU = [
-  { label: 'Create a group', href: '/clans/new' },
-  { label: 'Create an event', href: '/events/new' },
-  { label: 'Add Work', href: '/works?add=1' },
-];
+/** The account menu is deliberately short: your profile as the public sees it, everything you own in My World, and settings. */
+export const CREATE_MENU: { label: string; href: string }[] = [];
 
 export const ACCOUNT_MENU = [
-  { label: 'Your profile', href: '/account/profile' },
-  { label: 'My groups', href: '/clans/mine' },
-  { label: 'Your works', href: '/works/mine' },
-  { label: 'My Future', href: '/future' },
-  { label: 'My Network', href: '/network' },
-  { label: 'Bookings', href: '/account/bookings' },
-  { label: 'Business dashboard', href: '/business' },
+  { label: 'My profile', href: '/me' },
+  { label: 'My World', href: '/account/world' },
   { label: 'Account settings', href: '/account' },
 ];
 
@@ -157,17 +154,11 @@ export const SOCIALS = [
 ];
 
 /** Footer: one short row. Everything else is reachable from the header or from these pages. */
+/** Footer: only what is live today. Add Works, Future, Charts etc. back here when they launch. */
 export const FOOTER_NAV = [
   { label: 'World', href: '/world' },
-  { label: 'Works', href: '/works' },
   { label: 'Studios', href: '/studios' },
-  { label: 'Venues', href: '/venues' },
-  { label: 'Events', href: '/events' },
-  { label: 'Airplay', href: '/airplay' },
-  { label: 'Future', href: '/future' },
-  { label: 'Charts', href: '/charts' },
+  { label: 'List your studio', href: '/business' },
   { label: 'Network', href: '/network' },
-  { label: 'Opus Collective', href: '/collective' },
-  { label: 'Opus Verified', href: '/verified' },
   { label: 'About', href: '/about' },
 ];

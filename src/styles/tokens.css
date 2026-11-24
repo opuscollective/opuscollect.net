@@ -15,23 +15,23 @@
 :root, .tone-light {
   color-scheme: light;
 
-  --bg: #f2efea;               /* warm off-white, the Opus paper */
+  --bg: #ffffff;               /* pure white */
   --surface: #ffffff;          /* cards, panels, sheets */
-  --surface-sunken: #ebe7e1;   /* inputs on panels, wells, segmented tracks, image placeholders */
-  --surface-hover: #f6f4f0;    /* row and button hover on a surface */
+  --surface-sunken: #f3f3f4;   /* inputs on panels, wells, segmented tracks, image placeholders */
+  --surface-hover: #f7f7f8;    /* row and button hover on a surface */
   --surface-raised: #ffffff;   /* selected segment, menus, popovers */
   --nav-hover: rgba(26, 26, 28, 0.06);   /* header item hover, menu rows */
-  --nav-scrim: rgba(242, 239, 234, 0.38); /* the page behind an open header panel */
+  --nav-scrim: rgba(255, 255, 255, 0.5); /* the page behind an open header panel */
   --glass: rgba(255, 255, 255, 0.9);        /* translucent panels over the map */
-  --glass-header: rgba(242, 239, 234, 0.86);
-  --scrim: rgba(28, 24, 20, 0.32);
+  --glass-header: rgba(255, 255, 255, 0.86);
+  --scrim: rgba(10, 10, 12, 0.32);
 
   --text: #1a1a1c;             /* charcoal: headings, names, body */
-  --text-2: #4a464c;           /* secondary copy */
-  --text-3: #65606a;           /* captions, meta, placeholders */
-  --line-faint: #e4dfd8;       /* quiet hairlines */
-  --line: #d9d4cd;             /* borders */
-  --line-strong: #c4beb6;      /* inputs, dividers, scrollbars */
+  --text-2: #48484c;           /* secondary copy */
+  --text-3: #66666c;           /* captions, meta, placeholders */
+  --line-faint: #ececee;       /* quiet hairlines */
+  --line: #e0e0e3;             /* borders */
+  --line-strong: #c8c8cd;      /* inputs, dividers, scrollbars */
 
   --accent: #2f5d8f;           /* deep icy blue: selection, links, focus, verification */
   --accent-strong: #1f4570;
@@ -46,23 +46,23 @@
   --danger-soft: rgba(163, 54, 43, 0.07);
   --warn-line: rgba(150, 110, 30, 0.45);
 
-  --shadow-c: rgba(40, 32, 24, 0.14);
-  --shadow-pop: 0 18px 48px -12px rgba(40, 32, 24, 0.22), 0 0 0 1px var(--line);
-  --paper-band: #ffffff;       /* "paper" editorial sections: white on off-white */
-  --wordmark: #e6e1da;         /* oversized footer wordmark */
+  --shadow-c: rgba(10, 10, 14, 0.14);
+  --shadow-pop: 0 18px 48px -12px rgba(10, 10, 14, 0.22), 0 0 0 1px var(--line);
+  --paper-band: #ffffff;       /* "paper" editorial sections */
+  --wordmark: #ededef;         /* oversized footer wordmark */
   --logo-filter: invert(1);    /* the logo file is white; shown charcoal on light */
 
   /* Opus World map (MapLibre reads these at runtime) */
-  --map-bg: #e9e5df;
+  --map-bg: #f1f1f3;
   --map-water: #dfe3e7;
-  --map-land: #f8f6f2;
-  --map-park: #edefe6;
+  --map-land: #fafafa;
+  --map-park: #eef1ec;
   --map-border: rgba(60, 58, 66, 0.28);
   --map-road: #ffffff;
-  --map-road-major: #e6e0d8;
-  --map-building: #ebe6df;
+  --map-road-major: #e4e4e8;
+  --map-building: #ececef;
   --map-label: #6b6670;
-  --map-horizon: #e3e0db;
+  --map-horizon: #e6e6e9;
 }
 
 /* ---------- Dark (charcoal) ---------- */

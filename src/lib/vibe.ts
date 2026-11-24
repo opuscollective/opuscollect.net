@@ -29,6 +29,6 @@ export function vibeMatch(release: ReleaseVibe, member: MemberVibe): VibeMatch {
 }
 
 /** Sort best match first; ties go to members open to collaborating, then by name. */
-export function rankByVibe<T extends { name: string; openToCollab: boolean; match: VibeMatch }>(items: T[]): T[] {
-  return [...items].sort((a, b) => b.match.score - a.match.score || Number(b.openToCollab) - Number(a.openToCollab) || a.name.localeCompare(b.name));
+export function rankByVibe<T extends { name: string; match: VibeMatch }>(items: T[]): T[] {
+  return [...items].sort((a, b) => b.match.score - a.match.score || a.name.localeCompare(b.name));
 }

@@ -9,6 +9,7 @@
  * - Members choose a visibility (city, metro, region, hidden). Only what they chose leaves the server:
  *   a "region" member gets no coordinates and no city; a "hidden" member gets no location at all.
  */
+import { HIRE_ENABLED } from '@/lib/features';
 import { MIN_LOCALITY_GROUP } from '@/data/places';
 import type { MusicianListing, StudioListing, OrganizationListing, Listing, StudioType, StudioVerification, GeoPoint, LocationVisibility } from '@/types/directory';
 import { money } from '@/lib/booking-time';
@@ -48,7 +49,7 @@ export function publicPlace(r: PlaceCols, showOnMap: boolean): { location: GeoPo
 }
 
 interface Row extends PlaceCols {
-  id: string; handle: string; display_name: string; primary_specialty: Specialty; open_to_collab: number; verification: string;
+  id: string; handle: string; display_name: string; primary_specialty: Specialty; hire_n: number; verification: string;
   photo_key: string | null; updated_at: number; show_on_map: number; specialties: string | null; genres: string | null; achievements: string;
 }
 
@@ -61,8 +62,9 @@ export async function publicMusicians(db: D1Database, onlyId?: string): Promise<
       SELECT * FROM profiles WHERE status = 'published' AND kind = 'musician' AND place_id IS NOT NULL
     ),
     counts AS (SELECT place_id, COUNT(*) AS n FROM pub WHERE location_visibility = 'city' GROUP BY place_id)
-    SELECT pub.id, pub.handle, pub.display_name, pub.primary_specialty, pub.open_to_collab, pub.verification, pub.photo_key, pub.updated_at, pub.show_on_map,
+    SELECT pub.id, pub.handle, pub.display_name, pub.primary_specialty, pub.verification, pub.photo_key, pub.updated_at, pub.show_on_map,
       pub.location_visibility, pub.achievements,
+      (SELECT COUNT(*) FROM services sv WHERE sv.profile_id = pub.id AND sv.active = 1) AS hire_n,
       (SELECT group_concat(specialty) FROM profile_specialties s WHERE s.profile_id = pub.id AND s.is_primary = 0) AS specialties,
       (SELECT group_concat(genre, '|') FROM profile_genres g WHERE g.profile_id = pub.id) AS genres,
       ${PLACE_SELECT}
@@ -81,14 +83,14 @@ export async function publicMusicians(db: D1Database, onlyId?: string): Promise<
       kind: 'musician',
       slug: r.handle,
       name: r.display_name,
-      href: `/m/${r.handle}`,
+      href: `/${r.handle}`,
       photo: mediaUrl(r.photo_key) ?? undefined,
       ...pp,
       primarySpecialty: r.primary_specialty,
       specialties: (r.specialties ? r.specialties.split(',') : []) as Specialty[],
       genres: r.genres ? r.genres.split('|') : [],
       verification: r.verification === 'verified' ? 'verified' : 'none',
-      openToCollab: !!r.open_to_collab,
+      forHire: HIRE_ENABLED && r.hire_n > 0,
       highlight: firstAchievement(r.achievements),
     } satisfies MusicianListing;
   });

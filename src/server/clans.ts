@@ -155,7 +155,9 @@ export async function createClan(env: Env, user: SessionUser, body: ClanInput) {
 
   let handle = slugify(name) || 'clan';
   if (handle.length < 3) handle = `${handle}-clan`;
-  if (RESERVED.has(handle) || (await db.prepare('SELECT 1 AS x FROM profiles WHERE handle = ?').bind(handle).first())) {
+  // The official Opus Collective group may hold the reserved address opus-collective; only an admin account can create it.
+  const official = handle === 'opus-collective' && user.role === 'admin';
+  if ((RESERVED.has(handle) && !official) || (await db.prepare('SELECT 1 AS x FROM profiles WHERE handle = ?').bind(handle).first())) {
     handle = `${handle.slice(0, 24)}-${randomId(3).toLowerCase().replace(/[^a-z0-9]/g, '')}`;
   }
   const id = randomId();

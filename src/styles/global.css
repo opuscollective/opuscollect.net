@@ -1,4 +1,5 @@
 @import './tokens.css';
+@import './system.css';
 /* The hidden attribute always wins over component display rules. */
 [hidden] { display: none !important; }
 
@@ -82,6 +83,8 @@ button { cursor: pointer; }
 ::view-transition-new(root) { animation: vt-in var(--m-page) var(--m-ease) both; }
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; transform: translateY(4px); } }
+/* A person's photo grows from the World preview into their profile as one element (names are pf-<handle>). */
+::view-transition-group(*) { animation-duration: var(--m-page); animation-timing-function: var(--m-ease); }
 .hdr { view-transition-name: site-header; }
 /* The header doesn't fade or ghost between pages: it simply stays. */
 ::view-transition-group(site-header) { animation: none; }
@@ -126,6 +129,5 @@ html:not([data-motion='fluid']) .opus-prep, html:not([data-motion='fluid']) .opu
   .fl-away .oa-launch, .fl-away .om-launch { opacity: 0; pointer-events: none; transform: translateY(10px); }
 }
 
-/* The homepage invites with its own actions: no floating Messages or Ask Opus for visitors who aren't signed in. */
-html:not(.is-signed-in) body:has([data-hero]) .oa-launch,
-html:not(.is-signed-in) body:has([data-hero]) .om-launch { display: none; }
+/* The homepage invites with its own actions: no floating Ask Opus for visitors who aren't signed in. Messages (Global Chat) stays: signed-out visitors can read it. */
+html:not(.is-signed-in) body:has([data-hero]) .oa-launch { display: none; }

@@ -9,8 +9,11 @@ import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import EventPoster from '@/components/events/EventPoster.astro';
 import { clanAdmins, GROUP_TYPES, ROLE_SUGGESTIONS, clanWorks, eligibleWorks, getClanByHandle, isClanAdmin, roster } from '@/server/clans';
 import { listHostedEvents } from '@/server/events';
-import { getMyProfile } from '@/server/profiles';
+import { groupUpcoming, isGroupMember } from '@/server/group-chat';
+import { getMyProfile, mediaUrl } from '@/server/profiles';
 import { RELEASE_KINDS } from '@/data/music';
+import { GROUP_SECTIONS, getPageConfig } from '@/server/page-config';
+import { profileReleases } from '@/server/releases';
 import '@/styles/app.css';
 import '@/styles/events.css';
 import '@/styles/music.css';
@@ -27,6 +30,9 @@ if (!clan || (clan.status !== 'published' && !admin)) {
 if (clan.handle !== Astro.params.handle) return Astro.redirect(clan.href, 301);
 
 const [members, works, events] = await Promise.all([roster(db, clan, admin), clanWorks(db, clan.id), listHostedEvents(db, clan.id)]);
+const chatMember = viewer ? await isGroupMember(db, clan.id, viewer.id) : false;
+// Sessions members shared in the group chat. Members only; empty until migration 0014 is applied.
+const shared = chatMember ? await groupUpcoming(db, clan.id).catch(() => []) : [];
 const active = members.filter((m) => m.status === 'active');
 const pendingSpots = members.filter((m) => m.status === 'open' || m.status === 'invited' || m.status === 'declined');
 const eligible = admin ? await eligibleWorks(db, clan.id) : [];
@@ -35,7 +41,18 @@ const amMember = viewer ? !!(await db.prepare("SELECT 1 AS x FROM clan_members W
 const myProfile = admin && viewer ? await getMyProfile(db, viewer.id) : null;
 const admins = admin ? await clanAdmins(db, clan) : [];
 const isOwner = !!viewer && clan.ownerUserId === viewer.id;
-const featured = works.find((w) => w.cover) ?? works[0] ?? null;
+const page = await getPageConfig(Astro.locals.runtime.env.WAITLIST, clan.id, GROUP_SECTIONS);
+const featured = works.find((w) => w.id === page.featured) ?? works.find((w) => w.cover) ?? works[0] ?? null;
+const show = (k: string) => !page.hide.includes(k);
+const ord = (k: string) => page.order.indexOf(k);
+const hue = [...clan.handle].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 0);
+// Each member as an individual: their own latest works outside this group (published only; their profile is the link).
+const groupWorkIds = new Set(works.map((w) => w.id));
+const outside = new Map<string, Awaited<ReturnType<typeof profileReleases>>>();
+await Promise.all(members.filter((m) => m.status === 'active' && m.userId && m.profilePublished).map(async (m) => {
+  const r = (await profileReleases(db, m.userId!).catch(() => [])).filter((x) => !groupWorkIds.has(x.id)).slice(0, 3);
+  if (r.length) outside.set(m.userId!, r);
+}));
 const T = GROUP_TYPES[clan.groupType];
 const initials = (s: string) => s.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 const onRoster = !!viewer && active.some((m) => m.userId === viewer.id);
@@ -50,7 +67,8 @@ const STATUS = { open: 'Invite link not used yet', invited: 'Invited, waiting fo
 const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}` : ''} on Opus.`;
 ---
 <BaseLayout title={clan.name} description={desc} image={clan.photo ?? undefined}>
-  <article class="cl" data-clan={clan.id}>
+  <article class="cl" data-clan={clan.id} style={`--cl-hue:${hue}`}>
+    <div class="cl__wash" aria-hidden="true" style={clan.photo ? `background-image:url(${clan.photo})` : ''}></div>
     {clan.isSample && <p class="notice notice--warn cl-sample"><b>Development data.</b> This group and its members are sample records for the preview build, not real people.</p>}
     {myInvite && (
       <div class="panel cl-invite" data-invite={myInvite.id}>
@@ -77,7 +95,13 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
       <div class="cl__intro">
         <p class="cl__type">{[clan.typeLabel, clan.place].filter(Boolean).join(' · ')}</p>
         <h1 class="cl__name">{clan.name}</h1>
+        {page.tagline && <p class="cl__tag">{page.tagline}</p>}
         {clan.bio && <p class="cl__bio">{clan.bio}</p>}
+        <ul class="cl__facts" role="list">
+          {active.length > 0 && <li><b>{active.length}</b> {active.length === 1 ? 'member' : 'members'}</li>}
+          {works.length > 0 && <li><b>{works.length}</b> {works.length === 1 ? 'work' : 'works'}</li>}
+        </ul>
+        {page.links.length > 0 && <ul class="cl__chips" role="list">{page.links.map((l) => <li><a href={l.url} target="_blank" rel="noopener nofollow ugc">{l.label} ↗</a></li>)}</ul>}
         {featured && (
           <a class="cl-feat" href={`/r/${featured.id}`}>
             <span class="cl-feat__cover" style={featured.cover ? `background-image:url(${featured.cover})` : ''}></span>
@@ -86,7 +110,9 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
           </a>
         )}
         <div class="cl__actions">
+          {chatMember && <button class="btn-app" type="button" data-open-messages="group" data-group-id={clan.id}>Group chat</button>}
           {admin && <a class="btn-app btn-app--ghost" href="#manage" data-open="manage">Manage</a>}
+          {admin && <a class="btn-app btn-app--ghost" href={`/account/page?group=${clan.handle}`}>Customize page</a>}
           <button class="cl__quiet" type="button" data-share>Share</button>
           {amMember && <button class="cl__quiet" type="button" data-leave>Leave group</button>}
         </div>
@@ -94,8 +120,8 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
     </header>
     <p class="dim mu-err" data-page-status role="alert"></p>
 
-    {active.length > 0 && (
-      <section class="cl__sec" aria-labelledby="cl-roster">
+    {show('members') && active.length > 0 && (
+      <section class="cl__sec" style={`order:${ord('members')}`} aria-labelledby="cl-roster">
         <h2 id="cl-roster">Members</h2>
         <ul class="cl-roster" role="list">
           {active.map((m) => {
@@ -105,7 +131,13 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
             </>;
             return (
               <li>
-                {m.handle && m.profilePublished ? <a class="cl-m" href={`/m/${m.handle}`}>{inner}</a> : <div class="cl-m">{inner}</div>}
+                {m.handle && m.profilePublished ? <a class="cl-m" href={`/${m.handle}`}>{inner}</a> : <div class="cl-m">{inner}</div>}
+                {m.userId && outside.get(m.userId) && (
+                  <span class="cl-m__out" aria-label={`${m.name} on Opus`}>
+                    <small>Also on Opus</small>
+                    <span>{outside.get(m.userId)!.map((x, i) => <a href={`/r/${x.id}`} title={x.title} style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + i * 50) % 360}`}></a>)}</span>
+                  </span>
+                )}
                 {admin && (m.isOwner ? <span class="cl-m__tag">Owner</span> : <button class="cl-m__tag" type="button" data-spot-remove={m.id}>Remove</button>)}
               </li>
             );
@@ -114,8 +146,8 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
       </section>
     )}
 
-    {(works.length > 1 || (admin && works.length > 0)) && (
-      <section class="cl__sec" aria-labelledby="cl-works">
+    {show('works') && (works.length > 1 || (admin && works.length > 0)) && (
+      <section class="cl__sec" style={`order:${ord('works')}`} aria-labelledby="cl-works">
         <h2 id="cl-works">Shared work</h2>
         <ul class="cl-works-grid" role="list">{works.map((w) => (
           <li><a class="cl-w" href={`/r/${w.id}`}>
@@ -127,8 +159,8 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
       </section>
     )}
 
-    {events.length > 0 && (
-      <section class="cl__sec" aria-labelledby="cl-events">
+    {show('events') && events.length > 0 && (
+      <section class="cl__sec" style={`order:${ord('events')}`} aria-labelledby="cl-events">
         <h2 id="cl-events">Upcoming</h2>
         <div class="ev-grid cl-ev">
           {events.map((e) => (
@@ -142,6 +174,20 @@ const desc = `${clan.name} · ${clan.typeLabel}${clan.place ? ` · ${clan.place}
             </a>
           ))}
         </div>
+      </section>
+    )}
+
+    {shared.length > 0 && (
+      <section class="cl__sec" style="order:60" aria-labelledby="cl-shared">
+        <h2 id="cl-shared">Sessions <small class="cl__only">Members only</small></h2>
+        <ul class="cl-sess" role="list">
+          {shared.map((c) => (
+            <li>
+              {c.href ? <a href={c.href}><b>{c.title}</b><span>{c.when}</span><small>{c.detail} · shared by {c.by}</small></a>
+                : <div><b>{c.title}</b><span>{c.when}</span><small>{c.detail} · shared by {c.by}</small></div>}
+            </li>
+          ))}
+        </ul>
       </section>
     )}
 

@@ -50,7 +50,7 @@ function view(r: Row, at = now()): EventView {
     placeId: r.place_id, place: place ? placeLabel(place) : '', venue: r.venue, link: r.link, image: mediaUrl(r.image_key), imageKey: r.image_key,
     visibility: r.visibility, status: r.status, past: eventEndsAt(r.start_at, r.end_at) < at,
     organizer: { userId: r.organizer_user_id, profileId: r.organizer_profile_id, name: r.org_name ?? 'An Opus member', handle: r.org_handle ?? '', published: r.org_status === 'published', photo: mediaUrl(r.org_photo ?? null),
-      isClan: r.org_kind === 'organization', href: r.org_kind === 'organization' ? `/c/${r.org_handle ?? ''}` : `/m/${r.org_handle ?? ''}` },
+      isClan: r.org_kind === 'organization', href: r.org_kind === 'organization' ? `/c/${r.org_handle ?? ''}` : `/${r.org_handle ?? ''}` },
     href: `/events/${r.id}`,
   };
 }

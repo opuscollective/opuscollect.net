@@ -2,16 +2,21 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import BusinessShell from '@/components/business/BusinessShell.astro';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
-import { STUDIO_TYPES, getMyStudio, studioChecklist } from '@/server/business';
+import { STUDIO_COOKIE, STUDIO_TYPES, getMyStudio, studioChecklist } from '@/server/business';
 import { listBusinessBookings, listCustomers } from '@/server/bookings';
+import ViewsChart from '@/components/business/ViewsChart.astro';
+import { viewSeries } from '@/server/views';
+import { listGallery, mediaUrl } from '@/server/profiles';
 import { formatSlot, tzAbbr, money } from '@/lib/booking-time';
 import '@/styles/app.css';
 import '@/styles/business.css';
+import '@/styles/bizhero.css';
 export const prerender = false;
 
 const user = Astro.locals.user;
 const db = Astro.locals.runtime.env.DB;
-const studio = user ? await getMyStudio(db, user.id) : null;
+const adding = Astro.url.searchParams.get('new') === '1';
+const studio = user ? await getMyStudio(db, user.id, Astro.cookies.get(STUDIO_COOKIE)?.value) : null;
 let data: null | {
   check: Awaited<ReturnType<typeof studioChecklist>>; bookings: Awaited<ReturnType<typeof listBusinessBookings>>; customers: number;
 } = null;
@@ -19,27 +24,46 @@ if (user && studio) {
   const [check, bookings, customers] = await Promise.all([studioChecklist(db, studio, user.emailVerified), listBusinessBookings(db, studio.id), listCustomers(db, studio.id)]);
   data = { check, bookings, customers: customers.length };
 }
+const env = Astro.locals.runtime.env;
+const [pageViews, profileViews, gallery] = user && studio ? await Promise.all([
+  viewSeries(env, studio.id),
+  db.prepare("SELECT id FROM profiles WHERE owner_user_id = ? AND kind = 'musician'").bind(user.id).first<{ id: string }>().then((r) => (r ? viewSeries(env, r.id) : null)).catch(() => null),
+  listGallery(db, studio.id).catch(() => []),
+]) : [null, null, []];
+const delta = pageViews && pageViews.lastWeek > 0 ? Math.round(((pageViews.thisWeek - pageViews.lastWeek) / pageViews.lastWeek) * 100) : null;
 const t = Date.now();
 const pending = data?.bookings.filter((b) => b.status === 'requested') ?? [];
 const upcoming = data?.bookings.filter((b) => b.status === 'accepted' && (b.start_at ?? Infinity) >= t) ?? [];
 const monthStart = new Date(); monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
 const thisMonth = data?.bookings.filter((b) => b.created_at >= monthStart.getTime()).length ?? 0;
 const pageUrl = studio ? `${Astro.url.origin}/studios/${studio.handle}` : '';
+const dayTile = (ms: number | null) => (ms ? { m: new Date(ms).toLocaleDateString('en-US', { month: 'short' }), d: new Date(ms).getDate() } : null);
 const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project');
 ---
-{!user || !studio ? (
+{!user || !studio || adding ? (
   <BaseLayout title="Opus Business" description="Booking pages, requests and client management for recording studios, on Opus.">
+    <section class="bz-hero">
+      <div class="bz-wash" aria-hidden="true"><img src="/images/studio-control-room-1400.jpg" alt="" decoding="async" /></div>
+      <div class="bz-in">
+        <div class="bz-copy">
+          <p class="bz-label">Studios · Opus Business</p>
+          <h1>Your studio. More sessions.</h1>
+          <p class="bz-lead">Get discovered by musicians, manage your bookings, and grow your business. Free to list.</p>
+          <p class="bz-fine">No monthly subscription. Booking and scheduling software included. Opus takes 20% only on eligible bookings processed through Opus; bookings made entirely outside Opus carry no Opus commission.</p>
+          <a class="bz-go" href="#start">List your studio</a>
+        </div>
+        <ul class="bz-roll" role="list" aria-label="What Opus Business includes">
+          <li><b>Studio listing</b><small>Appears in World, where artists search by city</small><span class="bz-pill bz-pill--live">Available</span></li>
+          <li><b>Availability</b><small>Services, prices and weekly hours</small><span class="bz-pill bz-pill--live">Available</span></li>
+          <li><b>Booking requests</b><small>Accept or decline, from one page you can share</small><span class="bz-pill bz-pill--live">Available</span></li>
+          <li><b>Session management</b><small>Customers and upcoming sessions</small><span class="bz-pill bz-pill--live">Available</span></li>
+          <li><b>Payments and earnings</b><small>Not switched on yet. Nobody is charged today</small><span class="bz-pill">Upcoming</span></li>
+        </ul>
+      </div>
+    </section>
     <section class="app">
       <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
-        <p class="t-meta app__kicker">Opus Business</p>
-        <h1 class="app__title">Run your studio’s bookings on Opus.</h1>
-        <p class="app__lead">A booking page you can share anywhere, services and prices, opening hours, and requests you accept or decline. Your studio also appears in World, where artists search by city. Home studio addresses stay private.</p>
-        <ul class="steps" role="list" style="margin-top:28px">
-          <li><a href="#start"><i>1</i>Create your studio profile</a></li>
-          <li><a href="#start"><i>2</i>Add services, prices and weekly hours</a></li>
-          <li><a href="#start"><i>3</i>Publish and share your booking link</a></li>
-        </ul>
-        <p class="notice" style="margin-top:24px">Studio tools are in early access while we pilot in Birmingham. Online payments and subscriptions are not switched on yet, so nobody is charged. Bookings are requests you accept or decline.</p>
+        <p class="notice">Studio tools are in early access while we pilot in Birmingham. Bookings are requests you accept or decline. Home studio addresses stay private.</p>
 
         {!user ? (
           <div class="row" style="margin-top:28px" id="start">
@@ -48,7 +72,7 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
           </div>
         ) : (
           <form class="form panel" data-new-studio novalidate id="start" style="margin-top:28px">
-            <h2>Set up your studio</h2>
+            <h2>{studio ? 'Add another studio' : 'Set up your studio'}</h2>
             <label class="field"><span>Studio name *</span><input class="input" name="name" maxlength="80" required autocomplete="organization" /></label>
             <fieldset class="field" style="border:0;padding:0;margin:0">
               <legend>What kind of studio? *</legend>
@@ -58,7 +82,7 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
                 ))}
               </div>
             </fieldset>
-            <label class="field"><span>City or area *</span><PlaceSelect required /><small>This is what the public sees. You can add a private address later; it is never shown.</small></label>
+            <label class="field"><span>City *</span><PlaceSelect required /><small>This is what the public sees. You can add a private address later; it is never shown.</small></label>
             <div data-status class="form-status"></div>
             <div><button class="btn-app" type="submit">Continue</button></div>
           </form>
@@ -71,6 +95,36 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
     lead={studio.status === 'published' ? 'Your booking page is live.' : 'Finish these steps to publish your booking page.'}>
     {studio.status === 'published' && (
       <a slot="actions" class="btn-app btn-app--ghost" href={`/studios/${studio.handle}`}>View booking page</a>
+    )}
+
+    <div class="dz">
+      <div class="dz__hero" style={studio.photoKey || studio.coverKey ? `background-image:url(${mediaUrl(studio.coverKey ?? studio.photoKey)})` : ''}>
+        <div class="dz__heroin">
+          <span class="dz__tag">{studio.status === 'published' ? 'Live on Opus' : 'Draft'}</span>
+          <b>{studio.name}</b>
+        </div>
+        {!studio.photoKey && !studio.coverKey && <a class="dz__add" href="/business/studio">Add a photo of your studio</a>}
+      </div>
+      {gallery.length > 0 && (
+        <ul class="dz__strip" role="list">{gallery.slice(0, 6).map((g) => <li style={`background-image:url(${g.url})`}></li>)}<li class="dz__more"><a href="/business/studio">Manage photos</a></li></ul>
+      )}
+    </div>
+
+    {studio.status === 'published' && pageViews && (
+      <div class="vp">
+        <div class="vp__main">
+          <p class="vp__k">Studio page views · last 30 days</p>
+          <p class="vp__n">{pageViews.total.toLocaleString('en-US')}
+            {delta !== null && <span class:list={['vp__d', { 'is-down': delta < 0 }]}>{delta >= 0 ? '▲' : '▼'} {Math.abs(delta)}% vs last week</span>}
+            {delta === null && pageViews.thisWeek > 0 && <span class="vp__d">{pageViews.thisWeek} this week</span>}
+          </p>
+          <ViewsChart series={pageViews} label="Studio page views" tall />
+        </div>
+        <div class="vp__side">
+          <div><p class="vp__k">Your Opus profile</p><p class="vp__n vp__n--s">{(profileViews?.total ?? 0).toLocaleString('en-US')}</p>{profileViews && <ViewsChart series={profileViews} label="Profile views" />}</div>
+          <p class="vp__fine">Real visits from other people. Your own views aren’t counted.</p>
+        </div>
+      </div>
     )}
 
     {studio.status !== 'published' && data && (
@@ -116,11 +170,11 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
     </div>
 
     <div class="panel" style="margin-top:16px">
-      <h2>Upcoming</h2>
+      <h2>Coming up</h2>
       {upcoming.length === 0 ? <p class="empty"><b>Nothing scheduled.</b>Accepted sessions show here.</p> : (
-        <ul class="blist" role="list">{upcoming.slice(0, 8).map((b) => (
-          <li class="bitem"><div><p class="bitem__when">{when(b)}</p><p class="bitem__who">{b.service_name} · {b.customer_name}</p></div><div class="bitem__actions"><span class="pill pill--accepted">Accepted</span></div></li>
-        ))}</ul>
+        <ul class="up" role="list">{upcoming.slice(0, 8).map((b) => { const dt = dayTile(b.start_at); return (
+          <li class="up__i"><span class="up__d">{dt ? <><small>{dt.m}</small><b>{dt.d}</b></> : <b>·</b>}</span><div><p class="up__w">{when(b)}</p><p class="up__s">{b.service_name} · {b.customer_name}</p></div><span class="pill pill--accepted">Accepted</span></li>
+        ); })}</ul>
       )}
     </div>
   </BusinessShell>
@@ -129,7 +183,7 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
 <script>
   import { bindForm, values } from '@/scripts/form';
   const f = document.querySelector<HTMLFormElement>('[data-new-studio]');
-  if (f) bindForm(f, { url: '/api/business/studio', body: (form) => values(form), busyLabel: 'Creating…', onSuccess: () => { location.href = '/business/studio?new=1'; } });
+  if (f) bindForm(f, { url: '/api/business/studio', body: (form) => ({ ...values(form), newStudio: true }), busyLabel: 'Creating…', onSuccess: () => { location.href = '/business/studio?new=1'; } });
 
   document.querySelector<HTMLButtonElement>('[data-copy]')?.addEventListener('click', async (e) => {
     const b = e.currentTarget as HTMLButtonElement;

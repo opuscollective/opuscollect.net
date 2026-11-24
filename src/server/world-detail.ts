@@ -85,7 +85,7 @@ async function realDetail(db: D1Database, l: Listing): Promise<ProfileDetail | n
       ...base,
       connections: await connectionCount(db, r.owner_user_id).catch(() => undefined),
       actions: {
-        primary: l.openToCollab ? { label: 'Connect', href: l.href + '?connect=1' } : { label: 'Connect', disabledReason: 'Not taking new collaborations right now' },
+        primary: { label: 'Connect', href: l.href + '?connect=1' },
         profile: { label: 'View full profile', href: l.href },
       },
     };

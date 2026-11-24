@@ -1,5 +1,5 @@
 ---
-import { HEADER_NAV, ACCOUNT, ACCOUNT_MENU, CREATE_MENU, SITE } from '@/data/site';
+import { HEADER_NAV, ACCOUNT, ACCOUNT_MENU, SITE } from '@/data/site';
 import Icon from '../ui/Icon.astro';
 import ThemeSwitch from '../ui/ThemeSwitch.astro';
 interface Props { overlay?: boolean }
@@ -8,7 +8,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 // Which pages light up each nav item.
 const SECTIONS: Record<string, string[]> = {
   '/world': ['/world', '/musicians', '/organizations', '/m/', '/verified'],
-  '/works': ['/works', '/music', '/releases', '/r/', '/start'],
+  '/works': ['/works', '/music', '/r/', '/start'],
   '/studios': ['/studios', '/business', '/bookings', '/account/bookings'],
   '/venues': ['/venues'],
   '/events': ['/events', '/summit'],
@@ -36,7 +36,7 @@ const OVERFLOW = new Set<string>();
       <ul role="list" class="hdr__list">
         {HEADER_NAV().map((item, i) => (
           <li class:list={['hdr__item', { 'hdr__item--more': OVERFLOW.has(item.label) }]} data-nav-item>
-            <a class="hdr__link" href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}{item.label === 'Network' && <span class="hdr__count" data-req-count hidden></span>}</a>
+            <a class="hdr__link" href={item.href} aria-current={current(item.href) ? 'page' : undefined}>{item.label}</a>
             <button class="hdr__disc" type="button" aria-expanded="false" aria-controls={`nav-${i}`} data-nav-disc><span class="sr-only">{item.label} menu</span><Icon name="chevron-down" size={12} /></button>
             <div class="navp" id={`nav-${i}`} data-nav-panel hidden>
               <div class:list={['navp__card', { 'navp__card--wide': item.groups.length > 1 }]}>
@@ -70,16 +70,22 @@ const OVERFLOW = new Set<string>();
       <a href={ACCOUNT.signIn.href} class="hdr__signin" data-auth-out>{ACCOUNT.signIn.label}</a>
       <a href={ACCOUNT.join.href} class="hdr__join" data-auth-out>{ACCOUNT.join.label}</a>
 
+      <div class="hdr__social" data-auth-in hidden>
+        <a class="hdr__ico" href="/network?messages=1" data-open-messages="private" aria-label="Messages">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.5-4.6A8 8 0 1 1 21 12z"/></svg>
+          <b class="hdr__badge" data-hdr-msg hidden></b>
+        </a>
+        <a class="hdr__ico" href="/network?tab=received" aria-label="Connection requests">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.9-3.4 3.4-5.2 6.5-5.2s5.6 1.8 6.5 5.2M18 8v6M15 11h6"/></svg>
+          <b class="hdr__badge" data-hdr-req hidden></b>
+        </a>
+      </div>
+
       <div class="acct" data-auth-in hidden>
         <button class="acct__btn" type="button" aria-expanded="false" aria-controls="acct-menu" aria-haspopup="true" data-acct-toggle>
           <Icon name="user" size={18} /><span class="sr-only">Account menu</span><Icon name="chevron-down" size={14} class="acct__chev" />
         </button>
         <div class="acct__menu" id="acct-menu" hidden data-acct-menu>
-          <ul role="list" class="acct__manage" data-manage-list hidden></ul>
-          <p class="acct__group">Create</p>
-          <ul role="list" class="acct__create">
-            {CREATE_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
-          </ul>
           <ul role="list">
             {ACCOUNT_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           </ul>
@@ -109,8 +115,6 @@ const OVERFLOW = new Set<string>();
       </ul>
       <div class="mmenu__actions">
         <ul role="list" class="mmenu__acct" data-auth-in hidden>
-          <span data-manage-list-m hidden></span>
-          {CREATE_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           {ACCOUNT_MENU.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
           <li><button type="button" data-logout>Sign out</button></li>
         </ul>
@@ -250,28 +254,6 @@ const OVERFLOW = new Set<string>();
     }).catch(() => {});
   }
 
-  // "Manage <group>" for each group the member manages (only they see it).
-  if (document.documentElement.classList.contains('is-signed-in')) {
-    fetch('/api/clans/managed').then((r) => (r.ok ? r.json() : null)).then((d: { groups?: { name: string; href: string }[] } | null) => {
-      const groups = d?.groups ?? [];
-      if (!groups.length) return;
-      // Clone an existing menu link so the new items carry the same scoped styles.
-      const items = (model: Element | null): DocumentFragment => {
-        const f = document.createDocumentFragment();
-        for (const g of groups) {
-          const li = document.createElement('li');
-          const a = (model?.cloneNode(false) as HTMLAnchorElement | null) ?? document.createElement('a');
-          a.href = g.href; a.textContent = `Manage ${g.name}`; li.append(a); f.append(li);
-        }
-        return f;
-      };
-      const ul = document.querySelector<HTMLElement>('[data-manage-list]');
-      if (ul) { ul.append(items(ul.parentElement?.querySelector('.acct__create a') ?? null)); ul.hidden = false; }
-      const m = document.querySelector<HTMLElement>('[data-manage-list-m]');
-      if (m) m.replaceWith(items(m.parentElement?.querySelector('li a') ?? null));
-    }).catch(() => {});
-  }
-
   // Account menu (signed in)
   const acctBtn = document.querySelector<HTMLButtonElement>('[data-acct-toggle]');
   const acctMenu = document.querySelector<HTMLElement>('[data-acct-menu]');
@@ -288,9 +270,28 @@ const OVERFLOW = new Set<string>();
   }));
 </script>
 
+<script>
+  // Live unread-message and pending-request counts for signed-in members. Real numbers only; zero hides the badge.
+  if (document.cookie.split('; ').indexOf('opus_in=1') > -1) {
+    const set = (sel: string, n: number) => document.querySelectorAll<HTMLElement>(sel).forEach((el) => { el.hidden = n <= 0; el.textContent = n > 99 ? '99+' : String(n); });
+    const pull = async () => {
+      try {
+        const r = await fetch('/api/messages/unread', { credentials: 'same-origin' });
+        if (!r.ok) return;
+        const u = await r.json() as { dm?: number; requests?: number };
+        set('[data-hdr-msg]', u.dm ?? 0);
+        set('[data-hdr-req], [data-req-count]', u.requests ?? 0);
+      } catch { /* offline */ }
+    };
+    pull();
+    setInterval(pull, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+  }
+</script>
 <style>
   :global(.is-signed-in) [data-auth-out] { display: none !important; }
   :global(.is-signed-in) [data-auth-in] { display: block !important; }
+  :global(.is-signed-in) .hdr__social[data-auth-in] { display: flex !important; }
   .hdr {
     position: sticky; top: 0; z-index: var(--z-header); color: var(--text);
     background: var(--glass-header); backdrop-filter: blur(18px) saturate(1.2); -webkit-backdrop-filter: blur(18px) saturate(1.2);
@@ -328,6 +329,13 @@ const OVERFLOW = new Set<string>();
     background: var(--surface-raised); color: var(--text-2); opacity: 0; pointer-events: none; z-index: 1; }
   .hdr__disc:focus-visible, .hdr__disc[aria-expanded='true']:focus { opacity: 1; pointer-events: auto; }
   .hdr__more { display: none; }
+  .hdr__actions .hdr__social:not([hidden]) { display: flex; flex-direction: row; align-items: center; gap: 2px; }
+  .hdr__social[hidden] { display: none; }
+  .hdr__ico { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: var(--text-2); transition: background .18s, color .18s; }
+  .hdr__ico:hover { background: var(--nav-hover); color: var(--text); }
+  .hdr__badge { position: absolute; top: 3px; right: 1px; display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--c-verified, #2f80ff); color: #fff; font-size: 11px; font-weight: 600; line-height: 1; box-shadow: 0 0 0 2px var(--bg); }
+  .hdr__badge[hidden] { display: none; }
+  @media (max-width: 999px) { .hdr__ico { width: 36px; height: 36px; } }
   .hdr__count { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--c-verified, #2f80ff); color: #fff; font-size: 11px; font-weight: 600; line-height: 1; }
   .hdr__count[hidden] { display: none; }
 

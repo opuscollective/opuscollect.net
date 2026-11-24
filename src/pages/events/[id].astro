@@ -64,7 +64,7 @@ const description = `${e.when} · ${e.venue}${e.place ? `, ${e.place}` : ''}. ${
             <div class="ev__people">
               <h2>Featuring</h2>
               {confirmed.map((p) => (
-                <a class="ev-person" href={`/m/${p.handle}`}>
+                <a class="ev-person" href={`/${p.handle}`}>
                   <span class="ev-person__ph" style={p.photo ? `background-image:url(${p.photo})` : ''}></span>
                   <span>{p.name}<small>Performing · confirmed by the artist</small></span>
                 </a>

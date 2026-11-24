@@ -8,6 +8,7 @@
  * - New messages and connection events are pushed to the member's open sockets through the
  *   Global Chat room; if no socket is open the page catches up by polling.
  */
+import { HIRE_ENABLED } from '@/lib/features';
 import { HttpError, audit, now, randomId } from './util';
 import { limit } from './ratelimit';
 import { isBlockedEitherWay } from './connections';
@@ -20,14 +21,14 @@ const PAGE = 50;
 
 const sorted = (x: string, y: string) => (x < y ? [x, y] : [y, x]) as [string, string];
 
-const AUTHOR_SQL = (alias: string, uidExpr: string) => `
+export const AUTHOR_SQL = (alias: string, uidExpr: string) => `
   LEFT JOIN profiles ${alias} ON ${alias}.owner_user_id = ${uidExpr} AND ${alias}.kind = 'musician'
   LEFT JOIN places ${alias}pl ON ${alias}pl.id = ${alias}.place_id
   LEFT JOIN places ${alias}m ON ${alias}m.id = ${alias}pl.metro_id`;
-const AUTHOR_COLS = (a: string) => `${a}.handle AS handle, ${a}.display_name AS display_name, ${a}.photo_key AS photo_key, ${a}.verification AS verification, ${a}.status AS pstatus,
+export const AUTHOR_COLS = (a: string) => `${a}.handle AS handle, ${a}.display_name AS display_name, ${a}.photo_key AS photo_key, ${a}.verification AS verification, ${a}.status AS pstatus,
   CASE WHEN COALESCE(${a}.location_visibility, 'city') IN ('city', 'metro') THEN ${a}m.name ELSE NULL END AS city`;
-interface AuthorRow { handle: string | null; display_name: string | null; photo_key: string | null; verification: string | null; pstatus: string | null; city: string | null }
-const author = (r: AuthorRow): ChatAuthor => (r.handle && r.pstatus === 'published'
+export interface AuthorRow { handle: string | null; display_name: string | null; photo_key: string | null; verification: string | null; pstatus: string | null; city: string | null }
+export const author = (r: AuthorRow): ChatAuthor => (r.handle && r.pstatus === 'published'
   ? { handle: r.handle, name: r.display_name ?? 'Opus member', photo: mediaUrl(r.photo_key), city: r.city, verified: r.verification === 'verified' }
   : { handle: '', name: r.display_name ?? 'Opus member', photo: null, city: null, verified: false });
 
@@ -157,13 +158,16 @@ export async function notify(env: Env, userId: string, kind: 'connection_request
 
 export async function listNotifications(db: D1Database, me: string) {
   const rows = await db.prepare(`SELECT n.id, n.kind, n.ref_id, n.created_at, n.read_at, ${AUTHOR_COLS('p')},
-      (SELECT status FROM connections x WHERE x.id = n.ref_id) AS conn_status
+      (SELECT status FROM connections x WHERE x.id = n.ref_id) AS conn_status,
+      (SELECT message FROM connections x WHERE x.id = n.ref_id) AS conn_message
     FROM notifications n ${AUTHOR_SQL('p', 'n.actor_id')}
     WHERE n.user_id = ? AND NOT EXISTS (SELECT 1 FROM blocks k WHERE k.blocker_id = n.user_id AND k.blocked_id = n.actor_id)
     ORDER BY n.created_at DESC LIMIT 50`).bind(me)
-    .all<AuthorRow & { id: string; kind: string; ref_id: string; created_at: number; read_at: number | null; conn_status: string | null }>();
+    .all<AuthorRow & { id: string; kind: string; ref_id: string; created_at: number; read_at: number | null; conn_status: string | null; conn_message: string | null }>();
   return rows.results.map((r) => ({
     id: r.id, kind: r.kind, connectionId: r.ref_id, at: r.created_at, unread: !r.read_at, who: author(r),
+    // The note sent with a connection request.
+    note: r.kind === 'connection_request' ? (r.conn_message ?? '').slice(0, 300) : '',
     // A request that was answered or withdrawn shows as such, not as a live button.
     state: r.conn_status ?? 'gone',
   }));
@@ -182,5 +186,7 @@ export async function unreadSummary(db: D1Database, me: string) {
       (SELECT COUNT(*) FROM notifications n WHERE n.user_id = ?1 AND n.read_at IS NULL) AS notes,
       (SELECT COUNT(*) FROM connections x WHERE x.addressee_id = ?1 AND x.status = 'pending'
          AND NOT EXISTS (SELECT 1 FROM blocks k WHERE k.blocker_id = ?1 AND k.blocked_id = x.requester_id)) AS reqs`).bind(me).first<{ dm: number; notes: number; reqs: number }>();
-  return { dm: r?.dm ?? 0, notifications: r?.notes ?? 0, requests: r?.reqs ?? 0 };
+  // Work requests need migration 0013; until it is applied they simply count as none.
+  const w = !HIRE_ENABLED ? null : await db.prepare("SELECT COUNT(*) AS n FROM work_requests WHERE owner_user_id = ? AND status = 'requested'").bind(me).first<{ n: number }>().catch(() => null);
+  return { dm: r?.dm ?? 0, notifications: r?.notes ?? 0, requests: (r?.reqs ?? 0) + (w?.n ?? 0) };
 }

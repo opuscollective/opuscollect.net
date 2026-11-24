@@ -2,6 +2,7 @@
  * Musician profiles: read, validate, save, publish, photos.
  * All validation happens here on the server. Public reads never expose private fields.
  */
+import { RESERVED } from '@/server/usernames';
 import { SPECIALTY_KEYS, type Specialty } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
 import { HttpError, audit, now, randomId, str } from './util';
@@ -91,7 +92,7 @@ export async function getPublicProfile(db: D1Database, handle: string, viewerId:
 
 // ---------- validation ----------
 export const slugify = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 30);
-export const RESERVED = new Set(['admin', 'account', 'api', 'world', 'opus', 'support', 'help', 'settings', 'verified', 'sign-in', 'sign-up', 'about', 'legal', 'new', 'edit', 'business', 'studios', 'bookings', 'venues', 'opportunities', 'people', 'media']);
+export { RESERVED };
 
 export function cleanUrl(v: unknown, hosts: string[] | null): string {
   const s = str(v, 500);
@@ -118,15 +119,13 @@ export interface SaveInput {
   collaborations?: unknown; portfolio?: unknown; publish?: unknown;
 }
 
-/** What's still missing before a profile can be published. */
+/** What's still missing before a profile can be published. Two-minute rule: email, name, photo, specialty and city. Genres, bio and the rest are optional. */
 export function missingForPublish(p: ProfileData, emailVerified: boolean): string[] {
   const m: string[] = [];
   if (!emailVerified) m.push('Confirm your email address');
   if (!p.displayName) m.push('Artist or professional name');
   if (!p.primarySpecialty) m.push('Primary specialty');
   if (!p.placeId) m.push('City');
-  if (!p.genres.length) m.push('At least one genre');
-  if (p.bio.trim().length < 40) m.push('A short bio (40 characters or more)');
   if (!p.photoKey) m.push('Profile photo');
   return m;
 }
@@ -190,7 +189,7 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
 
   const t = now();
   const id = existing?.id ?? randomId();
-  const openToCollab = body.openToCollab === false ? 0 : 1;
+  const openToCollab = 1; // Everyone on Opus is open to connect. The column is kept but no longer used.
   const showOnMap = body.showOnMap === false ? 0 : 1;
   const vis = toVisibility(body.locationVisibility, existing?.locationVisibility);
   const stmts: D1PreparedStatement[] = [];

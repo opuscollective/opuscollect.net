@@ -14,7 +14,10 @@ interface Author { handle: string; name: string; photo: string | null; city: str
 interface GMsg { id: number; body: string; at: number; author: Author; pending?: boolean; cid?: string }
 interface DMsg { id: number; body: string; at: number; mine: boolean; pending?: boolean; cid?: string }
 interface Conv { id: string; with: Author; preview: string; at: number; fromMe: boolean; unread: boolean }
-interface Note { id: string; kind: 'connection_request' | 'connection_accepted'; connectionId: string; at: number; unread: boolean; who: Author; state: string }
+interface Note { id: string; kind: 'connection_request' | 'connection_accepted'; connectionId: string; at: number; unread: boolean; who: Author; state: string; note?: string }
+interface GroupRoom { id: string; handle: string; name: string; photo: string | null; preview: string; at: number | null; unread: boolean; members: number }
+interface Friend { handle: string; name: string; photo: string | null; specialty: string | null }
+type Tab = 'global' | 'private' | 'group';
 interface Me { signedIn: boolean; handle?: string | null; mod?: boolean; blocker?: null | 'verify' | 'profile'; restriction?: { kind: string; until: number | null } | null; blocked?: string[]; live?: boolean }
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel)!;
@@ -25,9 +28,9 @@ if (launch && panel) init();
 function init() {
   const phone = matchMedia('(max-width: 760px)');
   const reduce = motion() !== 'fluid';
-  const badge = $('[data-om-badge]'), dot = $('[data-om-dot]'), gdot = $('[data-om-gdot]'), pcount = $('[data-om-pcount]');
+  const badge = $('[data-om-badge]'), dot = $('[data-om-dot]'), gdot = $('[data-om-gdot]'), pcount = $('[data-om-pcount]'), qcount = $('[data-om-qcount]');
   const tabs = [...panel.querySelectorAll<HTMLButtonElement>('[data-om-tab]')];
-  const views = { global: $('[data-om-view="global"]', panel), private: $('[data-om-view="private"]', panel) };
+  const views = { global: $('[data-om-view="global"]', panel), private: $('[data-om-view="private"]', panel), group: $('[data-om-view="group"]', panel) };
   const g = {
     scroll: $('[data-g-scroll]', panel), list: $('[data-g-list]', panel), state: $('[data-g-state]', panel), top: $('[data-g-top]', panel),
     banner: $('[data-g-banner]', panel), newBtn: $<HTMLButtonElement>('[data-g-new]', panel), foot: $('[data-g-foot]', panel), note: $('[data-g-note]', panel),
@@ -48,20 +51,20 @@ function init() {
   const gMsgs: GMsg[] = [];
   let gLoaded = false, gLoading = false, gMore = true, gUnseen = 0;
   let cooldownUntil = 0, gSending = false;
-  let convs: Conv[] = [], notes: Note[] = [];
+  let convs: Conv[] = [], notes: Note[] = [], groupRooms: GroupRoom[] = [];
   let convoId: string | null = null, convoWith: Author | null = null, dMsgs: DMsg[] = [], dMore = false, dCanSend = true, theirReadAt = 0, pSending = false;
-  let unread = { dm: 0, notifications: 0 };
+  let unread = { dm: 0, notifications: 0, group: 0 };
   let ws: WebSocket | null = null, wsState: 'off' | 'connecting' | 'live' | 'down' = 'off', wsTries = 0, wsTimer = 0, everLive = false;
   let pollTimer = 0;
 
   const UI_KEY = 'opus.msg.ui.v1';
-  type UI = { open?: boolean; tab?: 'global' | 'private'; convo?: string | null };
+  type UI = { open?: boolean; tab?: Tab; convo?: string | null };
   const readUI = (): UI => { try { return JSON.parse(sessionStorage.getItem(UI_KEY) || '{}'); } catch { return {}; } };
   const writeUI = (u: Partial<UI>) => { try { sessionStorage.setItem(UI_KEY, JSON.stringify({ ...readUI(), ...u })); } catch { /* private mode */ } };
   const draftKey = (k: string) => `opus.msg.draft.${k}`;
   const getDraft = (k: string) => { try { return localStorage.getItem(draftKey(k)) ?? ''; } catch { return ''; } };
   const setDraft = (k: string, v: string) => { try { v ? localStorage.setItem(draftKey(k), v) : localStorage.removeItem(draftKey(k)); } catch { /* ignore */ } };
-  let tab: 'global' | 'private' = readUI().tab === 'private' ? 'private' : 'global';
+  let tab: Tab = readUI().tab === 'private' || readUI().tab === 'group' ? 'private' : 'global'; // a group room isn't restored; groups are listed in Messages
 
   const api = async <T,>(url: string, init?: RequestInit): Promise<T> => {
     const r = await fetch(url, { credentials: 'same-origin', ...init, headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) } });
@@ -79,7 +82,7 @@ function init() {
     if (text != null) e.textContent = text;
     return e;
   };
-  const profileHref = (a: Author) => (a.handle ? `/m/${encodeURIComponent(a.handle)}` : '');
+  const profileHref = (a: Author) => (a.handle ? `/${encodeURIComponent(a.handle)}` : '');
   const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'O';
   function avatar(a: Author) {
     const href = profileHref(a);
@@ -127,19 +130,21 @@ function init() {
 
   // ---------- badges ----------
   function renderBadges() {
-    const n = unread.dm + unread.notifications;
+    const pn = unread.dm + unread.notifications;
+    const n = pn + unread.group;
     badge.hidden = n === 0;
     badge.textContent = n > 99 ? '99+' : String(n);
     launch.setAttribute('aria-label', n ? `Messages, ${n} unread` : 'Messages');
     pcount.hidden = n === 0;
-    pcount.textContent = badge.textContent;
+    pcount.textContent = n > 99 ? '99+' : String(n);
+    qcount.hidden = true;
     const gActive = gUnseen > 0 && !(isOpen() && tab === 'global');
     dot.hidden = !gActive || n > 0;
     gdot.hidden = !(gUnseen > 0 && tab !== 'global');
   }
   async function refreshUnread() {
     if (!signedIn()) return;
-    try { const u = await api<{ dm: number; notifications: number }>('/api/messages/unread'); unread = { dm: u.dm, notifications: u.notifications }; renderBadges(); } catch { /* offline */ }
+    try { const u = await api<{ dm: number; notifications: number; group?: number }>('/api/messages/unread'); unread = { dm: u.dm, notifications: u.notifications, group: u.group ?? 0 }; renderBadges(); document.dispatchEvent(new CustomEvent('opus:group-unread', { detail: unread.group })); } catch { /* offline */ }
   }
 
   // ---------- open / close ----------
@@ -175,11 +180,13 @@ function init() {
   $('[data-om-min]', panel).addEventListener('click', () => close());
   $('[data-om-back]', panel).addEventListener('click', () => {
     if (tab === 'private' && convoId) { closeConvo(); return; }
+    if (tab === 'group' && panel.classList.contains('in-convo')) { document.dispatchEvent(new CustomEvent('opus:group-back')); return; }
     close();
   });
   addEventListener('popstate', () => {
     if (!isOpen() || !phone.matches) return;
     if (tab === 'private' && convoId) { closeConvo(); history.pushState({ ...(history.state ?? {}), om: 1 }, ''); return; }
+    if (tab === 'group' && panel.classList.contains('in-convo')) { document.dispatchEvent(new CustomEvent('opus:group-back')); history.pushState({ ...(history.state ?? {}), om: 1 }, ''); return; }
     close({ fromPop: true });
   });
   document.addEventListener('keydown', (e) => {
@@ -205,17 +212,20 @@ function init() {
   }
   window.visualViewport?.addEventListener('resize', () => { if (isOpen()) { const s = activeScroll(); const stick = s && nearBottom(s); fitViewport(); if (s && stick) toBottom(s); } });
   window.visualViewport?.addEventListener('scroll', () => isOpen() && fitViewport());
-  const activeScroll = () => (tab === 'global' ? g.scroll : convoId ? p.scroll : null);
+  const activeScroll = () => (tab === 'global' ? g.scroll : tab === 'group' ? (panel.classList.contains('in-convo') ? panel.querySelector<HTMLElement>('[data-q-scroll]') : null) : convoId ? p.scroll : null);
 
   // ---------- tabs ----------
-  function showTab(t: 'global' | 'private', o: { focus?: boolean } = {}) {
+  function showTab(t: Tab, o: { focus?: boolean } = {}) {
     tab = t;
     writeUI({ tab: t });
     for (const b of tabs) b.setAttribute('aria-selected', String(b.dataset.omTab === t));
     views.global.hidden = t !== 'global';
     views.private.hidden = t !== 'private';
+    views.group.hidden = t !== 'group';
     panel.classList.toggle('in-convo', t === 'private' && !!convoId);
-    if (t === 'global') {
+    if (t === 'group') {
+      document.dispatchEvent(new CustomEvent('opus:group-show', { detail: { focus: o.focus && !phone.matches } }));
+    } else if (t === 'global') {
       gUnseen = 0;
       if (!gLoaded) loadGlobal(); else if (g.newBtn.hidden) toBottom(g.scroll);
       renderComposer();
@@ -229,7 +239,7 @@ function init() {
     renderBadges();
     measureFoot();
   }
-  for (const b of tabs) b.addEventListener('click', () => showTab(b.dataset.omTab as 'global' | 'private', { focus: true }));
+  for (const b of tabs) b.addEventListener('click', () => showTab(b.dataset.omTab as Tab, { focus: true }));
   function measureFoot() { requestAnimationFrame(() => panel.style.setProperty('--om-foot', `${g.foot.offsetHeight}px`)); }
 
   // ---------- Global: render ----------
@@ -525,10 +535,10 @@ function init() {
       p.notes.replaceChildren(); p.convos.replaceChildren(st);
       return;
     }
-    if (!convs.length && !notes.length) p.convos.replaceChildren(skeleton(4));
+    if (!convs.length && !notes.length && !groupRooms.length) p.convos.replaceChildren(skeleton(4));
     try {
-      const [c, n] = await Promise.all([api<{ conversations: Conv[]; unread: typeof unread }>('/api/messages'), api<{ items: Note[] }>('/api/notifications')]);
-      convs = c.conversations; notes = n.items; unread = c.unread;
+      const [c, n, gr] = await Promise.all([api<{ conversations: Conv[]; unread: { dm: number; notifications: number } }>('/api/messages'), api<{ items: Note[] }>('/api/notifications'), api<{ rooms: GroupRoom[] }>('/api/group-chat').catch(() => ({ rooms: [] as GroupRoom[] }))]);
+      convs = c.conversations; notes = n.items; groupRooms = gr.rooms; unread = { ...unread, dm: c.unread.dm, notifications: c.unread.notifications, group: groupRooms.filter((r) => r.unread).length };
       renderPrivateHome();
       renderBadges();
       if (notes.some((x) => x.unread)) {
@@ -550,13 +560,15 @@ function init() {
       ? x.state === 'pending'
       : x.state === 'accepted' && !talking.has(x.who.handle) && Date.now() - x.at < 14 * 86_400_000)).slice(0, 8);
     if (live.length) {
-      nf.append(el('h3', 'om__section', 'Connections'));
+      nf.append(el('h3', 'om__section', 'Requests'));
       for (const x of live) {
         const row = el('div', 'om-row');
         row.append(avatar(x.who));
         const main = el('div', 'om-row__main');
         const nm = nameEl(x.who, 'om-row__name'); main.append(nm);
-        main.append(el('span', 'om-row__sub', x.kind === 'connection_request' ? 'Wants to connect' : 'Accepted your request'));
+        const sub = el('span', 'om-row__sub', x.kind === 'connection_request' ? (x.note ? `“${x.note}”` : 'Wants to connect') : 'Accepted your request');
+        if (x.note) sub.style.cssText = 'white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical';
+        main.append(sub);
         row.append(main);
         const acts = el('div', 'om-row__acts');
         if (x.kind === 'connection_request') {
@@ -576,8 +588,27 @@ function init() {
     }
     p.notes.replaceChildren(nf);
     const cf = document.createDocumentFragment();
+    if (groupRooms.length) {
+      cf.append(el('h3', 'om__section', 'Groups'));
+      for (const r of groupRooms) {
+        const row = el('button', `om-row${r.unread ? ' is-unread' : ''}`);
+        row.type = 'button';
+        const logo = el('span', 'om-row__av');
+        if (r.photo) logo.style.backgroundImage = `url("${r.photo}")`; else logo.textContent = initials(r.name);
+        const main = el('span', 'om-row__main');
+        main.append(el('span', 'om-row__name', r.name), el('span', 'om-row__sub', r.preview || `${r.members} member${r.members === 1 ? '' : 's'} · say hello`));
+        const side = el('span', 'om-row__side', r.at ? ago(r.at) : '');
+        if (r.unread) { const u = el('span', 'om-row__unread'); u.setAttribute('aria-label', 'Unread'); side.append(u); }
+        row.append(logo, main, side);
+        row.addEventListener('click', () => { showTab('group'); document.dispatchEvent(new CustomEvent('opus:group-open', { detail: { id: r.id } })); });
+        cf.append(row);
+      }
+    }
+    const newBtn = el('button', 'om__new-msg', 'New message'); newBtn.type = 'button';
+    newBtn.addEventListener('click', openFriends);
     if (convs.length) {
-      cf.append(el('h3', 'om__section', 'Messages'));
+      const h = el('h3', 'om__section', 'Messages'); h.append(newBtn);
+      cf.append(h);
       for (const c of convs) {
         const row = el('button', `om-row${c.unread ? ' is-unread' : ''}`);
         row.type = 'button';
@@ -593,10 +624,34 @@ function init() {
       }
     } else {
       const st = el('div', 'om__state');
-      st.append(el('strong', '', 'No conversations yet.'), document.createTextNode('Connect with people from Global Chat or World, then message them here.'));
+      st.append(el('strong', '', 'No conversations yet.'), document.createTextNode('Connect with people from Global Chat or World, then message them here.'), el('br'), newBtn);
       cf.append(st);
     }
     p.convos.replaceChildren(cf);
+  }
+  // Start a chat with anyone you're connected to.
+  async function openFriends() {
+    const f = document.createDocumentFragment();
+    const head = el('h3', 'om__section', 'New message');
+    const cancel = el('button', 'om__new-msg', 'Cancel'); cancel.type = 'button'; cancel.addEventListener('click', renderPrivateHome); head.append(cancel);
+    f.append(head, el('div', 'om__state', 'Loading…'));
+    p.convos.replaceChildren(f);
+    try {
+      const d = await api<{ connected: { other: { handle: string | null; name: string; specialty: string | null; photoKey: string | null } }[] }>('/api/connections');
+      const people: Friend[] = d.connected.filter((c) => c.other.handle).map((c) => ({ handle: c.other.handle!, name: c.other.name, photo: c.other.photoKey ? `/media/${c.other.photoKey}` : null, specialty: c.other.specialty }));
+      const list = document.createDocumentFragment();
+      list.append(head);
+      if (!people.length) { const st = el('div', 'om__state'); st.append(el('strong', '', 'No connections yet.'), document.createTextNode('Connect with people from World, then message them here.')); list.append(st); }
+      for (const x of people) {
+        const row = el('button', 'om-row'); row.type = 'button';
+        const a: Author = { handle: '', name: x.name, photo: x.photo, city: null, verified: false };
+        const main = el('span', 'om-row__main'); main.append(el('span', 'om-row__name', x.name), el('span', 'om-row__sub', x.specialty ?? ''));
+        row.append(avatar(a), main, el('span'));
+        row.addEventListener('click', () => messageHandle(x.handle));
+        list.append(row);
+      }
+      p.convos.replaceChildren(list);
+    } catch { renderPrivateHome(); flash('Couldn’t load your connections.'); }
   }
   async function answer(x: Note, action: 'accept' | 'decline', acts: HTMLElement) {
     acts.querySelectorAll('button').forEach((b) => (b.disabled = true));
@@ -618,7 +673,7 @@ function init() {
     try {
       const r = await post<{ id: string }>('/api/messages', { to: handle });
       if (!isOpen()) open({ focus: false });
-      if (tab !== 'private') { tab = 'private'; for (const b of tabs) b.setAttribute('aria-selected', String(b.dataset.omTab === 'private')); views.global.hidden = true; views.private.hidden = false; writeUI({ tab: 'private' }); }
+      if (tab !== 'private') { tab = 'private'; for (const b of tabs) b.setAttribute('aria-selected', String(b.dataset.omTab === 'private')); views.global.hidden = true; views.group.hidden = true; views.private.hidden = false; writeUI({ tab: 'private' }); }
       openConvo(r.id, null);
     } catch (e) {
       if (!isOpen()) open({ focus: false });
@@ -762,8 +817,17 @@ function init() {
     const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-message-handle]');
     if (t) { e.preventDefault(); messageHandle(t.dataset.messageHandle!); }
     const o = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-open-messages]');
-    if (o) { e.preventDefault(); tab = (o.dataset.openMessages === 'private' ? 'private' : 'global'); open(); }
+    if (o) {
+      e.preventDefault();
+      const want = o.dataset.openMessages;
+      tab = want === 'private' || want === 'group' ? (want === 'group' && !o.dataset.groupId ? 'private' : want) : 'global';
+      if (isOpen()) showTab(tab); else open();
+      if (tab === 'group') document.dispatchEvent(new CustomEvent('opus:group-open', { detail: { id: o.dataset.groupId } }));
+    }
   });
+
+  document.addEventListener('opus:group-read', () => refreshUnread());
+  document.addEventListener('opus:group-exit', () => { if (isOpen()) showTab('private'); });
 
   // ---------- socket ----------
   function connect() {
@@ -803,6 +867,7 @@ function init() {
         if (m.t === 'error' && (m.code === 'timeout' || m.code === 'banned')) refreshMe();
       } else if (m.t === 'nudge') {
         if (m.kind === 'dm') { if (convoId && m.conversation === convoId && isOpen() && tab === 'private') refreshConvo(); else refreshUnread(); if (tab === 'private' && !convoId && isOpen()) loadPrivateHome(); }
+        else if (m.kind === 'group') { refreshUnread(); document.dispatchEvent(new CustomEvent('opus:group-nudge', { detail: m })); if (tab === 'private' && !convoId && isOpen()) loadPrivateHome(); }
         else { refreshUnread(); if (tab === 'private' && !convoId && isOpen()) loadPrivateHome(); }
       }
     });
@@ -834,7 +899,7 @@ function init() {
     pollTimer = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       if (isOpen() && tab === 'global' && gLoaded) loadGlobalSince();
-      if (signedIn()) { refreshUnread(); if (convoId && isOpen() && tab === 'private') refreshConvo(); }
+      if (signedIn()) { refreshUnread(); if (convoId && isOpen() && tab === 'private') refreshConvo(); if (isOpen() && tab === 'group') document.dispatchEvent(new CustomEvent('opus:group-nudge', { detail: {} })); }
     }, signedIn() ? 20_000 : 30_000);
   }
   function stopPolling() { clearInterval(pollTimer); pollTimer = 0; }
@@ -862,7 +927,7 @@ function init() {
   if (ask) {
     params.delete('messages');
     history.replaceState(history.state, '', location.pathname + (params.toString() ? `?${params}` : '') + location.hash);
-    tab = ask === 'private' ? 'private' : 'global';
+    tab = ask === 'private' || ask === 'group' ? 'private' : 'global';
   }
   const ui = readUI();
   if (signedIn()) {

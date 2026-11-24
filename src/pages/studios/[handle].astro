@@ -2,9 +2,10 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import ProductNav from '@/components/product/ProductNav.astro';
 import { STUDIO_TYPES, getPublicStudio, listServices } from '@/server/business';
-import { mediaUrl } from '@/server/profiles';
+import { listGallery, mediaUrl } from '@/server/profiles';
 import { PLACES, visibleLabel } from '@/data/places';
 import { money } from '@/lib/booking-time';
+import { recordView } from '@/server/views';
 import '@/styles/app.css';
 import '@/styles/business.css';
 export const prerender = false;
@@ -13,7 +14,11 @@ const viewer = Astro.locals.user;
 const db = Astro.locals.runtime.env.DB;
 const studio = await getPublicStudio(db, Astro.params.handle ?? '', viewer?.id ?? null);
 if (!studio) return new Response(null, { status: 404, statusText: 'Not found' });
+if (studio.status === 'published') await recordView(Astro.locals.runtime.env, Astro.locals.runtime.ctx, studio.id, Astro.request, viewer?.id === studio.ownerUserId);
 const services = await listServices(db, studio.id);
+const gallery = await listGallery(db, studio.id).catch(() => []);
+const fromPrice = services.length ? Math.min(...services.map((x) => x.priceCents)) : null;
+const hue = [...studio.handle].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 0);
 const place = PLACES.find((p) => p.id === studio.placeId);
 const isOwner = viewer?.id === studio.ownerUserId;
 const live = studio.status === 'published';
@@ -25,24 +30,29 @@ const description = `${studio.name}: ${STUDIO_TYPES[studio.studioType].label.toL
 ---
 <BaseLayout title={studio.name} description={description} noindex={!live} image={studio.photoKey ? mediaUrl(studio.photoKey) ?? undefined : undefined}>
   <ProductNav product="studios" current="discover" />
-  <div class="sp-cover" style={studio.coverKey ? `background-image:url(${mediaUrl(studio.coverKey)})` : ''}></div>
+  <section class="sh" style={`--h:${hue}`}>
+    <div class="sh__bg" style={studio.coverKey ? `background-image:url(${mediaUrl(studio.coverKey)})` : ''} aria-hidden="true"></div>
+    <div class="sh__in">
+      <p class="sh__kick">{STUDIO_TYPES[studio.studioType].label}{place && <> · {studio.studioType === 'home' ? `${place.name} area` : visibleLabel(studio.placeId, studio.locationVisibility)}</>}</p>
+      <h1>{studio.name}</h1>
+      <ul class="sh__facts" role="list">
+        {BADGE[studio.verification] && <li><span class="pill pill--accepted">{BADGE[studio.verification]}</span></li>}
+        {services.length > 0 && <li><b>{services.length}</b> {services.length === 1 ? 'service' : 'services'}</li>}
+        {fromPrice !== null && <li>From <b>{money(fromPrice, 'USD')}</b></li>}
+      </ul>
+      {canBook && <a class="btn-app sh__cta" href="#book">Request a session</a>}
+    </div>
+  </section>
   <div class="sp">
-    <header class="sp__head">
-      <div class="sp__photo" style={studio.photoKey ? `background-image:url(${mediaUrl(studio.photoKey)})` : ''} role="img" aria-label={`${studio.name} photo`}></div>
-      <div>
-        <h1>{studio.name}</h1>
-        <p class="sp__sub">
-          <span>{STUDIO_TYPES[studio.studioType].label}</span>
-          {place && <span>{studio.studioType === 'home' ? `${place.name} area` : visibleLabel(studio.placeId, studio.locationVisibility)}</span>}
-          {BADGE[studio.verification] && <span class="pill pill--accepted">{BADGE[studio.verification]}</span>}
-        </p>
-      </div>
-    </header>
-
     <div class="sp__body">
       {!live && <p class="notice notice--warn" style="margin-top:24px">Draft preview. Only you can see this page. <a class="link" href="/business">Publish it</a> to start taking requests.</p>}
       {isOwner && live && <p class="notice" style="margin-top:24px">This is your public page. <a class="link" href="/business">Back to your dashboard</a>.</p>}
-      <section><h2>About</h2><p class="sp__bio">{studio.bio}</p></section>
+      {gallery.length > 0 && (
+        <section><h2>The space</h2>
+          <ul class="sp__gal" role="list">{gallery.map((g) => <li><span style={`background-image:url(${g.url})`} role="img" aria-label={`${studio.name} photo`}></span></li>)}</ul>
+        </section>
+      )}
+      {studio.bio && <section><h2>About</h2><p class="sp__bio">{studio.bio}</p></section>}
       {services.length > 0 && (
         <section><h2>Services and prices</h2>
           <ul role="list">{services.map((s) => (

@@ -4,11 +4,12 @@
  * to collaborate, organizations). Nothing is ranked by payment; verified members lead each shelf.
  * Pure: no DOM. Relative imports with extensions so `node --test` can load it.
  */
+import { HIRE_ENABLED } from './features.ts';
 import { SPECIALTIES, type Specialty } from '../data/specialties.ts';
 import type { Listing, ListingKind } from '../types/directory';
 
 export interface GuidePlace { name: string; lat: number; lng: number }
-export interface ShelfFilter { kind?: ListingKind; specialty?: Specialty; collab?: boolean }
+export interface ShelfFilter { kind?: ListingKind; specialty?: Specialty; hire?: boolean }
 export interface Shelf { key: string; title: string; items: Listing[]; total: number; filter: ShelfFilter }
 export interface CityGuide { name: string; total: number; musicians: number; studios: number; organizations: number; shelves: Shelf[] }
 
@@ -50,8 +51,8 @@ export function cityGuide(all: Listing[], place: GuidePlace, km = GUIDE_KM): Cit
   if (first) shelves.push(shelf(`spec-${first[0]}`, SPECIALTIES[first[0]].plural, first[1], { kind: 'musician', specialty: first[0] }));
   if (studios.length) shelves.push(shelf('studios', 'Studios', studios, { kind: 'studio' }));
   for (const [s, ls] of rest) shelves.push(shelf(`spec-${s}`, SPECIALTIES[s].plural, ls, { kind: 'musician', specialty: s }));
-  const collab = musicians.filter((l) => l.kind === 'musician' && l.openToCollab);
-  if (collab.length >= 2) shelves.push(shelf('collab', 'Open to collaborate', collab, { kind: 'musician', collab: true }));
+  const hire = HIRE_ENABLED ? musicians.filter((l) => l.kind === 'musician' && l.forHire) : [];
+  if (hire.length >= 2) shelves.push(shelf('hire', 'For hire', hire, { kind: 'musician', hire: true }));
   if (orgs.length) shelves.push(shelf('orgs', 'Bands, crews and groups', orgs, { kind: 'organization' }));
 
   return { name: place.name, total: here.length, musicians: musicians.length, studios: studios.length, organizations: orgs.length, shelves };

@@ -14,14 +14,15 @@ const date = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: studio.
   lead="Everyone who has requested a booking with you. Only you can see this list.">
   <div class="panel">
     {customers.length === 0 ? <p class="empty"><b>No customers yet.</b>When someone requests a booking, they’re added here, with or without an Opus account.</p> : (
-      <div class="table-wrap">
-        <table class="table">
-          <thead><tr><th>Name</th><th>Contact</th><th>Requests</th><th>Accepted</th><th>Last request</th></tr></thead>
-          <tbody>{customers.map((c) => (
-            <tr><td><b>{c.name}</b></td><td><a class="link" href={`mailto:${c.email}`}>{c.email}</a>{c.phone && <><br />{c.phone}</>}</td><td>{c.requests}</td><td>{c.accepted}</td><td>{date(c.last_seen_at)}</td></tr>
-          ))}</tbody>
-        </table>
-      </div>
+      <ul class="cu" role="list">{customers.map((c) => (
+        <li class="cu__c" style={`--h:${[...c.name].reduce((x, ch) => (x * 31 + ch.charCodeAt(0)) % 360, 0)}`}>
+          <span class="cu__av" aria-hidden="true">{c.name.slice(0, 1).toUpperCase()}</span>
+          <div class="cu__id"><b>{c.name}</b><a class="link" href={`mailto:${c.email}`}>{c.email}</a>{c.phone && <small>{c.phone}</small>}</div>
+          <div class="cu__n"><span><b>{c.requests}</b> {c.requests === 1 ? 'request' : 'requests'}</span><span><b>{c.accepted}</b> accepted</span></div>
+          <span class="cu__bar" aria-hidden="true"><i style={`width:${c.requests ? Math.round((c.accepted / c.requests) * 100) : 0}%`}></i></span>
+          <small class="cu__last">Last request {date(c.last_seen_at)}</small>
+        </li>
+      ))}</ul>
     )}
   </div>
 </BusinessShell>

@@ -1,0 +1,23 @@
+/* Opus Business landing: the Works "Recognition" language (wash, thin type, hairline rows, small status pills). */
+.bz-hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(56px, 8vw, 120px) var(--gutter); }
+.bz-wash { position: absolute; inset: 0; z-index: -1; -webkit-mask-image: linear-gradient(#000 25%, transparent 95%); mask-image: linear-gradient(#000 25%, transparent 95%); }
+.bz-wash img { position: absolute; left: 35%; top: -30%; width: 75%; aspect-ratio: 1; object-fit: cover; filter: blur(90px) saturate(1.2); opacity: 0.3; }
+:root[data-theme='light'] .bz-wash img { opacity: 0.18; }
+.bz-in { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 6vw, 96px); align-items: end; }
+.bz-copy { display: grid; gap: 18px; justify-items: start; }
+.bz-label { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); }
+.bz-copy h1 { margin: 0; font-size: clamp(2.4rem, 1.2rem + 4.4vw, 4.6rem); font-weight: 600; letter-spacing: -0.05em; line-height: 1; color: var(--text); text-wrap: balance; }
+.bz-lead { margin: 0; max-width: 32ch; font-size: clamp(1.05rem, .98rem + .4vw, 1.3rem); line-height: 1.4; color: var(--text-2); }
+.bz-fine { margin: 0; max-width: 46ch; font-size: 13.5px; line-height: 1.55; color: var(--text-3); }
+.bz-go { display: inline-flex; align-items: center; height: 44px; padding: 0 22px; border-radius: 999px; background: #1a1a1d; color: #fff; font-weight: 500; font-size: 15px; }
+.bz-go:hover { opacity: .9; }
+.bz-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.bz-roll { margin: 0; padding: 0; list-style: none; }
+.bz-roll li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 18px; align-items: center; padding: 16px 0; }
+.bz-roll li + li { border-top: 1px solid var(--line-faint); }
+.bz-roll b { font-size: clamp(1.4rem, 1rem + 1.6vw, 2.2rem); font-weight: 300; letter-spacing: -0.03em; line-height: 1.1; color: var(--text); }
+.bz-roll small { grid-column: 1; font-size: 13px; color: var(--text-3); }
+.bz-pill { grid-column: 2; grid-row: 1 / span 2; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 500; border: 1px dashed var(--line-strong); color: var(--text-2); white-space: nowrap; }
+.bz-pill--live { border: 0; background: color-mix(in srgb, #2f80ff 14%, transparent); color: var(--text); }
+.bz-pill--live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #2f80ff; }
+@media (max-width: 900px) { .bz-in { grid-template-columns: 1fr; } }

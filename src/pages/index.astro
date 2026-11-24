@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Hero from '@/components/home/Hero.astro';
-import ProductTiles from '@/components/home/ProductTiles.astro';
 import { SITE } from '@/data/site';
 
 const jsonLd = {
@@ -17,5 +16,4 @@ const jsonLd = {
 <BaseLayout overlayHeader lightFooter>
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <Hero />
-  <ProductTiles />
 </BaseLayout>

@@ -1,12 +1,87 @@
 ---
-/** Opus Collective page carried over from the v23 site. Content lives in src/legacy/about.html. */
+/** About Opus: what it is, who started it, and the first releases under the Opus Collective name. */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import html from '@/legacy/about.html?raw';
-import '@/styles/legacy.css';
+import '@/styles/app.css';
+
+const VALUES = [
+  { t: 'Find your people', s: 'Collaborators who take your vision seriously.', d: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.5c3 0 6 1.6 6 5.5"/>' },
+  { t: 'Grow together', s: 'Feedback, sessions and lessons from people who get it.', d: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>' },
+  { t: 'Stay independent', s: 'Your music, your name, your call. Always.', d: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' },
+  { t: 'Shape what’s next', s: 'Creators in the rooms where it’s decided.', d: '<path d="M4 12h16M14 6l6 6-6 6"/>' },
+];
 ---
-<BaseLayout title="About" description="Opus Collective is a creative community for independent artists, producers, engineers, designers and filmmakers. Founded by Bogo in Birmingham, AL." image="/images/amazing-cover.jpg">
-  <div class="legacy"><Fragment set:html={html} /></div>
+<BaseLayout title="About" description="Opus is a home for independent creatives, where they find their people, grow together and shape the culture on their own terms. Founded by Bogo in Birmingham, AL." image="/images/bogo-scenic.jpg">
+  <main class="ab">
+    <section class="ab__hero">
+      <div class="ab__wash" aria-hidden="true"></div>
+      <p class="ab__kick">About Opus</p>
+      <h1>A home for independent creatives.</h1>
+      <p class="ab__lede">Find your people, grow together and shape the culture on your own terms.</p>
+    </section>
+
+    <ul class="ab__vals" role="list">
+      {VALUES.map((v) => (
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={v.d}></svg>
+          <b>{v.t}</b><span>{v.s}</span>
+        </li>
+      ))}
+    </ul>
+
+    <section class="ab__founder" aria-labelledby="ab-founder">
+      <div class="ab__photo" style="background-image:url(/images/bogo-scenic.jpg)" role="img" aria-label="Bogo, founder of Opus Collective"></div>
+      <div class="ab__bio">
+        <p class="ab__kick">The founder</p>
+        <h2 id="ab-founder">Leny Mbogo, known as Bogo</h2>
+        <p class="ab__role">Founder, Opus Collective · Birmingham, AL</p>
+        <p>Independent artist and visionary. He started Opus so no creative has to build alone.</p>
+        <blockquote>“Scenic is the sound of Leny becoming Bogo.”</blockquote>
+      </div>
+    </section>
+
+    <section class="ab__rel" aria-labelledby="ab-rel">
+      <h2 id="ab-rel">The first two releases under the Opus Collective name</h2>
+      <ul role="list">
+        <li><img src="/images/amazing-cover.jpg" alt="Amazing, single cover" loading="lazy" width="600" height="600" /><b>Amazing</b><small>OC 001 · Single · Oct 16, 2026</small></li>
+        <li><img src="/images/scenic-cover.jpg" alt="Scenic, mixtape cover" loading="lazy" width="600" height="600" /><b>Scenic</b><small>OC 002 · Mixtape · Oct 26, 2026</small></li>
+      </ul>
+    </section>
+
+    <section class="ab__cta">
+      <h2>Find your people.</h2>
+      <p>The first wave shapes what Opus becomes.</p>
+      <p><a class="btn-app" href="/sign-up">Join Opus</a> <a class="btn-app btn-app--ghost" href="/world">Explore World</a></p>
+    </section>
+  </main>
 </BaseLayout>
-<script>
-  import '@/scripts/legacy-site.js';
-</script>
+
+<style>
+  .ab { overflow: hidden; }
+  .ab__hero { position: relative; max-width: 1040px; margin: 0 auto; padding: clamp(72px, 12vw, 160px) var(--gutter) clamp(40px, 6vw, 80px); }
+  .ab__wash { position: absolute; inset: -40px -10% auto; height: 420px; background: radial-gradient(50% 70% at 30% 30%, hsl(24 70% 55% / .28), transparent 70%), radial-gradient(40% 60% at 75% 20%, hsl(260 60% 55% / .22), transparent 70%); filter: blur(50px); pointer-events: none; }
+  .ab__kick { position: relative; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+  .ab h1 { position: relative; margin: 14px 0 0; max-width: 14ch; font-size: clamp(2.8rem, 1rem + 6.4vw, 6rem); line-height: .96; letter-spacing: -0.055em; font-weight: 600; text-wrap: balance; }
+  .ab__lede { position: relative; margin-top: 22px; max-width: 40ch; font-size: clamp(17px, 1.5vw, 21px); color: var(--text-2); }
+  .ab__vals { max-width: 1040px; margin: 0 auto; padding: 0 var(--gutter); display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .ab__vals li { display: flex; flex-direction: column; gap: 8px; padding: 22px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .ab__vals svg { width: 28px; height: 28px; fill: none; stroke: var(--text-2); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 10px; }
+  .ab__vals b { font-weight: 500; font-size: 17px; letter-spacing: -0.02em; }
+  .ab__vals span { font-size: 14px; color: var(--text-3); line-height: 1.5; }
+  .ab__founder { max-width: 1040px; margin: clamp(64px, 9vw, 120px) auto 0; padding: 0 var(--gutter); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+  .ab__photo { aspect-ratio: 4 / 5; border-radius: 22px; background: var(--surface-sunken) center / cover no-repeat; box-shadow: 0 30px 70px -30px rgba(0, 0, 0, .55); }
+  .ab__bio h2 { margin: 12px 0 0; font-size: clamp(1.8rem, 1.2rem + 2vw, 3rem); letter-spacing: -0.04em; font-weight: 600; line-height: 1.02; }
+  .ab__role { margin-top: 10px; color: var(--text-3); font-size: 14px; }
+  .ab__bio p:not(.ab__kick):not(.ab__role) { margin-top: 18px; font-size: 18px; line-height: 1.6; color: var(--text-2); max-width: 40ch; }
+  .ab blockquote { margin: 26px 0 0; padding-left: 18px; border-left: 2px solid var(--line-strong); font-size: 18px; color: var(--text); }
+  .ab__rel { max-width: 1040px; margin: clamp(64px, 9vw, 120px) auto 0; padding: 0 var(--gutter); }
+  .ab__rel h2 { font-size: 22px; font-weight: 500; letter-spacing: -0.03em; max-width: 28ch; }
+  .ab__rel ul { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); gap: 20px; margin-top: 22px; }
+  .ab__rel li { display: flex; flex-direction: column; gap: 4px; }
+  .ab__rel img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .6); }
+  .ab__rel small { color: var(--text-3); font-size: 13px; }
+  .ab__cta { max-width: 1040px; margin: clamp(72px, 10vw, 140px) auto 0; padding: 0 var(--gutter) clamp(72px, 10vw, 140px); }
+  .ab__cta h2 { font-size: clamp(2.2rem, 1rem + 4vw, 4rem); letter-spacing: -0.05em; font-weight: 600; }
+  .ab__cta p { margin-top: 12px; color: var(--text-2); } .ab__cta p:last-child { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+  @media (max-width: 860px) { .ab__vals { grid-template-columns: repeat(2, 1fr); } .ab__founder { grid-template-columns: 1fr; } .ab__photo { max-height: 420px; aspect-ratio: 1; } }
+  @media (max-width: 460px) { .ab__rel ul { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+</style>

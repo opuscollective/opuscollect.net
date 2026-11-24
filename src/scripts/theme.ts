@@ -8,7 +8,7 @@ export type Theme = 'light' | 'dark';
 
 const KEY = 'opus.theme';
 const media = () => window.matchMedia('(prefers-color-scheme: dark)');
-const COLORS: Record<Theme, string> = { light: '#f2efea', dark: '#141416' };
+const COLORS: Record<Theme, string> = { light: '#ffffff', dark: '#141416' };
 
 export function getPref(): ThemePref {
   try {

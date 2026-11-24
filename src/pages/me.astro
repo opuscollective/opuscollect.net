@@ -1,0 +1,9 @@
+---
+// "My profile": one click to your own page, shown the way the public sees it. Without a profile, start setting one up.
+export const prerender = false;
+const user = Astro.locals.user;
+if (!user) return Astro.redirect('/sign-in?next=/me');
+const p = await Astro.locals.runtime.env.DB
+  .prepare("SELECT handle FROM profiles WHERE owner_user_id = ? AND kind = 'musician'").bind(user.id).first<{ handle: string }>();
+return Astro.redirect(p ? `/${p.handle}` : '/start');
+---

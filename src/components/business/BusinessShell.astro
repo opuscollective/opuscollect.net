@@ -1,11 +1,14 @@
 ---
 /** Dashboard frame for Opus Business: section nav + page heading. Pages pass the studio and current section. */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import { STUDIO_TYPES, type Studio } from '@/server/business';
+import { STUDIO_TYPES, listMyStudios, type Studio } from '@/server/business';
 import '@/styles/app.css';
 import '@/styles/business.css';
 interface Props { title: string; lead?: string; section: string; studio: Studio; pending?: number }
 const { title, lead, section, studio, pending = 0 } = Astro.props;
+const uid = Astro.locals.user?.id;
+const studios = uid ? await listMyStudios(Astro.locals.runtime.env.DB, uid) : [];
+const here = Astro.url.pathname.replace(/\/$/, '') || '/business';
 const items = [
   { key: 'overview', label: 'Overview', href: '/business' },
   { key: 'bookings', label: 'Bookings', href: '/business/bookings', count: pending },
@@ -20,6 +23,16 @@ const items = [
     <div class="biz">
       <nav class="biz__nav" aria-label="Business">
         <div class="biz__studio"><b>{studio.name}</b><small>{STUDIO_TYPES[studio.studioType].label} · {studio.status === 'published' ? 'Live' : 'Draft'}</small></div>
+        {studios.length > 0 && (
+          <div class="biz__switch">
+            {studios.length > 1 && (
+              <ul role="list" aria-label="Your studios">
+                {studios.map((x) => <li><a href={`/business/switch?id=${x.id}&to=${here}`} aria-current={x.id === studio.id ? 'true' : undefined}>{x.name}</a></li>)}
+              </ul>
+            )}
+            <a class="biz__add" href="/business?new=1">+ Add another studio</a>
+          </div>
+        )}
         {items.map((i) => (
           <a href={i.href} aria-current={i.key === section ? 'page' : undefined}>
             {i.label}{i.count ? <span class="count" aria-label={`${i.count} pending`}>{i.count}</span> : null}

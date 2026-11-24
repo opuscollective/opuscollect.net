@@ -3,6 +3,7 @@
  * Pure HTML builders (no DOM), so the same markup works in the split panel, the List view drawer
  * and the phone bottom sheet. Every string from the server is escaped.
  */
+import { HIRE_ENABLED } from './features.ts';
 import type { Listing } from '@/types/directory';
 import type { ProfileDetail, PreviewAction } from '@/server/world-detail';
 import { esc } from './html';
@@ -41,8 +42,8 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
   if (l.kind === 'musician') {
     const sp = allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s]?.label ?? s);
     roles = `<p class="pv__roles">${sp.map((s, i) => `<span${i === 0 ? ' class="is-primary"' : ''}>${esc(s)}</span>`).join('')}</p>${l.genres.length ? `<p class="pv__genres">${esc(l.genres.join(' · '))}</p>` : ''}`;
-    status = l.openToCollab ? '<p class="wc__status is-live">Open to collaborate</p>' : '<p class="wc__status">Not taking new collaborations</p>';
-    if (typeof d.connections === 'number' && !l.isSample) status += `<p class="pv__conns">${d.connections} ${d.connections === 1 ? 'connection' : 'connections'}</p>`;
+    status = HIRE_ENABLED && l.forHire ? '<p class="wc__status is-live">For hire</p>' : '';
+    if (typeof d.connections === 'number' && !l.isSample) status += `<p class="pv__conns"><b>${d.connections.toLocaleString('en-US')}</b><span>${d.connections === 1 ? 'Connection' : 'Connections'}</span></p>`;
   } else {
     roles = `<p class="pv__roles"><span class="is-primary">${esc(kindLabel(l))}</span></p>`;
     if (l.kind === 'studio') {
@@ -83,8 +84,13 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
       + section(l.href?.startsWith('/c/') ? 'Members' : 'Selected projects', d.projects.length ? `<ul class="pv__bullets">${d.projects.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : '');
   }
 
+  // The photo carries over to the profile page as one element (cross-document view transition, see global.css).
+  const hm = /^\/([A-Za-z0-9_-]+)$/.exec(d.actions.profile.href ?? '');
+  const vt = hm ? ` style="view-transition-name:pf-${hm[1]}"` : '';
+  const washSrc = mainImage(l);
+  const wash = washSrc ? `<div class="pv__wash" aria-hidden="true" style="background-image:url('${esc(washSrc)}')"></div>` : '';
   return `<article class="pv pv--${l.kind}" aria-labelledby="pv-name">
-  <div class="pv__hero">${hero}</div>
+  ${wash}<div class="pv__hero"${vt}>${hero}</div>
   <div class="pv__body">
     <header class="pv__head">
       <div class="pv__title"><h2 id="pv-name">${esc(l.name)}</h2>${badgeHtml(l)}${sample}</div>
