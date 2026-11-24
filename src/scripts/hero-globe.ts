@@ -4,6 +4,7 @@
  */
 import { motion } from '@/lib/motion';
 import { sunAt } from '@/lib/sun';
+import { GLOBE_LABELS, globeLabelEl, type GlobeLabel } from '@/data/globe-labels';
 
 export interface CityPoint { city: string; country: string; lat: number; lng: number; count: number }
 /** Where the homepage camera stopped, handed to World so its map opens at the same view. */
@@ -135,23 +136,16 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
   // The sun keeps moving while the page is open.
   setInterval(setSun, 60_000);
 
-  // Continents and oceans named the way a map from space does: spaced capitals for land, italics for water.
-  type Label = { lat: number; lng: number; text: string; kind: 'land' | 'sea' | 'me' };
-  const LABELS: Label[] = [
-    { lat: 46, lng: -102, text: 'North America', kind: 'land' }, { lat: -14, lng: -60, text: 'South America', kind: 'land' },
-    { lat: 52, lng: 18, text: 'Europe', kind: 'land' }, { lat: 6, lng: 21, text: 'Africa', kind: 'land' },
-    { lat: 47, lng: 92, text: 'Asia', kind: 'land' }, { lat: -24, lng: 134, text: 'Australia', kind: 'land' },
-    { lat: 32, lng: -42, text: 'North Atlantic Ocean', kind: 'sea' }, { lat: -24, lng: -16, text: 'South Atlantic Ocean', kind: 'sea' },
-    { lat: 28, lng: -150, text: 'North Pacific Ocean', kind: 'sea' }, { lat: -28, lng: -118, text: 'South Pacific Ocean', kind: 'sea' },
-    { lat: -22, lng: 78, text: 'Indian Ocean', kind: 'sea' },
-  ];
+  // Continents, oceans and major cities named the way a map from space does (shared with World: src/data/globe-labels.ts).
+  type Label = GlobeLabel | { lat: number; lng: number; text: string; kind: 'me' };
+  const LABELS: Label[] = GLOBE_LABELS;
   const labelEl = (d: object) => {
     const l = d as Label;
+    if (l.kind !== 'me') return globeLabelEl(l);
     const e = document.createElement('div');
-    e.className = `gl-label gl-label--${l.kind}`;
+    e.className = 'gl-label gl-label--me';
     // You are here, the Opus way: the OC mark sending out sound waves.
-    if (l.kind === 'me') e.innerHTML = '<b></b><b></b><b></b><span><img src="/images/oc-logo.png" alt="" /></span>';
-    else e.textContent = l.text;
+    e.innerHTML = '<b></b><b></b><b></b><span><img src="/images/oc-logo.png" alt="" /></span>';
     e.setAttribute('aria-hidden', 'true');
     return e;
   };

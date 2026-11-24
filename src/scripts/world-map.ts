@@ -17,6 +17,7 @@ import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import { hasPoint, type Listing } from '@/types/directory';
 import { sunAt, sunlight, dayAmount } from '@/lib/sun';
+import { GLOBE_LABELS, globeLabelEl } from '@/data/globe-labels';
 import { aggregate, levelForZoom, nextZoom, placePoints, type Aggregate, type GeoLevel } from '@/lib/world-geo';
 
 const OFM = 'https://tiles.openfreemap.org';
@@ -251,6 +252,34 @@ export async function mountWorldMap(
 
   await new Promise<void>((res) => map.on('load', () => res()));
   if (earth) {
+    // The same names as the homepage Earth, while the Earth imagery is showing.
+    // Shown on the near side only: toward the edge of the planet names would pile up, so they step back there.
+    const R = Math.PI / 180;
+    const names = GLOBE_LABELS.map((l) => {
+      const el = globeLabelEl(l);
+      new maplibregl.Marker({ element: el, opacityWhenCovered: '0' }).setLngLat([l.lng, l.lat]).addTo(map);
+      return { l, inner: el };
+    });
+    const hit = (a: DOMRect, b: DOMRect, pad: number) => a.left < b.right + pad && a.right + pad > b.left && a.top < b.bottom + pad && a.bottom + pad > b.top;
+    const placeNames = () => {
+      const off = map.getZoom() > 3.4;
+      map.getContainer().classList.toggle('labels-off', off);
+      if (off) return;
+      const c = map.getCenter();
+      const reach = map.getZoom() < 2.2 ? 0.42 : 0.2; // cosine of the furthest angle from the centre that still shows
+      // Member markers always win; then names in order (continents, oceans, cities), each only where there is room.
+      const taken = [...map.getContainer().querySelectorAll<HTMLElement>('.maplibregl-marker:not(.gl-label)')].map((m) => m.getBoundingClientRect());
+      for (const { l, inner } of names) {
+        const cos = Math.sin(l.lat * R) * Math.sin(c.lat * R) + Math.cos(l.lat * R) * Math.cos(c.lat * R) * Math.cos((l.lng - c.lng) * R);
+        const r = inner.getBoundingClientRect();
+        const far = cos < reach || taken.some((t) => hit(r, t, 4));
+        inner.classList.toggle('is-far', far);
+        if (!far) taken.push(r);
+      }
+    };
+    let namesRaf = 0;
+    const queueNames = () => { if (!namesRaf) namesRaf = requestAnimationFrame(() => { namesRaf = 0; placeNames(); }); };
+    map.on('move', queueNames); map.on('idle', queueNames); queueNames();
     // The Earth from space, under the street map, handing over to it before the imagery could soften.
     map.addSource('earth', { type: 'canvas', canvas: earth.canvas, coordinates: EARTH_COORDS, animate: false });
     map.addLayer({ id: 'earth', type: 'raster', source: 'earth',
