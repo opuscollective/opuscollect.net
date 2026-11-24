@@ -8,6 +8,8 @@ import { profileReleases } from '@/server/releases';
 import { getPageConfig } from '@/server/page-config';
 import { RELEASE_KINDS } from '@/data/music';
 import FounderMark from '@/components/ui/FounderMark.astro';
+import SocialRow from '@/components/profile/SocialRow.astro';
+import { socialLabel } from '@/data/socials';
 import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import { memberStats } from '@/server/progress';
 import { levelOf, points, resolveTitle } from '@/lib/progress';
@@ -26,8 +28,10 @@ const record = await profileReleases(db, ownerId);
 const featured = record.find((x) => x.id === (page.essentials[0] ?? page.featured)) ?? record[0] ?? null;
 const roles = p.primarySpecialty ? allSpecialties(p.primarySpecialty, p.specialties).map((s) => SPECIALTIES[s].label) : [];
 const where = visibleLabel(p.placeId, p.locationVisibility);
-const LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
-const buttons = [...page.links, ...Object.entries(p.links).filter(([, v]) => !!v).map(([k, v]) => ({ label: LABEL[k] ?? k, url: v as string }))];
+// Where people listen (and the website) stay full buttons; social profiles are the icon row.
+const LISTEN = new Set(['spotify', 'appleMusic', 'soundcloud', 'youtube', 'bandcamp', 'audiomack', 'website']);
+const socialOnly = Object.fromEntries(Object.entries(p.links).filter(([k]) => !LISTEN.has(k)));
+const buttons = [...page.links, ...Object.entries(p.links).filter(([k, v]) => !!v && LISTEN.has(k)).map(([k, v]) => ({ label: socialLabel(k), url: v as string }))];
 const photo = p.photoKey ? mediaUrl(p.photoKey) : null;
 const founder = p.distinction === 'founder';
 const look = pageStyle(page.accent, page.backdrop, p.distinction);
@@ -54,6 +58,8 @@ const hue = [...p.handle].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 0);
       <p class="lk__sub">{[roles[0], where].filter(Boolean).join(' · ')}</p>
       {page.tagline && <p class="lk__tag">{page.tagline}</p>}
 
+      <div class="lk__soc"><SocialRow links={socialOnly} /></div>
+
       {featured && (
         <a class="lk__feat" href={`/r/${featured.id}`}>
           <span class="lk__cover" style={featured.coverKey ? `background-image:url(${mediaUrl(featured.coverKey)})` : ''}></span>
@@ -72,8 +78,10 @@ const hue = [...p.handle].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 0);
 
 <style>
   .lk { position: relative; min-height: calc(100vh - 56px); display: grid; justify-items: center; padding: 48px var(--gutter) 64px; overflow: hidden; }
-  /* The member's backdrop across the top, fading into the page. */
-  .lk__bd { position: absolute; inset: 0 0 auto; height: 300px; -webkit-mask-image: linear-gradient(#000 45%, transparent); mask-image: linear-gradient(#000 45%, transparent); }
+  /* The member's backdrop as a band across the top; the photo sits on its lower edge, as on the profile. */
+  .lk__bd { position: absolute; inset: 0 0 auto; height: 174px; }
+  .lk__soc { margin-top: 16px; }
+  .lk__soc:empty { display: none; }
   .lk__rank { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px; margin: 6px 0 4px; }
   .lk__title { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--pf-ink); box-shadow: inset 0 0 0 1px hsl(var(--pf-h) var(--pf-s) 60% / .45); background: var(--pf-soft); }
   .lk__lv { font-size: 13px; color: var(--text-2); }

@@ -4,6 +4,7 @@
  * queries as /api/world, so a preview can never reveal more than the directory does.
  * Never selects private fields (studio address, email, owner).
  */
+import { SOCIALS } from '@/data/socials';
 import { connectionCount } from './messages';
 import type { Listing } from '@/types/directory';
 import { profileReleases } from './releases';
@@ -39,7 +40,7 @@ export interface ProfileDetail {
   connections?: number;
 }
 
-const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
+const LINK_LABEL: Record<string, string> = Object.fromEntries(SOCIALS.map((x) => [x.key, x.label]));
 const STREAMING = new Set(['spotify', 'appleMusic', 'soundcloud', 'youtube']);
 const parse = <T,>(s: string | null | undefined, f: T): T => { try { return s ? (JSON.parse(s) as T) : f; } catch { return f; } };
 /** Only http(s) links leave the server. They were validated on save; this is a second guard. */

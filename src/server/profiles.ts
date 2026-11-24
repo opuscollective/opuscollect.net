@@ -2,6 +2,7 @@
  * Musician profiles: read, validate, save, publish, photos.
  * All validation happens here on the server. Public reads never expose private fields.
  */
+import { SOCIALS, SOCIAL_KEYS, expandHandle, type SocialKey } from '@/data/socials';
 import { RESERVED } from '@/server/usernames';
 import { SPECIALTY_KEYS, type Specialty } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
@@ -10,17 +11,10 @@ import { limit } from './ratelimit';
 import type { SessionUser } from './session';
 import type { LocationVisibility } from '@/types/directory';
 
-export const LINK_KEYS = ['spotify', 'appleMusic', 'soundcloud', 'youtube', 'instagram', 'tiktok', 'website'] as const;
-export type LinkKey = (typeof LINK_KEYS)[number];
-const LINK_HOSTS: Record<LinkKey, string[] | null> = {
-  spotify: ['open.spotify.com', 'spotify.com'],
-  appleMusic: ['music.apple.com'],
-  soundcloud: ['soundcloud.com', 'on.soundcloud.com'],
-  youtube: ['youtube.com', 'youtu.be', 'music.youtube.com'],
-  instagram: ['instagram.com'],
-  tiktok: ['tiktok.com'],
-  website: null, // any https site
-};
+/** Profile links: the list lives in src/data/socials.ts (labels, hosts, icons). */
+export const LINK_KEYS = SOCIAL_KEYS;
+export type LinkKey = SocialKey;
+const LINK_HOSTS = Object.fromEntries(SOCIALS.map((x) => [x.key, x.hosts])) as Record<LinkKey, string[] | null>;
 
 export interface Credit { title: string; role: string; artist: string; year: string; url: string }
 export interface PortfolioItem { title: string; url: string }
@@ -158,7 +152,7 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
 
   const linksIn = (body.links && typeof body.links === 'object' ? body.links : {}) as Record<string, unknown>;
   const links: Partial<Record<LinkKey, string>> = {};
-  for (const k of LINK_KEYS) { const u = cleanUrl(linksIn[k], LINK_HOSTS[k]); if (u) links[k] = u; }
+  for (const k of LINK_KEYS) { const u = cleanUrl(expandHandle(k, linksIn[k]), LINK_HOSTS[k]); if (u) links[k] = u; }
 
   const credits: Credit[] = list(body.credits, 30).map((c) => {
     const o = (c ?? {}) as Record<string, unknown>;

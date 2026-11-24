@@ -5,6 +5,7 @@ import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import FounderMark from '@/components/ui/FounderMark.astro';
 import OpusMark from '@/components/ui/OpusMark.astro';
 import Journey from '@/components/profile/Journey.astro';
+import SocialRow from '@/components/profile/SocialRow.astro';
 import { connectionMetros, homeMetroOf, memberStats } from '@/server/progress';
 import { levelOf, points, resolveTitle } from '@/lib/progress';
 import { pageStyle } from '@/lib/page-style';
@@ -60,7 +61,6 @@ const record = await profileReleases(db, ownerId);
 // Bands and other groups this member accepted. Invitations are shown to the member only.
 const clans = await membershipsOf(db, ownerId).catch(() => []);
 const invites = isOwner ? await myInvites(db, ownerId).catch(() => []) : [];
-const LINK_LABEL: Record<string, string> = { spotify: 'Spotify', appleMusic: 'Apple Music', soundcloud: 'SoundCloud', youtube: 'YouTube', instagram: 'Instagram', tiktok: 'TikTok', website: 'Website' };
 const links = Object.entries(p.links).filter(([, v]) => !!v);
 const hire = HIRE_ENABLED && (p.status === 'published' || isOwner) ? await listHireServices(db, p.id).catch(() => []) : [];
 const usd = (c: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(c / 100);
@@ -153,10 +153,10 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
             {hire.length > 0 && <li class="is-on">For hire</li>}
             <li><b>{connections.toLocaleString('en-US')}</b> {connections === 1 ? 'connection' : 'connections'}</li>
           </ul>
-          {links.length + page.links.length > 0 && (
+          {links.length > 0 && <div class="mp__soc"><SocialRow links={p.links} /></div>}
+          {page.links.length > 0 && (
             <ul class="mp__chips" role="list">
               {page.links.map((l) => <li><a href={l.url} target="_blank" rel="noopener nofollow ugc">{l.label} ↗</a></li>)}
-              {links.map(([k, v]) => <li><a href={v} target="_blank" rel="noopener nofollow ugc">{LINK_LABEL[k] ?? k} ↗</a></li>)}
             </ul>
           )}
           {clans.length > 0 && (
@@ -499,6 +499,8 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__groups a:hover { box-shadow: inset 0 0 0 1px var(--text-3); }
   .mp__gl { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-hover, #eee) center / cover; color: var(--text-2); font-weight: 500; }
   .mp__gn { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .mp__soc { margin-top: 18px; }
+  .mp__soc + .mp__chips { margin-top: 12px; }
   .mp__chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
   .mp__chips a { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13px; text-decoration: none; }
   .mp__chips a:hover { background: var(--surface-hover); }
