@@ -5,9 +5,7 @@
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { membershipsOf } from '@/server/clans';
-import { listFollows } from '@/server/cities';
 import { mediaUrl } from '@/server/profiles';
-import { futureFor } from '@/server/future';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -19,24 +17,9 @@ const one = async <T,>(q: string, ...b: unknown[]) => db.prepare(q).bind(...b).f
 
 const profile = await one<{ handle: string; display_name: string; status: string; photo_key: string | null }>(
   "SELECT handle, display_name, status, photo_key FROM profiles WHERE owner_user_id = ? AND kind = 'musician'", user.id);
-const studios = (await db.prepare("SELECT id, handle, display_name, status, photo_key FROM profiles WHERE owner_user_id = ? AND kind = 'studio' ORDER BY created_at").bind(user.id).all<{ id: string; handle: string; display_name: string; status: string; photo_key: string | null }>().catch(() => ({ results: [] as { id: string; handle: string; display_name: string; status: string; photo_key: string | null }[] }))).results;
 const groups = await membershipsOf(db, user.id, false).catch(() => []);
-const cities = await listFollows(env, user.id).catch(() => []);
-const works = (await one<{ n: number }>('SELECT COUNT(*) AS n FROM releases WHERE owner_user_id = ?', user.id))?.n ?? 0;
 const myBookings = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM bookings WHERE user_id = ? AND status IN ('requested','accepted')", user.id))?.n ?? 0;
-const studioRequests = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM bookings b JOIN profiles p ON p.id = b.profile_id WHERE p.owner_user_id = ? AND b.status = 'requested'", user.id))?.n ?? 0;
-const requests = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM connections WHERE addressee_id = ? AND status = 'pending'", user.id))?.n ?? 0;
-const connections = (await one<{ n: number }>("SELECT COUNT(*) AS n FROM connections WHERE (requester_id = ?1 OR addressee_id = ?1) AND status = 'accepted'", user.id))?.n ?? 0;
-const covers = (await db.prepare('SELECT cover_key FROM releases WHERE owner_user_id = ? ORDER BY coalesce(release_date, \'\') DESC, created_at DESC LIMIT 3').bind(user.id).all<{ cover_key: string | null }>().catch(() => ({ results: [] as { cover_key: string | null }[] }))).results;
-const friends = (await db.prepare(`SELECT p.photo_key, p.display_name FROM connections c JOIN profiles p ON p.owner_user_id = (CASE WHEN c.requester_id = ?1 THEN c.addressee_id ELSE c.requester_id END) AND p.kind = 'musician'
-  WHERE (c.requester_id = ?1 OR c.addressee_id = ?1) AND c.status = 'accepted' ORDER BY c.responded_at DESC, c.created_at DESC LIMIT 4`).bind(user.id).all<{ photo_key: string | null; display_name: string }>().catch(() => ({ results: [] as { photo_key: string | null; display_name: string }[] }))).results;
-const upcoming = await futureFor(db, user.id).catch(() => []);
 const nowD = new Date();
-const ym = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}`;
-const dim = new Date(nowD.getFullYear(), nowD.getMonth() + 1, 0).getDate();
-const lead = new Date(nowD.getFullYear(), nowD.getMonth(), 1).getDay();
-const busy = new Set(upcoming.filter((i) => i.day?.startsWith(ym)).map((i) => Number(i.day!.slice(8, 10))));
-const cells = [...Array(lead).fill(0), ...Array.from({ length: dim }, (_, i) => i + 1)];
 const monthName = nowD.toLocaleDateString('en-US', { month: 'long' });
 const state = (s: string) => (s === 'published' ? 'Public' : 'Draft');
 const ICON: Record<string, string> = {
@@ -70,58 +53,34 @@ const ICON: Record<string, string> = {
 
       <div class="mw__grid">
         <a class="mw__tile" href="/works/mine">
-          <span class="mw__vis mw__vis--covers">
-            {covers.length ? covers.map((c, i) => <i style={c.cover_key ? `background-image:url(${mediaUrl(c.cover_key)})` : `--c:${200 + i * 50}`}></i>) : <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.works}></svg>}
-          </span>
-          <em class="mw__count">{works}</em>
-          <span class="mw__t"><b>Works</b></span>
-          <span class="mw__s">{works ? 'Your releases and credits' : 'Add your first song'}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.works}></svg>
+          <span class="mw__t">Works</span>
+          <span class="mw__s">Your releases, credits and résumé.</span>
         </a>
-
         <a class="mw__tile" href="/business">
-          <span class="mw__vis mw__vis--photo" style={studios[0]?.photo_key ? `background-image:url(${mediaUrl(studios[0].photo_key)})` : ''}>
-            {!studios[0]?.photo_key && <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.studio}></svg>}
-          </span>
-          <em class:list={['mw__count', { 'is-hot': studioRequests > 0 }]}>{studioRequests > 0 ? `${studioRequests} new` : studios.length}</em>
-          <span class="mw__t"><b>Studios</b></span>
-          <span class="mw__s">{studios.length ? studios.map((x) => x.display_name).join(', ') : 'List yours. Free'}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.studio}></svg>
+          <span class="mw__t">Studios</span>
+          <span class="mw__s">Studios you list, bookings and requests.</span>
         </a>
-
         <a class="mw__tile" href="/clans/mine">
-          <span class="mw__vis mw__vis--stack">
-            {groups.length ? groups.slice(0, 4).map((g) => <i style={g.clan.photo ? `background-image:url(${g.clan.photo})` : ''}>{!g.clan.photo && g.clan.name.slice(0, 1)}</i>) : <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.groups}></svg>}
-          </span>
-          <em class="mw__count">{groups.length}</em>
-          <span class="mw__t"><b>Groups</b></span>
-          <span class="mw__s">{groups.length ? groups.slice(0, 2).map((g) => g.clan.name).join(', ') : 'Bands and crews'}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.groups}></svg>
+          <span class="mw__t">Groups</span>
+          <span class="mw__s">The bands and crews you’re in, and their chat.</span>
         </a>
-
         <a class="mw__tile" href="/network">
-          <span class="mw__vis mw__vis--stack">
-            {friends.length ? friends.map((f) => <i style={f.photo_key ? `background-image:url(${mediaUrl(f.photo_key)})` : ''}>{!f.photo_key && f.display_name.slice(0, 1)}</i>) : <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.network}></svg>}
-          </span>
-          <em class:list={['mw__count', { 'is-hot': requests > 0 }]}>{requests > 0 ? `${requests} waiting` : connections}</em>
-          <span class="mw__t"><b>Network</b></span>
-          <span class="mw__s">{connections ? 'Your connections' : 'Find your people'}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.network}></svg>
+          <span class="mw__t">Network</span>
+          <span class="mw__s">Your connections and who’s waiting to connect.</span>
         </a>
-
         <a class="mw__tile" href="/future?tab=mine&view=calendar">
-          <span class="mw__vis mw__vis--month" aria-hidden="true">
-            <span class="mw__mn">{monthName}</span>
-            <span class="mw__cal">{cells.map((d) => <i class:list={{ 'is-today': d === nowD.getDate(), 'is-busy': busy.has(d), 'is-empty': d === 0 }}>{d || ''}</i>)}</span>
-          </span>
-          <em class="mw__count">{upcoming.length}</em>
-          <span class="mw__t"><b>Future</b></span>
-          <span class="mw__s">{upcoming.length ? `${upcoming.length} coming up` : 'Sessions, releases, events'}</span>
+          <span class="mw__date" aria-hidden="true"><small>{monthName}</small><b>{nowD.getDate()}</b></span>
+          <span class="mw__t">Future</span>
+          <span class="mw__s">Your sessions, releases and events, with a calendar.</span>
         </a>
-
         <a class="mw__tile" href="/world/cities">
-          <span class="mw__vis mw__vis--chips">
-            {cities.length ? cities.slice(0, 3).map((c) => <i>{c.name}</i>) : <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.city}></svg>}
-          </span>
-          <em class="mw__count">{cities.length}</em>
-          <span class="mw__t"><b>Cities</b></span>
-          <span class="mw__s">{cities.length ? 'Cities you follow' : 'Follow a city'}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={ICON.city}></svg>
+          <span class="mw__t">Cities</span>
+          <span class="mw__s">The cities you follow and what’s happening there.</span>
         </a>
       </div>
 
@@ -145,43 +104,22 @@ const ICON: Record<string, string> = {
   .mw__who small { color: var(--text-3); font-size: 13px; }
   .mw__acts { display: flex; gap: 8px; flex-wrap: wrap; }
   .mw__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
-  /* One block per tile: the picture is the tile, the title and count sit on it. No window inside a card. */
-  .mw__tile { position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; gap: 3px; min-height: 250px; padding: 0 22px 20px; border-radius: 24px; overflow: hidden; color: #f6f3ee; text-decoration: none;
+  /* Tiles are navigation only: one centered icon (or today's date), a title and what you'll find inside. */
+  .mw__tile { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; text-align: center; gap: 8px; min-height: 250px; padding: 62px 24px 28px; border-radius: 24px; overflow: hidden; color: #f6f3ee; text-decoration: none;
     background: linear-gradient(155deg, hsl(var(--h, 220) 28% 27%), hsl(calc(var(--h, 220) + 40) 34% 13%)); box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset; transition: transform .25s ease, box-shadow .25s ease; }
   .mw__tile:nth-child(1) { --h: 12; } .mw__tile:nth-child(2) { --h: 212; } .mw__tile:nth-child(3) { --h: 148; }
   .mw__tile:nth-child(4) { --h: 266; } .mw__tile:nth-child(5) { --h: 196; } .mw__tile:nth-child(6) { --h: 38; }
-  .mw__tile::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(to top, rgba(0, 0, 0, .74) 0%, rgba(0, 0, 0, .35) 38%, rgba(0, 0, 0, 0) 66%); }
   .mw__tile:hover { transform: translateY(-3px); box-shadow: 0 28px 50px -28px rgba(0, 0, 0, .65); }
   .mw__tile:focus-visible { outline: 2px solid var(--c-accent, #a9c7ec); outline-offset: 3px; }
-  .mw__vis { position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; justify-content: center; padding-bottom: 70px; background: center / cover no-repeat; }
-  .mw__vis > svg { width: 64px; height: 64px; fill: none; stroke: rgba(255, 255, 255, .5); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
-  .mw__vis--covers, .mw__vis--stack { padding: 0; }
-  .mw__vis--stack { bottom: 40%; }
-  .mw__vis--covers { display: flex; }
-  .mw__vis--covers i { flex: 1; background: linear-gradient(135deg, hsl(var(--c, 220) 45% 42%), hsl(calc(var(--c, 220) + 50) 50% 22%)) center / cover no-repeat; }
-  .mw__vis--covers > svg, .mw__vis--stack > svg { margin: auto; }
-  .mw__vis--stack { display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-rows: 1fr; }
-  .mw__vis--stack i { display: grid; place-items: center; background: hsl(var(--h, 220) 20% 30%) center / cover no-repeat; color: rgba(255, 255, 255, .7); font-style: normal; font-size: 44px; font-weight: 300; }
-  .mw__vis--stack i:only-child, .mw__vis--stack i:last-child:nth-child(odd) { grid-column: 1 / -1; }
-  .mw__vis--stack > svg { grid-column: 1 / -1; }
-  .mw__vis--chips { flex-wrap: wrap; align-content: flex-start; justify-content: flex-start; gap: 8px; padding: 22px 22px 0; }
-  .mw__vis--chips i { font-style: normal; font-size: 13px; padding: 7px 13px; border-radius: 999px; background: rgba(255, 255, 255, .12); color: #f6f3ee; backdrop-filter: blur(6px); }
-  .mw__vis--chips > svg { margin: 40px auto 0; }
-  .mw__vis--month { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 8px; padding: 22px 22px 0; }
-  .mw__mn { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .65); }
-  .mw__cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px 0; }
-  .mw__cal i { font-style: normal; font-size: 11px; line-height: 19px; text-align: center; color: rgba(255, 255, 255, .62); border-radius: 50%; }
-  .mw__cal i.is-busy { color: #fff; box-shadow: inset 0 -2px 0 var(--c-accent, #a9c7ec); border-radius: 0; }
-  .mw__cal i.is-today { background: #f6f3ee; color: #111; border-radius: 50%; }
-  .mw__t, .mw__s { position: relative; z-index: 2; }
-  .mw__t { display: block; }
-  .mw__t b { font-size: 26px; font-weight: 500; letter-spacing: -0.035em; text-shadow: 0 1px 18px rgba(0, 0, 0, .35); }
-  .mw__count { position: absolute; z-index: 3; top: 16px; right: 16px; padding: 4px 11px; border-radius: 999px; background: rgba(0, 0, 0, .38); color: #fff; font-style: normal; font-size: 13px; font-variant-numeric: tabular-nums; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-  .mw__count.is-hot { background: #f6f3ee; color: #111; }
-  .mw__s { font-size: 14px; color: rgba(255, 255, 255, .74); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mw__tile > svg { width: 56px; height: 56px; margin-bottom: 6px; fill: none; stroke: rgba(255, 255, 255, .78); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+  .mw__date { display: flex; flex-direction: column; align-items: center; line-height: 1; height: 62px; justify-content: center; margin-bottom: 6px; }
+  .mw__date small { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255, 255, 255, .7); }
+  .mw__date b { font-size: 48px; font-weight: 300; letter-spacing: -0.04em; margin-top: 4px; }
+  .mw__t { font-size: 24px; font-weight: 500; letter-spacing: -0.03em; }
+  .mw__s { max-width: 24ch; font-size: 14px; line-height: 1.4; color: rgba(255, 255, 255, .7); }
   .mw__quick { display: flex; flex-wrap: wrap; gap: 6px 26px; margin-top: 26px; font-size: 14px; }
   .mw__quick a { color: var(--text-2); }
   .mw__quick a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
   @media (max-width: 860px) { .mw__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mw__me { flex-wrap: wrap; } .mw__acts { width: 100%; } .mw__acts .btn-app { flex: 1; padding-inline: 10px; } }
-  @media (max-width: 860px) { .mw__tile { min-height: 210px; padding: 0 18px 16px; } .mw__t b { font-size: 22px; } }
+  @media (max-width: 860px) { .mw__tile { min-height: 190px; padding: 36px 16px 20px; } .mw__t { font-size: 21px; } .mw__s { font-size: 13px; } }
 </style>
