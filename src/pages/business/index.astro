@@ -4,6 +4,9 @@ import BusinessShell from '@/components/business/BusinessShell.astro';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import { STUDIO_COOKIE, STUDIO_TYPES, getMyStudio, studioChecklist } from '@/server/business';
 import { listBusinessBookings, listCustomers } from '@/server/bookings';
+import ViewsChart from '@/components/business/ViewsChart.astro';
+import { viewSeries } from '@/server/views';
+import { listGallery, mediaUrl } from '@/server/profiles';
 import { formatSlot, tzAbbr, money } from '@/lib/booking-time';
 import '@/styles/app.css';
 import '@/styles/business.css';
@@ -21,12 +24,20 @@ if (user && studio) {
   const [check, bookings, customers] = await Promise.all([studioChecklist(db, studio, user.emailVerified), listBusinessBookings(db, studio.id), listCustomers(db, studio.id)]);
   data = { check, bookings, customers: customers.length };
 }
+const env = Astro.locals.runtime.env;
+const [pageViews, profileViews, gallery] = user && studio ? await Promise.all([
+  viewSeries(env, studio.id),
+  db.prepare("SELECT id FROM profiles WHERE owner_user_id = ? AND kind = 'musician'").bind(user.id).first<{ id: string }>().then((r) => (r ? viewSeries(env, r.id) : null)).catch(() => null),
+  listGallery(db, studio.id).catch(() => []),
+]) : [null, null, []];
+const delta = pageViews && pageViews.lastWeek > 0 ? Math.round(((pageViews.thisWeek - pageViews.lastWeek) / pageViews.lastWeek) * 100) : null;
 const t = Date.now();
 const pending = data?.bookings.filter((b) => b.status === 'requested') ?? [];
 const upcoming = data?.bookings.filter((b) => b.status === 'accepted' && (b.start_at ?? Infinity) >= t) ?? [];
 const monthStart = new Date(); monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
 const thisMonth = data?.bookings.filter((b) => b.created_at >= monthStart.getTime()).length ?? 0;
 const pageUrl = studio ? `${Astro.url.origin}/studios/${studio.handle}` : '';
+const dayTile = (ms: number | null) => (ms ? { m: new Date(ms).toLocaleDateString('en-US', { month: 'short' }), d: new Date(ms).getDate() } : null);
 const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project');
 ---
 {!user || !studio || adding ? (
@@ -86,6 +97,36 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
       <a slot="actions" class="btn-app btn-app--ghost" href={`/studios/${studio.handle}`}>View booking page</a>
     )}
 
+    <div class="dz">
+      <div class="dz__hero" style={studio.photoKey || studio.coverKey ? `background-image:url(${mediaUrl(studio.coverKey ?? studio.photoKey)})` : ''}>
+        <div class="dz__heroin">
+          <span class="dz__tag">{studio.status === 'published' ? 'Live on Opus' : 'Draft'}</span>
+          <b>{studio.name}</b>
+        </div>
+        {!studio.photoKey && !studio.coverKey && <a class="dz__add" href="/business/studio">Add a photo of your studio</a>}
+      </div>
+      {gallery.length > 0 && (
+        <ul class="dz__strip" role="list">{gallery.slice(0, 6).map((g) => <li style={`background-image:url(${g.url})`}></li>)}<li class="dz__more"><a href="/business/studio">Manage photos</a></li></ul>
+      )}
+    </div>
+
+    {studio.status === 'published' && pageViews && (
+      <div class="vp">
+        <div class="vp__main">
+          <p class="vp__k">Studio page views · last 30 days</p>
+          <p class="vp__n">{pageViews.total.toLocaleString('en-US')}
+            {delta !== null && <span class:list={['vp__d', { 'is-down': delta < 0 }]}>{delta >= 0 ? '▲' : '▼'} {Math.abs(delta)}% vs last week</span>}
+            {delta === null && pageViews.thisWeek > 0 && <span class="vp__d">{pageViews.thisWeek} this week</span>}
+          </p>
+          <ViewsChart series={pageViews} label="Studio page views" tall />
+        </div>
+        <div class="vp__side">
+          <div><p class="vp__k">Your Opus profile</p><p class="vp__n vp__n--s">{(profileViews?.total ?? 0).toLocaleString('en-US')}</p>{profileViews && <ViewsChart series={profileViews} label="Profile views" />}</div>
+          <p class="vp__fine">Real visits from other people. Your own views aren’t counted.</p>
+        </div>
+      </div>
+    )}
+
     {studio.status !== 'published' && data && (
       <div class="panel" style="margin-bottom:16px">
         <h2>Get ready to publish</h2>
@@ -129,11 +170,11 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
     </div>
 
     <div class="panel" style="margin-top:16px">
-      <h2>Upcoming</h2>
+      <h2>Coming up</h2>
       {upcoming.length === 0 ? <p class="empty"><b>Nothing scheduled.</b>Accepted sessions show here.</p> : (
-        <ul class="blist" role="list">{upcoming.slice(0, 8).map((b) => (
-          <li class="bitem"><div><p class="bitem__when">{when(b)}</p><p class="bitem__who">{b.service_name} · {b.customer_name}</p></div><div class="bitem__actions"><span class="pill pill--accepted">Accepted</span></div></li>
-        ))}</ul>
+        <ul class="up" role="list">{upcoming.slice(0, 8).map((b) => { const dt = dayTile(b.start_at); return (
+          <li class="up__i"><span class="up__d">{dt ? <><small>{dt.m}</small><b>{dt.d}</b></> : <b>·</b>}</span><div><p class="up__w">{when(b)}</p><p class="up__s">{b.service_name} · {b.customer_name}</p></div><span class="pill pill--accepted">Accepted</span></li>
+        ); })}</ul>
       )}
     </div>
   </BusinessShell>

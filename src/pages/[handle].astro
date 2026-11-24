@@ -13,6 +13,7 @@ import { getPageConfig } from '@/server/page-config';
 import { listHireServices } from '@/server/hire';
 import { HIRE_ENABLED } from '@/lib/features';
 import { membershipsOf, myInvites } from '@/server/clans';
+import { recordView } from '@/server/views';
 import '@/styles/app.css';
 import '@/styles/clans.css';
 import '@/styles/music.css';
@@ -28,6 +29,7 @@ if (!found) {
 }
 const { profile: p, isOwner, ownerId } = found;
 if (p.handle !== handle) return Astro.redirect(`/${p.handle}`, 301);
+if (p.status === 'published') await recordView(Astro.locals.runtime.env, Astro.locals.runtime.ctx, p.id, Astro.request, isOwner);
 
 // Honour the member's location choice (city, metro area, state/country, or hidden).
 const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');

@@ -1,0 +1,43 @@
+---
+/** A small, honest area chart of daily views. Real counts only; an empty chart is drawn flat with an explanation. */
+import type { ViewSeries } from '@/server/views';
+interface Props { series: ViewSeries; label: string; tall?: boolean }
+const { series, label, tall = false } = Astro.props;
+const W = 600, H = tall ? 170 : 64, PAD = tall ? 12 : 4;
+const max = Math.max(1, ...series.days.map((d) => d.n));
+const x = (i: number) => (i / Math.max(1, series.days.length - 1)) * W;
+const y = (n: number) => H - PAD - (n / max) * (H - PAD * 2);
+const pts = series.days.map((d, i) => [x(i), y(d.n)] as const);
+// Smooth line through the points.
+const line = pts.map(([px, py], i) => {
+  if (i === 0) return `M${px.toFixed(1)},${py.toFixed(1)}`;
+  const [qx, qy] = pts[i - 1]!; const cx = (px + qx) / 2;
+  return `C${cx.toFixed(1)},${qy.toFixed(1)} ${cx.toFixed(1)},${py.toFixed(1)} ${px.toFixed(1)},${py.toFixed(1)}`;
+}).join(' ');
+const area = `${line} L${W},${H} L0,${H} Z`;
+const last = pts[pts.length - 1]!;
+const id = `vc${Math.random().toString(36).slice(2, 8)}`;
+const fmt = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+---
+<figure class:list={['vc', { 'vc--tall': tall, 'is-empty': series.total === 0 }]}>
+  <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`${label}: ${series.total} in the last ${series.days.length} days`}>
+    <defs><linearGradient id={id} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--vc, #a9c7ec)" stop-opacity=".42" /><stop offset="1" stop-color="var(--vc, #a9c7ec)" stop-opacity="0" /></linearGradient></defs>
+    {tall && [0.25, 0.5, 0.75].map((f) => <line x1="0" x2={W} y1={H * f} y2={H * f} class="vc__grid" />)}
+    <path d={area} fill={`url(#${id})`} />
+    <path d={line} class="vc__line" fill="none" vector-effect="non-scaling-stroke" />
+    {tall && series.days.map((d, i) => <rect x={x(i) - W / series.days.length / 2} y="0" width={W / series.days.length} height={H} fill="transparent"><title>{`${fmt(d.day)}: ${d.n} ${d.n === 1 ? 'view' : 'views'}`}</title></rect>)}
+  </svg>
+  {series.total > 0 && <span class="vc__dot" style={`left:${(last[0] / W) * 100}%;top:${(last[1] / H) * 100}%`} aria-hidden="true"></span>}
+  {tall && <figcaption><span>{fmt(series.days[0]!.day)}</span>{series.total === 0 && <em>Views appear here as people visit your page.</em>}<span>Today</span></figcaption>}
+</figure>
+<style>
+  .vc { position: relative; margin: 0; --vc: var(--c-accent, #a9c7ec); }
+  .vc svg { display: block; width: 100%; height: 64px; overflow: visible; }
+  .vc--tall svg { height: 170px; }
+  .vc__line { stroke: var(--vc); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .vc__grid { stroke: var(--line-faint, rgba(128,128,128,.18)); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .vc.is-empty .vc__line { stroke-dasharray: 2 6; opacity: .6; }
+  .vc__dot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--vc); box-shadow: 0 0 0 5px color-mix(in srgb, var(--vc) 25%, transparent); }
+  .vc figcaption { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--text-3); }
+  .vc figcaption em { font-style: normal; text-align: center; }
+</style>
