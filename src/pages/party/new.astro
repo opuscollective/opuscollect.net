@@ -1,0 +1,76 @@
+---
+/** Schedule a listening party for one of your works. Needs a confirmed email and a published profile. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getMyProfile } from '@/server/profiles';
+import { listMyReleases } from '@/server/releases';
+import '@/styles/app.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const work = Astro.url.searchParams.get('work') ?? '';
+if (!user) return Astro.redirect(`/sign-in?next=${encodeURIComponent(`/party/new${work ? `?work=${work}` : ''}`)}`);
+const db = Astro.locals.runtime.env.DB;
+const profile = await getMyProfile(db, user.id);
+const works = await listMyReleases(db, user.id);
+const ready = profile?.status === 'published' && user.emailVerified;
+---
+<BaseLayout title="Host a listening party" noindex assistant={false} messages={false}>
+  <section class="app">
+    <div class="app__wrap" style="margin-inline:auto;max-width:560px">
+      <p class="t-meta app__kicker"><a class="link" href="/works/mine">Works</a> / Listening party</p>
+      <h1 class="app__title">Play it for everyone at once.</h1>
+      <p class="app__lead">Pick a work, set a time, and share the link. When you press start, everyone in the room hears it together, wherever they are. It plays live only, with no replay and no download.</p>
+      {!ready ? (
+        <div class="panel" style="margin-top:28px">
+          <h2>{!user.emailVerified ? 'Confirm your email first' : 'Publish your profile first'}</h2>
+          <p class="dim">A party shows who is hosting it, so you need a confirmed email and a published profile.</p>
+          <div class="row" style="margin-top:16px"><a class="btn-app" href={!user.emailVerified ? '/account' : '/start'}>{!user.emailVerified ? 'Go to your account' : 'Set up your profile'}</a></div>
+        </div>
+      ) : !works.length ? (
+        <div class="panel" style="margin-top:28px">
+          <h2>Add the work first</h2>
+          <p class="dim">A listening party is for a work in your Opus Works. Add the release, then come back to schedule its party.</p>
+          <div class="row" style="margin-top:16px"><a class="btn-app" href="/works/mine">Go to Works</a></div>
+        </div>
+      ) : (
+        <form class="form" data-party-new novalidate>
+          <label class="field"><span>Work *</span>
+            <select class="select" name="releaseId" required>
+              {works.map((w) => <option value={w.id} selected={w.id === work}>{w.title}{w.status === 'draft' ? ' (draft)' : ''}</option>)}
+            </select>
+          </label>
+          <div class="grid-2">
+            <label class="field"><span>Date *</span><input class="input" type="date" name="date" required /></label>
+            <label class="field"><span>Start time *</span><input class="input" type="time" name="time" required /><small data-tz-note></small></label>
+          </div>
+          <label class="field"><span>A line for the party page</span><input class="input" name="note" maxlength="280" placeholder="First listen. Two years in the making." /></label>
+          <label class="check"><input type="checkbox" name="showOnMap" checked /><span>Show the party in World on {profile?.placeId ? 'my city' : 'the map'}. Only the city is shown.</span></label>
+          <div data-status class="form-status"></div>
+          <div class="row"><button class="btn-app" type="submit">Schedule the party</button></div>
+          <p class="dim" style="font-size:13px">Next you’ll add the audio. It stays private and only plays during the party.</p>
+        </form>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { bindForm, values } from '@/scripts/form';
+  const form = document.querySelector<HTMLFormElement>('[data-party-new]');
+  if (form) {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    form.querySelector('[data-tz-note]')!.textContent = `Your time (${tz.replace(/_/g, ' ')}). Everyone sees it in their own.`;
+    const date = form.querySelector<HTMLInputElement>('[name="date"]')!;
+    const d = new Date();
+    date.min = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    bindForm(form, {
+      url: '/api/parties',
+      body: (f) => {
+        const v = values(f) as Record<string, string>;
+        return { releaseId: v.releaseId, note: v.note, showOnMap: v.showOnMap, timezone: tz, startsAt: v.date && v.time ? new Date(`${v.date}T${v.time}`).getTime() : null };
+      },
+      busyLabel: 'Scheduling…',
+      onSuccess: (d) => { location.href = String(d.href); },
+    });
+  }
+</script>

@@ -8,6 +8,7 @@ import { GENRES } from '@/data/genres';
 import { CREDIT_ROLES, CREDIT_ROLE_KEYS, LIMITS, MOODS, RELEASE_KINDS, RELEASE_LINK_KEYS, RELEASE_LINK_LABEL, roleLabel } from '@/data/music';
 import { getReleaseForOwner, missingForPublish, type Credit } from '@/server/releases';
 import { mediaUrl } from '@/server/profiles';
+import { activePartyForRelease } from '@/server/parties';
 import { HttpError } from '@/server/util';
 import '@/styles/app.css';
 import '@/styles/music.css';
@@ -23,6 +24,7 @@ const r = await getReleaseForOwner(Astro.locals.runtime.env.DB, user, id).catch(
 if (!r) return Astro.redirect('/works');
 
 const missing = missingForPublish(r);
+const party = await activePartyForRelease(Astro.locals.runtime.env.DB, r.id);
 const today = new Date().toISOString().slice(0, 10);
 const groups: { key: string; label: string; credits: Credit[] }[] = [
   { key: '', label: r.tracks.length ? 'Whole release' : 'Credits', credits: r.credits.filter((c) => !c.trackId) },
@@ -48,6 +50,12 @@ const hasVibe = r.genres.length > 0 || r.moods.length > 0;
           ? <span><b>On your profile.</b> Public at <a class="link" href={`/r/${r.id}`}>opuscollect.net/r/{r.id}</a>.</span>
           : missing.length ? <span><b>Draft.</b> To publish, add {missing.join(' and ')}.</span>
           : <span><b>Draft.</b> Ready to publish. <a class="link" href={`/r/${r.id}`}>Preview</a></span>}
+      </div>
+
+      <div class="notice" style="margin-top:12px">
+        {party
+          ? <span><b>Listening party</b> · {party.when}. <a class="link" href={party.status === 'live' ? party.href : `${party.href}/manage`}>{party.status === 'live' ? 'Open the room' : 'Set it up'}</a></span>
+          : <span><b>Listening party.</b> Play this for everyone at once, live on Opus. <a class="link" href={`/party/new?work=${r.id}`}>Schedule one</a></span>}
       </div>
 
       <form class="form" data-release novalidate>

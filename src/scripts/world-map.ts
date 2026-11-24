@@ -155,6 +155,8 @@ export interface WorldMapApi {
   setHover(id: string | null): void;
   /** Marks the searched city with a quiet accent ring (null clears it). */
   setPlace(p: { lat: number; lng: number; name: string } | null): void;
+  /** Listening parties pinned on their cities: live ones pulse, upcoming ones are quiet. Each opens its party page. */
+  setParties(list: PartyPin[]): void;
   zoomOut(): void;
   /** Back to the whole globe. */
   resetView(): void;
@@ -172,6 +174,8 @@ export interface WorldMapApi {
   /** Frees the WebGL context and all markers (List view). */
   destroy(): void;
 }
+
+export interface PartyPin { id: string; href: string; title: string; host: string; live: boolean; label: string; lat: number; lng: number }
 
 export interface MapCallbacks {
   onSelect: (id: string) => void;
@@ -383,6 +387,7 @@ export async function mountWorldMap(
   // move also drops the homepage framing, which an interrupted release() would otherwise leave behind.
   const base = () => { const i = opts.inset?.(); return { top: 0, left: i?.left ?? 0, right: 0, bottom: i?.bottom ?? opts.padBottom ?? 0 }; };
 
+  let partyMarkers: maplibregl.Marker[] = [];
   return {
     setData(ls) { data = ls; refreshData(); },
     flyToCity(lat, lng) {
@@ -408,6 +413,20 @@ export async function mountWorldMap(
     },
     setActive(id) { active = id; paintStates(); },
     setHover(id) { hover = id; paintStates(); },
+    setParties(list) {
+      for (const m of partyMarkers) m.remove();
+      partyMarkers = list.map((p, i) => {
+        const a = document.createElement('a');
+        a.className = 'wm-party' + (p.live ? ' wm-party--live' : '');
+        a.href = p.href;
+        a.setAttribute('aria-label', `${p.live ? 'Live now' : p.label}: ${p.title}, listening party hosted by ${p.host}`);
+        const safe = (t: string) => t.replace(/[&<>"]/g, '');
+        a.innerHTML = '<i></i><span><b>' + safe(p.live ? 'Live now' : p.label) + '</b>' + safe(p.title) + '</span>';
+        // Several parties in one city fan out a little so each can be tapped.
+        const same = list.slice(0, i).filter((q) => q.lat === p.lat && q.lng === p.lng).length;
+        return new maplibregl.Marker({ element: a, anchor: 'bottom', offset: [same * 14, -same * 30] }).setLngLat([p.lng, p.lat]).addTo(map);
+      });
+    },
     setPlace(p) {
       place?.remove(); place = null;
       if (!p) return;
@@ -436,6 +455,6 @@ export async function mountWorldMap(
       if (worldwide && !reduce) spinning = true; // the moveend handler starts the spin
     },
     ready: () => firstIdle,
-    destroy() { clearInterval(sunTimer); window.removeEventListener('opus:theme', onTheme); window.removeEventListener('opus:motion', onMotionChange); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
+    destroy() { clearInterval(sunTimer); window.removeEventListener('opus:theme', onTheme); window.removeEventListener('opus:motion', onMotionChange); stop(); cancelAnimationFrame(raf); place?.remove(); for (const m of partyMarkers) m.remove(); for (const m of onScreen.values()) m.remove(); map.remove(); },
   };
 }

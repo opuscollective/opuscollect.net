@@ -6,6 +6,7 @@ import { EVENTS } from '@/data/events';
 import { myEvents, listPublicEvents, ROLE_LABEL, type EventView, type MyRole } from './events';
 import { formatSlot, tzAbbr, localDay } from '@/lib/booking-time';
 import { formatDay, type FutureItem } from '@/lib/future';
+import { partyFutureItems } from './parties';
 
 const LIVE = new Set(['requested', 'accepted']);
 const KIND_NAME: Record<string, string> = { single: 'Single', ep: 'EP', album: 'Album', mixtape: 'Mixtape' };
@@ -36,6 +37,8 @@ export async function ourFuture(db: D1Database, placeId?: string, metroIds?: str
 export async function futureFor(db: D1Database, userId: string, now = Date.now()): Promise<FutureItem[]> {
   const items: FutureItem[] = (await myEvents(db, userId, now)).map((m) => eventItem(m.event, m.role));
   const when = (ts: number, tz: string) => `${formatSlot(ts, tz)} ${tzAbbr(ts, tz)}`;
+  // Listening parties I host or asked to be reminded about.
+  items.push(...await partyFutureItems(db, userId, now));
 
   // Sessions you booked.
   for (const b of await listMyBookings(db, userId)) {

@@ -25,7 +25,7 @@ import { PLACES as AREAS, PLACE_BY_ID as AREA_BY_ID, metroId } from '@/data/plac
 import { SPECIALTIES, toSpecialty } from '@/data/specialties';
 import { hasPoint, type Listing } from '@/types/directory';
 import type { ProfileDetail } from '@/server/world-detail';
-import type { Camera, WorldMapApi } from '@/scripts/world-map';
+import type { Camera, PartyPin, WorldMapApi } from '@/scripts/world-map';
 import { takeHandoff, cameraFor, readFrom, saveFrom, type From } from '@/scripts/world-entry';
 import { nearestCity } from '@/scripts/hero-dive';
 import { zipPoint } from '@/scripts/zip-lookup';
@@ -1066,6 +1066,7 @@ export function initWorld(root: HTMLElement) {
         $('[data-map-loading]').hidden = true;
         if (place) map.setPlace(place);
         if (active) map.setActive(active);
+        map.setParties(partyPins);
         render(false);
         // If the visitor already answered while the map loaded, don't make them wait for the handoff frame to fade.
         if (hand) { if (flyOnBoot) void settleHandoff(m); else await settleHandoff(m); }
@@ -1133,6 +1134,29 @@ export function initWorld(root: HTMLElement) {
     const p0 = params.get('p');
     if (p0 && byId.has(p0)) { params.delete('p'); select(p0, 'search'); }
   }
+
+  // ---------- Live: listening parties happening now or soon (real parties only; nothing shows when there are none) ----------
+  interface PartyItem { id: string; href: string; title: string; host: string; cover: string | null; live: boolean; soon: boolean; label: string; city: string | null; lat: number | null; lng: number | null; listening?: number }
+  let partyPins: PartyPin[] = [];
+  async function loadParties() {
+    let list: PartyItem[] = [];
+    try {
+      const r = await fetch('/api/parties');
+      list = r.ok ? ((await r.json()) as { parties: PartyItem[] }).parties : [];
+    } catch { list = []; }
+    const box = root.querySelector<HTMLElement>('[data-parties]');
+    if (!box) return;
+    const now = list.filter((p) => p.live || p.soon);
+    box.hidden = !now.length;
+    box.innerHTML = now.length ? `<div class="wlive__head"><h3>${now.some((p) => p.live) ? 'Live now' : 'Starting soon'}</h3><a href="/party">All parties</a></div>` + now.slice(0, 4).map((p) =>
+      `<a class="lp-row" href="${esc(p.href)}"><span class="lp-row__art"${p.cover ? ` style="background-image:url(${esc(p.cover)})"` : ''}></span>
+        <span class="lp-row__main"><b>${esc(p.title)}</b><small>Listening party · ${esc(p.host)}${p.city ? ` · ${esc(p.city)}` : ''}${p.listening ? ` · ${p.listening} listening` : ''}</small></span>
+        <span class="lp-row__when${p.live ? ' lp-row__when--live' : ''}">${esc(p.label)}</span></a>`).join('') : '';
+    partyPins = list.filter((p) => p.lat != null && p.lng != null && (p.live || p.soon)).map((p) => ({ id: p.id, href: p.href, title: p.title, host: p.host, live: p.live, label: p.label, lat: p.lat!, lng: p.lng! }));
+    map?.setParties(partyPins);
+  }
+  loadParties();
+  setInterval(() => { if (!document.hidden) loadParties(); }, 60_000);
 
   syncControls();
   setView(view, false);

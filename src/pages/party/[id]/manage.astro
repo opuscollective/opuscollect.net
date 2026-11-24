@@ -1,0 +1,157 @@
+---
+/** The host's set-up page: time, the private audio for each track, an optional video, and the artist's notes. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getParty, listTracks } from '@/server/parties';
+import { clock, MAX_AUDIO_BYTES } from '@/lib/party';
+import '@/styles/app.css';
+import '@/styles/party.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const id = Astro.params.id ?? '';
+if (!user) return Astro.redirect(`/sign-in?next=${encodeURIComponent(`/party/${id}/manage`)}`);
+const db = Astro.locals.runtime.env.DB;
+const p = await getParty(db, id).catch(() => null);
+if (!p || p.host.userId !== user.id) return new Response(null, { status: 404, statusText: 'Not found' });
+if (p.status !== 'scheduled') return Astro.redirect(p.href);
+const tracks = await listTracks(db, p.id);
+const missing = tracks.filter((t) => !t.hasAudio).length;
+const share = new URL(p.href, Astro.url).href;
+---
+<BaseLayout title={`Set up · ${p.release.title}`} noindex assistant={false} messages={false}>
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto" data-party-manage data-id={p.id} data-starts={p.startsAt} data-max={MAX_AUDIO_BYTES}>
+      <p class="t-meta app__kicker"><a class="link" href="/works/mine">Works</a> / Listening party</p>
+      <h1 class="app__title">{p.release.title}</h1>
+      <p class="app__lead" data-ready>{missing ? `Add audio to ${missing === tracks.length ? 'each track' : `${missing} more track${missing === 1 ? '' : 's'}`} and you’re ready.` : 'Ready. Open the party page at start time and press Start the party.'}</p>
+
+      <div class="panel" style="margin-top:28px">
+        <h2>Share the link</h2>
+        <p class="dim">Anyone can open it. They join Opus to listen and chat.</p>
+        <div class="row" style="margin-top:14px">
+          <input class="input" style="flex:1;min-width:200px" readonly value={share} data-share-url aria-label="Party link" />
+          <button class="btn-app btn-app--ghost" type="button" data-copy>Copy link</button>
+          <a class="btn-app" href={p.href}>Open party page</a>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>The music</h2>
+        <p class="dim">MP3, M4A, WAV, FLAC or OGG, up to {Math.floor(MAX_AUDIO_BYTES / 1048576)} MB a track. Files are private, play only while the party is live, and are deleted a day after it ends. A video (MP4) is optional; without one, the cover moves with the music.</p>
+        <label class="check" style="margin-top:14px"><input type="checkbox" data-rights /><span>This is my music, or I have the right to share it here.</span></label>
+        <div style="margin-top:8px">
+          {tracks.map((t, i) => (
+            <div class="pm-track" data-track={t.id}>
+              <div class="pm-track__head">
+                <b>{tracks.length > 1 ? `${i + 1}. ` : ''}{t.title}</b>
+                <span class:list={['pm-track__state', { 'pm-track__state--ok': t.hasAudio }]} data-state>{t.hasAudio ? `Audio added · ${clock(t.durationMs)}` : 'No audio yet'}</span>
+              </div>
+              <div class="pm-track__files">
+                <label class="pm-file"><span>{t.hasAudio ? 'Replace audio' : 'Add audio'}</span><input type="file" accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg" data-file="audio" /></label>
+                <label class="pm-file"><span>{t.hasVisual ? 'Replace video' : 'Add video'}</span><input type="file" accept="video/mp4,video/webm,video/quicktime" data-file="visual" /></label>
+                {t.hasVisual && <button type="button" class="pm-quiet" data-remove-visual>Remove video</button>}
+                {tracks.length > 1 && <button type="button" class="pm-quiet" data-remove-track>Leave this track out</button>}
+              </div>
+              <div class="pm-progress" data-progress hidden><i></i></div>
+              <label class="field"><span>Your note for this track</span><input class="input" maxlength="280" data-note value={t.note} placeholder="Shown to the room as the track starts" /></label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <form class="panel form" data-party-edit novalidate style="margin-top:16px">
+        <h2>When</h2>
+        <div class="grid-2">
+          <label class="field"><span>Date *</span><input class="input" type="date" name="date" required /></label>
+          <label class="field"><span>Start time *</span><input class="input" type="time" name="time" required /><small data-tz-note></small></label>
+        </div>
+        <label class="field"><span>A line for the party page</span><input class="input" name="note" maxlength="280" value={p.note} /></label>
+        <label class="check"><input type="checkbox" name="showOnMap" checked={!!p.place} /><span>Show the party in World on my city.</span></label>
+        <div data-status class="form-status"></div>
+        <div class="row">
+          <button class="btn-app" type="submit">Save</button>
+          <button class="btn-app btn-app--danger" type="button" data-cancel>Cancel the party</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { bindForm, status, values } from '@/scripts/form';
+  const root = document.querySelector<HTMLElement>('[data-party-manage]');
+  if (root) {
+    const id = root.dataset.id!;
+    const form = root.querySelector<HTMLFormElement>('[data-party-edit]')!;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const d = new Date(Number(root.dataset.starts));
+    form.querySelector<HTMLInputElement>('[name="date"]')!.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    form.querySelector<HTMLInputElement>('[name="time"]')!.value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    form.querySelector('[data-tz-note]')!.textContent = `Your time (${tz.replace(/_/g, ' ')}).`;
+    const notes = () => Object.fromEntries([...root.querySelectorAll<HTMLElement>('[data-track]')].map((t) => [t.dataset.track!, t.querySelector<HTMLInputElement>('[data-note]')!.value]));
+    const body = () => {
+      const v = values(form) as Record<string, string>;
+      return { note: v.note, showOnMap: v.showOnMap, timezone: tz, startsAt: v.date && v.time ? new Date(`${v.date}T${v.time}`).getTime() : null, notes: notes() };
+    };
+    bindForm(form, { url: `/api/parties/${id}`, body, busyLabel: 'Saving…', onSuccess: () => status(form, 'Saved.', 'ok') });
+    // Notes save on their own when you leave the field.
+    root.querySelectorAll<HTMLInputElement>('[data-note]').forEach((n) => n.addEventListener('change', () => { void fetch(`/api/parties/${id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body()) }); }));
+
+    root.querySelector('[data-copy]')!.addEventListener('click', async (e) => {
+      const b = e.currentTarget as HTMLElement;
+      await navigator.clipboard.writeText(root.querySelector<HTMLInputElement>('[data-share-url]')!.value).catch(() => undefined);
+      b.textContent = 'Copied'; setTimeout(() => (b.textContent = 'Copy link'), 2000);
+    });
+    root.querySelector('[data-cancel]')!.addEventListener('click', async () => {
+      if (!confirm('Cancel this party? The link stops working and the uploaded files are deleted.')) return;
+      const r = await fetch(`/api/parties/${id}`, { method: 'DELETE' });
+      if (r.ok) location.href = '/works/mine'; else status(form, ((await r.json().catch(() => ({}))) as { error?: string }).error ?? 'Couldn’t cancel.');
+    });
+
+    const rights = root.querySelector<HTMLInputElement>('[data-rights]')!;
+    const lengthOf = (file: File) => new Promise<number>((res) => {
+      const a = new Audio();
+      const url = URL.createObjectURL(file);
+      const done = (ms: number) => { URL.revokeObjectURL(url); res(ms); };
+      a.preload = 'metadata';
+      a.onloadedmetadata = () => done(Number.isFinite(a.duration) ? Math.round(a.duration * 1000) : 0);
+      a.onerror = () => done(0);
+      a.src = url;
+    });
+    root.querySelectorAll<HTMLElement>('[data-track]').forEach((row) => {
+      const tid = row.dataset.track!;
+      const state = row.querySelector<HTMLElement>('[data-state]')!;
+      const prog = row.querySelector<HTMLElement>('[data-progress]')!;
+      row.querySelectorAll<HTMLInputElement>('[data-file]').forEach((input) => input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        const kind = input.dataset.file!;
+        if (!file) return;
+        const fail = (m: string) => { state.textContent = m; state.classList.remove('pm-track__state--ok'); input.value = ''; prog.hidden = true; };
+        if (!rights.checked) { rights.focus(); return fail('Tick the box above first.'); }
+        if (file.size > Number(root.dataset.max)) return fail('That file is too large.');
+        const ms = kind === 'audio' ? await lengthOf(file) : 0;
+        if (kind === 'audio' && !ms) return fail('We couldn’t read that file. Try an MP3 or M4A.');
+        prog.hidden = false;
+        state.textContent = 'Uploading…';
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', `/api/parties/${id}/media/${tid}?kind=${kind}`);
+        xhr.setRequestHeader('content-type', file.type || (kind === 'audio' ? 'audio/mpeg' : 'video/mp4'));
+        xhr.setRequestHeader('x-opus-rights', '1');
+        if (ms) xhr.setRequestHeader('x-opus-duration-ms', String(ms));
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) prog.querySelector('i')!.style.width = `${(e.loaded / e.total) * 100}%`; };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) location.reload();
+          else { let m = 'Upload failed. Try again.'; try { m = JSON.parse(xhr.responseText).error || m; } catch { /* keep */ } fail(m); }
+        };
+        xhr.onerror = () => fail('Upload failed. Check your connection.');
+        xhr.send(file);
+      }));
+      row.querySelector('[data-remove-visual]')?.addEventListener('click', async () => { await fetch(`/api/parties/${id}/media/${tid}?kind=visual`, { method: 'DELETE' }); location.reload(); });
+      row.querySelector('[data-remove-track]')?.addEventListener('click', async () => {
+        if (!confirm('Leave this track out of the party? It stays in your work.')) return;
+        await fetch(`/api/parties/${id}/media/${tid}`, { method: 'DELETE' }); location.reload();
+      });
+    });
+  }
+</script>

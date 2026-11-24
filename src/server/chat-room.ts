@@ -13,6 +13,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { assessGlobal, cleanBody, cooldownLeft, normalize, BURST_MAX, BURST_WINDOW_MS, COOLDOWN_MS, DUPLICATE_WINDOW_MS, MAX_LEN } from '@/lib/chat-rules';
 import { activeRestriction, type ChatIdentity, type ChatMessage } from './chat';
 import type * as CF from '@cloudflare/workers-types';
+import { PartyRoom } from './party-room';
 
 type WebSocket = CF.WebSocket;
 declare const WebSocketPair: typeof CF.WebSocketPair;
@@ -33,6 +34,17 @@ export class GlobalChat extends DurableObject<Env> {
   private users = new Map<string, UserState>();
   /** Recent normalized texts across members, to notice the same message arriving from many accounts. */
   private wave: { n: string; uid: string; t: number }[] = [];
+  /**
+   * Listening parties reuse this class: an instance named party:<id> is that party's room
+   * (src/server/party-room.ts). Sharing the class means no new Durable Object class to deploy.
+   */
+  private partyRoom: PartyRoom | null = null;
+  private party(id?: string | null): PartyRoom | null {
+    if (this.partyRoom) return this.partyRoom;
+    const name = this.ctx.id.name;
+    const pid = name?.startsWith('party:') ? name.slice(6) : id;
+    return pid ? (this.partyRoom = new PartyRoom(this.ctx, this.env, pid)) : null;
+  }
 
   constructor(ctx: CF.DurableObjectState, env: Env) {
     super(ctx, env);
@@ -42,6 +54,7 @@ export class GlobalChat extends DurableObject<Env> {
 
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
+    if (url.pathname.startsWith('/party/')) return this.party(req.headers.get('x-opus-party'))?.fetch(req) ?? new Response('Not found', { status: 404 });
     if (url.pathname === '/socket') return this.openSocket(req);
     if (req.method !== 'POST') return new Response('Not found', { status: 404 });
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -91,8 +104,9 @@ export class GlobalChat extends DurableObject<Env> {
     if (typeof raw !== 'string' || raw.length > 4000) return;
     let msg: { t?: string; body?: unknown; cid?: unknown };
     try { msg = JSON.parse(raw); } catch { return; }
-    const att = ws.deserializeAttachment() as Attachment | null;
+    const att = ws.deserializeAttachment() as (Attachment & { pid?: string }) | null;
     if (!att) return;
+    if (att.pid) return this.party(att.pid)?.webSocketMessage(ws, raw);
     if (msg.t === 'send') {
       const cid = typeof msg.cid === 'string' ? msg.cid.slice(0, 40) : null;
       const r = await this.send({ uid: att.uid, createdAt: att.createdAt, mod: att.mod, blocker: att.blocker, author: att.author }, msg.body, cid);
@@ -101,6 +115,8 @@ export class GlobalChat extends DurableObject<Env> {
   }
 
   async webSocketClose(ws: WebSocket, code: number) {
+    const pid = (ws.deserializeAttachment() as { pid?: string } | null)?.pid;
+    if (pid) return this.party(pid)?.webSocketClose(ws, code);
     try { ws.close(code === 1005 ? 1000 : code, 'bye'); } catch { /* already closed */ }
   }
 
@@ -108,6 +124,8 @@ export class GlobalChat extends DurableObject<Env> {
 
   /** Housekeeping: Global Chat keeps 90 days of history. */
   async alarm() {
+    const party = this.party(await this.ctx.storage.get<string>('pid'));
+    if (party) return party.alarm();
     await this.env.DB.prepare('DELETE FROM chat_messages WHERE created_at < ?').bind(Date.now() - RETENTION_MS).run();
     await this.ctx.storage.setAlarm(Date.now() + 86_400_000);
   }

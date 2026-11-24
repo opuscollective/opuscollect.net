@@ -1,0 +1,47 @@
+---
+/** Listening parties: what is live now and what is coming up, plus the parties you host. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { listPublicParties, myParties } from '@/server/parties';
+import '@/styles/app.css';
+import '@/styles/party.css';
+export const prerender = false;
+
+const env = Astro.locals.runtime.env;
+const user = Astro.locals.user;
+const parties = await listPublicParties(env);
+const mine = user ? (await myParties(env.DB, user.id)).filter((p) => p.status === 'scheduled' || p.status === 'live') : [];
+---
+<BaseLayout title="Listening parties" description="Hear new music first, together, live on Opus.">
+  <section class="app">
+    <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+      <p class="t-meta app__kicker"><a class="link" href="/world">World</a> / Live</p>
+      <h1 class="app__title">Listening parties</h1>
+      <p class="app__lead">Artists play new work for everyone at once. You hear it the moment they do, live only.</p>
+      {mine.length > 0 && (
+        <div style="margin-top:28px">
+          <h2 class="t-meta" style="margin-bottom:10px">Hosting</h2>
+          <div style="display:grid;gap:3px">
+            {mine.map((p) => (
+              <a class="lp-row" href={p.status === 'live' ? p.href : `${p.href}/manage`}>
+                <span class="lp-row__art" style={p.release.cover ? `background-image:url(${p.release.cover})` : ''}></span>
+                <span class="lp-row__main"><b>{p.release.title}</b><small>{p.when}</small></span>
+                <span class:list={['lp-row__when', { 'lp-row__when--live': p.status === 'live' }]}>{p.status === 'live' ? 'Live now' : 'Set up'}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style="margin-top:28px;display:grid;gap:3px">
+        {parties.map((p) => (
+          <a class="lp-row" href={p.href}>
+            <span class="lp-row__art" style={p.cover ? `background-image:url(${p.cover})` : ''}></span>
+            <span class="lp-row__main"><b>{p.title}</b><small>{p.host}{p.city ? ` · ${p.city}` : ''}{p.listening ? ` · ${p.listening} listening` : ''}</small></span>
+            <span class:list={['lp-row__when', { 'lp-row__when--live': p.live }]}>{p.label}</span>
+          </a>
+        ))}
+        {!parties.length && <p class="notice">Nothing is scheduled right now. When an artist sets a party, it shows here and on their city in World.</p>}
+      </div>
+      <div class="row" style="margin-top:24px"><a class="btn-app" href="/party/new">Host a listening party</a></div>
+    </div>
+  </section>
+</BaseLayout>
