@@ -39,11 +39,13 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
 
   let roles = '';
   let status = '';
+  let conns = '';
   if (l.kind === 'musician') {
     const sp = allSpecialties(l.primarySpecialty, l.specialties).map((s) => SPECIALTIES[s]?.label ?? s);
     roles = `<p class="pv__roles">${sp.map((s, i) => `<span${i === 0 ? ' class="is-primary"' : ''}>${esc(s)}</span>`).join('')}</p>${l.genres.length ? `<p class="pv__genres">${esc(l.genres.join(' · '))}</p>` : ''}`;
     status = HIRE_ENABLED && l.forHire ? '<p class="wc__status is-live">For hire</p>' : '';
-    if (typeof d.connections === 'number' && !l.isSample) status += `<p class="pv__conns"><b>${d.connections.toLocaleString('en-US')}</b><span>${d.connections === 1 ? 'Connection' : 'Connections'}</span></p>`;
+    // One quiet line with the city: "Birmingham, AL · 12 connections".
+    if (typeof d.connections === 'number' && d.connections > 0 && !l.isSample) conns = `<span class="pv__cn">${d.connections.toLocaleString('en-US')} ${d.connections === 1 ? 'connection' : 'connections'}</span>`;
   } else {
     roles = `<p class="pv__roles"><span class="is-primary">${esc(kindLabel(l))}</span></p>`;
     if (l.kind === 'studio') {
@@ -96,7 +98,7 @@ export function previewHtml(l: Listing, d: ProfileDetail): string {
     <header class="pv__head">
       <div class="pv__title"><h2 id="pv-name">${esc(l.name)}</h2>${badgeHtml(l)}${sample}</div>
       ${roles}
-      <p class="wc__where">${PIN}<span>${esc(placeText(l))}</span></p>
+      <p class="wc__where">${PIN}<span>${esc(placeText(l))}</span>${conns}</p>
       ${status}
     </header>
     ${actions}

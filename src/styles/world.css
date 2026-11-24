@@ -803,7 +803,6 @@ html:not([data-motion='fluid']) .wx, html:not([data-motion='fluid']) .wx.is-in, 
   .world .wp__results, .world .wg__track { grid-template-columns: 1fr; gap: 3px; }
   .world .wp__results { padding-bottom: 96px; }
 }
-.pv__conns { margin: 4px 0 0; font-size: 12px; color: var(--c-fg-faint); }
 
 /* ---------- My Cities (in the directory) ---------- */
 .wmy { display: flex; align-items: center; gap: 6px; padding: 0 12px 8px; overflow-x: auto; scrollbar-width: none; }
@@ -907,9 +906,6 @@ html:not([data-motion='fluid']) .wx, html:not([data-motion='fluid']) .wx.is-in, 
 @media (max-width: 760px) { .wp__q { min-height: 40px; } }
 
 /* Connections: a quiet, large number. Accepted connections only. */
-.pv__conns { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 0; }
-.pv__conns b { font-size: 34px; font-weight: 300; letter-spacing: -0.04em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
-.pv__conns span { font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
 
 /* Preview: releases as covers, title and year on the artwork. */
 .pv__covers { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -938,7 +934,11 @@ html:not([data-motion='fluid']) .wx, html:not([data-motion='fluid']) .wx.is-in, 
 .pv--musician .pv__hero::after { content: none; }
 .pv--musician .pv__hero .im { width: clamp(120px, 34%, 152px); max-height: none; aspect-ratio: 1; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 1px var(--line-faint, rgba(128,128,128,.2)), 0 18px 40px -18px rgba(0,0,0,.45); }
 .pv--musician .pv__head, .pv--musician.pv--loading .pv__head { margin-top: 18px; align-items: center; text-align: center; }
-.pv--musician .pv__title, .pv--musician .pv__roles, .pv--musician .pv__conns { justify-content: center; }
+.pv--musician .pv__title, .pv--musician .pv__roles, .pv--musician .wc__where { justify-content: center; }
 .pv--musician .pv__genres { text-wrap: balance; }
-.pv--musician .pv__conns { margin-top: 10px; }
 .pv--musician .pv__why { text-align: center; }
+.pv__cn { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pv__cn::before { content: '·'; margin: 0 6px 0 1px; color: var(--c-fg-ghost); }
+/* A city's designation above its name on the guide banner (e.g. Birmingham, "Home of Opus"). */
+.wg__kicker { margin: 0 0 4px; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.9); }
+.wg__banner--plain .wg__kicker { color: var(--c-fg-faint); }
