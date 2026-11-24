@@ -7,7 +7,8 @@ import { HttpError, audit, now, randomId, str } from './util';
 import { limit } from './ratelimit';
 import { RESERVED, cleanUrl, slugify, mediaUrl } from './profiles';
 import type { SessionUser } from './session';
-import { isDay, isTimeZone } from '@/lib/booking-time';
+import { isDay, isTimeZone, localDay } from '@/lib/booking-time';
+import { upcomingHolidays } from '@/lib/holidays';
 
 export type StudioType = 'commercial' | 'home' | 'remote';
 export const STUDIO_TYPES: Record<StudioType, { label: string; hint: string }> = {
@@ -277,7 +278,7 @@ export async function archiveService(env: Env, user: SessionUser, id: unknown, p
 }
 
 /** Replace weekly hours and closed days in one go. Hours are "HH:MM" strings in the studio's time zone. */
-export async function saveAvailability(env: Env, user: SessionUser, body: { rules?: unknown; closed?: unknown }, pref?: string | null) {
+export async function saveAvailability(env: Env, user: SessionUser, body: { rules?: unknown; closed?: unknown; holidays?: unknown }, pref?: string | null) {
   const db = env.DB;
   const studio = await ownedStudio(env, user, pref);
   await limit(db, `hours-save:${user.id}`, 60, 10 * 60_000);
@@ -306,9 +307,11 @@ export async function saveAvailability(env: Env, user: SessionUser, body: { rule
     db.prepare('DELETE FROM availability_exceptions WHERE profile_id = ?').bind(studio.id),
     ...rules.map((r) => db.prepare('INSERT INTO availability_rules (id, profile_id, weekday, start_min, end_min) VALUES (?, ?, ?, ?, ?)').bind(randomId(), studio.id, r.weekday, r.start_min, r.end_min)),
     ...closed.map((d) => db.prepare('INSERT INTO availability_exceptions (id, profile_id, day) VALUES (?, ?, ?)').bind(randomId(), studio.id, d)),
+    // "Closed on holidays": standard US holidays for the next year, marked so switching it off removes only these.
+    ...(body.holidays === true ? upcomingHolidays(localDay(Date.now(), studio.timezone)).filter((h) => !closed.includes(h.day)).map((h) => db.prepare("INSERT INTO availability_exceptions (id, profile_id, day, note) VALUES (?, ?, ?, 'holiday')").bind(randomId(), studio.id, h.day)) : []),
   ];
   await db.batch(stmts);
-  return { rules, closed };
+  return { rules, closed, holidays: body.holidays === true };
 }
 
 export const studioPhoto = (s: Pick<Studio, 'photoKey'>) => mediaUrl(s.photoKey);
