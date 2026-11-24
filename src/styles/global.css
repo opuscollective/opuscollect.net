@@ -144,3 +144,20 @@ html:not(.is-signed-in) body:has([data-hero]) .oa-launch { display: none; }
 /* World: once the street map takes over (around zoom 3.5), its own place names do the job. */
 .labels-off .gl-label, .gl-label.is-far { opacity: 0 !important; }
 .maplibregl-marker.gl-label { z-index: 0; }
+
+/* Activity on the homepage Earth: dark glass chips for the busiest cities and for live listening parties. */
+.gl-chip { display: inline-flex; flex-direction: column-reverse; align-items: center; gap: 5px; translate: 0 calc(-50% + 4px); color: #f2efea; text-decoration: none; font-family: var(--font-sans); transition: opacity .4s var(--ease, ease); cursor: pointer; }
+.gl-chip i { width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, .2); }
+.gl-chip span { display: flex; flex-direction: column; padding: 6px 11px 7px; border-radius: 11px; background: rgba(17, 17, 19, .72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 0 0 1px rgba(242, 239, 234, .14), 0 12px 28px -14px rgba(0, 0, 0, .8); font-size: 12.5px; font-weight: 500; line-height: 1.25; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.gl-chip small { font-size: 11px; font-weight: 400; color: rgba(242, 239, 234, .68); }
+.gl-chip em { font-style: normal; letter-spacing: .05em; text-transform: uppercase; font-size: 9.5px; }
+.gl-chip b { font-size: 9.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #ff8a80; }
+.gl-chip { z-index: 2; }
+.gl-chip--live { z-index: 3; }
+.gl-chip.is-cut { opacity: 0 !important; pointer-events: none !important; }
+.gl-chip--live i { background: #ff5a4f; box-shadow: 0 0 0 3px rgba(255, 90, 79, .3); }
+html[data-motion='fluid'] .gl-chip--live i { animation: wparty 1.8s ease-out infinite; }
+.gl-chip:hover span, .gl-chip:focus-visible span { background: rgba(17, 17, 19, .9); box-shadow: 0 0 0 1px rgba(242, 239, 234, .32), 0 12px 28px -14px rgba(0, 0, 0, .8); }
+.gl-chip:focus-visible { outline: none; }
+@keyframes wparty { 0% { box-shadow: 0 0 0 0 rgba(255, 90, 79, .55); } 100% { box-shadow: 0 0 0 16px rgba(255, 90, 79, 0); } }
+@media (max-width: 760px) { .gl-chip span { font-size: 11.5px; padding: 5px 9px 6px; } .gl-chip small { font-size: 10px; } }

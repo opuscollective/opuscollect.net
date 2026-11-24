@@ -7,6 +7,7 @@ import { App } from 'astro/app';
 import { handle } from '@astrojs/cloudflare/handler';
 import { GlobalChat } from './server/chat-room';
 import { chatIdentity, room, userIdFromRequest } from './server/chat';
+import { getParty, canView, partyRoom, roomOpen } from './server/parties';
 
 export { GlobalChat };
 
@@ -17,6 +18,7 @@ export function createExports(manifest: SSRManifest) {
       async fetch(request: Request, env: Env, ctx: import('@cloudflare/workers-types').ExecutionContext) {
         const url = new URL(request.url);
         if (url.pathname === '/api/chat/socket') return chatSocket(request, env, url);
+        if (url.pathname === '/api/parties/socket') return partySocket(request, env, url);
         return handle(manifest, app, request as never, env as never, ctx as never);
       },
     },
@@ -36,4 +38,21 @@ async function chatSocket(request: Request, env: Env, url: URL) {
   if (!id) return new Response('Sign in first', { status: 401 });
   const headers = new Headers({ upgrade: 'websocket', 'x-opus-identity': encodeURIComponent(JSON.stringify(id)) });
   return room(env).fetch('https://room/socket', { headers });
+}
+
+/** A listening party's room. Members only; the room opens shortly before the start time and closes when the party ends. */
+async function partySocket(request: Request, env: Env, url: URL) {
+  if (request.headers.get('upgrade')?.toLowerCase() !== 'websocket') return new Response('Expected a WebSocket', { status: 426 });
+  const origin = request.headers.get('origin');
+  if (!origin || origin !== url.origin) return new Response('Cross-site request blocked', { status: 403 });
+  if (!env.CHAT) return new Response('Parties aren’t available', { status: 503 });
+  const uid = await userIdFromRequest(env.DB, request);
+  const id = uid ? await chatIdentity(env.DB, uid) : null;
+  if (!uid || !id) return new Response('Sign in first', { status: 401 });
+  const party = await getParty(env.DB, url.searchParams.get('id') ?? '');
+  if (!party || !canView(party, uid)) return new Response('Not found', { status: 404 });
+  if (uid !== party.host.userId && !roomOpen(party)) return new Response('The room isn’t open', { status: 403 });
+  if (party.status === 'ended' || party.status === 'canceled') return new Response('The party has ended', { status: 410 });
+  const headers = new Headers({ upgrade: 'websocket', 'x-opus-identity': encodeURIComponent(JSON.stringify(id)), 'x-opus-party': party.id });
+  return partyRoom(env, party.id).fetch('https://room/party/socket', { headers });
 }

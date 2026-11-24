@@ -6,6 +6,7 @@ Read this first instead of re-exploring the repo. Keep Claude usage low: batch s
 - Astro 5 + TypeScript, `@astrojs/cloudflare` adapter (static pages + server routes in the Worker).
 - Hosted as the Cloudflare **Worker** project `opuscollect-net` (config: `wrangler.jsonc`). Not Pages, not Supabase.
 - Backend is Cloudflare only: **D1** (`DB`, migrations in `migrations/`), **R2** (`MEDIA`, never public by URL, served through the Worker), **KV** (`WAITLIST`), a Durable Object (`CHAT`, Global Chat). Auth lives in the Worker.
+- Listening parties (`/party`, `src/server/parties.ts`, `party-room.ts`, `src/lib/party.ts`): synced playback, not streaming. Each party's room is an instance of the existing `GlobalChat` Durable Object class named `party:<id>`, so no new class or Durable Object migration is needed (a new class can't ship through preview uploads). Audio is private in R2 under `party/`, served only by `/api/parties/:id/media/:track`.
 - Preview builds use separate throwaway D1/R2/KV (`previews` block in `wrangler.jsonc`), `SITE_ENV=preview`, `SHOW_SAMPLE_DATA=1`. Production has `SHOW_SAMPLE_DATA=0`.
 - Map/globe: `maplibre-gl`, `globe.gl`, `three`. Email sender: Resend (not yet set up by Bogo).
 - The README's Cloudflare Pages notes are outdated; this file and `wrangler.jsonc` win.

@@ -1,0 +1,173 @@
+---
+/**
+ * A listening party: the shareable page and the room in one. Anyone with the link can read it;
+ * listening and chat are for signed-in members, so the link is also a way into Opus.
+ * The music only plays while the party is live. There is no replay.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { canView, getParty, hasReminder, listTracks, partyRoom, roomOpen } from '@/server/parties';
+import { getVisibleRelease } from '@/server/releases';
+import { RELEASE_KINDS, roleLabel } from '@/data/music';
+import { REACTIONS, clock } from '@/lib/party';
+import '@/styles/party.css';
+export const prerender = false;
+
+const env = Astro.locals.runtime.env;
+const db = env.DB;
+const user = Astro.locals.user;
+const p = await getParty(db, Astro.params.id ?? '').catch(() => null);
+if (!p || !canView(p, user?.id ?? null)) return new Response(null, { status: 404, statusText: 'Not found' });
+
+const isHost = user?.id === p.host.userId;
+const tracks = await listTracks(db, p.id);
+const open = roomOpen(p);
+const live = p.status === 'live';
+const ended = p.status === 'ended';
+const canceled = p.status === 'canceled';
+const reminded = user && !isHost ? await hasReminder(db, user.id, p.id) : false;
+const rel = await getVisibleRelease(db, p.release.id, user?.id ?? null).catch(() => null);
+const credits = (rel?.release.credits ?? []).filter((c) => c.status === 'confirmed' || c.status === 'unlinked');
+// Signed-out visitors see how many people are in the room right now (a real count from the room).
+let listening: number | null = null;
+if (live && !user) {
+  try { listening = ((await (await partyRoom(env, p.id).fetch('https://room/party/count', { headers: { 'x-opus-party': p.id } })).json()) as { n: number }).n; } catch { /* optional */ }
+}
+const kind = RELEASE_KINDS[p.release.kind as keyof typeof RELEASE_KINDS] ?? 'Release';
+const next = encodeURIComponent(p.href);
+const total = tracks.reduce((n, t) => n + t.durationMs, 0);
+const description = `${p.host.name} is playing “${p.release.title}” live on Opus. ${p.when}. Listen together, in real time.`;
+const clientTracks = user ? tracks.map((t) => ({ id: t.id, title: t.title, note: t.note, dur: t.durationMs, visual: t.hasVisual })) : [];
+---
+<BaseLayout title={`${p.release.title} · Listening party`} description={description} image={p.release.cover ?? undefined} noindex={canceled} assistant={false} messages={false}>
+  <section class:list={['lp', { 'is-live': live, 'is-ended': ended }]} data-party data-id={p.id} data-host={isHost ? '1' : ''} data-signed={user ? '1' : ''}
+    data-status={p.status} data-open={open ? '1' : ''} data-starts={p.startsAt} data-tracks={JSON.stringify(clientTracks)} data-title={p.release.title}>
+    <div class="lp__stage">
+      {p.release.cover && <div class="lp__wash" style={`background-image:url(${p.release.cover})`} aria-hidden="true"></div>}
+      <div class="lp__top">
+        <span class="lp-badge" data-badge>{canceled ? 'Canceled' : ended ? 'Ended' : live ? 'Live now' : 'Listening party'}</span>
+        <span class="lp__count" data-count>{listening != null && listening > 0 ? `${listening} listening` : ''}</span>
+        <button type="button" class="lp__share" data-share>Share</button>
+      </div>
+
+      <div class="lp__body">
+        <div class="lp__art" data-art>
+          {p.release.cover ? <img src={p.release.cover} alt={`Cover of ${p.release.title}`} /> : <div class="lp__noart" aria-hidden="true"><span>{p.release.title.slice(0, 1)}</span></div>}
+          <video class="lp__video" data-visual muted playsinline hidden disablepictureinpicture></video>
+          <div class="lp__floats" data-floats aria-hidden="true"></div>
+        </div>
+
+        <div class="lp__info">
+          <p class="lp__eyebrow">Listening party · {kind}</p>
+          <h1 class="lp__title">{p.release.title}</h1>
+          <p class="lp__host">
+            Hosted by {p.host.handle ? <a href={`/${p.host.handle}`}>{p.host.name}</a> : p.host.name}{p.place && <> · {p.place.name}</>}
+          </p>
+
+          {!ended && !canceled && (
+            <p class="lp__when" data-when-wrap>
+              <time datetime={new Date(p.startsAt).toISOString()} data-when>{p.when}</time>
+              <span class="lp__countdown" data-countdown></span>
+            </p>
+          )}
+          {p.note && !ended && <p class="lp__note">“{p.note}”</p>}
+
+          <div class="lp__now" data-now hidden>
+            <div class="lp__nowhead"><b data-now-title></b><span data-now-time></span></div>
+            <div class="lp__bar" role="progressbar" aria-label="Track progress" aria-valuemin="0" aria-valuemax="100"><i data-bar></i></div>
+            <p class="lp__liner" data-now-note hidden></p>
+          </div>
+
+          {ended && (
+            <div class="lp__over">
+              <p class="lp__overline">The party’s over.</p>
+              <p class="lp__oversub">{p.peak > 1 ? `${p.peak} people listened together. ` : ''}This was live only, so there’s no replay.</p>
+            </div>
+          )}
+          {canceled && <p class="lp__oversub">This party was canceled.</p>}
+
+          <div class="lp__actions">
+            {!user && !ended && !canceled && (
+              <>
+                <a class="lp-btn lp-btn--solid" href={`/sign-up?next=${next}`}>{live ? 'Join Opus to listen' : 'Join Opus to be there'}</a>
+                <a class="lp-btn" href={`/sign-in?next=${next}`}>Sign in</a>
+              </>
+            )}
+            {user && !ended && !canceled && (
+              <>
+                <button type="button" class="lp-btn lp-btn--solid" data-listen hidden>Listen now</button>
+                {isHost && <button type="button" class="lp-btn lp-btn--solid" data-cmd="start" hidden>Start the party</button>}
+                {isHost && <button type="button" class="lp-btn" data-cmd="pause" hidden>Pause</button>}
+                {isHost && <button type="button" class="lp-btn" data-cmd="resume" hidden>Resume</button>}
+                {isHost && <button type="button" class="lp-btn" data-cmd="next" hidden>Next track</button>}
+                {isHost && <button type="button" class="lp-btn lp-btn--quiet" data-cmd="end" hidden>End party</button>}
+                {isHost && p.status === 'scheduled' && <a class="lp-btn" href={`/party/${p.id}/manage`} data-manage>Set up</a>}
+                {!isHost && p.status === 'scheduled' && <button type="button" class="lp-btn" data-remind aria-pressed={reminded ? 'true' : 'false'}>{reminded ? 'Reminder set' : 'Remind me'}</button>}
+              </>
+            )}
+            {ended && p.release.published && <a class="lp-btn lp-btn--solid" href={`/r/${p.release.id}`}>See the work</a>}
+            {ended && p.host.handle && <a class="lp-btn" href={`/${p.host.handle}`}>Connect with {p.host.name}</a>}
+          </div>
+          <p class="lp__status" data-status role="status" aria-live="polite"></p>
+
+          {user && !ended && !canceled && (
+            <div class="lp__reacts" data-reacts hidden aria-label="Reactions">
+              {REACTIONS.map((e) => <button type="button" data-react={e} aria-label={`React ${e}`}>{e}</button>)}
+            </div>
+          )}
+        </div>
+      </div>
+      <p class="lp__where" data-cities hidden></p>
+    </div>
+
+    <aside class="lp__side">
+      <section class="lp-panel">
+        <h2 class="lp-panel__h">{tracks.length === 1 ? 'The track' : `${tracks.length} tracks`}{total > 0 && <span> · {Math.max(1, Math.round(total / 60000))} min</span>}</h2>
+        <ol class="lp-tracks" data-tracklist>
+          {tracks.map((t, i) => <li data-track={i}><span class="lp-tracks__n">{i + 1}</span><span class="lp-tracks__t">{t.title}</span>{t.durationMs > 0 && <span class="lp-tracks__d">{clock(t.durationMs)}</span>}</li>)}
+        </ol>
+      </section>
+
+      {credits.length > 0 && (
+        <section class:list={['lp-panel', 'lp-credits', { 'lp-credits--roll': ended }]} data-credits hidden={!ended}>
+          <h2 class="lp-panel__h">Who made it</h2>
+          <ul>
+            {credits.map((c) => (
+              <li>
+                {c.handle ? <a href={`/${c.handle}`}>{c.name}</a> : <span>{c.name}</span>}
+                <small>{roleLabel(c.role)}{c.status === 'unlinked' ? ' · Not on Opus' : ''}</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {!ended && !canceled && (
+        <section class="lp-panel lp-chat" aria-label="Party chat">
+          <h2 class="lp-panel__h">Chat</h2>
+          {user ? (
+            <>
+              <div class="lp-chat__log" data-log aria-live="polite">
+                <p class="lp-chat__empty" data-log-empty>{open ? 'Say hello. Everyone in the room sees it.' : 'The room opens 30 minutes before the party starts.'}</p>
+              </div>
+              <form class="lp-chat__form" data-chat-form autocomplete="off">
+                <label class="sr-only" for="lp-msg">Message</label>
+                <input id="lp-msg" name="body" maxlength="300" placeholder="Say something" disabled />
+                <button type="submit" disabled>Send</button>
+              </form>
+              <p class="lp-chat__rules">Be good to each other. The host can remove messages and people.</p>
+            </>
+          ) : (
+            <p class="lp-chat__empty">Chat is for people in the room. <a href={`/sign-up?next=${next}`}>Join Opus</a> to be part of it.</p>
+          )}
+        </section>
+      )}
+    </aside>
+    <audio data-audio preload="auto"></audio>
+  </section>
+</BaseLayout>
+
+<script>
+  import { initPartyRoom } from '@/scripts/party-room';
+  const el = document.querySelector<HTMLElement>('[data-party]');
+  if (el) initPartyRoom(el);
+</script>

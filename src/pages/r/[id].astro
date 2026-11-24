@@ -8,6 +8,8 @@ import { RELEASE_LINK_LABEL, roleLabel, type ReleaseLinkKey } from '@/data/music
 import { artistLine, formatDate, getVisibleRelease, releaseMeta, type Credit } from '@/server/releases';
 import { mediaUrl } from '@/server/profiles';
 import { clansForWork } from '@/server/clans';
+import { activePartyForRelease } from '@/server/parties';
+import { startsLabel } from '@/lib/party';
 import '@/styles/app.css';
 import '@/styles/music.css';
 import '@/styles/product.css';
@@ -32,6 +34,8 @@ const links = Object.entries(r.links).filter(([, v]) => !!v) as [ReleaseLinkKey,
 const pendingMine = myCredits.filter((c) => c.status === 'pending');
 const by = artistLine(r);
 // Clans that feature this Work on their page (bands, collectives, crews, labels).
+// A listening party scheduled for this work, if there is one.
+const party = await activePartyForRelease(Astro.locals.runtime.env.DB, r.id);
 const fromClans = r.status === 'published' ? await clansForWork(Astro.locals.runtime.env.DB, r.id).catch(() => []) : [];
 ---
 <BaseLayout title={`${r.title} · ${by}`} description={`${r.title} by ${by}${r.description ? `. ${r.description.slice(0, 140)}` : ''}`} image={r.coverKey ? mediaUrl(r.coverKey)! : undefined} noindex={r.status !== 'published'}>
@@ -52,7 +56,17 @@ const fromClans = r.status === 'published' ? await clansForWork(Astro.locals.run
           : r.ownerHandle ? <a class="rp__person" href={`/${r.ownerHandle}`}>{r.ownerName}</a> : r.ownerName}</p>
         {fromClans.length > 0 && <p class="rp__desc" style="margin-top:8px">From {fromClans.map((c, i) => <>{i > 0 && ', '}<a class="link" href={c.href}>{c.name}</a></>)}</p>}
         {r.description && <p class="rp__desc">{r.description}</p>}
-        {isOwner && <div class="row" style="margin-top:20px"><a class="btn-app btn-app--ghost" href={`/works/${r.id}`}>Edit release</a></div>}
+        {party && (party.host.published || isOwner) && (
+          <p class="rp__desc" style="margin-top:14px">
+            <a class="link" href={party.href}><b style="font-weight:500;color:var(--text)">Listening party</b> · {startsLabel(party.startsAt, party.status === 'live', Date.now(), party.when)}</a>
+          </p>
+        )}
+        {isOwner && (
+          <div class="row" style="margin-top:20px">
+            <a class="btn-app btn-app--ghost" href={`/works/${r.id}`}>Edit release</a>
+            {!party && <a class="btn-app btn-app--ghost" href={`/party/new?work=${r.id}`}>Host a listening party</a>}
+          </div>
+        )}
       </div>
     </header>
 
