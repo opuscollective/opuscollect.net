@@ -243,7 +243,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                       <a href={`/r/${x.id}`}>
                         <span class="mp__ess-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
                         <span class="mp__ess-t">
-                          <small>{x.released ? (x.releaseDate?.slice(0, 4) ?? 'Out now') : 'Coming'} · {RELEASE_KINDS[x.kind]}</small>
+                          <small>{RELEASE_KINDS[x.kind]} · {x.released ? (x.releaseDate?.slice(0, 4) ?? "Out now") : "Coming"}</small>
                           <b>{x.title}</b>
                           {byLine(x) && <em>{byLine(x)}</em>}
                           {noteOf(x.id) ? <span class="mp__ess-n">{noteOf(x.id)}</span> : isOwner ? <span class="mp__ess-n is-hint">Add a line about this work in Customize page.</span> : null}
@@ -312,6 +312,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp-preview { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-sunken); font-size: 14px; color: var(--c-fg-subtle); }
   .mp-preview { align-items: center; position: sticky; top: var(--hdr-h); z-index: calc(var(--z-header) - 1); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
   .mp-preview__a { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 860px) { .mp-preview { position: static; } }
   .mp-preview .btn-app { min-height: 34px; padding: 0 14px; font-size: 13px; }
   .mp-preview b { color: var(--text); font-weight: 500; }
   .mp__actions { display: flex; gap: 10px; align-items: center; }
@@ -394,15 +395,15 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__tile, .mp__ess-cover, .mp__row-cover { display: block; background: linear-gradient(135deg, hsl(var(--c, 220) 45% 42%), hsl(calc(var(--c, 220) + 50) 55% 30%)) center / cover no-repeat; }
   .mp__tile { aspect-ratio: 1; border-radius: 10px; }
   /* Essentials: covers lead, each with its own line on what it is and what it means. */
-  .mp__ess { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 28px 22px; }
+  .mp__ess { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 22px; }
   .mp__ess a { display: flex; flex-direction: column; gap: 14px; color: inherit; text-decoration: none; }
   .mp__ess-cover { aspect-ratio: 1; border-radius: 12px; box-shadow: 0 24px 50px -30px rgba(0, 0, 0, .55); transition: transform .25s ease; }
   .mp__ess a:hover .mp__ess-cover { transform: translateY(-3px); }
   .mp__ess-t { display: flex; flex-direction: column; gap: 5px; }
-  .mp__ess-t small { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
-  .mp__ess-t b { font-size: 20px; line-height: 1.15; letter-spacing: -0.03em; font-weight: 600; }
-  .mp__ess-t em { font-style: normal; font-size: 14px; color: var(--text-2); }
-  .mp__ess-n { margin-top: 4px; font-size: 14px; line-height: 1.5; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .mp__ess-t small { order: 1; font-size: 13px; color: var(--text-3); }
+  .mp__ess-t b { font-size: 17px; line-height: 1.2; letter-spacing: -0.02em; font-weight: 500; }
+  .mp__ess-t em { display: none; }
+  .mp__ess-n { order: 2; margin-top: 4px; font-size: 14px; line-height: 1.5; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .mp__ess-n.is-hint { color: var(--text-3); }
   /* One essential reads as a deliberate hero: cover left, the story right, nothing empty. */
   .mp__ess.is-one { grid-template-columns: minmax(0, 1fr); }
@@ -411,17 +412,17 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__ess.is-one .mp__ess-t b { font-size: clamp(1.8rem, 1rem + 2.4vw, 3rem); letter-spacing: -0.04em; }
   .mp__ess.is-one .mp__ess-n { max-width: 52ch; font-size: 16px; -webkit-line-clamp: 6; }
   /* All work, by year. */
-  .mp__years { display: flex; flex-direction: column; }
-  .mp__year { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 4px 24px; padding: 18px 0; border-top: 1px solid var(--line-faint); }
-  .mp__year h3 { margin: 6px 0 0; font-size: 14px; font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-  .mp__year ul { display: grid; gap: 4px; }
-  .mp__year a { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 16px; padding: 6px 8px 6px 0; border-radius: 10px; color: inherit; text-decoration: none; }
+  /* All work: the rest of the catalogue as a quieter shelf of smaller covers, grouped by year. */
+  .mp__years { display: flex; flex-direction: column; gap: 34px; }
+  .mp__year h3 { margin: 0 0 14px; font-size: 14px; font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+  .mp__year ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 148px), 1fr)); gap: 22px 16px; }
+  .mp__year a { display: flex; flex-direction: column; gap: 10px; color: inherit; text-decoration: none; }
   .mp__year a:hover .mp__row-t b { text-decoration: underline; text-underline-offset: 3px; }
-  .mp__row-cover { width: 56px; height: 56px; border-radius: 8px; }
+  .mp__row-cover { aspect-ratio: 1; border-radius: 8px; }
   .mp__row-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .mp__row-t b { font-weight: 500; font-size: 16px; letter-spacing: -0.01em; }
-  .mp__row-t b i { margin-left: 10px; padding: 2px 8px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); font-style: normal; font-size: 11px; font-weight: 400; color: var(--text-3); vertical-align: 2px; }
-  .mp__row-t small { font-size: 13px; color: var(--text-3); }
+  .mp__row-t b { font-weight: 500; font-size: 14px; letter-spacing: -0.01em; line-height: 1.25; }
+  .mp__row-t b i { display: block; width: max-content; margin: 4px 0 0; padding: 1px 7px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); font-style: normal; font-size: 10.5px; font-weight: 400; color: var(--text-3); }
+  .mp__row-t small { font-size: 12.5px; color: var(--text-3); }
   .mp__row-n { margin-top: 2px; font-size: 14px; line-height: 1.45; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .mp__shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 22px 16px; }
   .mp__shelf a { display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: inherit; }
@@ -454,8 +455,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
     .mp__name { font-size: clamp(2.1rem, 10vw, 3rem); }
     .mp__ess.is-one a { flex-direction: column; align-items: flex-start; }
     .mp__ess.is-one .mp__ess-cover { width: min(100%, 300px); }
-    .mp__year { grid-template-columns: 1fr; gap: 0; }
-    .mp__year h3 { margin: 0 0 8px; }
+    .mp__year ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 </style>
 
