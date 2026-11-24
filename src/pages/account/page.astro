@@ -11,6 +11,7 @@ import { SHOWCASE, canShowcase } from '@/lib/showcase';
 import { accentsFor, backdropsFor, pageStyle } from '@/lib/page-style';
 import { homeMetroOf } from '@/server/progress';
 import { PLACES, PLACE_BY_ID } from '@/data/places';
+import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import '@/styles/app.css';
 import '@/styles/profile.css';
 export const prerender = false;
@@ -41,7 +42,7 @@ const accents = accentsFor(distinction);
 const backdrops = backdropsFor(distinction);
 const homeId = me ? homeMetroOf(me.placeId) : null;
 const homeName = homeId ? PLACE_BY_ID.get(homeId)?.name ?? null : null;
-const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId).sort((a, b) => a.name.localeCompare(b.name));
+const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId);
 ---
 <BaseLayout title="Customize your page" noindex assistant={false} messages={false}>
   <section class="app">
@@ -112,18 +113,12 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId).so
             <legend>Cities <small>Your home city, where you are now, and the cities you work in or visit.</small></legend>
             <p class="pg__home">Home: <b>{homeName ?? 'Not set'}</b> <a class="link" href="/account/profile">Change in Edit profile</a></p>
             <label class="field"><span>Where you are now <small class="dim">Set this when you travel. Your page says “In … now” until you switch back.</small></span>
-              <select class="input" name="away">
-                <option value="">At home{homeName ? ' (' + homeName + ')' : ''}</option>
-                {metroList.map((c) => <option value={c.id} selected={page.away === c.id}>{c.name}{c.region ? ', ' + c.region : ''}</option>)}
-              </select>
+<PlaceSelect name="away" selected={page.away || null} placeholder="Type a city or ZIP code. Leave empty when you’re home" />
             </label>
             <p class="pg__lab">Cities you’ve been <small>Shown on your page as your territory. Connections you make in a city are counted there automatically.</small></p>
             <ul class="pg__cities" data-cities role="list"></ul>
             <div class="pg__cityadd">
-              <select class="input" data-city-pick aria-label="Add a city">
-                <option value="">Add a city…</option>
-                {metroList.map((c) => <option value={c.id}>{c.name}{c.region ? ', ' + c.region : ''}</option>)}
-              </select>
+              <div data-city-pick><PlaceSelect name="cityAdd" placeholder="Add a city: type its name or a ZIP code" /></div>
             </div>
           </fieldset>
         )}
@@ -234,7 +229,8 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId).so
   // Cities: chips for the cities the member marked; the picker adds one.
   const cityNames = (data as unknown as { cityNames: Record<string, string>; cities: string[] }).cityNames;
   const cityBox = form.querySelector<HTMLUListElement>('[data-cities]');
-  const cityPick = form.querySelector<HTMLSelectElement>('[data-city-pick]');
+  const cityPick = form.querySelector<HTMLInputElement>('[data-city-pick] [data-cf-value]');
+  const cityText = form.querySelector<HTMLInputElement>('[data-city-pick] [data-cf-text]');
   const addCity = (id: string) => {
     if (!cityBox || !cityNames[id] || cityBox.querySelector('[data-id="' + id + '"]') || cityBox.children.length >= 24) return;
     const li = document.createElement('li'); li.dataset.id = id;
@@ -243,7 +239,12 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId).so
     x.addEventListener('click', () => li.remove()); li.append(x); cityBox.append(li);
   };
   (data as unknown as { cities: string[] }).cities.forEach(addCity);
-  cityPick?.addEventListener('change', () => { addCity(cityPick.value); cityPick.value = ''; });
+  // Choosing a city from the search adds it as a chip and clears the box for the next one.
+  cityPick?.addEventListener('change', () => {
+    if (!cityPick.value) return;
+    addCity(cityPick.value);
+    if (cityText) { cityText.value = ''; cityText.dispatchEvent(new Event('input')); cityText.blur(); }
+  });
 
   const ess = [...form.querySelectorAll<HTMLInputElement>('[data-ess] input[type=checkbox]')];
   const capEss = () => { const n = ess.filter((c) => c.checked).length; ess.forEach((c) => (c.disabled = !c.checked && n >= 6)); };
