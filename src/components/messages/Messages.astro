@@ -297,6 +297,7 @@
     .om-launch__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .om-launch .om-badge { position: absolute; top: -3px; right: -3px; }
     .om-launch .om-dot { position: absolute; top: 6px; right: 6px; }
+    html.is-signed-in .om-launch { display: none; }
     body:has([data-world]) .om-launch { bottom: calc(152px + 92px + env(safe-area-inset-bottom)); }
     body:has([data-sheet='half'], [data-sheet='full']) .om-launch { opacity: 0; pointer-events: none; }
     body:has(.world.has-cards) .om-launch { top: calc(var(--hdr-h) + var(--pnav-h) + 10px); bottom: auto; }
