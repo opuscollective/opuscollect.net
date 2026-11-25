@@ -15,6 +15,10 @@ export const SITE = {
   /** The product the homepage introduces, shown as the hero's headline, with heroHeadline as the single line beneath it. Working title (Bogo is choosing between "Opus World" and "Opus Earth"): change it here only. */
   heroProduct: 'Opus World',
   heroHeadline: 'Create connections that create opportunity.',
+  /** Who Opus is for, in plain words, under the headline (working copy; a line Bogo approved in the 2026-11-22 brief). */
+  heroFor: 'Find artists, producers and engineers in your city.',
+  /** The way in for studio owners, on the homepage itself (working copy). */
+  heroStudios: { lead: 'Run a studio?', action: 'List it free', href: '/business' },
   heroLine: 'Find artists, producers and engineers in your city. See their work. Connect.',
   description:
     'Opus Collective is the professional network for independent music. Discover artists, producers, engineers and songwriters, and earn Opus Verified recognition.',

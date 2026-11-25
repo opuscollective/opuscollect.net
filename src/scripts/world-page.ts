@@ -37,7 +37,7 @@ const VIEW_KEY = 'opus.world.view.v2';
 /** Results near a searched city when there is no map to follow (List view), in km. */
 const NEAR_KM = 100;
 
-export function initWorld(root: HTMLElement) {
+export async function initWorld(root: HTMLElement) {
   const $ = <T extends Element = HTMLElement>(s: string) => root.querySelector<T>(s)!;
   const results = $('[data-results]');
   const empty = $('[data-empty]');
@@ -116,9 +116,22 @@ export function initWorld(root: HTMLElement) {
   let from: From | null = readFrom();
   // A plain /world visit (nothing asked for in the address) also gets the question the first time.
   const plain = location.pathname.replace(/\/$/, '') === '/world' && !params.get('city') && !f.text && !f.kinds.length && !params.get('p');
+  // A category page opened with nothing else asked for (/musicians, /studios, /organizations): it keeps the visitor's city too.
+  const bare = !params.get('city') && !f.text && !params.get('p');
+  // Members are never asked: Opus already knows their city (where they say they are now, else home). It is
+  // remembered on this device like any answer, so the next visit is instant.
+  if (!from && (entering || bare) && document.cookie.split('; ').includes('opus_in=1')) {
+    try {
+      const ctl = new AbortController(); const stop = setTimeout(() => ctl.abort(), 1500);
+      const t = (await (await fetch('/api/travel', { credentials: 'same-origin', signal: ctl.signal })).json()) as { signedIn?: boolean; home?: { name: string | null } | null; away?: { name: string | null } | null };
+      clearTimeout(stop);
+      const name = t.signedIn ? t.away?.name ?? t.home?.name : null;
+      if (name && findCity(name)) { from = { mode: 'city', name }; saveFrom(from); }
+    } catch { /* ask, as for a visitor */ }
+  }
   const asking = !from && (entering || plain);
   // Answered before: go straight there, without asking again.
-  if (!asking && from?.mode === 'city' && (entering || plain)) params.set('city', from.name);
+  if (!asking && from?.mode === 'city' && (entering || bare)) params.set('city', from.name);
   if (asking) root.dataset.entry = 'ask';
   else if (handoff) root.dataset.entry = 'arrive';
   else delete root.dataset.entry;
@@ -320,11 +333,13 @@ export function initWorld(root: HTMLElement) {
       ls = ls.filter((l) => hasPoint(l) && km(place!, metroOf(l)) <= NEAR_KM);
     }
     const score = (l: Listing) => (isVerified(l) ? 0 : 1);
+    // Opus is about people: in a mixed list they come first, then groups, then studios (never paid placement).
+    const rank = (l: Listing) => (l.kind === 'musician' ? 0 : l.kind === 'organization' ? 1 : 2);
     ls.sort((a, b) => {
       if (sort === 'name') return a.name.localeCompare(b.name);
       if (sort === 'recent') return b.id.localeCompare(a.id);
-      // Recommended: verified first, then a fair mix of kinds (never paid placement).
-      return score(a) - score(b) || a.id.localeCompare(b.id);
+      // Recommended: people first, verified first within each kind.
+      return rank(a) - rank(b) || score(a) - score(b) || a.id.localeCompare(b.id);
     });
     return ls;
   }
@@ -689,6 +704,53 @@ export function initWorld(root: HTMLElement) {
   results.addEventListener('focusin', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wt'); map?.setHover(c?.dataset.id ?? null); });
 
   let pvToken = 0;
+  let pvListing: Listing | null = null;
+
+  // Connect from the card: signed-in members write the request right here instead of being sent to the full profile first.
+  const wc = root.querySelector<HTMLDialogElement>('[data-wconnect]') ?? document.querySelector<HTMLDialogElement>('[data-wconnect]');
+  const wcForm = wc?.querySelector<HTMLFormElement>('[data-wconnect-form]');
+  let wcCta: HTMLAnchorElement | null = null;
+  let wcHandle = '';
+  if (wc && wcForm && typeof wc.showModal === 'function') {
+    const ta = wcForm.querySelector<HTMLTextAreaElement>('textarea')!;
+    const msg = wcForm.querySelector<HTMLElement>('[data-wc-msg]')!;
+    const send = wcForm.querySelector<HTMLButtonElement>('[type=submit]')!;
+    pvBody.addEventListener('click', (e) => {
+      const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a.pv__btn');
+      if (!a || !/[?&]connect=1/.test(a.href) || !document.documentElement.classList.contains('is-signed-in') || !pvListing) return;
+      const handle = new URL(a.href).pathname.replace(/^\/+|\/+$/g, '');
+      if (!handle || handle.includes('/')) return;
+      e.preventDefault();
+      wcCta = a; wcHandle = handle;
+      const first = pvListing.name.split(' ')[0] || pvListing.name;
+      wc.querySelector('[data-wc-title]')!.textContent = `Connect with ${pvListing.name}`;
+      wc.querySelector('[data-wc-sub]')!.textContent = pvListing.kind === 'musician' ? [SPECIALTIES[pvListing.primarySpecialty]?.label, pvListing.location.city].filter(Boolean).join(' · ') : '';
+      wc.querySelector('[data-wc-name]')!.textContent = first;
+      const av = wc.querySelector<HTMLElement>('[data-wc-av]')!;
+      av.style.backgroundImage = pvListing.photo ? `url("${pvListing.photo}")` : '';
+      ta.value = ta.dataset.default ?? '';
+      msg.textContent = ''; send.disabled = false; send.textContent = 'Send request';
+      wc.showModal();
+      ta.focus();
+    });
+    wc.querySelector('[data-wc-cancel]')?.addEventListener('click', () => wc.close());
+    wc.addEventListener('click', (e) => { if (e.target === wc) wc.close(); });
+    wcForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (send.disabled) return;
+      send.disabled = true; send.textContent = 'Sending…'; msg.textContent = '';
+      try {
+        const r = await fetch('/api/connections', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ to: wcHandle, message: ta.value }) });
+        const d = (await r.json().catch(() => ({}))) as { error?: string; connected?: boolean };
+        // 409 means there is already a request or a connection: the card should say so rather than offer Connect again.
+        if (!r.ok && r.status !== 409) { msg.textContent = d.error || 'That didn’t send. Please try again.'; send.disabled = false; send.textContent = 'Send request'; return; }
+        if (wcCta) { wcCta.textContent = d.connected || /connected/i.test(d.error ?? '') ? 'Connected' : 'Requested'; wcCta.href = wcCta.href.replace(/[?&]connect=1/, ''); }
+        wc.close();
+      } catch {
+        msg.textContent = 'That didn’t send. Check your connection and try again.'; send.disabled = false; send.textContent = 'Send request';
+      }
+    });
+  }
   let returnFocus: HTMLElement | null = null;
   let pushed = false;
   const asModal = () => mobile.matches || view === 'list';
@@ -723,6 +785,7 @@ export function initWorld(root: HTMLElement) {
       const d = (await r.json()) as { listing: Listing; detail: ProfileDetail };
       if (token !== pvToken) return;
       pvBody.innerHTML = previewHtml(d.listing, d.detail);
+      pvListing = d.listing;
       $('[data-preview-label]').textContent = d.listing.name;
       // Signed-in visitors see what they share with this member. A separate, private request: the profile itself stays cacheable.
       const slot = pvBody.querySelector<HTMLElement>('[data-pv-overlap]');
@@ -1136,7 +1199,10 @@ export function initWorld(root: HTMLElement) {
   // ---------- Data: real published members from the directory API ----------
   async function load() {
     try {
-      const r = await fetch('/api/world');
+      // Someone who just went live sees themselves straight away (the shared list is cached for a few seconds).
+      let fresh = '';
+      try { const at = Number(sessionStorage.getItem('opus.world.fresh')); if (at && Date.now() - at < 10 * 60_000) fresh = `?fresh=${at}`; } catch { /* cached list */ }
+      const r = await fetch(`/api/world${fresh}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = (await r.json()) as { listings: Listing[]; stats: WorldStats; includesSample: boolean };
       ALL = d.listings;

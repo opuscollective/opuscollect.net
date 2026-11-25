@@ -4,6 +4,17 @@
  * the Worker checks the code (/api/auth/login-verify).
  */
 import '@/styles/signin.css';
+import { EMAIL_SENDING } from '@/lib/features';
+
+/** How this person signed in last time on this device, so the form opens on it. Never the email or anything secret. */
+const METHOD_KEY = 'opus.signin.method';
+type Method = 'code' | 'password';
+const savedMethod = (): Method => {
+  try { const m = localStorage.getItem(METHOD_KEY); if (m === 'code' || m === 'password') return m; } catch { /* default below */ }
+  // Nothing remembered: emailed codes when email works, the password form while it doesn't (see features.ts).
+  return EMAIL_SENDING ? 'code' : 'password';
+};
+const remember = (m: Method) => { try { localStorage.setItem(METHOD_KEY, m); } catch { /* fine */ } };
 
 interface Opts { next?: string; invite?: string; onDone?: (d: { joined?: { href?: string } | null }) => void; signUpHref?: string }
 
@@ -74,6 +85,7 @@ export function mountSignin(root: HTMLElement, opts: Opts = {}) {
     show(msg2, ''); busy(s2, true);
     try {
       const d = await post('login-verify', { email: email.value, code: code.value, ...(opts.invite ? { invite: opts.invite, join: true } : {}) });
+      remember('code');
       opts.onDone?.(d as { joined?: { href?: string } | null });
     } catch (e) { show(msg2, (e as Error).message); busy(s2, false); code.select(); }
   };
@@ -90,10 +102,12 @@ export function mountSignin(root: HTMLElement, opts: Opts = {}) {
     e.preventDefault(); show(msg3, ''); busy(s3, true);
     try {
       const d = await post('login', { email: email3.value, password: pw.value, ...(opts.invite ? { invite: opts.invite, join: true } : {}) });
+      remember('password');
       opts.onDone?.(d as { joined?: { href?: string } | null });
     } catch (err) { show(msg3, (err as Error).message); busy(s3, false); pw.select(); }
   });
-  email.focus();
+  if (savedMethod() === 'password') { s1.hidden = true; s3.hidden = false; email3.focus(); }
+  else email.focus();
 }
 
 let dlg: HTMLDialogElement | null = null;

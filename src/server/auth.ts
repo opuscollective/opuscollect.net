@@ -6,11 +6,11 @@ import type { AstroCookies } from 'astro';
 import { DUMMY_HASH, hashPassword, passwordProblem, verifyPassword } from './password';
 import { limit } from './ratelimit';
 import { createSession, destroyOtherSessions, type SessionUser } from './session';
-import { loginCodeMail, resetPasswordMail, sendMail, verifyEmailMail, type EmailResult } from './email';
+import { confirmCodeMail, loginCodeMail, resetPasswordMail, sendMail, type EmailResult } from './email';
+import { checkTurnstile } from './turnstile';
 import { HttpError, audit, isEmail, now, randomId, sha256 } from './util';
 
 const MIN = 60_000;
-const VERIFY_TTL = 24 * 60 * MIN;
 const RESET_TTL = 60 * MIN;
 
 interface Ctx { env: Env; cookies: AstroCookies; request: Request; ip: string; origin: string; secure: boolean }
@@ -35,12 +35,42 @@ async function consumeToken(db: D1Database, token: string, purpose: 'verify_emai
   return row?.user_id ?? null;
 }
 
-export async function sendVerification(ctx: Ctx, user: { id: string; email: string }): Promise<EmailResult> {
-  const token = await issueToken(ctx.env.DB, user.id, 'verify_email', VERIFY_TTL);
-  return sendMail(ctx.env, verifyEmailMail(user.email, `${ctx.origin}/verify-email?token=${token}`));
+const CODE_TTL_S = 10 * 60;
+const CODE_TRIES = 5;
+const sixDigits = () => String(crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000).padStart(6, '0');
+
+/**
+ * Confirming an email is a 6-digit code typed during sign-up (Bogo, 2026-11-24), not a link to find later.
+ * Codes live in KV for 10 minutes, hashed, with a try limit; only the newest one works. Outside production with
+ * no email provider the code is also returned (devCode) so previews can be tested; production never returns it.
+ */
+export async function sendConfirmCode(ctx: Ctx, user: { id: string; email: string }): Promise<{ status: EmailResult; devCode?: string }> {
+  const code = sixDigits();
+  await ctx.env.WAITLIST.put(`confirm:${user.id}`, JSON.stringify({ h: await sha256(`${user.id}:${code}`), n: 0, exp: Date.now() + CODE_TTL_S * 1000 }), { expirationTtl: CODE_TTL_S });
+  const status = await sendMail(ctx.env, confirmCodeMail(user.email, code));
+  return { status, ...(status === 'logged' && ctx.env.SITE_ENV !== 'production' ? { devCode: code } : {}) };
 }
 
-export async function register(ctx: Ctx, body: { email?: unknown; password?: unknown; agree?: unknown }) {
+export async function confirmWithCode(ctx: Ctx, user: SessionUser, body: { code?: unknown }) {
+  const db = ctx.env.DB;
+  if (user.emailConfirmed) return { ok: true as const };
+  const code = typeof body.code === 'string' ? body.code.replace(/\D/g, '').slice(0, 6) : '';
+  await limit(db, `confirm:user:${user.id}`, 20, 15 * MIN);
+  const bad = () => new HttpError(400, 'That code didn’t work. Check it or send a new one.', 'code');
+  const key = `confirm:${user.id}`;
+  const rec = code.length === 6 ? await ctx.env.WAITLIST.get<{ h: string; n: number; exp: number }>(key, 'json') : null;
+  if (!rec || rec.n >= CODE_TRIES) throw bad();
+  if (rec.h !== (await sha256(`${user.id}:${code}`))) {
+    await ctx.env.WAITLIST.put(key, JSON.stringify({ ...rec, n: rec.n + 1 }), { expirationTtl: Math.max(60, Math.ceil((rec.exp - Date.now()) / 1000)) });
+    throw bad();
+  }
+  await ctx.env.WAITLIST.delete(key);
+  await db.prepare('UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE id = ?').bind(now(), now(), user.id).run();
+  await audit(db, user.id, 'account.email_verified');
+  return { ok: true as const };
+}
+
+export async function register(ctx: Ctx, body: { email?: unknown; password?: unknown; agree?: unknown; turnstile?: unknown }) {
   const db = ctx.env.DB;
   const email = normEmail(body.email);
   const password = typeof body.password === 'string' ? body.password : '';
@@ -49,6 +79,7 @@ export async function register(ctx: Ctx, body: { email?: unknown; password?: unk
   if (pwErr) throw new HttpError(400, pwErr, 'password');
   if (body.agree !== true) throw new HttpError(400, 'Please accept the terms and privacy policy to continue.', 'agree');
   await limit(db, `register:ip:${ctx.ip}`, 10, 60 * MIN);
+  await checkTurnstile(ctx.env, body.turnstile, ctx.ip);
 
   const existing = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
   if (existing) throw new HttpError(409, 'An account with this email already exists. Try signing in or resetting your password.', 'email');
@@ -59,8 +90,8 @@ export async function register(ctx: Ctx, body: { email?: unknown; password?: unk
     .bind(id, email, await hashPassword(password), t, t).run();
   await audit(db, id, 'account.created');
   await createSession(db, ctx.cookies, id, ctx.request.headers.get('user-agent'), ctx.secure);
-  const email_status = await sendVerification(ctx, { id, email });
-  return { id, email, email_status };
+  const sent = await sendConfirmCode(ctx, { id, email });
+  return { id, email, email_status: sent.status, devCode: sent.devCode };
 }
 
 export async function login(ctx: Ctx, body: { email?: unknown; password?: unknown }) {
@@ -77,9 +108,6 @@ export async function login(ctx: Ctx, body: { email?: unknown; password?: unknow
   return { id: user.id };
 }
 
-const CODE_TTL_S = 10 * 60;
-const CODE_TRIES = 5;
-
 /**
  * Sign in by emailed code. Always answers the same way so it can't reveal which emails have accounts.
  * Codes live in KV for 10 minutes, hashed, with a try limit. Outside production with no email provider,
@@ -93,7 +121,7 @@ export async function requestLoginCode(ctx: Ctx, body: { email?: unknown }) {
   await limit(db, `code:email:${email}`, 5, 15 * MIN);
   const user = await db.prepare('SELECT id, email FROM users WHERE email = ?').bind(email).first<{ id: string; email: string }>();
   if (!user) return { ok: true as const };
-  const code = String(crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000).padStart(6, '0');
+  const code = sixDigits();
   await ctx.env.WAITLIST.put(`login:${email}`, JSON.stringify({ h: await sha256(`${user.id}:${code}`), n: 0, exp: Date.now() + CODE_TTL_S * 1000 }), { expirationTtl: CODE_TTL_S });
   const sent = await sendMail(ctx.env, loginCodeMail(user.email, code));
   await audit(db, user.id, 'account.login_code_sent');
@@ -133,9 +161,9 @@ export async function verifyEmail(env: Env, token: string) {
 }
 
 export async function resendVerification(ctx: Ctx, user: SessionUser) {
-  if (user.emailVerified) return 'already' as const;
-  await limit(ctx.env.DB, `verify:user:${user.id}`, 5, 60 * MIN);
-  return sendVerification(ctx, user);
+  if (user.emailConfirmed) return { status: 'already' as const };
+  await limit(ctx.env.DB, `verify:user:${user.id}`, 8, 60 * MIN);
+  return sendConfirmCode(ctx, user);
 }
 
 /** Always answers the same way so the form can't be used to discover which emails have accounts. */

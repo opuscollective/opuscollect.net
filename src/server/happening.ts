@@ -2,6 +2,7 @@
  * Happening: what is going on in one city, gathered from data that already exists
  * (listening parties, events, studios, members). Real rows only; a quiet city shows as quiet.
  */
+import { hasInWorld } from './schema';
 import { PLACE_BY_ID, type Place } from '@/data/places';
 import { citySlug } from '@/data/cities';
 import { SPECIALTIES } from '@/data/specialties';
@@ -26,13 +27,14 @@ const soft = async <T>(p: Promise<T>, fallback: T): Promise<T> => { try { return
 export async function happeningIn(env: Env, metroId: string, userId: string | null, t = Date.now()): Promise<Happening | null> {
   const city = PLACE_BY_ID.get(metroId);
   if (!city || city.kind !== 'metro') return null;
+  const listed = (await hasInWorld(env.DB)) ? 'AND p.in_world = 1' : '';
   const [parties, events, dir, people, mine] = await Promise.all([
     soft(listPublicParties(env, t), []),
     soft(listPublicEvents(env.DB, { placeId: city.id, limit: 12 }, t), []),
     soft(directory(env), { listings: [], includesSample: false }),
     soft(env.DB.prepare(
       `SELECT p.handle, p.display_name, p.photo_key, p.primary_specialty, p.created_at FROM profiles p JOIN places pl ON pl.id = p.place_id
-       WHERE p.kind = 'musician' AND p.status = 'published' AND coalesce(pl.metro_id, pl.id) = ? AND coalesce(p.location_visibility, 'city') IN ('city', 'metro')
+       WHERE p.kind = 'musician' AND p.status = 'published' ${listed} AND coalesce(pl.metro_id, pl.id) = ? AND coalesce(p.location_visibility, 'city') IN ('city', 'metro')
        ORDER BY p.created_at DESC LIMIT 8`).bind(city.id).all<{ handle: string; display_name: string; photo_key: string | null; primary_specialty: string | null; created_at: number }>().then((r) => r.results), []),
     userId ? soft(myEvents(env.DB, userId, t), []) : Promise.resolve([]),
   ]);

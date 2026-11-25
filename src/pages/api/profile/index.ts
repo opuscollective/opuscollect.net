@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getMyProfile, missingForPublish, saveProfile } from '@/server/profiles';
+import { getMyProfile, missingForPublish, publishProfile, saveProfile } from '@/server/profiles';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
 export const prerender = false;
@@ -17,6 +17,8 @@ export const GET: APIRoute = async ({ locals }) => {
 export const POST: APIRoute = async ({ locals, request }) => {
   try {
     if (!locals.user) throw new HttpError(401, 'Please sign in first.');
-    return json(await saveProfile(locals.runtime.env, locals.user, await readJson(request)));
+    const body = await readJson<Record<string, unknown>>(request);
+    if (body.publishOnly === true) return json(await publishProfile(locals.runtime.env, locals.user));
+    return json(await saveProfile(locals.runtime.env, locals.user, body));
   } catch (e) { return fail(e); }
 };

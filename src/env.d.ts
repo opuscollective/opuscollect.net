@@ -20,6 +20,9 @@ interface Env {
   /** Resend API key (optional alternative to Cloudflare Email Service). Set with `wrangler secret put`. */
   RESEND_API_KEY?: string;
   EXPORT_KEY?: string;
+  /** Cloudflare Turnstile (bot check on sign-up). Optional: with both set, sign-up requires a passed check. Site key is public; the secret is set with `wrangler secret put TURNSTILE_SECRET_KEY`. */
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
   SITE_ENV: 'production' | 'preview' | 'development';
   SHOW_SAMPLE_DATA: string;
   EMAIL_FROM: string;

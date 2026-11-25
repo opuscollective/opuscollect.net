@@ -1,4 +1,6 @@
 ---
+import ConfirmCode from '@/components/auth/ConfirmCode.astro';
+import { EMAIL_CONFIRM_REQUIRED } from '@/lib/features';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import '@/styles/app.css';
 import ThemeSwitch from '@/components/ui/ThemeSwitch.astro';
@@ -30,14 +32,13 @@ const pending = await db
       {reset && <p class="notice notice--ok" style="margin-top:24px">Your password was changed. Other devices were signed out.</p>}
 
       <div class="acct" style="margin-top:32px">
-        {!user.emailVerified && (
+        {!user.emailConfirmed && (
           <div class="panel" data-verify-panel>
-            <h2>Confirm your email</h2>
-            <p class="dim">We sent a link to {user.email}. Confirming lets you publish your profile and connect with members.</p>
-            <div class="row" style="margin-top:16px">
-              <button class="btn-app btn-app--ghost" type="button" data-resend>Send a new link</button>
-              <span class="dim" data-resend-status role="status" style="font-size:14px"></span>
-            </div>
+            <h2>{EMAIL_CONFIRM_REQUIRED ? 'Confirm your email' : 'Confirm your email to secure your account'}</h2>
+            <p class="dim">{EMAIL_CONFIRM_REQUIRED
+              ? `Press “Send a new code” and type the 6 digits we email to ${user.email}. Confirming puts you in World and lets you connect with members.`
+              : `Confirming ${user.email} proves the account is yours and lets you recover it if you forget your password. You can publish and connect in the meantime.`}</p>
+            <div style="margin-top:16px;max-width:360px"><ConfirmCode /></div>
           </div>
         )}
 
@@ -136,7 +137,7 @@ const pending = await db
     resend.disabled = true;
     const r = await fetch('/api/auth/resend-verification', { method: 'POST' });
     const d = await r.json().catch(() => ({}));
-    if (rs) rs.textContent = r.ok ? (d.emailStatus === 'unconfigured' ? 'Email sending isn’t set up yet. Please try again later.' : 'Sent. Check your inbox.') : d.error ?? 'Couldn’t send. Try again.';
+    if (rs) rs.textContent = r.ok ? (d.emailStatus === 'unconfigured' ? 'Email isn’t sending yet. Nothing is needed from you for now; we’ll ask again when it is.' : 'Sent. Check your inbox.') : d.error ?? 'Couldn’t send. Try again.';
     resend.disabled = false;
   });
 </script>

@@ -9,6 +9,8 @@ import ProfilePreview from '@/components/world/ProfilePreview.astro';
 import ProductNav from '@/components/product/ProductNav.astro';
 import '@/styles/world.css';
 import '@/styles/party.css';
+import '@/styles/connect.css';
+import { DEFAULT_INTRO, INTRO_MAX } from '@/lib/connect';
 
 const FILTER_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
 
@@ -210,6 +212,24 @@ const navCurrent = kind === 'studio' ? 'discover' : kind === 'musician' ? 'peopl
     </div>
 
     <ProfilePreview />
+    <!-- Connect, right on the card: the same request box as the profile page, without leaving World. -->
+    <dialog class="cdlg" data-wconnect aria-labelledby="wcdlg-title">
+      <form class="cdlg__form" data-wconnect-form novalidate>
+        <div class="cdlg__who">
+          <span class="cdlg__av" data-wc-av aria-hidden="true"></span>
+          <span><b id="wcdlg-title" data-wc-title>Connect</b><small data-wc-sub></small></span>
+        </div>
+        <label class="cdlg__label"><span>Introduction (optional)</span>
+          <textarea class="cdlg__ta" name="message" maxlength={INTRO_MAX} rows="4" data-default={DEFAULT_INTRO}>{DEFAULT_INTRO}</textarea>
+        </label>
+        <p class="cdlg__fine"><span data-wc-name>They</span> will see this with your request. It isn’t a message; once you’re connected you can message each other.</p>
+        <p class="cdlg__msg" data-wc-msg role="alert"></p>
+        <div class="cdlg__row">
+          <button class="cdlg__btn cdlg__btn--ghost" type="button" data-wc-cancel>Cancel</button>
+          <button class="cdlg__btn" type="submit">Send request</button>
+        </div>
+      </form>
+    </dialog>
     <button type="button" class="world__mode" data-mode hidden></button>
   </div>
 </BaseLayout>

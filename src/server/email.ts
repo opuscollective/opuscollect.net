@@ -69,6 +69,15 @@ export const noticeMail = (to: string, subject: string, heading: string, body: s
   to, subject, heading, body, action: { label, url }, footnote,
 });
 
+/** The code a new member types right after signing up. Subject and body lead with the code so phones can offer it from Mail. */
+export const confirmCodeMail = (to: string, code: string): Mail => ({
+  to, subject: `${code} is your Opus code`,
+  heading: 'Confirm your email',
+  body: 'Welcome to Opus. Enter this code on Opus to confirm your email and go live in World. It works for 10 minutes and only once.',
+  code,
+  footnote: "If you didn't create an Opus account, you can ignore this email.",
+});
+
 export const loginCodeMail = (to: string, code: string): Mail => ({
   to, subject: `${code} is your Opus sign-in code`,
   heading: 'Your sign-in code',

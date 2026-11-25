@@ -4,6 +4,7 @@ import { getClosedDays, getRules } from '@/server/business';
 import { loadBusiness } from '@/server/business-page';
 import { localDay } from '@/lib/booking-time';
 import { HOLIDAY_NAMES, upcomingHolidays } from '@/lib/holidays';
+import { zoneName } from '@/lib/place-tz';
 export const prerender = false;
 
 const ctx = await loadBusiness(Astro);
@@ -17,9 +18,13 @@ const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}
 const upcomingClosed = closed.filter((c) => c.day >= today && c.note !== 'holiday');
 const holidaysOn = closed.some((c) => c.note === 'holiday');
 const holidays = upcomingHolidays(today);
+// The holiday list is the United States calendar, so only US studios are offered the switch.
+const country = studio.placeId ? (await db.prepare('SELECT country FROM places WHERE id = ?').bind(studio.placeId).first<{ country: string }>())?.country : null;
+const usStudio = !country || country === 'US';
+const several = ctx.studios.length > 1;
 ---
 <BusinessShell title="Hours" section="hours" studio={studio} pending={pending}
-  lead={`When customers can request sessions, in your studio’s time zone (${studio.timezone.replace(/_/g, ' ')}). Change the zone on your studio profile.`}>
+  lead={`${several ? `Hours for ${studio.name}. Each of your studios keeps its own hours. ` : ''}When customers can request sessions, in ${zoneName(studio.timezone)}, taken from your studio’s city.`}>
   <form class="form hw" data-hours novalidate data-today={today} data-holidays={JSON.stringify(holidays)} data-init={JSON.stringify(ORDER.map((wd) => { const f = rules.find((x) => x.weekday === wd); return { wd, open: !!f, s: f?.start_min ?? 600, e: f ? (f.end_min || 1440) : 1080 }; }))}>
     <div class="panel">
       <div class="hw__head">
@@ -55,10 +60,17 @@ const holidays = upcomingHolidays(today);
 
     <div class="panel" style="margin-top:16px">
       <h2>Days off</h2>
-      <label class="hh">
-        <span class="hh__t"><b>Closed on holidays</b><small>{HOLIDAY_NAMES.join(', ')}.</small></span>
-        <span class="sw"><input type="checkbox" role="switch" data-holidays-on checked={holidaysOn} /><i aria-hidden="true"></i></span>
-      </label>
+      {usStudio ? (
+        <label class="hh">
+          <span class="hh__t"><b>Close on US holidays</b><small data-hol-text data-on={`Closed on ${HOLIDAY_NAMES.join(', ')}.`} data-off={`Open on holidays. Turn on to close on ${HOLIDAY_NAMES.join(', ')}.`}>{holidaysOn ? `Closed on ${HOLIDAY_NAMES.join(', ')}.` : `Open on holidays. Turn on to close on ${HOLIDAY_NAMES.join(', ')}.`}</small></span>
+          <span class="sw"><input type="checkbox" role="switch" data-holidays-on checked={holidaysOn} aria-label="Close on US holidays" /><i aria-hidden="true"></i></span>
+        </label>
+      ) : (
+        <>
+          <input type="checkbox" data-holidays-on hidden />
+          <p class="dim">Holidays differ by country, so close yours by tapping the dates below.</p>
+        </>
+      )}
       <p class="dim">Need another day off? Tap a date to close it, tap again to open it. No one can request a session on a closed date.</p>
       <div class="hc" data-cal>
         <div class="hc__nav"><button type="button" class="chip chip--quiet" data-cal-prev aria-label="Earlier month">‹</button><b data-cal-title></b><button type="button" class="chip chip--quiet" data-cal-next aria-label="Later month">›</button></div>
@@ -70,8 +82,7 @@ const holidays = upcomingHolidays(today);
       </ul>
     </div>
 
-    <div data-status class="form-status" style="margin-top:16px"></div>
-    <div class="row" style="margin-top:16px"><button class="btn-app" type="submit">Save hours</button></div>
+    <div class="hw__actions"><div data-status class="form-status hw__status"></div><button class="btn-app" type="submit">Save hours</button></div>
   </form>
 </BusinessShell>
 
@@ -152,6 +163,8 @@ const holidays = upcomingHolidays(today);
   const today = form.dataset.today!;
   const hol = new Set((JSON.parse(form.dataset.holidays!) as { day: string }[]).map((h) => h.day));
   const holOn = form.querySelector<HTMLInputElement>('[data-holidays-on]')!;
+  const holText = form.querySelector<HTMLElement>('[data-hol-text]');
+  holOn.addEventListener('change', () => { if (holText) holText.textContent = (holOn.checked ? holText.dataset.on : holText.dataset.off) ?? ''; });
   holOn.addEventListener('change', () => cal());
   const [ty, tm] = today.split('-').map(Number) as [number, number];
   let off = 0;

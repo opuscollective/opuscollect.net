@@ -34,3 +34,7 @@
   radial-gradient(26% 130% at 50% -25%, hsl(var(--pf-h) var(--pf-s) 88% / .85), hsl(var(--pf-h) var(--pf-s) 60% / .35) 55%, transparent 80%),
   radial-gradient(70% 60% at 50% 110%, hsl(var(--pf-h) var(--pf-s) 50% / .4), transparent 75%); }
 .pf-bd[data-backdrop='plain']::before { background: radial-gradient(120% 140% at 50% 0%, hsl(var(--pf-h) calc(var(--pf-s) * .7) 22%), transparent 75%); }
+
+/* The floating Messages and Opus buttons shrink to their marks on a profile (see Messages.astro, Assistant.astro),
+   and the page ends with room beneath it so they never rest on the last card (the level card, on most profiles). */
+@media (min-width: 761px) { .pf { padding-bottom: 72px; } }

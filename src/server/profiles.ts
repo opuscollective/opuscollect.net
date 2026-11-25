@@ -2,6 +2,7 @@
  * Musician profiles: read, validate, save, publish, photos.
  * All validation happens here on the server. Public reads never expose private fields.
  */
+import { hasInWorld } from './schema';
 import { SOCIALS, SOCIAL_KEYS, expandHandle, type SocialKey } from '@/data/socials';
 import { RESERVED } from '@/server/usernames';
 import { SPECIALTY_KEYS, type Specialty } from '@/data/specialties';
@@ -30,6 +31,8 @@ export interface ProfileData {
   bio: string;
   openToCollab: boolean;
   showOnMap: boolean;
+  /** Listed in World (directory, map, counts). Off keeps the page and link public but out of World. Always true before migration 0017. */
+  inWorld: boolean;
   locationVisibility: LocationVisibility;
   photoKey: string | null;
   coverKey: string | null;
@@ -47,7 +50,7 @@ export interface ProfileData {
 
 interface Row {
   id: string; handle: string; display_name: string; primary_specialty: string | null; bio: string; place_id: string | null;
-  photo_key: string | null; cover_key: string | null; open_to_collab: number; show_on_map: number; location_visibility: LocationVisibility | null; links: string; credits: string; achievements: string;
+  photo_key: string | null; cover_key: string | null; open_to_collab: number; show_on_map: number; in_world?: number; location_visibility: LocationVisibility | null; links: string; credits: string; achievements: string;
   collaborations: string; portfolio: string; status: ProfileData['status']; verification: ProfileData['verification']; updated_at: number;
   owner_user_id: string;
   /** Absent until migration 0016 is applied. */
@@ -67,7 +70,7 @@ async function hydrate(db: D1Database, r: Row): Promise<ProfileData> {
     primarySpecialty: (r.primary_specialty as Specialty) ?? null,
     specialties: specs.filter((s) => !s.is_primary).map((s) => s.specialty),
     genres: (gn!.results as { genre: string }[]).map((g) => g.genre),
-    placeId: r.place_id, bio: r.bio, openToCollab: !!r.open_to_collab, showOnMap: r.show_on_map !== 0, locationVisibility: r.location_visibility ?? 'city', photoKey: r.photo_key, coverKey: r.cover_key,
+    placeId: r.place_id, bio: r.bio, openToCollab: !!r.open_to_collab, showOnMap: r.show_on_map !== 0, inWorld: r.in_world !== 0, locationVisibility: r.location_visibility ?? 'city', photoKey: r.photo_key, coverKey: r.cover_key,
     links: parse(r.links, {}), credits: parse(r.credits, []), achievements: parse(r.achievements, []),
     collaborations: parse(r.collaborations, []), portfolio: parse(r.portfolio, []),
     status: r.status,
@@ -116,7 +119,7 @@ const list = (v: unknown, max: number) => (Array.isArray(v) ? v.slice(0, max) : 
 
 export interface SaveInput {
   handle?: unknown; displayName?: unknown; primarySpecialty?: unknown; specialties?: unknown; genres?: unknown;
-  placeId?: unknown; bio?: unknown; openToCollab?: unknown; showOnMap?: unknown; locationVisibility?: unknown; links?: unknown; credits?: unknown; achievements?: unknown;
+  placeId?: unknown; bio?: unknown; openToCollab?: unknown; showOnMap?: unknown; inWorld?: unknown; locationVisibility?: unknown; links?: unknown; credits?: unknown; achievements?: unknown;
   collaborations?: unknown; portfolio?: unknown; publish?: unknown;
 }
 
@@ -129,6 +132,20 @@ export function missingForPublish(p: ProfileData, emailVerified: boolean): strin
   if (!p.placeId) m.push('City');
   if (!p.photoKey) m.push('Profile photo');
   return m;
+}
+
+function cleanLinks(input: unknown): Partial<Record<LinkKey, string>> {
+  const linksIn = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  const links: Partial<Record<LinkKey, string>> = {};
+  for (const k of LINK_KEYS) { const u = cleanUrl(expandHandle(k, linksIn[k]), LINK_HOSTS[k]); if (u) links[k] = u; }
+  return links;
+}
+
+/** Saves only the member's social links (Customize page). A bare @handle is expanded, unknown hosts are dropped. */
+export async function saveLinks(db: D1Database, profileId: string, input: unknown) {
+  const links = cleanLinks(input);
+  await db.prepare('UPDATE profiles SET links = ?, updated_at = ? WHERE id = ?').bind(JSON.stringify(links), now(), profileId).run();
+  return links;
 }
 
 export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) {
@@ -150,9 +167,8 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
 
   const bio = str(body.bio, 1200);
 
-  const linksIn = (body.links && typeof body.links === 'object' ? body.links : {}) as Record<string, unknown>;
-  const links: Partial<Record<LinkKey, string>> = {};
-  for (const k of LINK_KEYS) { const u = cleanUrl(expandHandle(k, linksIn[k]), LINK_HOSTS[k]); if (u) links[k] = u; }
+  // Social links are edited in Customize page (one place). A save that doesn't send them keeps what is there.
+  const links = body.links === undefined && existing ? existing.links : cleanLinks(body.links);
 
   const credits: Credit[] = list(body.credits, 30).map((c) => {
     const o = (c ?? {}) as Record<string, unknown>;
@@ -211,6 +227,7 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
   stmts.push(db.prepare('DELETE FROM profile_genres WHERE profile_id = ?').bind(id));
   for (const g of genres) stmts.push(db.prepare('INSERT INTO profile_genres (profile_id, genre) VALUES (?, ?)').bind(id, g));
   await db.batch(stmts);
+  if (typeof body.inWorld === 'boolean' && (await hasInWorld(db))) await db.prepare('UPDATE profiles SET in_world = ? WHERE id = ?').bind(body.inWorld ? 1 : 0, id).run();
 
   const saved = (await getMyProfile(db, user.id))!;
   let status = saved.status;
@@ -225,6 +242,22 @@ export async function saveProfile(env: Env, user: SessionUser, body: SaveInput) 
     await audit(db, user.id, status === 'published' ? 'profile.published' : 'profile.unpublished', { id });
   }
   return { profile: saved, missing: missingForPublish(saved, user.emailVerified) };
+}
+
+/** Publishes the member's saved draft as it is (the last step of setup). Nothing else about the profile changes. */
+export async function publishProfile(env: Env, user: SessionUser) {
+  const db = env.DB;
+  await limit(db, `profile-save:${user.id}`, 60, 10 * 60_000);
+  const p = await getMyProfile(db, user.id);
+  if (!p) throw new HttpError(400, 'Set up your profile first.');
+  const missing = missingForPublish(p, user.emailVerified);
+  if (missing.length) throw new HttpError(400, `To publish, add: ${missing.join(', ')}.`);
+  if (p.status !== 'published') {
+    await db.prepare('UPDATE profiles SET status = ?, updated_at = ? WHERE id = ?').bind('published', now(), p.id).run();
+    await audit(db, user.id, 'profile.published', { id: p.id });
+    p.status = 'published';
+  }
+  return { profile: p, missing: [] as string[] };
 }
 
 // ---------- photos ----------

@@ -9,6 +9,7 @@
  */
 import { HttpError, audit, now, randomId, sha256 } from './util';
 import { COOKIE } from './session';
+import { EMAIL_CONFIRM_REQUIRED } from '@/lib/features';
 import { mediaUrl } from './profiles';
 
 export interface ChatAuthor { handle: string; name: string; photo: string | null; city: string | null; verified: boolean }
@@ -52,7 +53,7 @@ export async function chatIdentity(db: D1Database, userId: string): Promise<Chat
   const author = toAuthor(r);
   return {
     uid: r.id, createdAt: r.created_at, mod: r.role === 'admin' || !!r.is_mod,
-    blocker: !r.email_verified_at ? 'verify' : !author ? 'profile' : null,
+    blocker: EMAIL_CONFIRM_REQUIRED && !r.email_verified_at ? 'verify' : !author ? 'profile' : null,
     author,
   };
 }

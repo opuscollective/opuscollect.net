@@ -1,10 +1,10 @@
 ---
-import { SOCIALS } from '@/data/socials';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { SPECIALTIES } from '@/data/specialties';
 import { GENRES } from '@/data/genres';
 import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import { getMyProfile, missingForPublish, mediaUrl } from '@/server/profiles';
+import { hasInWorld } from '@/server/schema';
 import '@/styles/app.css';
 export const prerender = false;
 
@@ -12,11 +12,10 @@ const user = Astro.locals.user;
 if (!user) return Astro.redirect('/sign-in?next=/account/profile');
 const profile = await getMyProfile(Astro.locals.runtime.env.DB, user.id);
 const missing = profile ? missingForPublish(profile, user.emailVerified) : null;
-const welcome = Astro.url.searchParams.has('welcome');
+const canHide = await hasInWorld(Astro.locals.runtime.env.DB);
 
 
 const p = profile;
-const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
 ---
 <BaseLayout title="Edit profile" noindex assistant={false} messages={false}>
   <section class="app">
@@ -25,7 +24,8 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
       <h1 class="app__title">{p ? 'Edit your profile' : 'Four things. That’s all.'}</h1>
       <p class="app__lead">{p ? 'Changes save as a draft until you publish. Published profiles appear in World at city level only.' : 'A photo, your name, what you do and where. Add the rest whenever you like.'}</p>
 
-      {welcome && !user.emailVerified && <p class="notice" style="margin-top:20px">Welcome to Opus. We sent a confirmation link to <b>{user.email}</b>. You can build your profile now and publish once your email is confirmed.</p>}
+      {!user.emailVerified && <p class="notice" style="margin-top:20px">You won’t appear in World until your email is confirmed. <a class="link" href="/account">Enter your code</a> whenever you’re ready; you can keep building your profile in the meantime.</p>}
+      {user.emailVerified && !user.emailConfirmed && p?.status === 'published' && <p class="notice" style="margin-top:20px"><a class="link" href="/account">Confirm your email to secure your account</a>. Your page stays live either way.</p>}
 
       {p?.status === 'published' && (
         <div class="pe-live" data-live data-url={`https://opuscollect.net/${p.handle}`}>
@@ -75,7 +75,7 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
         <!-- Photos -->
         <div class="panel">
           <h2>Photos</h2>
-          <p class="dim">A clear photo of you. JPEG or WebP. Location data is removed from every photo you upload.</p>
+          <p class="dim">A clear photo of you. JPEG, PNG or WebP. Location data is removed from every photo you upload.</p>
           <div class="pe-photos">
             <div class="pe-photo">
               <div class="pe-photo__img" data-photo-preview style={p?.photoKey ? `background-image:url(${mediaUrl(p.photoKey)})` : ''}>{!p?.photoKey && <span>No photo</span>}</div>
@@ -119,19 +119,16 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
               <textarea class="textarea" name="bio" maxlength="1200" rows="5" placeholder="Who you are, what you make, and who you want to work with.">{p?.bio ?? ''}</textarea>
               <small><span data-bio-count>{p?.bio.length ?? 0}</span> / 1200</small>
             </label>
+            {canHide && <label class="check"><input type="checkbox" name="inWorld" checked={p ? p.inWorld : true} /> <span><b style="color:var(--text);font-weight:500">Show me in World.</b> Turn this off to stay out of World’s directory, map and counts. Your page and link still work for anyone you give them to.</span></label>}
             <label class="check"><input type="checkbox" name="showOnMap" checked={p ? p.showOnMap : true} /> <span><b style="color:var(--text);font-weight:500">Show me on the World map.</b> Your pin sits at your city or area, never your address. Turn this off to appear in list results only.</span></label>
           </div>
         </div>
 
         <!-- Links -->
         <div class="panel">
-          <h2>Listen and follow</h2>
-          <p class="dim">Optional. Links to where your work lives.</p>
-          <div class="grid-2" style="margin-top:16px">
-            {linkFields.map(([k, label, ph]) => (
-              <label class="field"><span>{label}</span><input class="input" data-link={k} value={p?.links[k] ?? ''} placeholder={ph} inputmode="url" /></label>
-            ))}
-          </div>
+          <h2>Links</h2>
+          <p class="dim">Your socials, streaming links and link buttons all live in one place now.</p>
+          <div class="row" style="margin-top:14px"><a class="btn-app btn-app--ghost" href="/account/page#links">{p ? 'Edit your links' : 'Add links after you save'}</a></div>
         </div>
 
         <!-- Credits -->
@@ -165,8 +162,9 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
 
         </details>
 
-        <div data-status class="form-status"></div>
         <div class="pe-actions">
+          <!-- Messages about saving and publishing sit with the buttons, which stay in view. -->
+          <div data-status class="form-status pe-actions__status"></div>
           <button class="btn-app btn-app--ghost" type="submit" data-intent="save">{p?.status === 'published' ? 'Save' : 'Save draft'}</button>
           {p && <a class="btn-app btn-app--ghost" href={`/${p.handle}`} target="_blank" data-preview>Preview</a>}
           {p?.status === 'published'
@@ -213,6 +211,7 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
   .pe-rows { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 14px; }
   .pe-rows:empty { margin: 8px 0; }
   .pe-actions { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding: 14px 0; background: linear-gradient(to top, var(--c-bg) 70%, transparent); }
+  .pe-actions__status { flex: 1 1 100%; margin: 0; }
   @media (max-width: 600px) { .pe-actions { justify-content: stretch; } .pe-actions .btn-app { flex: 1 1 40%; } .pe-actions [data-intent="publish"] { flex-basis: 100%; order: -1; } }
   :global(.pe-row) { display: grid; gap: 8px; grid-template-columns: 1fr auto; align-items: center; }
   :global(.pe-row--credit) { grid-template-columns: 2fr 1.2fr 1.4fr 0.7fr 2fr auto; }
@@ -319,6 +318,7 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
     onSuccess: async (d) => {
       // New member with a photo chosen during setup: upload it now that the profile exists, then publish if asked.
       let dest = `/account/profile?saved=${intent}`;
+      if (intent === 'publish') { try { sessionStorage.setItem('opus.world.fresh', String(Date.now())); } catch { /* fine */ } }
       if (pendingPhoto) {
         const r = await fetch('/api/profile/image?slot=photo', { method: 'POST', headers: { 'content-type': pendingPhoto.type }, body: pendingPhoto });
         if (r.ok && intent === 'publish') {
@@ -333,11 +333,9 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
     {
       const v = values(f);
       const checked = (sel: string) => Array.from(document.querySelectorAll<HTMLInputElement>(`${sel} input:checked`)).map((i) => i.value);
-      const links: Record<string, string> = {};
-      document.querySelectorAll<HTMLInputElement>('[data-link]').forEach((i) => (links[i.dataset.link!] = i.value.trim()));
       return {
         displayName: v.displayName, handle: v.handle, primarySpecialty: v.primarySpecialty, placeId: v.placeId, bio: v.bio,
-        showOnMap: v.showOnMap, locationVisibility: v.locationVisibility, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'), links,
+        showOnMap: v.showOnMap, inWorld: v.inWorld, locationVisibility: v.locationVisibility, specialties: checked('[data-specialties]'), genres: checked('[data-genres]'),
         credits: readRows('credits'), portfolio: readRows('portfolio'),
         achievements: readRows('achievements').map((r) => r.value), collaborations: readRows('collaborations').map((r) => r.value),
         publish,
@@ -398,6 +396,9 @@ const linkFields = SOCIALS.map((x) => [x.key, x.label, x.placeholder] as const);
   const saved = new URLSearchParams(location.search).get('saved');
   if (saved) {
     const st = document.querySelector<HTMLElement>('[data-state]');
-    if (st) st.insertAdjacentHTML('afterbegin', `<b>${saved === 'publish' ? 'Saved and published.' : saved === 'unpublish' ? 'Unpublished.' : 'Draft saved.'}</b> `);
+    // One line, not two: "Saved and published." replaces "Published."; a saved draft keeps what is still missing.
+    if (st && saved === 'publish') st.innerHTML = '<span><b>Saved and published.</b></span>';
+    else if (st && saved === 'unpublish') st.insertAdjacentHTML('afterbegin', '<b>Unpublished.</b> ');
+    else if (st) { const b = st.querySelector('b'); if (b) b.textContent = b.textContent === 'Published.' ? 'Saved.' : 'Draft saved.'; }
   }
 </script>

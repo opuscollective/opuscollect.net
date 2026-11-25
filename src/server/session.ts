@@ -4,6 +4,7 @@
  */
 import type { AstroCookies } from 'astro';
 import { now, randomId, sha256 } from './util';
+import { EMAIL_CONFIRM_REQUIRED } from '@/lib/features';
 
 export const COOKIE = 'opus_session';
 export const HINT = 'opus_in';
@@ -13,7 +14,10 @@ const TOUCH_EVERY = 24 * 60 * 60 * 1000;
 export interface SessionUser {
   id: string;
   email: string;
+  /** Passes the gates (publish, connect, ...). True for everyone while EMAIL_CONFIRM_REQUIRED is off. */
   emailVerified: boolean;
+  /** Whether the address was really confirmed. Only for the "confirm your email" reminder and resend. */
+  emailConfirmed: boolean;
   role: 'member' | 'admin';
   sessionId: string;
 }
@@ -48,7 +52,7 @@ export async function readSession(db: D1Database, cookies: AstroCookies): Promis
   if (now() - row.last_seen_at > TOUCH_EVERY) {
     await db.prepare('UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?').bind(now(), now() + TTL, id).run();
   }
-  return { id: row.id, email: row.email, emailVerified: !!row.email_verified_at, role: row.role, sessionId: row.sid };
+  return { id: row.id, email: row.email, emailVerified: !!row.email_verified_at || !EMAIL_CONFIRM_REQUIRED, emailConfirmed: !!row.email_verified_at, role: row.role, sessionId: row.sid };
 }
 
 export async function destroySession(db: D1Database, cookies: AstroCookies) {

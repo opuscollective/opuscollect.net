@@ -9,6 +9,7 @@
  * - Members choose a visibility (city, metro, region, hidden). Only what they chose leaves the server:
  *   a "region" member gets no coordinates and no city; a "hidden" member gets no location at all.
  */
+import { hasInWorld } from './schema';
 import { HIRE_ENABLED } from '@/lib/features';
 import { MIN_LOCALITY_GROUP } from '@/data/places';
 import type { MusicianListing, StudioListing, OrganizationListing, Listing, StudioType, StudioVerification, GeoPoint, LocationVisibility } from '@/types/directory';
@@ -57,9 +58,11 @@ const firstAchievement = (s: string) => { try { const a = JSON.parse(s) as unkno
 
 /** Published musicians. Pass onlyId to load one (the counts that protect small suburbs still use everyone). */
 export async function publicMusicians(db: D1Database, onlyId?: string): Promise<MusicianListing[]> {
+  // Members who turned off "Show me in World" keep their page but are not listed, mapped or counted.
+  const listed = (await hasInWorld(db)) ? 'AND in_world = 1' : '';
   const { results } = await db.prepare(`
     WITH pub AS (
-      SELECT * FROM profiles WHERE status = 'published' AND kind = 'musician' AND place_id IS NOT NULL
+      SELECT * FROM profiles WHERE status = 'published' AND kind = 'musician' AND place_id IS NOT NULL ${listed}
     ),
     counts AS (SELECT place_id, COUNT(*) AS n FROM pub WHERE location_visibility = 'city' GROUP BY place_id)
     SELECT pub.id, pub.handle, pub.display_name, pub.primary_specialty, pub.verification, pub.photo_key, pub.updated_at, pub.show_on_map,

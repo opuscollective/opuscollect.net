@@ -11,6 +11,9 @@
 .bz-fine { margin: 0; max-width: 46ch; font-size: 13.5px; line-height: 1.55; color: var(--text-3); }
 .bz-go { display: inline-flex; align-items: center; height: 44px; padding: 0 22px; border-radius: 999px; background: #1a1a1d; color: #fff; font-weight: 500; font-size: 15px; }
 .bz-go:hover { opacity: .9; }
+.bz-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.bz-in2 { display: inline-flex; align-items: center; height: 44px; padding: 0 20px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--text); font-weight: 500; font-size: 15px; }
+.bz-in2:hover { background: var(--surface-hover); }
 .bz-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .bz-roll { margin: 0; padding: 0; list-style: none; }
 .bz-roll li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 18px; align-items: center; padding: 16px 0; }

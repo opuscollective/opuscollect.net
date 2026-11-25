@@ -4,35 +4,50 @@ import PlaceSelect from '@/components/business/PlaceSelect.astro';
 import { STUDIO_TYPES } from '@/server/business';
 import { loadBusiness } from '@/server/business-page';
 import { GALLERY_MAX, listGallery, mediaUrl } from '@/server/profiles';
+import { ZONE_NAMES, tzForPlace, zoneName } from '@/lib/place-tz';
 export const prerender = false;
 
 const ctx = await loadBusiness(Astro);
 if ('redirect' in ctx) return ctx.redirect;
 const { studio: s, pending } = ctx;
 const isNew = Astro.url.searchParams.has('new');
-const gallery = await listGallery(Astro.locals.runtime.env.DB, s.id);
-const ZONES = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu',
-  'America/Toronto', 'America/Mexico_City', 'America/Sao_Paulo', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Africa/Lagos', 'Africa/Johannesburg', 'Asia/Tokyo', 'Australia/Sydney'];
-const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
+const db = Astro.locals.runtime.env.DB;
+const gallery = await listGallery(db, s.id);
+const place = s.placeId ? await db.prepare('SELECT name, region, country, lat, lng FROM places WHERE id = ?').bind(s.placeId).first<{ name: string; region: string | null; country: string; lat: number; lng: number }>() : null;
+// The zone comes from the studio's city. An owner whose clocks differ picks a zone by name, never from a list of cities.
+const cityTz = tzForPlace(place);
+const followsCity = !!cityTz && zoneName(cityTz) === zoneName(s.timezone);
+const zoneListed = ZONE_NAMES.some(([, n]) => n === zoneName(s.timezone));
+const STEPS = [['basics', 'Basics'], ['photos', 'Photos'], ['rules', 'Booking rules']] as const;
+const asked = Astro.url.searchParams.get('step');
+const step = STEPS.some(([k]) => k === asked) ? asked! : 'basics';
 ---
 <BusinessShell title="Studio profile" section="studio" studio={s} pending={pending}
   lead={isNew ? 'Studio created. Add a description and a photo, then set up services and hours.' : 'What customers see on your booking page and in World.'}>
   {s.status === 'published' && <button slot="actions" type="button" class="btn-app btn-app--ghost" data-unpublish>Unpublish</button>}
 
-  <form class="form" data-studio novalidate>
+  <div class="tabs st-steps" role="tablist" aria-label="Studio profile steps" data-steps data-step={step}>
+    {STEPS.map(([k, label], i) => <button type="button" role="tab" id={`st-tab-${k}`} aria-controls={`st-${k}`} aria-selected={k === step ? 'true' : 'false'} data-step-to={k}>{i + 1}. {label}</button>)}
+  </div>
+
+  <form class="form" data-studio novalidate data-new={isNew ? '1' : ''}>
+    <div id="st-basics" role="tabpanel" aria-labelledby="st-tab-basics" data-pane="basics" hidden={step !== 'basics'}>
     <div class="panel">
       <h2>Basics</h2>
       <label class="field"><span>Studio name *</span><input class="input" name="name" maxlength="80" required value={s.name} /></label>
       <label class="field"><span>Page address</span><input class="input" name="handle" maxlength="40" value={s.handle} pattern="[a-z0-9-]+" /><small>opuscollect.net/studios/<b data-handle-preview>{s.handle}</b></small></label>
-      <fieldset class="field" style="border:0;padding:0;margin:0">
-        <legend>Studio type *</legend>
-        <div class="bk__svc" style="margin-top:8px">
-          {Object.entries(STUDIO_TYPES).map(([k, v]) => (
-            <label><input type="radio" name="studioType" value={k} checked={s.studioType === k} /><span><b>{v.label}</b><small>{v.hint}</small></span><span></span></label>
-          ))}
-        </div>
-      </fieldset>
-      <label class="field"><span>City *</span><PlaceSelect selected={s.placeId} required /><small>Shown publicly. World places you at the city’s centre, never at your address.</small></label>
+      <details class="st-fold" open={!s.placeId}>
+        <summary><span><b>{STUDIO_TYPES[s.studioType].label}</b>{place && <> · {place.name}{place.region && `, ${place.region}`}</>}</span><i>Change</i></summary>
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+          <legend>Studio type *</legend>
+          <div class="bk__svc" style="margin-top:8px">
+            {Object.entries(STUDIO_TYPES).map(([k, v]) => (
+              <label><input type="radio" name="studioType" value={k} checked={s.studioType === k} /><span><b>{v.label}</b><small>{v.hint}</small></span><span></span></label>
+            ))}
+          </div>
+        </fieldset>
+        <label class="field"><span>City *</span><PlaceSelect selected={s.placeId} required /><small>Shown publicly. World places you at the city’s centre, never at your address.</small></label>
+      </details>
       <label class="field"><span>About the studio *</span><textarea class="textarea" name="bio" rows="6" maxlength="2000">{s.bio}</textarea><small>At least 40 characters. What you record, who you work with, what makes the room good.</small></label>
       <label class="field"><span>Equipment</span><textarea class="textarea" name="equipment" rows="5" placeholder="One item per line, e.g. Neumann U87">{s.equipment.join('\n')}</textarea></label>
       <div class="grid-2">
@@ -40,8 +55,11 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
         <label class="field"><span>Instagram</span><input class="input" name="instagram" type="url" value={s.instagram} placeholder="https://instagram.com/…" /></label>
       </div>
     </div>
+    <div class="st-actions"><div data-status class="form-status st-actions__status"></div><button class="btn-app" type="submit" data-next={isNew ? 'photos' : 'basics'}>{isNew ? 'Save and add photos' : 'Save'}</button></div>
+    </div>
 
-    <div class="panel" style="margin-top:16px">
+    <div id="st-rules" role="tabpanel" aria-labelledby="st-tab-rules" data-pane="rules" hidden={step !== 'rules'}>
+    <div class="panel">
       <h2>Private address</h2>
       <p class="dim">Only you can see this. It is never shown on your page or the map. You share it with a customer yourself once you accept their booking.</p>
       <label class="field"><span>Street address</span><textarea class="textarea" name="privateAddress" rows="2" maxlength="300">{s.privateAddress}</textarea></label>
@@ -51,7 +69,13 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
       <h2>Booking rules</h2>
       <p class="dim">Every booking is a request you accept or decline. Instant booking will come with online payments.</p>
       <div class="grid-2">
-        <label class="field"><span>Time zone</span><select class="select" name="timezone">{zones.map((z) => <option value={z} selected={z === s.timezone}>{z.replace(/_/g, ' ')}</option>)}</select></label>
+        <label class="field"><span>Time zone</span>
+          <select class="select" name="timezone">
+            {cityTz && <option value="auto" selected={followsCity}>{zoneName(cityTz)} (from {place!.name})</option>}
+            {!followsCity && !zoneListed && <option value={s.timezone} selected>{zoneName(s.timezone)}</option>}
+            {ZONE_NAMES.filter(([, n]) => !cityTz || n !== zoneName(cityTz)).map(([id, n]) => <option value={id} selected={!followsCity && n === zoneName(s.timezone)}>{n}</option>)}
+          </select>
+          <small>Taken from your studio’s city. Change it only if your clocks differ.</small></label>
         <label class="field"><span>Minimum notice (hours)</span><input class="input" name="minNoticeHours" type="number" min="0" max="336" value={s.minNoticeHours} /></label>
         <label class="field"><span>How far ahead people can book (days)</span><input class="input" name="maxDaysAhead" type="number" min="1" max="365" value={s.maxDaysAhead} /></label>
       </div>
@@ -60,11 +84,12 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
       <label class="check"><input type="checkbox" name="showOnMap" checked={s.showOnMap} /><span>Show the studio on the World map. Your city is shown, never your address. When off, you still appear in search results.</span></label>
     </div>
 
-    <div data-status class="form-status" style="margin-top:16px"></div>
-    <div class="row" style="margin-top:16px"><button class="btn-app" type="submit">Save</button></div>
+    <div class="st-actions"><div data-status-rules class="form-status st-actions__status"></div><button class="btn-app" type="submit" data-next={isNew ? 'done' : 'rules'}>{isNew ? 'Save and finish' : 'Save'}</button></div>
+    </div>
   </form>
 
-  <div class="panel" style="margin-top:16px" id="photos">
+  <div id="st-photos" role="tabpanel" aria-labelledby="st-tab-photos" data-pane="photos" hidden={step !== 'photos'}>
+  <div class="panel" id="photos">
     <h2>Photos</h2>
     <p class="dim">A main photo is required to publish. JPEG, PNG or WebP. Location data is removed from every photo before upload.</p>
     <div class="ph">
@@ -94,7 +119,24 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
     <label class="btn-app btn-app--ghost file-btn" data-gal-add hidden={gallery.length >= GALLERY_MAX}>Add photos<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-gal-input /></label>
     <p class="dim" data-gal-status role="status"></p>
   </div>
+  <div class="st-actions"><span class="dim st-actions__status">Photos save as soon as they upload.</span><button class="btn-app" type="button" data-step-to="rules">Continue to booking rules</button></div>
+  </div>
 </BusinessShell>
+
+<style>
+  .st-steps { margin-bottom: 16px; }
+  .st-fold { margin: 4px 0 18px; border: 1px solid var(--c-line); border-radius: var(--r-md); }
+  .st-fold > summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 48px; padding: 0 14px; cursor: pointer; list-style: none; font-size: 14px; color: var(--c-fg-subtle); }
+  .st-fold > summary::-webkit-details-marker { display: none; }
+  .st-fold > summary b { color: var(--text); font-weight: 500; }
+  .st-fold > summary i { font-style: normal; font-size: 13px; color: var(--c-fg-faint); text-decoration: underline; text-underline-offset: 3px; }
+  .st-fold[open] > summary { border-bottom: 1px solid var(--c-line); }
+  .st-fold[open] > summary i { display: none; }
+  .st-fold > :not(summary) { margin: 14px; }
+  /* Buttons sit on the left so the floating Messages and Ask Opus chips never cover them. */
+  .st-actions { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 10px; padding: 14px 0; background: linear-gradient(to top, var(--c-bg) 70%, transparent); }
+  .st-actions__status { flex: 1 1 240px; margin: 0; order: 2; }
+</style>
 
 <script>
   import { bindForm, values } from '@/scripts/form';
@@ -102,15 +144,34 @@ const zones = ZONES.includes(s.timezone) ? ZONES : [s.timezone, ...ZONES];
   const form = document.querySelector<HTMLFormElement>('[data-studio]')!;
   const handle = form.querySelector<HTMLInputElement>('[name="handle"]')!;
   handle.addEventListener('input', () => { document.querySelector('[data-handle-preview]')!.textContent = handle.value || '…'; });
+  // Three steps on one page. The address keeps the step, so a reload or the Back button lands where you were.
+  const steps = document.querySelector<HTMLElement>('[data-steps]')!;
+  const isNew = form.dataset.new === '1';
+  function show(step: string, push = true) {
+    document.querySelectorAll<HTMLElement>('[data-pane]').forEach((p) => (p.hidden = p.dataset.pane !== step));
+    steps.querySelectorAll<HTMLElement>('[role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.stepTo === step)));
+    if (push) { const u = new URL(location.href); u.searchParams.set('step', step); u.searchParams.delete('saved'); history.replaceState(null, '', u); window.scrollTo({ top: 0 }); }
+  }
+  document.addEventListener('click', (e) => { const to = (e.target as HTMLElement).closest<HTMLElement>('[data-step-to]')?.dataset.stepTo; if (to) show(to); });
+  let next = 'basics';
+  form.querySelectorAll<HTMLButtonElement>('[type=submit]').forEach((b) => b.addEventListener('click', () => { next = b.dataset.next ?? 'basics'; }));
   bindForm(form, {
     url: '/api/business/studio',
     body: (f) => values(f),
     busyLabel: 'Saving…',
-    onSuccess: () => { location.href = '/business/studio?saved=1'; },
+    onSuccess: () => { location.href = next === 'done' ? '/business' : `/business/studio?step=${next}&saved=1${isNew ? '&new=1' : ''}`; },
   });
+  // The form reports problems in its first status line. When that line is on another step, repeat it where the owner is,
+  // and open the step that holds the field to fix.
+  const main = form.querySelector<HTMLElement>('[data-status]')!, mirror = form.querySelector<HTMLElement>('[data-status-rules]')!;
+  new MutationObserver(() => {
+    mirror.textContent = main.textContent; mirror.className = main.className.replace('form-status', 'form-status st-actions__status');
+    const bad = form.querySelector<HTMLElement>('.field.has-error')?.closest<HTMLElement>('[data-pane]');
+    if (bad?.hidden) show(bad.dataset.pane!);
+  }).observe(main, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   if (new URLSearchParams(location.search).has('saved')) {
-    const box = form.querySelector<HTMLElement>('[data-status]')!;
-    box.className = 'form-status notice notice--ok'; box.textContent = 'Saved.';
+    const box = document.querySelector<HTMLElement>('[data-pane]:not([hidden]) .st-actions__status');
+    if (box) { box.className = 'form-status st-actions__status notice notice--ok'; box.textContent = isNew ? 'Saved. Next step.' : 'Saved.'; }
   }
 
   document.querySelector<HTMLButtonElement>('[data-unpublish]')?.addEventListener('click', async () => {

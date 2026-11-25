@@ -40,7 +40,7 @@ const pageUrl = studio ? `${Astro.url.origin}/studios/${studio.handle}` : '';
 const dayTile = (ms: number | null) => (ms ? { m: new Date(ms).toLocaleDateString('en-US', { month: 'short' }), d: new Date(ms).getDate() } : null);
 const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ? `${formatSlot(b.start_at, b.timezone)} ${tzAbbr(b.start_at, b.timezone)}` : 'Remote project');
 ---
-{!user || !studio || adding ? (
+{!user ? (
   <BaseLayout title="Opus Business" description="Booking pages, requests and client management for recording studios, on Opus.">
     <section class="bz-hero">
       <div class="bz-wash" aria-hidden="true"><img src="/images/studio-control-room-1400.jpg" alt="" decoding="async" /></div>
@@ -50,7 +50,10 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
           <h1>Your studio. More sessions.</h1>
           <p class="bz-lead">Get discovered by musicians, manage your bookings, and grow your business. Free to list.</p>
           <p class="bz-fine">No monthly subscription. Booking and scheduling software included. Opus takes 20% only on eligible bookings processed through Opus; bookings made entirely outside Opus carry no Opus commission.</p>
-          <a class="bz-go" href="#start">List your studio</a>
+          <div class="bz-acts" id="start">
+            <a class="bz-go" href="/sign-up?next=/business">Create an account</a>
+            <a class="bz-in2" href="/sign-in?next=/business">Sign in</a>
+          </div>
         </div>
         <ul class="bz-roll" role="list" aria-label="What Opus Business includes">
           <li><b>Studio listing</b><small>Appears in World, where artists search by city</small><span class="bz-pill bz-pill--live">Available</span></li>
@@ -61,18 +64,20 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
         </ul>
       </div>
     </section>
-    <section class="app" style={!user ? 'min-height:0;padding-bottom:clamp(72px,9vw,128px)' : undefined}>
+    <section class="app" style="min-height:0;padding-bottom:clamp(72px,9vw,128px)">
       <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
         <p class="notice">Studio tools are in early access while we pilot in Birmingham. Bookings are requests you accept or decline. Home studio addresses stay private.</p>
-
-        {!user ? (
-          <div class="row" style="margin-top:28px" id="start">
-            <a class="btn-app" href="/sign-up?next=/business">Create an account</a>
-            <a class="btn-app btn-app--ghost" href="/sign-in?next=/business">Sign in</a>
-          </div>
-        ) : (
-          <form class="form panel" data-new-studio novalidate id="start" style="margin-top:28px">
-            <h2>{studio ? 'Add another studio' : 'Set up your studio'}</h2>
+      </div>
+    </section>
+  </BaseLayout>
+) : !studio || adding ? (
+  <BaseLayout title={studio ? 'Add another studio' : 'Set up your studio'} noindex>
+    <section class="app">
+      <div class="app__wrap app__wrap--wide" style="margin-inline:auto">
+        <!-- Signed-in owners start with the form; the terms sit in one line above it and in full below. -->
+        <h1 class="app__title">{studio ? 'Add another studio' : 'Set up your studio'}</h1>
+        <p class="app__lead">Free to list, no monthly fee. Three quick questions, then photos, services and hours.</p>
+          <form class="form panel" data-new-studio novalidate id="start" style="margin-top:24px">
             <label class="field"><span>Studio name *</span><input class="input" name="name" maxlength="80" required autocomplete="organization" /></label>
             <fieldset class="field" style="border:0;padding:0;margin:0">
               <legend>What kind of studio? *</legend>
@@ -83,10 +88,15 @@ const when = (b: { start_at: number | null; timezone: string }) => (b.start_at ?
               </div>
             </fieldset>
             <label class="field"><span>City *</span><PlaceSelect required /><small>This is what the public sees. You can add a private address later; it is never shown.</small></label>
+            {studio && <p class="dim" style="font-size:13px">Each studio has its own page, services, hours and bookings. This one starts with no hours set, so add them before publishing.</p>}
             <div data-status class="form-status"></div>
             <div><button class="btn-app" type="submit">Continue</button></div>
           </form>
-        )}
+        <div class="panel" style="margin-top:16px">
+          <h2>What it costs</h2>
+          <p class="dim">No monthly subscription. Booking and scheduling tools are included. Opus takes 20% only on eligible bookings processed through Opus; bookings made entirely outside Opus carry no Opus commission. Payments are not switched on yet, so nobody is charged today.</p>
+          <p class="dim" style="margin-top:10px">Studio tools are in early access while we pilot in Birmingham. Bookings are requests you accept or decline. Home studio addresses stay private.</p>
+        </div>
       </div>
     </section>
   </BaseLayout>
