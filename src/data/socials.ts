@@ -39,7 +39,7 @@ export const SOCIALS = [
     icon: 'M9.5 17.500V6.800l9-2v10.700M9.5 17.500a2.3 2.3 0 1 1-4.6 0 2.3 2.3 0 0 1 4.6 0ZM18.5 15.500a2.3 2.3 0 1 1-4.6 0 2.3 2.3 0 0 1 4.6 0Z' },
   { key: 'soundcloud', label: 'SoundCloud', hosts: ['soundcloud.com', 'on.soundcloud.com'], placeholder: 'soundcloud.com/you', fromHandle: (h) => `https://soundcloud.com/${h}`,
     icon: 'M3 16.500v-3M5.7 16.500v-5M8.4 16.500V9.700M11.1 16.500V8.500c2.9-1.5 6.2.200 6.7 3.300a2.5 2.5 0 1 1 .700 4.700h-7.4' },
-  { key: 'bandcamp', label: 'Bandcamp', hosts: ['bandcamp.com'], placeholder: 'you.bandcamp.com',
+  { key: 'bandcamp', label: 'Bandcamp', hosts: ['bandcamp.com'], placeholder: 'you.bandcamp.com', fromHandle: (h) => `https://${h}.bandcamp.com`,
     icon: 'M8.5 7H21l-5.5 10H3Z' },
   { key: 'audiomack', label: 'Audiomack', hosts: ['audiomack.com'], placeholder: 'audiomack.com/you', fromHandle: (h) => `https://audiomack.com/${h}`,
     icon: 'M3 13.500h2l1.8-4 2.4 8 2.6-12 2.4 10 1.7-5 1.3 3H21' },
@@ -67,4 +67,27 @@ export function expandHandle(key: string, value: unknown): unknown {
 /** The member's saved links in the house order, ready to draw. */
 export function socialLinks(links: Record<string, string | undefined>): { key: string; label: string; url: string; icon: string; fill?: string }[] {
   return (SOCIALS as readonly Social[]).filter((s) => !!links[s.key]).map((s) => ({ key: s.key, label: s.label, url: links[s.key]!, icon: s.icon, fill: s.fill }));
+}
+
+/**
+ * How a service's address wraps a username, for the "type your username" boxes: `pre` + username + `suf` is the link
+ * (without https://). null when the service has no username address (Spotify, Apple Music, a website).
+ */
+export function handleShape(key: string): { pre: string; suf: string } | null {
+  const s = SOCIAL_BY_KEY.get(key);
+  if (!s?.fromHandle) return null;
+  const [pre, suf] = s.fromHandle('\u0000').replace(/^https:\/\//, '').split('\u0000');
+  return { pre: pre ?? '', suf: suf ?? '' };
+}
+
+/** The username inside a saved link, when the link is that service's plain username address. Otherwise null. */
+export function handleOf(key: string, url: string | undefined): string | null {
+  const shape = handleShape(key);
+  if (!shape || !url) return null;
+  const bare = (v: string) => v.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+  const u = bare(url.trim()).replace(/[?#].*$/, '').replace(/\/+$/, '');
+  const pre = bare(shape.pre), suf = shape.suf.replace(/\/+$/, '');
+  if (!u.toLowerCase().startsWith(pre.toLowerCase()) || !u.toLowerCase().endsWith(suf.toLowerCase())) return null;
+  const h = u.slice(pre.length, u.length - suf.length);
+  return /^[A-Za-z0-9._-]{1,60}$/.test(h) ? h : null;
 }

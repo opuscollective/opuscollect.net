@@ -46,3 +46,17 @@ export async function fetchArtwork(u: string): Promise<{ body: ArrayBuffer; type
   if (body.byteLength > 5 * 1024 * 1024) throw new HttpError(413, 'That artwork is too large. Upload it instead.');
   return { body, type };
 }
+
+/** Artist pages on Apple Music by name, so a member picks theirs instead of hunting for the link. */
+export async function searchArtists(q: string): Promise<{ name: string; genre: string; url: string }[]> {
+  const term = clean(q, 80);
+  if (term.length < 2) return [];
+  const r = await fetch(`https://itunes.apple.com/search?media=music&entity=musicArtist&limit=6&term=${encodeURIComponent(term)}`, { headers: UA, cf: { cacheTtl: 3600, cacheEverything: true } } as RequestInit);
+  if (!r.ok) throw new HttpError(502, 'Search is unavailable right now. Paste your Apple Music link instead.');
+  const d = (await r.json().catch(() => null)) as { results?: unknown[] } | null;
+  return (Array.isArray(d?.results) ? d!.results : []).map((x) => {
+    const a = x as { artistName?: unknown; primaryGenreName?: unknown; artistLinkUrl?: unknown };
+    let url = ''; try { const u = new URL(String(a.artistLinkUrl)); if (u.protocol === 'https:' && u.hostname === 'music.apple.com') { u.search = ''; url = u.href; } } catch { /* skipped */ }
+    return { name: clean(a.artistName, 120), genre: clean(a.primaryGenreName, 40), url };
+  }).filter((a) => a.name && a.url);
+}

@@ -1,6 +1,6 @@
 ---
 /** Customize your page: tagline, featured work, link buttons, section order. The same settings drive your profile and your link-in-bio page. */
-import { SOCIALS } from '@/data/socials';
+import { SOCIALS, handleOf, handleShape } from '@/data/socials';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import { getMyProfile } from '@/server/profiles';
 import { profileReleases } from '@/server/releases';
@@ -25,6 +25,8 @@ const clan = groupHandle ? await getClanByHandle(env.DB, groupHandle) : null;
 if (groupHandle && (!clan || !(await isClanAdmin(env.DB, clan, user.id)))) return Astro.redirect('/clans/mine');
 const p = clan ? { id: clan.id, handle: clan.handle } : await getMyProfile(env.DB, user.id);
 const mySocials: Record<string, string | undefined> = !clan && p && 'links' in p ? (p.links as Record<string, string | undefined>) : {};
+// Each place a member can be, with how its address wraps a username and the username already saved there.
+const soRows = SOCIALS.map((x) => { const shape = handleShape(x.key); const v = mySocials[x.key] ?? ''; return { x, shape, v, h: handleOf(x.key, mySocials[x.key]), shown: shape ? shape.pre.replace('www.', '') : '' }; });
 if (!p) return Astro.redirect('/start');
 const showcase = !clan && canShowcase((p as { verification?: string }).verification);
 const sections = clan ? GROUP_SECTIONS : PAGE_SECTIONS;
@@ -128,8 +130,28 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId);
         <fieldset class="pg__sec" id="links">
           <legend>Links <small>{clan ? 'Up to 8 buttons on your page.' : 'Where your work lives, plus up to 8 buttons of your own. They appear on your page and your link.'}</small></legend>
           {!clan && (
-            <div class="pg__socials" data-socials>
-              {SOCIALS.map((x) => <label class="field"><span>{x.label}</span><input class="input" data-social={x.key} value={mySocials[x.key] ?? ''} placeholder={x.placeholder} inputmode="url" autocapitalize="off" spellcheck="false" /></label>)}
+            <div class="so" data-socials>
+              <label class="field so__one"><span>Your username</span><input class="input" data-so-name placeholder="yourname" autocapitalize="off" autocomplete="off" spellcheck="false" maxlength="60" />
+                <small>Type it once, then tap each place you use it. Opus builds the link. Different name somewhere? Change it in that row.</small></label>
+              <div class="so__chips" role="group" aria-label="Where you are">
+                {SOCIALS.map((x) => <button type="button" class="so__chip" data-so-chip={x.key} aria-pressed={mySocials[x.key] ? 'true' : 'false'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={x.icon} />{'fill' in x ? <path class="f" d={x.fill} /> : null}</svg>{x.label}</button>)}
+              </div>
+              <ul class="so__rows" role="list">
+                {soRows.map(({ x, shape, h, v, shown }) => (
+                  <li class="so__row" data-so-row={x.key} data-pre={shape?.pre} data-suf={shape?.suf} hidden={!v}>
+                    <label class="so__f">
+                      <span class="sr-only">{x.label} {shape ? 'username' : 'link'}</span>
+                      {shape && <span class="so__pre" data-so-pre aria-hidden="true">{shown}</span>}
+                      <input data-social={x.key} value={h ?? v} placeholder={shape ? 'username' : x.key === 'appleMusic' ? 'Type your artist name' : x.key === 'spotify' ? 'Paste your Spotify artist link' : x.placeholder} autocapitalize="off" autocomplete="off" spellcheck="false" />
+                      {shape?.suf && <span class="so__pre" data-so-pre aria-hidden="true">{shape.suf}</span>}
+                    </label>
+                    <a class="so__open" data-so-open target="_blank" rel="noopener" hidden>Check</a>
+                    <button type="button" class="so__x" data-so-x aria-label={`Remove ${x.label}`}>×</button>
+                    {x.key === 'appleMusic' && <ul class="so__found" data-so-found role="list" hidden></ul>}
+                    {x.key === 'spotify' && <small class="so__hint">Spotify has no username address. Open your artist page in Spotify, tap Share, then Copy link.</small>}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           {!clan && <p class="pg__sub">Your own buttons</p>}
@@ -167,10 +189,34 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId);
   .pg__ess-t b { font-weight: 500; }
   .pg__ess-t small { color: var(--text-3); }
   .pg__links, .pg__order { display: grid; gap: 8px; margin-bottom: 12px; }
-  .pg__socials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; margin-bottom: 18px; }
+  .so { margin-bottom: 18px; }
+  .so__one { max-width: 420px; }
+  .so__chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+  .so__chip { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 13px 0 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: none; color: var(--text-2); font: inherit; font-size: 13.5px; cursor: pointer; }
+  .so__chip svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .so__chip svg .f { fill: currentColor; stroke: none; }
+  .so__chip:hover { color: var(--text); }
+  .so__chip[aria-pressed='true'] { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .so__chip:focus-visible, .so__x:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+  .so__rows { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .so__row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+  .so__row[hidden] { display: none; }
+  .so__f { display: flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg); }
+  .so__f:focus-within { border-color: var(--text); }
+  .so__pre { flex: none; color: var(--text-3); font-size: 15px; white-space: nowrap; }
+  .so__row.is-link .so__pre { display: none; }
+  .so__f input { flex: 1; min-width: 0; height: 42px; border: 0; background: none; color: var(--text); font: inherit; font-size: 16px; outline: none; }
+  .so__open { font-size: 13px; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; }
+  .so__x { width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--text-3); font-size: 20px; line-height: 1; cursor: pointer; }
+  .so__x:hover { color: var(--text); background: var(--surface-hover); }
+  .so__hint { grid-column: 1 / -1; color: var(--text-3); font-size: 12.5px; }
+  .so__found { grid-column: 1 / -1; display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+  .so__found[hidden] { display: none; }
+  :global(.so__found button) { display: flex; justify-content: space-between; gap: 12px; width: 100%; min-height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--surface-sunken); color: var(--text); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+  :global(.so__found button small) { color: var(--text-3); }
+  :global(.so__found p) { margin: 0; padding: 4px 2px; color: var(--text-3); font-size: 13px; }
   #links { scroll-margin-top: 84px; }
   .pg__sub { margin: 0 0 8px; font-size: 13px; color: var(--text-3); }
-  @media (max-width: 600px) { .pg__socials { grid-template-columns: 1fr; } }
   .pg__order { margin: 0; }
   :global(.pg__links li) { display: grid; grid-template-columns: 1fr 1.6fr auto; gap: 8px; }
   :global(.pg__order li) { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); }
@@ -209,6 +255,70 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId);
   const order = form.querySelector<HTMLUListElement>('[data-order]')!;
   const status = form.querySelector<HTMLElement>('[data-status]')!;
   const addBtn = form.querySelector<HTMLButtonElement>('[data-add-link]')!;
+
+  // Socials by username: tap a place, the username box fills it in, and the link is built from the service's own address.
+  const soName = form.querySelector<HTMLInputElement>('[data-so-name]');
+  const rowOf = (i: HTMLInputElement) => i.closest<HTMLElement>('[data-so-row]')!;
+  const looksLikeLink = (v: string) => /[/\s]|^https?:|^www\.|\.(com|net|org|tv|me|co|link|fm|io)$/i.test(v);
+  /** What gets saved for a row: the full link for a username, or exactly what was pasted. */
+  function socialValue(i: HTMLInputElement): string {
+    const row = rowOf(i), v = i.value.trim().replace(/^@/, '');
+    if (!v || row.hidden) return '';
+    return row.dataset.pre !== undefined && !looksLikeLink(v) ? `https://${row.dataset.pre}${v}${row.dataset.suf ?? ''}` : i.value.trim();
+  }
+  function paintRow(i: HTMLInputElement) {
+    const row = rowOf(i), v = i.value.trim();
+    row.classList.toggle('is-link', row.dataset.pre !== undefined && looksLikeLink(v.replace(/^@/, '')));
+    const open = row.querySelector<HTMLAnchorElement>('[data-so-open]')!;
+    const url = socialValue(i);
+    open.hidden = !/^https:\/\//.test(url);
+    if (!open.hidden) open.href = url;
+  }
+  form.querySelectorAll<HTMLInputElement>('[data-social]').forEach((i) => {
+    paintRow(i);
+    i.addEventListener('input', () => { delete i.dataset.auto; paintRow(i); });
+  });
+  form.querySelectorAll<HTMLButtonElement>('[data-so-chip]').forEach((chip) => chip.addEventListener('click', () => {
+    const i = form.querySelector<HTMLInputElement>(`[data-social="${chip.dataset.soChip}"]`)!, row = rowOf(i);
+    const on = row.hidden;
+    row.hidden = !on; chip.setAttribute('aria-pressed', String(on));
+    if (!on) { i.value = ''; delete i.dataset.auto; paintRow(i); return; }
+    const name = soName?.value.trim().replace(/^@/, '') ?? '';
+    if (!i.value && name && row.dataset.pre !== undefined) { i.value = name; i.dataset.auto = '1'; }
+    paintRow(i);
+    if (!i.value) i.focus();
+  }));
+  form.querySelectorAll<HTMLButtonElement>('[data-so-x]').forEach((x) => x.addEventListener('click', () => {
+    const row = x.closest<HTMLElement>('[data-so-row]')!;
+    form.querySelector<HTMLButtonElement>(`[data-so-chip="${row.dataset.soRow}"]`)!.click();
+  }));
+  // Rows still showing the name typed above follow it as it changes; a row the member edited keeps its own.
+  soName?.addEventListener('input', () => form.querySelectorAll<HTMLInputElement>('[data-social][data-auto]').forEach((i) => { i.value = soName.value.trim().replace(/^@/, ''); paintRow(i); }));
+  // Apple Music has no username address: find the artist page by name instead.
+  const apple = form.querySelector<HTMLInputElement>('[data-social="appleMusic"]'), found = form.querySelector<HTMLUListElement>('[data-so-found]');
+  if (apple && found) {
+    let t = 0, seq = 0;
+    apple.addEventListener('input', () => {
+      clearTimeout(t);
+      const q = apple.value.trim();
+      if (q.length < 2 || looksLikeLink(q)) { found.hidden = true; return; }
+      t = window.setTimeout(async () => {
+        const mine = ++seq;
+        const r = await fetch(`/api/socials/apple?q=${encodeURIComponent(q)}`).catch(() => null);
+        const d = (r?.ok ? await r.json().catch(() => null) : null) as { results?: { name: string; genre: string; url: string }[] } | null;
+        if (mine !== seq) return;
+        found.replaceChildren();
+        if (!d?.results?.length) { const p = document.createElement('p'); p.textContent = d ? 'No artist by that name on Apple Music. You can paste your link instead.' : 'Search isn’t available right now. Paste your Apple Music link instead.'; found.append(p); }
+        else for (const a of d.results) {
+          const li = document.createElement('li'), b = document.createElement('button'), n = document.createElement('span'), g = document.createElement('small');
+          b.type = 'button'; n.textContent = a.name; g.textContent = a.genre; b.append(n, g);
+          b.addEventListener('click', () => { apple.value = a.url; found.hidden = true; paintRow(apple); });
+          li.append(b); found.append(li);
+        }
+        found.hidden = false;
+      }, 300);
+    });
+  }
 
   const addLink = (l = { label: '', url: '' }) => {
     const li = document.createElement('li');
@@ -272,7 +382,7 @@ const metroList = PLACES.filter((x) => x.kind === 'metro' && x.id !== homeId);
       essentials: [...form.querySelectorAll<HTMLElement>('[data-ess] li')].filter((li) => (li.querySelector('input[type=checkbox]') as HTMLInputElement).checked).map((li) => li.dataset.id),
       notes: Object.fromEntries([...form.querySelectorAll<HTMLElement>('[data-ess] li')].map((li) => [li.dataset.id, (li.querySelector('[data-note]') as HTMLInputElement).value]).filter(([, v]) => v)),
       links: [...links.children].map((li) => ({ label: (li.querySelector('[data-l]') as HTMLInputElement).value, url: (li.querySelector('[data-u]') as HTMLInputElement).value })).filter((l) => l.label || l.url),
-      ...(form.querySelector('[data-socials]') ? { socials: Object.fromEntries([...form.querySelectorAll<HTMLInputElement>('[data-social]')].map((i) => [i.dataset.social, i.value.trim()])) } : {}),
+      ...(form.querySelector('[data-socials]') ? { socials: Object.fromEntries([...form.querySelectorAll<HTMLInputElement>('[data-social]')].map((i) => [i.dataset.social, socialValue(i)])) } : {}),
       order: [...order.children].map((li) => (li as HTMLElement).dataset.k),
       hide: [...order.children].filter((li) => !(li.querySelector('input') as HTMLInputElement).checked).map((li) => (li as HTMLElement).dataset.k),
     };
