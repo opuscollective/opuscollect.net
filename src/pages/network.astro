@@ -17,7 +17,7 @@ const user = Astro.locals.user;
 const TABS = ['connections', 'received', 'sent'] as const;
 type Tab = (typeof TABS)[number];
 const q = Astro.url.searchParams.get('tab');
-const tab: Tab = (TABS as readonly string[]).includes(q ?? '') ? (q as Tab) : 'connections';
+const asked = (TABS as readonly string[]).includes(q ?? '') ? (q as Tab) : null;
 let data: Awaited<ReturnType<typeof listConnections>> | null = null;
 let failed = false;
 if (user) {
@@ -25,6 +25,8 @@ if (user) {
   catch (e) { console.error('network', e); failed = true; }
 }
 const connected = data?.connected ?? [], incoming = data?.incoming ?? [], outgoing = data?.outgoing ?? [], blocked = data?.blocked ?? [];
+// A waiting request is the reason someone opens Network, so it is the first thing they see.
+const tab: Tab = asked ?? (incoming.length > 0 ? 'received' : 'connections');
 const specialties = [...new Map(connected.filter((c) => c.other.specialty).map((c) => [c.other.specialtyKey!, c.other.specialty!])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
 const DATE = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const ago = (t: number) => {

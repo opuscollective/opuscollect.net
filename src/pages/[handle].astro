@@ -1,4 +1,5 @@
 ---
+import '@/styles/connect.css';
 import { CITIES, citySlug } from '@/data/cities';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
@@ -436,21 +437,6 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__state { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: var(--r-pill); background: var(--nav-hover); font-size: 13px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
   .mp__note { margin: 16px 0 0; font-size: 14px; color: var(--text-2); }
   .mp__more-plain { color: var(--text) !important; }
-  .cdlg { width: min(440px, calc(100vw - 32px)); padding: 0; border: 0; border-radius: 18px; background: var(--surface-raised); color: var(--text); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--line-faint); }
-  .cdlg::backdrop { background: rgba(10, 10, 12, 0.36); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-  .cdlg[open] { animation: cdlg-in .22s var(--ease); }
-  @keyframes cdlg-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
-  :global(html:not([data-motion='fluid'])) .cdlg[open] { animation: none; }
-  .cdlg__form { display: flex; flex-direction: column; gap: 16px; padding: 22px; }
-  .cdlg__who { display: flex; align-items: center; gap: 14px; }
-  .cdlg__who b { display: block; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
-  .cdlg__who small { display: block; margin-top: 2px; font-size: 13px; color: var(--text-3); }
-  .cdlg__av { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; background: var(--surface-sunken) center / cover no-repeat; }
-  .cdlg__field .textarea { min-height: 112px; padding: 12px 14px; resize: vertical; line-height: 1.5; }
-  .cdlg__count { align-self: flex-end; font-variant-numeric: tabular-nums; }
-  .cdlg__fine { margin: -4px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-3); }
-  .cdlg__row { display: flex; justify-content: flex-end; gap: 8px; }
-  @media (max-width: 520px) { .cdlg__row > * { flex: 1; } }
   .mp__credits a, .mp__links a { color: var(--text); }
   .mp__credits a:hover, .mp__links a:hover { color: var(--c-accent-strong); }
   .mp__list li { padding: 10px 0 10px 18px; position: relative; color: var(--c-fg-muted); line-height: 1.5; }

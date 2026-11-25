@@ -704,6 +704,53 @@ export async function initWorld(root: HTMLElement) {
   results.addEventListener('focusin', (e) => { const c = (e.target as Element).closest<HTMLElement>('.wt'); map?.setHover(c?.dataset.id ?? null); });
 
   let pvToken = 0;
+  let pvListing: Listing | null = null;
+
+  // Connect from the card: signed-in members write the request right here instead of being sent to the full profile first.
+  const wc = root.querySelector<HTMLDialogElement>('[data-wconnect]') ?? document.querySelector<HTMLDialogElement>('[data-wconnect]');
+  const wcForm = wc?.querySelector<HTMLFormElement>('[data-wconnect-form]');
+  let wcCta: HTMLAnchorElement | null = null;
+  let wcHandle = '';
+  if (wc && wcForm && typeof wc.showModal === 'function') {
+    const ta = wcForm.querySelector<HTMLTextAreaElement>('textarea')!;
+    const msg = wcForm.querySelector<HTMLElement>('[data-wc-msg]')!;
+    const send = wcForm.querySelector<HTMLButtonElement>('[type=submit]')!;
+    pvBody.addEventListener('click', (e) => {
+      const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a.pv__btn');
+      if (!a || !/[?&]connect=1/.test(a.href) || !document.documentElement.classList.contains('is-signed-in') || !pvListing) return;
+      const handle = new URL(a.href).pathname.replace(/^\/+|\/+$/g, '');
+      if (!handle || handle.includes('/')) return;
+      e.preventDefault();
+      wcCta = a; wcHandle = handle;
+      const first = pvListing.name.split(' ')[0] || pvListing.name;
+      wc.querySelector('[data-wc-title]')!.textContent = `Connect with ${pvListing.name}`;
+      wc.querySelector('[data-wc-sub]')!.textContent = pvListing.kind === 'musician' ? pvListing.primarySpecialty : '';
+      wc.querySelector('[data-wc-name]')!.textContent = first;
+      const av = wc.querySelector<HTMLElement>('[data-wc-av]')!;
+      av.style.backgroundImage = pvListing.photo ? `url("${pvListing.photo}")` : '';
+      ta.value = ta.dataset.default ?? '';
+      msg.textContent = ''; send.disabled = false; send.textContent = 'Send request';
+      wc.showModal();
+      ta.focus(); ta.select();
+    });
+    wc.querySelector('[data-wc-cancel]')?.addEventListener('click', () => wc.close());
+    wc.addEventListener('click', (e) => { if (e.target === wc) wc.close(); });
+    wcForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (send.disabled) return;
+      send.disabled = true; send.textContent = 'Sending…'; msg.textContent = '';
+      try {
+        const r = await fetch('/api/connections', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ to: wcHandle, message: ta.value }) });
+        const d = (await r.json().catch(() => ({}))) as { error?: string; connected?: boolean };
+        // 409 means there is already a request or a connection: the card should say so rather than offer Connect again.
+        if (!r.ok && r.status !== 409) { msg.textContent = d.error || 'That didn’t send. Please try again.'; send.disabled = false; send.textContent = 'Send request'; return; }
+        if (wcCta) { wcCta.textContent = d.connected || /connected/i.test(d.error ?? '') ? 'Connected' : 'Requested'; wcCta.href = wcCta.href.replace(/[?&]connect=1/, ''); }
+        wc.close();
+      } catch {
+        msg.textContent = 'That didn’t send. Check your connection and try again.'; send.disabled = false; send.textContent = 'Send request';
+      }
+    });
+  }
   let returnFocus: HTMLElement | null = null;
   let pushed = false;
   const asModal = () => mobile.matches || view === 'list';
@@ -738,6 +785,7 @@ export async function initWorld(root: HTMLElement) {
       const d = (await r.json()) as { listing: Listing; detail: ProfileDetail };
       if (token !== pvToken) return;
       pvBody.innerHTML = previewHtml(d.listing, d.detail);
+      pvListing = d.listing;
       $('[data-preview-label]').textContent = d.listing.name;
       // Signed-in visitors see what they share with this member. A separate, private request: the profile itself stays cacheable.
       const slot = pvBody.querySelector<HTMLElement>('[data-pv-overlap]');

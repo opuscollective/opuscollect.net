@@ -11,9 +11,8 @@ import { notify } from './messages';
 import { visibleLabel } from '@/data/places';
 import { SPECIALTIES, type Specialty } from '@/data/specialties';
 
-/** The introduction is optional. This is the suggested text the request form starts with. */
-export const DEFAULT_INTRO = 'Hey! I’d love to connect with you on Opus.';
-export const INTRO_MAX = 300;
+import { DEFAULT_INTRO, INTRO_MAX } from '@/lib/connect';
+export { DEFAULT_INTRO, INTRO_MAX };
 
 const DAY = 86_400_000;
 
