@@ -724,14 +724,14 @@ export async function initWorld(root: HTMLElement) {
       wcCta = a; wcHandle = handle;
       const first = pvListing.name.split(' ')[0] || pvListing.name;
       wc.querySelector('[data-wc-title]')!.textContent = `Connect with ${pvListing.name}`;
-      wc.querySelector('[data-wc-sub]')!.textContent = pvListing.kind === 'musician' ? pvListing.primarySpecialty : '';
+      wc.querySelector('[data-wc-sub]')!.textContent = pvListing.kind === 'musician' ? [SPECIALTIES[pvListing.primarySpecialty]?.label, pvListing.location.city].filter(Boolean).join(' · ') : '';
       wc.querySelector('[data-wc-name]')!.textContent = first;
       const av = wc.querySelector<HTMLElement>('[data-wc-av]')!;
       av.style.backgroundImage = pvListing.photo ? `url("${pvListing.photo}")` : '';
       ta.value = ta.dataset.default ?? '';
       msg.textContent = ''; send.disabled = false; send.textContent = 'Send request';
       wc.showModal();
-      ta.focus(); ta.select();
+      ta.focus();
     });
     wc.querySelector('[data-wc-cancel]')?.addEventListener('click', () => wc.close());
     wc.addEventListener('click', (e) => { if (e.target === wc) wc.close(); });
