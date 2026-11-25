@@ -14,8 +14,9 @@
 .biz__head p { margin-top: 8px; font-size: 14px; color: var(--c-fg-faint); max-width: 60ch; line-height: 1.55; }
 @media (max-width: 900px) {
   .biz { grid-template-columns: minmax(0, 1fr); }
-  .biz__nav { position: static; flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--c-line); scrollbar-width: none; }
-  .biz__nav::-webkit-scrollbar { display: none; }
+  /* Every section stays on screen: the row wraps instead of scrolling off the edge with no hint. */
+  .biz__nav { position: static; flex-direction: row; flex-wrap: wrap; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--c-line); }
+  .biz__switch { flex: 1 1 100%; }
   .biz__studio { display: none; }
   .biz__nav a { flex-shrink: 0; gap: 8px; }
 }
@@ -167,7 +168,7 @@ html:not([data-motion='fluid']) .skel { animation: none; }
 @media (max-width: 900px) { .biz__switch { display: none; } }
 
 /* Studio page: architectural hero, "the space" gallery */
-.sh { position: relative; overflow: hidden; min-height: clamp(300px, 38vw, 460px); display: flex; align-items: flex-end; background: linear-gradient(135deg, hsl(var(--h) 25% 22%), hsl(calc(var(--h) + 40) 30% 10%)); color: #fff; }
+.sh { position: relative; overflow: hidden; min-height: clamp(260px, 27vw, 360px); display: flex; align-items: flex-end; background: linear-gradient(135deg, hsl(var(--h) 25% 22%), hsl(calc(var(--h) + 40) 30% 10%)); color: #fff; }
 .sh__bg { position: absolute; inset: 0; background: center / cover no-repeat; opacity: .8; }
 .sh::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(8, 8, 10, .88), rgba(8, 8, 10, .15) 70%); }
 .sh__in { position: relative; z-index: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 40px var(--gutter) clamp(28px, 4vw, 48px); }
@@ -230,6 +231,7 @@ html:not([data-motion='fluid']) .skel { animation: none; }
 .tabs { gap: 6px; border-bottom: 0; padding: 4px; width: max-content; max-width: 100%; border-radius: 999px; background: var(--surface-sunken); }
 .tabs button { min-height: 38px; padding: 0 16px; border-radius: 999px; border: 0; }
 .tabs button[aria-selected='true'] { background: var(--surface); box-shadow: 0 1px 3px var(--shadow-c, rgba(0,0,0,.12)); border: 0; }
+@media (max-width: 520px) { .tabs { width: 100%; gap: 2px; } .tabs button { flex: 1 1 0; min-width: 0; padding: 0 6px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; } }
 @media (max-width: 640px) { .bitem { grid-template-columns: 56px minmax(0, 1fr); } .bitem__actions { grid-column: 1 / -1; } .bitem__msg { grid-column: 1 / -1; } }
 /* Customers */
 .cu { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 4px; }
@@ -318,3 +320,7 @@ html:not([data-motion='fluid']) .skel { animation: none; }
 .sw input:focus-visible + i { outline: 2px solid var(--c-accent, #a9c7ec); outline-offset: 3px; }
 .hc__grid button.is-hol:not(.is-off)::after { content: ''; display: block; width: 4px; height: 4px; margin: -6px auto 0; border-radius: 50%; background: var(--c-accent, #a9c7ec); }
 .hc__grid button.is-auto { background: color-mix(in srgb, var(--c-accent, #a9c7ec) 70%, var(--bg)); color: #10151d; cursor: default; }
+
+/* Save stays in view with its message beside it, so "Hours saved." is never off the bottom of the page. */
+.hw__actions { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 10px; padding: 14px 0; background: linear-gradient(to top, var(--c-bg) 70%, transparent); }
+.hw__status { flex: 1 1 240px; margin: 0; order: 2; }

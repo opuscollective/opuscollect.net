@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import ProductNav from '@/components/product/ProductNav.astro';
 import { STUDIO_TYPES, getPublicStudio, listServices } from '@/server/business';
 import { listGallery, mediaUrl } from '@/server/profiles';
 import { PLACES, visibleLabel } from '@/data/places';
@@ -29,7 +28,6 @@ const source = Astro.url.searchParams.get('from') === 'world' ? 'directory' : 'l
 const description = `${studio.name}: ${STUDIO_TYPES[studio.studioType].label.toLowerCase()}${place ? ` in ${place.name}` : ''}. Request a session on Opus.`;
 ---
 <BaseLayout title={studio.name} description={description} noindex={!live} image={studio.photoKey ? mediaUrl(studio.photoKey) ?? undefined : undefined}>
-  <ProductNav product="studios" current="discover" />
   <section class="sh" style={`--h:${hue}`}>
     <div class="sh__bg" style={studio.coverKey ? `background-image:url(${mediaUrl(studio.coverKey)})` : ''} aria-hidden="true"></div>
     <div class="sh__in">

@@ -20,8 +20,8 @@ const price = s.priceCents ? (s.priceCents / 100).toFixed(s.priceCents % 100 ? 2
 )}
 <div class="grid-2">
   <label class="field"><span>Price (USD) *</span><input class="input" name="price" inputmode="decimal" required value={price} placeholder="85" /><small>The full price of one booking.</small></label>
-  <label class="field" data-session-only><span>Length</span><select class="select" name="durationMin">{DURATIONS.map((m) => <option value={m} selected={m === s.durationMin}>{len(m)}</option>)}</select></label>
-  <label class="field" data-session-only><span>Reset time after</span><select class="select" name="bufferMin">{BUFFERS.map((m) => <option value={m} selected={m === s.bufferMin}>{m ? len(m) : 'None'}</option>)}</select><small>Blocked on your calendar for setup or breakdown.</small></label>
+  <label class="field" data-session-only><span>Session length</span><select class="select" name="durationMin">{DURATIONS.map((m) => <option value={m} selected={m === s.durationMin}>{len(m)}</option>)}</select></label>
+  <label class="field" data-session-only><span>Gap before next booking</span><select class="select" name="bufferMin">{BUFFERS.map((m) => <option value={m} selected={m === s.bufferMin}>{m ? len(m) : 'None'}</option>)}</select><small>Blocked on your calendar for setup or breakdown.</small></label>
 </div>
 <label class="field"><span>Description</span><textarea class="textarea" name="description" rows="2" maxlength="600" placeholder={s.mode === 'remote' ? 'What’s included and typical turnaround, e.g. 2 revisions, 5 working days.' : 'What’s included, e.g. engineer, 2 vocal mics.'}>{s.description}</textarea></label>
 <div data-status class="form-status"></div>

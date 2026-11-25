@@ -6,6 +6,7 @@
 import { EMAIL_CONFIRM_REQUIRED } from '@/lib/features';
 import { HttpError, audit, now, randomId, str } from './util';
 import { limit } from './ratelimit';
+import { tzForPlace } from '@/lib/place-tz';
 import { RESERVED, cleanUrl, slugify, mediaUrl } from './profiles';
 import type { SessionUser } from './session';
 import { isDay, isTimeZone, localDay } from '@/lib/booking-time';
@@ -152,14 +153,21 @@ export async function saveStudio(env: Env, user: SessionUser, body: StudioInput,
   const studioType = (Object.keys(STUDIO_TYPES) as StudioType[]).includes(body.studioType as StudioType) ? (body.studioType as StudioType) : null;
   if (!studioType) throw new HttpError(400, 'Choose what kind of studio this is.', 'studioType');
   const placeId = str(body.placeId, 80) || null;
-  if (placeId && !(await db.prepare('SELECT 1 FROM places WHERE id = ?').bind(placeId).first())) throw new HttpError(400, 'Choose a city from the list.', 'placeId');
+  const place = placeId ? await db.prepare('SELECT country, region, lat, lng FROM places WHERE id = ?').bind(placeId).first<{ country: string; region: string | null; lat: number; lng: number }>() : null;
+  if (placeId && !place) throw new HttpError(400, 'Choose a city from the list.', 'placeId');
   const bio = str(body.bio, 2000);
   const equipment = (Array.isArray(body.equipment) ? body.equipment : String(body.equipment ?? '').split('\n'))
     .map((e) => str(e, 80)).filter(Boolean).slice(0, 40);
   const website = cleanUrl(body.website, null);
   const instagram = cleanUrl(body.instagram, ['instagram.com']);
   const privateAddress = str(body.privateAddress, 300);
-  const timezone = str(body.timezone, 60) || existing?.timezone || 'America/Chicago';
+  // The zone follows the studio's city: on a new studio, when the city changes, or when the owner asks for it ('auto').
+  // A zone the owner picked by name wins.
+  const askedTz = str(body.timezone, 60);
+  const cityTz = tzForPlace(place);
+  const timezone = (askedTz && askedTz !== 'auto' ? askedTz : null)
+    ?? (askedTz === 'auto' || !existing || existing.placeId !== placeId ? cityTz : null)
+    ?? existing?.timezone ?? cityTz ?? 'America/Chicago';
   if (!isTimeZone(timezone)) throw new HttpError(400, 'Choose a valid time zone.', 'timezone');
   const minNoticeHours = intIn(body.minNoticeHours, 0, 24 * 14, 24);
   const maxDaysAhead = intIn(body.maxDaysAhead, 1, 365, 60);

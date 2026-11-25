@@ -81,6 +81,7 @@ Use design tokens (`tokens.css`, `--m-*` motion tokens) and the shared product s
 - World: directory always on the left (~46% panel), listing-feed cards (Zillow-like): big 3:2 photos, details beneath, ~3px gaps, sharp corners. Desktop profiles slide out as a card to the right of the directory with the map still visible. Homepage card grid capped at 1480px.
 - **Verified** badge: saturated Opus blue seal with white check. Green is only for "Open to collaborate". Verification is earned, never bought. Credits use Confirmed / Self-reported / Awaiting confirmation / Not on Opus, never "verified".
 - **No dropdowns for cities, anywhere** (Bogo 2026-11-23, repeated 2026-11-24). A city is always chosen with the type-to-search box `src/components/business/PlaceSelect.astro` (city, suburb or US ZIP; `src/scripts/city-field.ts`). Never a `<select>` of cities or countries, and don't build a second picker.
+- A studio's time zone comes from its city (`src/lib/place-tz.ts`, `tests/place-tz.test.ts`). The only override is a list of zone names ("Central Time"), never cities.
 - Accent: restrained icy blue (#a9c7ec); sage (#9fcaa9) only for availability.
 - **Charts: no pay-to-rank and no fabricated metrics.** Until real data exists it is an honest "Coming soon" preview.
 - **Placeholder/sample data must be visibly labeled**, never presented as real members.
