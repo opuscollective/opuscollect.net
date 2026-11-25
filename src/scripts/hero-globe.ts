@@ -205,7 +205,9 @@ export async function mountHeroGlobe(el: HTMLElement, points: CityPoint[], opts:
     for (const c of el.querySelectorAll<HTMLElement>('.gl-label--city, .gl-label--land, .gl-label--sea')) {
       if (!showing(c)) { c.classList.remove('is-crowded'); continue; }
       const r = c.getBoundingClientRect();
-      const hit = kept.some((k) => r.left < k.right + padX && r.right > k.left - padX && r.top < k.bottom + pad && r.bottom > k.top - pad);
+      // A name the edge of the screen would cut in half steps out too (phones: the Earth is wider than the screen).
+      const cut = r.left < Math.max(box.left, 0) + 4 || r.right > Math.min(box.right, innerWidth) - 4;
+      const hit = cut || kept.some((k) => r.left < k.right + padX && r.right > k.left - padX && r.top < k.bottom + pad && r.bottom > k.top - pad);
       c.classList.toggle('is-crowded', hit);
       if (!hit) kept.push(r);
     }

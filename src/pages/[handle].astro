@@ -424,6 +424,15 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp-preview { align-items: center; position: sticky; top: var(--hdr-h); z-index: calc(var(--z-header) - 1); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
   .mp-preview__a { display: inline-flex; flex-wrap: wrap; gap: 8px; }
   @media (max-width: 860px) { .mp-preview { position: static; } }
+  @media (max-width: 560px) {
+    .mp-preview { display: block; padding: 10px 0; font-size: 13px; }
+    .mp-preview > span:first-child { display: block; padding: 0 var(--gutter) 8px; }
+    .mp-preview__a { display: flex; flex-wrap: nowrap; overflow-x: auto; padding: 0 var(--gutter); scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .mp-preview__a::-webkit-scrollbar { display: none; }
+    .mp-preview__a .btn-app { flex: none; min-height: 40px; }
+    /* No works yet: one row of placeholders is enough of an invitation on a phone. */
+    .mp__shelf--ghost li:nth-child(n+3) { display: none; }
+  }
   .mp-preview .btn-app { min-height: 34px; padding: 0 14px; font-size: 13px; }
   .mp-preview b { color: var(--text); font-weight: 500; }
   .mp__actions { display: flex; gap: 10px; align-items: center; }
