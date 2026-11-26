@@ -7,6 +7,8 @@ import MadeWith from '@/components/profile/MadeWith.astro';
 import FounderMark from '@/components/ui/FounderMark.astro';
 import OpusMark from '@/components/ui/OpusMark.astro';
 import Journey from '@/components/profile/Journey.astro';
+import SideBar from '@/components/profile/SideBar.astro';
+import { feedWhen, profileFeed } from '@/server/profile-feed';
 import SocialRow from '@/components/profile/SocialRow.astro';
 import { connectionMetros, homeMetroOf, memberStats } from '@/server/progress';
 import { levelOf, points, resolveTitle } from '@/lib/progress';
@@ -73,13 +75,7 @@ const page = await getPageConfig(Astro.locals.runtime.env.WAITLIST, p.id);
 const picks = showcasePicks(page, canShowcase(p.verification));
 const essentials = (picks.full.map((id) => record.find((x) => x.id === id)).filter(Boolean) as typeof record).slice(0, 6);
 const featuredWork = record.find((x) => x.id === picks.featured) ?? null;
-const lead = essentials.length ? essentials : featuredWork ? [featuredWork] : record[0] ? [record[0]] : [];
-const noteOf = (id: string) => page.notes[id] ?? '';
-const byYear = (() => {
-  const m = new Map<string, typeof record>();
-  for (const x of record) { const y = x.releaseDate?.slice(0, 4) ?? (x.released ? 'Earlier' : 'In the works'); m.set(y, [...(m.get(y) ?? []), x]); }
-  return [...m.entries()];
-})();
+// Works shelf: Signatures (or the one Featured work) first, then the rest, newest first.
 const essentialIds = new Set(essentials.map((x) => x.id));
 const hue = [...p.handle].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 0);
 const photo = p.photoKey ? mediaUrl(p.photoKey) : null;
@@ -108,15 +104,15 @@ const territory = (() => {
 const lv = levelOf(points(stats));
 const title = resolveTitle(page.title || (founder ? 'founder' : ''), stats, p.distinction);
 const rail = show('journey');
-// Few works read best as a short list; a bigger catalogue becomes a shelf of covers by year.
-const asRows = record.length <= 8;
-const essCols = Math.min(lead.length, rail ? 3 : 4);
-const yearOf = (x: (typeof record)[number]) => x.releaseDate?.slice(0, 4) ?? '';
 const ord = (k: string) => page.order.indexOf(k as never);
-const hasAbout = !!(roles.length > 1 || p.bio || p.achievements.length || p.collaborations.length || p.portfolio.length);
-const releaseLine = (x: (typeof record)[number]) => [x.artist && (!x.own || !x.roles.includes('Primary Artist')) ? x.artist : null, x.own && x.roles.length === 1 && x.roles[0] === 'Primary Artist' ? null : x.roles.length ? x.roles.join(', ') : null, RELEASE_KINDS[x.kind], x.releaseDate?.slice(0, 4)].filter(Boolean).join(' · ');
+const hasAbout = !!(roles.length > 1 || p.achievements.length || p.collaborations.length || p.portfolio.length);
 const byLine = (x: (typeof record)[number]) => [x.artist && (!x.own || !x.roles.includes('Primary Artist')) ? x.artist : null, x.own && x.roles.length === 1 && x.roles[0] === 'Primary Artist' ? null : x.roles.length ? x.roles.join(', ') : null].filter(Boolean).join(' · ');
-const isEmpty = !record.length && !p.credits.length && !hasAbout;
+const leadIds = essentials.length ? essentials.map((x) => x.id) : featuredWork ? [featuredWork.id] : [];
+const shelf = [...(leadIds.map((id) => record.find((x) => x.id === id)).filter(Boolean) as typeof record), ...record.filter((x) => !leadIds.includes(x.id))]
+  .map((x) => ({ id: x.id, title: x.title, cover: x.coverKey ? mediaUrl(x.coverKey) : null, line: [RELEASE_KINDS[x.kind], x.releaseDate?.slice(0, 4)].filter(Boolean).join(' · '), by: byLine(x), mark: essentialIds.has(x.id) ? SHOWCASE.one : featuredWork?.id === x.id && !essentials.length ? SHOWCASE.featured : '', note: essentialIds.has(x.id) ? (page.notes[x.id] ?? '') : '', with: made.get(x.id) }));
+const FIRST = 4;
+const feed = p.status === 'published' || isOwner ? await profileFeed(db, ownerId, p.id) : [];
+const isEmpty = !record.length && !p.credits.length && !hasAbout && !feed.length;
 const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${where ? ` · ${where}` : ''} on Opus.`;
 ---
 <BaseLayout title={p.displayName} description={desc} noindex={p.status !== 'published'} image={p.photoKey ? mediaUrl(p.photoKey)! : undefined}>
@@ -132,7 +128,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
       </span>
     </div>
   )}
-  <article class:list={['mp', 'pf', { 'is-founder': founder, 'has-rail': rail }]} style={`--mp-hue:${hue};${look.css}`}>
+  <article class:list={['mp', 'pf', { 'is-founder': founder }]} style={`--mp-hue:${hue};${look.css}`}>
     <div class="mp__wash" aria-hidden="true"></div>
     <div class="mp__inner">
       <div class:list={['mp__banner', 'pf-bd', { 'has-cover': !!p.coverKey }]} data-backdrop={look.backdrop} role="img" aria-label={p.coverKey ? `Banner of ${p.displayName}` : undefined} aria-hidden={p.coverKey ? undefined : 'true'}>
@@ -141,8 +137,19 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
       <header class:list={['mp__head', { 'no-photo': !photo }]}>
         <div class="mp__photo" style={`view-transition-name:pf-${p.handle};` + (photo ? `background-image:url(${photo})` : '')} role="img" aria-label={photo ? `Photo of ${p.displayName}` : p.displayName}>{!photo && initials(p.displayName)}</div>
         <div class="mp__id">
+          <div class="mp__line">
+            <h1 class="mp__name"><span>{p.displayName}</span>{p.verification === 'verified' && <VerifiedBadge size={22} />}</h1>
+            {(where || awayCity) && (
+              <p class="mp__based">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.500-5.600-6.500-10.500a6.500 6.500 0 0 1 13 0C18.500 15.400 12 21 12 21Z"/><circle cx="12" cy="10.300" r="2.200"/></svg>
+                <span>
+                  {awayCity && <><a class="mp__where is-away" href={cityHref(awayCity.name)}>In {awayCity.name} now</a>{where && ' · '}</>}
+                  {where && <>Based in {worldCity ? <a class="mp__where" href={cityHref(worldCity)}>{where}</a> : where}</>}
+                </span>
+              </p>
+            )}
+          </div>
           <p class="mp__kicker">{roles[0] ?? 'Opus member'}</p>
-          <h1 class="mp__name"><span>{p.displayName}</span>{p.verification === 'verified' && <VerifiedBadge size={22} />}</h1>
           {(title || founder || rail) && (
             <p class="mp__rank">
               {founder && <FounderMark />}
@@ -151,12 +158,11 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
             </p>
           )}
           {page.tagline && <p class="mp__tag">{page.tagline}</p>}
+          {p.bio && <p class="mp__bio" data-bio>{p.bio}</p>}
           <ul class="mp__facts" role="list">
-            {awayCity && <li class="is-away"><a class="mp__where" href={cityHref(awayCity.name)}>In {awayCity.name} now</a></li>}
-            {where && <li>{awayCity && 'Home: '}{where && worldCity ? <a class="mp__where" href={CITIES.some((c) => c.name === worldCity) ? `/world/${citySlug(worldCity)}` : `/world?city=${encodeURIComponent(worldCity)}`}>{where}</a> : where}</li>}
             {p.genres.length > 0 && <li>{p.genres.slice(0, 3).join(', ')}</li>}
             {hire.length > 0 && <li class="is-on">For hire</li>}
-            <li><b>{connections.toLocaleString('en-US')}</b> {connections === 1 ? 'connection' : 'connections'}</li>
+            <li><a class="mp__where" href={isOwner ? '/network' : undefined}><b>{connections.toLocaleString('en-US')}</b> {connections === 1 ? 'connection' : 'connections'}</a></li>
           </ul>
           {links.length > 0 && <div class="mp__soc"><SocialRow links={p.links} /></div>}
           {page.links.length > 0 && (
@@ -310,67 +316,40 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               {hire.length > 0 && !isOwner && <p class="dim mp__fine">“From” prices are a guide. You agree the details and payment directly; Opus doesn’t take payment yet.</p>}
             </section>
           )}
+          {(feed.length > 0 || isOwner) && (
+            <section class="mp__sec" id="feed" style="order:-2">
+              <h2 class="mp__h">Feed</h2>
+              {feed.length > 0 ? (
+                <ul class="mp__tiles mp__feed" role="list">{feed.map((f, i) => (
+                  <li><a href={f.href}>
+                    <span class:list={['mp__tile', { 'is-round': f.round }]} style={f.image ? `background-image:url(${f.image})` : `--c:${(hue + 20 + i * 53) % 360}`}>
+                      <i class:list={['mp__tile-k', { 'is-up': f.upcoming }]}>{f.label}</i>
+                    </span>
+                    <b>{f.title}</b>
+                    <small>{[f.sub, feedWhen(f.at, f.upcoming)].filter(Boolean).join(' · ')}</small>
+                  </a></li>
+                ))}</ul>
+              ) : <p class="mp__quiet">Your feed fills in by itself: new works, credits others confirm, groups you join, parties and events. <a class="link" href="/works/mine?add=1">Add a work</a></p>}
+            </section>
+          )}
           {show('works') && (record.length > 0 || isOwner) && (
             <section class="mp__sec" id="works" style={`order:${ord('works')}`}>
-              {lead.length > 0 ? (
+              <h2 class="mp__h">Works {record.length > 0 && <span>{record.length}</span>}</h2>
+              {record.length > 0 ? (
                 <>
-                  <h2 class="mp__h">{essentials.length ? SHOWCASE.name : featuredWork ? SHOWCASE.featured : 'Latest'}</h2>
-                  <ul class:list={['mp__ess', { 'is-one': lead.length === 1 }]} style={'--cols:' + essCols} role="list">{lead.map((x, i) => (
-                    <li>
-                      <a href={`/r/${x.id}`}>
-                        <span class="mp__ess-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
-                        <span class="mp__ess-t">
-                          <small>{[RELEASE_KINDS[x.kind], x.released ? (x.releaseDate?.slice(0, 4) ?? "Out now") : x.releaseDate ? "Coming" : ""].filter(Boolean).join(" · ")}</small>
-                          <b>{x.title}</b>
-                          {byLine(x) && <em>{byLine(x)}</em>}
-                          <span class="mp__ess-mw"><MadeWith with={made.get(x.id)} /></span>
-                          {noteOf(x.id) ? <span class="mp__ess-n">{noteOf(x.id)}</span> : isOwner && essentials.length ? <span class="mp__ess-n is-hint">Add a line about this work in Customize page.</span> : null}
-                        </span>
-                      </a>
-                    </li>
-                  ))}</ul>
-                  {record.length > 1 && (
-                    <>
-                      <h2 class="mp__h">All work <span>{record.length}</span></h2>
-                      {asRows ? (
-                        <ul class="mp__rows" role="list">{record.map((x, i) => (
-                          <li><a href={`/r/${x.id}`}>
-                            <span class="mp__row-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
-                            <span class="mp__row-t">
-                              <b>{x.title}{essentialIds.has(x.id) && <i>{SHOWCASE.one}</i>}</b>
-                              <small>{[RELEASE_KINDS[x.kind], byLine(x)].filter(Boolean).join(' · ')}</small>
-                              <span class="mp__row-mwp"><MadeWith with={made.get(x.id)} faces={false} /></span>
-                            </span>
-                            <span class="mp__row-mw"><MadeWith with={made.get(x.id)} /></span>
-                            <span class="mp__row-y">{yearOf(x)}</span>
-                          </a></li>
-                        ))}</ul>
-                      ) : (
-                      <div class="mp__years">{byYear.map(([year, items]) => (
-                        <section class="mp__year">
-                          <h3>{year}</h3>
-                          <ul role="list">{items.map((x, i) => (
-                            <li><a href={`/r/${x.id}`}>
-                              <span class="mp__row-cover" style={x.coverKey ? `background-image:url(${mediaUrl(x.coverKey)})` : `--c:${(hue + 40 + i * 47) % 360}`}></span>
-                              <span class="mp__row-t">
-                                <b>{x.title}{essentialIds.has(x.id) && <i>{SHOWCASE.one}</i>}</b>
-                                <small>{[RELEASE_KINDS[x.kind], byLine(x)].filter(Boolean).join(' · ')}</small>
-                                <MadeWith with={made.get(x.id)} faces={false} />
-                                {noteOf(x.id) && !essentialIds.has(x.id) && <span class="mp__row-n">{noteOf(x.id)}</span>}
-                              </span>
-                            </a></li>
-                          ))}</ul>
-                        </section>
-                      ))}</div>
-                      )}
-                    </>
-                  )}
+                  <ul class="mp__tiles mp__works" role="list" data-works>{shelf.map((x, i) => (
+                  <li><a href={`/r/${x.id}`}>
+                    <span class="mp__tile" style={x.cover ? `background-image:url(${x.cover})` : `--c:${(hue + 40 + i * 47) % 360}`}>{x.mark && <i class="mp__tile-k">{x.mark}</i>}</span>
+                    <b>{x.title}</b>
+                    <small>{[x.by, x.line].filter(Boolean).join(' · ')}</small>
+                    {x.note && <small class="mp__tile-n">{x.note}</small>}
+                    <MadeWith with={x.with} faces={false} />
+                  </a></li>
+                ))}</ul>
+                  {shelf.length > FIRST && <button class="mp__allb" type="button" data-all-works>Show all {record.length}</button>}
                 </>
               ) : (
-                <>
-                  <h2 class="mp__h">Works</h2>
-                  <ul class="mp__shelf mp__shelf--ghost" role="list">{[0, 1, 2, 3].map((i) => <li><a href="/works/mine?add=1"><span class="mp__tile" style={`--c:${(hue + i * 40) % 360}`}></span><b>{i === 0 ? 'Add your first work' : ' '}</b><small>{i === 0 ? 'Search a song or paste a link' : ' '}</small></a></li>)}</ul>
-                </>
+                <ul class="mp__tiles mp__shelf--ghost" role="list">{[0, 1, 2, 3].map((i) => <li><a href="/works/mine?add=1"><span class="mp__tile" style={`--c:${(hue + i * 40) % 360}`}></span><b>{i === 0 ? 'Add your first work' : ' '}</b><small>{i === 0 ? 'Search a song or paste a link' : ' '}</small></a></li>)}</ul>
               )}
             </section>
           )}
@@ -388,7 +367,6 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
           )}
           {show('about') && hasAbout && (
             <section class="mp__sec" style={`order:${ord('about')}`}><h2 class="mp__h">About</h2>
-              {p.bio && <p class="mp__bio">{p.bio}</p>}
               {roles.length > 1 && <p class="mp__also"><span>Also</span> {roles.slice(1).join(' · ')}</p>}
               {p.achievements.length > 0 && <ul class="mp__list" role="list">{p.achievements.map((a) => <li>{a}</li>)}</ul>}
               {p.collaborations.length > 0 && <ul class="mp__tags" role="list">{p.collaborations.map((a) => <li>{a}</li>)}</ul>}
@@ -417,6 +395,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
       )}
     </div>
   </article>
+  <SideBar signedIn={!!viewer} next={'/' + p.handle} />
 </BaseLayout>
 
 <style>
@@ -460,16 +439,19 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   :global([data-theme='light']) .mp__wash { opacity: .5; }
   .mp__inner { position: relative; max-width: 1240px; margin: 0 auto; padding: clamp(20px, 3vw, 36px) var(--gutter) 96px; }
   /* Banner across the top, a round photo overlapping its lower edge, then who they are. */
-  .mp__banner { height: clamp(150px, 19vw, 250px); border-radius: 22px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+  .mp__banner { height: clamp(120px, 15vw, 200px); border-radius: 22px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
   .mp__cover { position: absolute; inset: 0; background: center / cover no-repeat; }
-  .mp__head { display: block; text-align: center; padding: 0 clamp(4px, 2vw, 28px); }
-  .mp__photo { margin-inline: auto; position: relative; z-index: 1; width: clamp(120px, 14vw, 168px); margin-top: calc(clamp(120px, 14vw, 168px) / -2); margin-inline: auto; border: 5px solid var(--bg); aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font-size: clamp(48px, 7vw, 88px); font-weight: 300; letter-spacing: -0.04em; color: #fff; background: linear-gradient(145deg, hsl(var(--mp-hue) 45% 38%), hsl(calc(var(--mp-hue) + 50) 50% 22%)) center / cover no-repeat; box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .55); }
-  .mp__id { margin-top: 26px; display: flex; flex-direction: column; align-items: center; }
-  .mp__facts, .mp__chips, .mp__groups, .mp__actions { justify-content: center; }
+  /* Social-app header (Bogo's sketch): photo on the left over the banner's edge, name with the city beside it, specialty, bio. */
+  .mp__head { position: relative; padding: 0 clamp(4px, 2vw, 28px); }
+  .mp__photo { position: relative; z-index: 1; width: clamp(120px, 13vw, 164px); margin-top: calc(clamp(120px, 13vw, 164px) / -2); border: 5px solid var(--bg); aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font-size: clamp(44px, 6vw, 76px); font-weight: 300; letter-spacing: -0.04em; color: #fff; background: linear-gradient(145deg, hsl(var(--mp-hue) 45% 38%), hsl(calc(var(--mp-hue) + 50) 50% 22%)) center / cover no-repeat; box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .55); }
+  .mp__id { margin-top: 18px; display: flex; flex-direction: column; align-items: flex-start; }
+  .mp__line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; max-width: 100%; }
+  .mp__based { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 15px; color: var(--text-2); }
+  .mp__based svg { flex: none; color: var(--pf-ink); transform: translateY(-1px); }
+  .mp__where.is-away { color: var(--pf-ink); }
   .mp__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-  .mp__tag { margin-inline: auto; }
-  .mp__kicker { display: flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-2); }
-  .mp__rank { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px; margin-top: 14px; }
+  .mp__kicker { margin-top: 8px; font-size: 16px; color: var(--text); font-weight: 500; letter-spacing: -0.01em; }
+  .mp__rank { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; }
   .mp__title { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--pf-ink); box-shadow: inset 0 0 0 1px hsl(var(--pf-h) var(--pf-s) 60% / .45); background: var(--pf-soft); }
   .mp__lv { font-size: 13px; color: var(--text-2); text-decoration: none; font-variant-numeric: tabular-nums; }
   .mp__lv:hover { color: var(--text); }
@@ -477,49 +459,75 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__also { margin-top: 14px; font-size: 14px; color: var(--text-2); }
   .mp__also span { margin-right: 8px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
   .is-founder .mp__photo { box-shadow: 0 0 0 1px color-mix(in oklab, #c99a3c 70%, transparent); }
-  .mp__name { display: flex; align-items: center; justify-content: center; gap: .22em; }
+  .mp__name { display: flex; align-items: center; gap: .22em; }
   .mp__name span { min-width: 0; }
-  .mp__name { margin-top: 8px; font-size: clamp(2.6rem, 1.4rem + 4vw, 5rem); line-height: .98; overflow-wrap: break-word; }
-  .mp__tag { margin-top: 14px; font-size: clamp(16px, 1.4vw, 20px); color: var(--text-2); max-width: 46ch; }
-  .mp__facts { display: flex; flex-wrap: wrap; gap: 6px 0; margin-top: 18px; font-size: 14px; color: var(--text-2); }
+  .mp__name { margin: 0; font-size: clamp(2rem, 1.3rem + 2vw, 3.1rem); line-height: 1.02; letter-spacing: -0.035em; overflow-wrap: anywhere; }
+  .mp__tag { margin-top: 12px; font-size: 16px; color: var(--text); max-width: 60ch; }
+  .mp__head .mp__bio { margin: 8px 0 0; font-size: 15px; line-height: 1.55; max-width: 68ch; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+  .mp__head .mp__bio.is-open { display: block; cursor: auto; }
+  .mp__facts { display: flex; flex-wrap: wrap; gap: 6px 0; margin-top: 14px; font-size: 14px; color: var(--text-2); }
   .mp__facts li + li::before { content: ''; display: inline-block; width: 3px; height: 3px; margin: 0 14px 3px; border-radius: 50%; background: var(--text-3); vertical-align: middle; }
   .mp__facts b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
   .mp__facts .is-on { color: var(--c-accent); }
-  .mp__people { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; margin-top: 22px; color: var(--text-2); font-size: 14px; }
+  .mp__people { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; color: var(--text-2); font-size: 14px; }
   .mp__faces { display: inline-flex; flex: none; }
   .mp__faces a { display: grid; place-items: center; width: 34px; height: 34px; margin-left: -9px; border-radius: 50%; border: 2px solid var(--bg); background: var(--surface-hover, #ddd) center / cover no-repeat; color: var(--text-2); font-size: 12px; font-weight: 500; text-decoration: none; }
   .mp__faces a:first-child { margin-left: 0; }
   .mp__faces a.is-sq { border-radius: 8px; }
-  .mp__shared { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 14px; }
+  .mp__shared { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 14px; }
   .mp__shared .mp__faces a { width: 28px; height: 28px; margin-left: -7px; }
   .mp__shared .mp__faces a:first-child { margin-left: 0; }
   .mp__shared p { margin: 0; font-size: 14px; color: var(--text-3); text-wrap: balance; }
   .mp__shared b { font-weight: 500; color: var(--text); }
   .mp__shared i { font-style: normal; opacity: 0.6; }
   .mp__people-t b { color: var(--text); font-weight: 500; }
-  .mp__groups { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 22px; }
+  .mp__groups { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 16px; }
   .mp__groups a { display: inline-flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13px; text-decoration: none; transition: box-shadow var(--dur) var(--ease); }
   .mp__groups a:hover { box-shadow: inset 0 0 0 1px var(--text-3); }
   .mp__gl { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-hover, #eee) center / cover; color: var(--text-2); font-weight: 500; }
   .mp__gn { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-  .mp__soc { margin-top: 18px; }
+  .mp__soc { margin-top: 14px; }
   .mp__soc + .mp__chips { margin-top: 12px; }
-  .mp__chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .mp__chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
   .mp__chips a { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: var(--r-pill); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font-size: 13px; text-decoration: none; }
   .mp__chips a:hover { background: var(--surface-hover); }
-  .mp__actions { margin-top: 22px; }
+  .mp__actions { margin-top: 20px; }
+  /* Desktop: Connect and Message sit level with the photo, on the right, where social apps put them. */
+  @media (min-width: 861px) { .mp__actions { position: absolute; top: calc(clamp(120px, 13vw, 164px) / 2 + 20px); right: clamp(4px, 2vw, 28px); margin: 0; } }
   .mp__new { margin-top: 56px; color: var(--text-2); font-size: 17px; }
   /* Body: the work on the left, level and achievements in a rail on the right. Without the rail, one centred column. */
-  .mp__grid { margin-top: clamp(36px, 5vw, 60px); display: flex; flex-direction: column; gap: 56px; max-width: 860px; margin-inline: auto; }
+  .mp__grid { margin-top: clamp(28px, 4vw, 44px); padding-top: clamp(28px, 4vw, 44px); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 52px; }
   .mp__main { display: contents; }
-  @media (min-width: 1000px) {
-    .has-rail .mp__grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: clamp(40px, 5vw, 72px); align-items: start; max-width: none; }
-    .has-rail .mp__main { display: flex; flex-direction: column; gap: 56px; min-width: 0; }
-    .mp__rail { position: sticky; top: calc(var(--hdr-h) + 72px); order: 0 !important; }
+  .mp__rail :global(.jr) { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; align-items: start; }
+  .mp__rail :global(.jr > *) { margin: 0; }
+  .mp__rail .tr { margin-top: 16px; }
+  .mp__quiet { margin: 0; max-width: 60ch; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+  /* Feed and Works: rows of four tiles, as drawn. */
+  .mp__tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px clamp(14px, 2vw, 24px); }
+  .mp__tiles a { display: flex; flex-direction: column; gap: 3px; min-width: 0; color: inherit; text-decoration: none; }
+  .mp__tiles .mp__tile { position: relative; margin-bottom: 9px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); transition: transform .2s ease; }
+  .mp__tiles a:hover .mp__tile { transform: translateY(-3px); }
+  .mp__tiles b { font-size: 15px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.25; overflow-wrap: anywhere; }
+  .mp__tiles small { font-size: 13px; color: var(--text-3); line-height: 1.4; }
+  .mp__tile.is-round { border-radius: 50%; }
+  .mp__tile-k { position: absolute; left: 10px; top: 10px; padding: 4px 9px; border-radius: var(--r-pill); background: rgba(12, 12, 14, .72); color: #f4f2ee; font-style: normal; font-size: 11px; font-weight: 500; letter-spacing: .02em; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .mp__tile-k.is-up { background: var(--c-verified, #2f80ff); color: #fff; }
+  .mp__tile.is-round .mp__tile-k { left: 50%; top: auto; bottom: 8px; transform: translateX(-50%); white-space: nowrap; }
+  .mp__tile-n { margin-top: 3px; color: var(--text-2) !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* One row of four, as drawn; the rest of the catalogue opens in place. */
+  .mp__works:not(.is-all) li:nth-child(n+5) { display: none; }
+  .mp__allb { margin-top: 22px; min-height: 40px; padding: 0 18px; border: 0; border-radius: var(--r-pill); background: none; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .mp__allb:hover { background: var(--surface-hover); }
+  @media (min-width: 861px) { .mp__feed li:nth-child(n+5) { display: none; } }
+  @media (max-width: 860px) {
+    .mp__tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 14px; }
+    /* The feed swipes sideways on a phone, like stories and shelves do. */
+    .mp__feed { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter, 20px); margin-inline: calc(var(--gutter, 20px) * -1); padding: 0 var(--gutter, 20px) 6px; scrollbar-width: none; }
+    .mp__feed::-webkit-scrollbar { display: none; }
+    .mp__feed li { flex: 0 0 42%; scroll-snap-align: start; }
   }
   .mp__h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; font-size: 22px; font-weight: 500; letter-spacing: -0.03em; }
   .mp__h span { font-size: 14px; font-weight: 400; color: var(--text-3); }
-  .mp__sec .mp__h:not(:first-child) { margin-top: 56px; }
   .mp__where { color: inherit; text-decoration: none; }
   .mp__where:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
   .mp__tile, .mp__ess-cover, .mp__row-cover { display: block; background: linear-gradient(135deg, hsl(var(--c, 220) 45% 42%), hsl(calc(var(--c, 220) + 50) 55% 30%)) center / cover no-repeat; }
@@ -593,7 +601,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   .mp__shelf small { font-size: 13px; color: var(--text-3); line-height: 1.4; }
   .mp__shelf--ghost .mp__tile { opacity: .35; box-shadow: none; }
   .mp__shelf--ghost li:not(:first-child) { opacity: .6; }
-  .mp__bio { white-space: pre-line; font-size: 17px; line-height: 1.65; color: var(--c-fg-muted); max-width: 64ch; margin-bottom: 18px; }
+  .mp__bio { white-space: pre-line; color: var(--text-2); }
   .mp__credits li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 14px 0; border-bottom: 1px solid var(--c-line); font-size: 15px; }
   .mp__credits li:first-child { border-top: 1px solid var(--c-line); }
   .mp__sec .mp__tags, .mp__sec .mp__links, .mp__sec .mp__list { margin-top: 14px; }
@@ -612,8 +620,10 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
   @media (max-width: 860px) {
     .mp__banner { border-radius: 16px; }
     .mp__head { padding: 0 4px; }
-    .mp__photo { width: 112px; margin-top: -56px; }
-    .mp__name { font-size: clamp(2.1rem, 10vw, 3rem); }
+    .mp__photo { width: 104px; margin-top: -52px; }
+    .mp__name { font-size: clamp(1.7rem, 7.5vw, 2.2rem); }
+    .mp__actions .btn-app { flex: 1; }
+    .mp__inner { padding-bottom: 56px; }
     .mp__ess.is-one a { flex-direction: column; align-items: flex-start; }
     .mp__ess.is-one .mp__ess-cover { width: 100%; }
     .mp__ess.is-one a { align-items: stretch; }
@@ -625,6 +635,9 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
 
 <script>
   import { bindForm } from '@/scripts/form';
+  document.querySelector<HTMLButtonElement>('[data-all-works]')?.addEventListener('click', (e) => { document.querySelector('[data-works]')?.classList.add('is-all'); (e.currentTarget as HTMLElement).remove(); });
+  // The bio shows three lines; a tap opens the rest.
+  document.querySelector<HTMLElement>('[data-bio]')?.addEventListener('click', (e) => (e.currentTarget as HTMLElement).classList.add('is-open'));
   // Connect: a compact dialog with an optional, editable introduction. Nothing is sent until "Send request".
   const dlg = document.querySelector<HTMLDialogElement>('[data-connect]');
   const form = dlg?.querySelector<HTMLFormElement>('[data-connect-form]');
