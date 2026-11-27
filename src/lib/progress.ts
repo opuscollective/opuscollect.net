@@ -2,7 +2,7 @@
  * Progress on Opus: levels, achievements and titles.
  *
  * Everything here is computed from recorded activity (works, confirmed credits, accepted connections,
- * groups, listening parties). Nothing is entered by hand, nothing can be bought, and nothing is estimated.
+ * groups, listening parties, feedback given). Nothing is entered by hand, nothing can be bought, and nothing is estimated.
  * Real work weighs more than connection counts, and connections stop adding points past a cap, so
  * collecting connections alone can't carry a level.
  *
@@ -23,6 +23,7 @@ export interface Stats {
   groups: number;           // groups where they are an active member
   partiesHosted: number;    // listening parties they hosted that ran and ended
   partyPeak: number;        // the most listeners in one of their rooms at once
+  feedbackGiven: number;    // other members' tracks they left written feedback on (once per track)
   published: boolean;       // profile is live
   hasPhoto: boolean;
   verified: boolean;
@@ -30,7 +31,7 @@ export interface Stats {
 
 export const NO_STATS: Stats = {
   works: 0, creditsEarned: 0, creditsGiven: 0, connections: 0, connectionCities: 0, connectionCountries: 0, awayConnections: 0, awayParties: 0,
-  groups: 0, partiesHosted: 0, partyPeak: 0, published: false, hasPhoto: false, verified: false,
+  groups: 0, partiesHosted: 0, partyPeak: 0, feedbackGiven: 0, published: false, hasPhoto: false, verified: false,
 };
 
 /** Points per source, with caps. Work and confirmed credits lead; connections are capped. */
@@ -42,13 +43,16 @@ export const POINTS = {
   connection: { each: 10, cap: 30 },
   group: { each: 40, cap: 3 },
   party: { each: 50, cap: 10 },
+  // One per track, on someone else's track, and only a note long enough to be feedback. Less than a work or a credit, capped.
+  feedback: { each: 15, cap: 40 },
 } as const;
 
 export function points(s: Stats): number {
   const part = (n: number, r: { each: number; cap: number }) => Math.min(Math.max(0, Math.floor(n)), r.cap) * r.each;
   return (s.published && s.hasPhoto ? POINTS.profile : 0)
     + part(s.works, POINTS.work) + part(s.creditsEarned, POINTS.creditEarned) + part(s.creditsGiven, POINTS.creditGiven)
-    + part(s.connections, POINTS.connection) + part(s.groups, POINTS.group) + part(s.partiesHosted, POINTS.party);
+    + part(s.connections, POINTS.connection) + part(s.groups, POINTS.group) + part(s.partiesHosted, POINTS.party)
+    + part(s.feedbackGiven, POINTS.feedback);
 }
 
 /** Level thresholds in points. Names are proposed copy. */
@@ -77,7 +81,7 @@ export function levelOf(pts: number): Level {
   };
 }
 
-export type AchievementGroup = 'work' | 'credits' | 'people' | 'travel' | 'live' | 'standing';
+export type AchievementGroup = 'work' | 'credits' | 'people' | 'travel' | 'live' | 'feedback' | 'standing';
 export interface Achievement {
   id: string; name: string; group: AchievementGroup;
   /** What it took, as shown to everyone. */
@@ -114,10 +118,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
 
   { id: 'host', name: 'Host', group: 'live', how: 'Hosted a listening party', title: 'Host', stat: 'partiesHosted', need: 1, tier: 1 },
   { id: 'host-5', name: 'Regular Host', group: 'live', how: 'Hosted 5 listening parties', title: 'Tastemaker', stat: 'partiesHosted', need: 5, tier: 2 },
+  { id: 'first-feedback', name: 'First Note', group: 'feedback', how: 'Gave feedback on another member’s track', stat: 'feedbackGiven', need: 1, tier: 1 },
+  { id: 'feedback-10', name: 'Good Ears', group: 'feedback', how: 'Gave feedback on 10 tracks', title: 'Good Ears', stat: 'feedbackGiven', need: 10, tier: 2 },
+  { id: 'feedback-40', name: 'Trusted Ears', group: 'feedback', how: 'Gave feedback on 40 tracks', title: 'Trusted Ears', stat: 'feedbackGiven', need: 40, tier: 3 },
   { id: 'full-room', name: 'Full Room', group: 'live', how: '25 people in one listening party at once', title: 'Full Room', stat: 'partyPeak', need: 25, tier: 3 },
 ];
 
-export const GROUP_LABEL: Record<AchievementGroup, string> = { work: 'Work', credits: 'Credits', people: 'People', travel: 'Travel', live: 'Live', standing: 'Standing' };
+export const GROUP_LABEL: Record<AchievementGroup, string> = { work: 'Work', credits: 'Credits', people: 'People', travel: 'Travel', live: 'Live', feedback: 'Feedback', standing: 'Standing' };
 
 const num = (v: Stats[keyof Stats]) => (typeof v === 'number' ? v : v ? 1 : 0);
 

@@ -5,6 +5,7 @@
  */
 import { NO_STATS, type Stats } from '@/lib/progress';
 import { PLACE_BY_ID } from '@/data/places';
+import { givenCount } from './feedback';
 
 const one = async (db: D1Database, sql: string, ...binds: unknown[]): Promise<Record<string, number>> => {
   try { return (await db.prepare(sql).bind(...binds).first<Record<string, number>>()) ?? {}; } catch { return {}; }
@@ -34,7 +35,7 @@ export async function memberStats(
   metros?: MetroCount[],
 ): Promise<Stats> {
   const home = homeMetroOf(profile.placeId);
-  const [works, earned, given, conn, groups, parties, away, cityRows] = await Promise.all([
+  const [works, earned, given, conn, groups, parties, away, cityRows, feedback] = await Promise.all([
     one(db, "SELECT COUNT(*) AS n FROM releases WHERE owner_user_id = ? AND status = 'published'", userId),
     // Confirmed by the member on someone else's published work: one per work, however many roles.
     one(db, `SELECT COUNT(DISTINCT c.release_id) AS n FROM release_credits c JOIN releases r ON r.id = c.release_id
@@ -49,6 +50,7 @@ export async function memberStats(
     // The same, pinned to a city that isn't home. Only counted when the member has a home city.
     home ? one(db, "SELECT COUNT(*) AS n FROM parties WHERE host_user_id = ? AND status = 'ended' AND started_at IS NOT NULL AND peak_listeners >= 2 AND place_id IS NOT NULL AND place_id <> ?", userId, home) : Promise.resolve({} as Record<string, number>),
     metros ? Promise.resolve(metros) : connectionMetros(db, userId),
+    givenCount(db, userId),
   ]);
   return {
     ...NO_STATS,
@@ -57,7 +59,7 @@ export async function memberStats(
     // Away from home needs a home: without a profile city nothing counts as away.
     awayConnections: home ? cityRows.filter((r) => r.metro !== home).reduce((a, r) => a + r.n, 0) : 0,
     awayParties: away.n ?? 0,
-    groups: groups.n ?? 0, partiesHosted: parties.n ?? 0, partyPeak: parties.peak ?? 0,
+    groups: groups.n ?? 0, partiesHosted: parties.n ?? 0, partyPeak: parties.peak ?? 0, feedbackGiven: feedback,
     published: profile.status === 'published', hasPhoto: !!profile.photoKey, verified: profile.verification === 'verified',
   };
 }

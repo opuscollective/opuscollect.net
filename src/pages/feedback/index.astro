@@ -1,0 +1,149 @@
+---
+/**
+ * Feedback: post a track, get notes from other members. The Discord's Feedback Wednesdays, open all week.
+ * One screen: a link box to post, and the feed. Members only. Every count is a count of rows.
+ */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import ProductNav from '@/components/product/ProductNav.astro';
+import { FEEDBACK, ago } from '@/lib/feedback';
+import { POINTS } from '@/lib/progress';
+import { feedbackReady, givenCount, listTracks, type FeedbackTrack } from '@/server/feedback';
+import { getMyProfile } from '@/server/profiles';
+import '@/styles/app.css';
+import '@/styles/feedback.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const db = Astro.locals.runtime.env.DB;
+const ready = await feedbackReady(db);
+const me = user ? await getMyProfile(db, user.id).catch(() => null) : null;
+const can = !!user && user.emailVerified && me?.status === 'published';
+const SHOWS = [['all', 'All'], ['open', 'No notes yet'], ['mine', 'Yours']] as const;
+const show = SHOWS.find(([k]) => k === Astro.url.searchParams.get('show'))?.[0] ?? 'all';
+let all: FeedbackTrack[] = [];
+let given = 0;
+if (user && ready) {
+  try { [all, given] = await Promise.all([listTracks(db, user.id), givenCount(db, user.id)]); } catch (e) { console.error('feedback', e); }
+}
+const tracks = all.filter((t) => (show === 'open' ? t.notes === 0 && !t.mine : show === 'mine' ? t.mine : true));
+const pill = (t: FeedbackTrack) => (t.notes === 0 ? 'No notes yet' : t.notes === 1 ? '1 note' : t.notes + ' notes');
+---
+<BaseLayout title="Feedback" description="Post a track on Opus and get written feedback from other members. Open all week." noindex={!!user}>
+  <ProductNav product="network" current="feedback" />
+  <section class="app fb">
+    <div class="fb__wrap">
+      <p class="t-meta app__kicker">Feedback</p>
+      <h1 class="fb__title">Get ears on your track.</h1>
+      <p class="fb__sub">Post a track. Other members tell you what works and what they’d change. Open all week.</p>
+
+      {!user ? (
+        <>
+          <ol class="fb__how" role="list">
+            <li><b>Post</b><span>Paste a link to your track. Nothing is uploaded.</span></li>
+            <li><b>Listen</b><span>Members hear it where it lives and write you a note.</span></li>
+            <li><b>Give back</b><span>Feedback you give others counts toward your level.</span></li>
+          </ol>
+          <div class="row" style="margin-top:28px"><a class="btn-app" href="/sign-up">Join Opus</a><a class="btn-app btn-app--ghost" href="/sign-in?next=/feedback">Sign in</a></div>
+        </>
+      ) : !ready ? (
+        <p class="notice" style="margin-top:28px"><b>Feedback opens here soon.</b> It is built and waiting to be switched on.</p>
+      ) : (
+        <>
+          {can ? (
+            <form class="fb__post" data-post novalidate>
+              <label class="fb__link">
+                <span class="sr-only">Link to your track</span>
+                <input class="input" name="url" type="url" inputmode="url" autocomplete="off" placeholder="Paste a link to your track" required />
+                <button class="btn-app" type="submit">Post</button>
+              </label>
+              <div class="fb__more" data-more hidden>
+                <div class="fb__found" data-found hidden><span class="fb__art" data-art aria-hidden="true"></span><span data-found-text></span></div>
+                <label class="field"><span>Title</span><input class="input" name="title" maxlength={FEEDBACK.titleMax} autocomplete="off" required /></label>
+                <label class="field"><span>What do you want ears on? <small>Optional</small></span><input class="input" name="ask" maxlength={FEEDBACK.askMax} autocomplete="off" placeholder="The mix, the hook, the second verse…" /></label>
+                <input type="hidden" name="artist" /><input type="hidden" name="artwork" />
+              </div>
+              <p class="fb__err" data-err role="alert"></p>
+              <p class="fb__fine">SoundCloud, Spotify, YouTube, a private link: anything that plays. Up to {FEEDBACK.tracksPerWeek} tracks a week.</p>
+            </form>
+          ) : (
+            <p class="notice" style="margin-top:28px">
+              {!user.emailVerified ? <><b>Confirm your email to take part.</b> Then you can post tracks and give feedback. <a class="link" href="/account">Confirm it</a></>
+                : <><b>Publish your profile to take part.</b> People giving and getting feedback should see who you are. <a class="link" href="/start">Finish your profile</a></>}
+            </p>
+          )}
+
+          <p class="fb__level">
+            <span><b>{given}</b> {given === 1 ? 'track' : 'tracks'} you’ve given feedback on</span>
+            <span>Each one adds {POINTS.feedback.each} points to <a class="link" href="/me">your level</a>.</span>
+          </p>
+
+          <nav class="fb__tabs" aria-label="Show">
+            {SHOWS.map(([k, l]) => <a href={k === 'all' ? '/feedback' : '/feedback?show=' + k} aria-current={show === k ? 'page' : undefined}>{l}</a>)}
+          </nav>
+
+          {tracks.length > 0 ? (
+            <ul class="fb__rows" role="list">{tracks.map((t) => (
+              <li><a href={'/feedback/' + t.id}>
+                <span class="fb__art" style={t.artwork ? 'background-image:url(' + encodeURI(t.artwork) + ')' : undefined} aria-hidden="true">{!t.artwork && t.title.slice(0, 1).toUpperCase()}</span>
+                <span class="fb__t">
+                  <b>{t.title}</b>
+                  <small>{t.mine ? 'You' : t.by.name} · {ago(t.at)}</small>
+                  {t.ask && <em>“{t.ask}”</em>}
+                </span>
+                <span class:list={['fb__pill', t.given && !t.mine && 'is-done']}>{t.given && !t.mine ? 'You gave feedback' : pill(t)}</span>
+              </a></li>
+            ))}</ul>
+          ) : (
+            <div class="fb__quiet">
+              <b>{show === 'mine' ? 'You haven’t posted a track yet.' : show === 'open' ? 'Every track has a note.' : 'No tracks yet.'}</b>
+              <p>{show === 'mine' ? 'Paste a link above and it shows up here.' : show === 'open' ? 'Nothing is waiting on a first note right now.' : 'Be the first: paste a link above.'}</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // Post a track: paste a link, Opus fills in what it can find, the member confirms the title and posts.
+  const form = document.querySelector<HTMLFormElement>('[data-post]');
+  if (form) {
+    const f = (n: string) => form.elements.namedItem(n) as HTMLInputElement;
+    const more = form.querySelector<HTMLElement>('[data-more]')!, found = form.querySelector<HTMLElement>('[data-found]')!;
+    const err = form.querySelector<HTMLElement>('[data-err]')!, btn = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+    let looked = '';
+    const isLink = (v: string) => /^https:\/\/[^\s.]+\.[^\s]+$/i.test(v.trim());
+    const lookup = async () => {
+      const url = f('url').value.trim();
+      if (!isLink(url) || url === looked) return;
+      looked = url; more.hidden = false; err.textContent = '';
+      try {
+        const r = await fetch('/api/works/link?url=' + encodeURIComponent(url));
+        const w = r.ok ? ((await r.json()) as { result: { title: string; artist: string; artwork: string } | null }).result : null;
+        if (!w || f('url').value.trim() !== url) return;
+        if (!f('title').value) f('title').value = w.title;
+        f('artist').value = w.artist; f('artwork').value = w.artwork;
+        found.hidden = false;
+        found.querySelector<HTMLElement>('[data-found-text]')!.textContent = [w.title, w.artist].filter(Boolean).join(' · ');
+        const art = found.querySelector<HTMLElement>('[data-art]')!;
+        if (w.artwork) art.style.backgroundImage = `url("${encodeURI(w.artwork)}")`;
+      } catch { /* the member types the title */ }
+    };
+    f('url').addEventListener('input', () => { found.hidden = true; f('artist').value = ''; f('artwork').value = ''; if (isLink(f('url').value)) void lookup(); });
+    f('url').addEventListener('change', () => void lookup());
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault(); err.textContent = '';
+      if (!isLink(f('url').value)) { err.textContent = 'Paste a link to your track (it should start with https://).'; f('url').focus(); return; }
+      if (more.hidden || !f('title').value.trim()) { more.hidden = false; void lookup(); f('title').focus(); if (!f('title').value.trim()) return; }
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ url: f('url').value, title: f('title').value, ask: f('ask').value, artist: f('artist').value, artwork: f('artwork').value }) });
+        const d = (await r.json().catch(() => ({}))) as { id?: string; error?: string };
+        if (!r.ok || !d.id) throw new Error(d.error || 'Couldn’t post that. Please try again.');
+        location.href = '/feedback/' + d.id;
+      } catch (x) { err.textContent = (x as Error).message; btn.disabled = false; }
+    });
+  }
+</script>

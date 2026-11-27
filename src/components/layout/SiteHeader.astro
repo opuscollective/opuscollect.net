@@ -15,7 +15,7 @@ const SECTIONS: Record<string, string[]> = {
   '/airplay': ['/airplay'],
   '/future': ['/future'],
   '/charts': ['/charts'],
-  '/network': ['/network', '/account/connections'],
+  '/network': ['/network', '/account/connections', '/feedback'],
   '/collective': ['/collective', '/community', '/about'],
 };
 const current = (href: string) => (SECTIONS[href] ?? [href]).some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/'));

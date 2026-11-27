@@ -17,6 +17,7 @@ const ICON: Record<AchievementGroup, string> = {
   people: 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2.5 19c.6-3 2.7-4.6 5.5-4.6S12.900 16 13.500 19M13 14.700c.9-.2 1.900-.3 3-.3 2.800 0 4.900 1.600 5.500 4.600',
   travel: 'M12 21s-6.500-5.600-6.500-10.500a6.500 6.500 0 0 1 13 0C18.500 15.400 12 21 12 21Zm0-8.200a2.300 2.300 0 1 0 0-4.600 2.300 2.300 0 0 0 0 4.600Z',
   live: 'M3 12h2.500M7.500 7.500v9M12 4v16M16.500 7.500v9M18.500 12H21',
+  feedback: 'M4 5h16v11H10l-5 4v-4H4z',
   standing: 'M12 3l2.600 5.600 6.100.700-4.500 4.200 1.200 6L12 16.500 6.600 19.500l1.200-6L3.300 9.300l6.100-.700z',
 };
 const stat = [
@@ -38,7 +39,7 @@ const stat = [
       </>
     ) : <p class="jr__to"><span>Highest level</span></p>}
     <dl class="jr__stats">{stat.map((s) => <div><dd>{s.n.toLocaleString('en-US')}</dd><dt>{s.l}</dt></div>)}</dl>
-    <p class="jr__fine">Earned from real work on Opus: works, confirmed credits and connections. Never bought.</p>
+    <p class="jr__fine">Earned from real work on Opus: works, confirmed credits, connections and feedback given. Never bought.</p>
   </section>
 
   {(earned.length > 0 || isOwner) && (

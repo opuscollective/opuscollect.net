@@ -64,6 +64,12 @@ Use design tokens (`tokens.css`, `--m-*` motion tokens) and the shared product s
 - Signatures (was "Essentials"; Bogo's name, 2026-11-24): the showcase of up to six works with the member's line on each, for Verified members only, no works minimum. Everyone else leads with one Featured work. Name and gate live in `src/lib/showcase.ts`; storage keys still say `essentials`, and `/api/page` keeps an unverified member's saved picks. Each work shows "Made with N people" (`madeWith` in `src/server/releases.ts`, `MadeWith.astro`): other members with a confirmed credit, nothing when there are none. No scores or ratings.
 - Levels, achievements, titles: `src/lib/progress.ts` (rules, names) + `src/server/progress.ts` (counts from existing tables, nothing stored). Real activity only; connections are capped so they can't carry a level. Names are proposed copy until Bogo confirms.
 
+## Feedback (Bogo 2026-11-27)
+- The Discord's Feedback Wednesdays inside Opus, open all week, kept "super simple": `/feedback` (paste a link, title, optional "what do you want ears on?", then the feed) and `/feedback/<id>` (Listen, notes, a box to add yours). Members only. Code: `src/server/feedback.ts`, `src/lib/feedback.ts` (limits), `/api/feedback`, `src/styles/feedback.css`, migration 0018.
+- A track is a link; nothing is hosted or played inside Opus. The link lookup reuses `/api/works/link`. No ratings, votes or scores: the only number is how many notes a track has.
+- Levels: `feedbackGiven` in `src/lib/progress.ts` = other members' tracks with a note of 40+ characters, once per track, 15 points each, capped at 40 tracks. Achievement names are proposed copy.
+- It sits in Network's sub-nav (a working placement, Bogo to confirm). The pages check the tables exist (`feedbackReady`), so they are safe before the migration is applied.
+
 ## Joining, email and real people (Bogo 2026-11-24)
 - Opus is a directory of real people: **nobody is public, counted or able to connect until their email is confirmed.** One account per email. Gate: `EMAIL_CONFIRM_REQUIRED` in `src/lib/features.ts` (leave `true`). Public lists and counts read `status = 'published'`, and publishing needs a confirmed email.
 - Sign-up (`/sign-up`) is email + password, then straight away the 6-digit code box (`src/components/auth/ConfirmCode.astro`, `/api/auth/confirm-code`, `sendConfirmCode` in `src/server/auth.ts`). The field is `autocomplete="one-time-code"` so phones offer the code from Mail. "I'll confirm later" stays a quiet text link: they can build a profile but don't appear in World.

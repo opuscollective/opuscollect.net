@@ -10,7 +10,7 @@
 /** Top-level routes and files that exist today. Keep in sync with src/pages and public/ (the test checks). */
 const ROUTES = [
   '404', 'about', 'account', 'airplay', 'api', 'bookings', 'business', 'c', 'calendar', 'charts', 'clans', 'collective', 'community', 'directory', 'events',
-  'forgot-password', 'future', 'home', 'index', 'join', 'legal', 'm', 'media', 'music', 'musicians', 'network', 'organizations', 'party',
+  'feedback', 'forgot-password', 'future', 'home', 'index', 'join', 'legal', 'm', 'media', 'music', 'musicians', 'network', 'organizations', 'party',
   'r', 'releases', 'reset-password', 'services', 'sign-in', 'sign-up', 'sitemap', 'start', 'studios', 'summit', 'venues', 'verified', 'verify-email', 'works', 'world',
   // public/ and build output
   'data', 'icons', 'images', 'favicon', 'site', 'robots', '_astro', '_worker',
