@@ -55,6 +55,16 @@ export async function listTracks(db: D1Database, viewer: string, max = 60): Prom
   return results.map((r) => track(r, viewer));
 }
 
+/** One member's songs, newest first, for the Feed on their profile. Empty before migration 0018 reaches the database. */
+export async function tracksBy(db: D1Database, ownerId: string, viewer: string | null, max = 5): Promise<FeedbackTrack[]> {
+  if (!(await feedbackReady(db))) return [];
+  try {
+    const { results } = await db.prepare(`${TRACK_SELECT} WHERE t.user_id = ?2 AND t.status = 'open' ORDER BY t.created_at DESC LIMIT ${Math.min(20, Math.max(1, max | 0))}`)
+      .bind(viewer ?? '', ownerId).all<TrackRow>();
+    return results.map((r) => track(r, viewer ?? ''));
+  } catch { return []; }
+}
+
 export async function getTrack(db: D1Database, id: string, viewer: string): Promise<{ track: FeedbackTrack; notes: FeedbackNote[] } | null> {
   const r = await db.prepare(`${TRACK_SELECT} WHERE t.id = ?2 AND t.status = 'open' AND ${NOT_BLOCKED('t.user_id')}`).bind(viewer, id).first<TrackRow>();
   if (!r) return null;

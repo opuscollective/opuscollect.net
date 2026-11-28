@@ -62,7 +62,7 @@ const tracks = all.filter((t) => (show === 'open' ? t.vote === 0 && !t.mine : sh
                 <input type="hidden" name="artist" /><input type="hidden" name="artwork" />
               </div>
               <p class="fb__err" data-err role="alert"></p>
-              <p class="fb__fine">SoundCloud, Spotify, YouTube, a private link: anything that plays. Up to {FEEDBACK.tracksPerWeek} tracks a week.</p>
+              <p class="fb__fine">SoundCloud, Spotify, YouTube, a private link: anything that plays. It also shows in the Feed on your profile. Up to {FEEDBACK.tracksPerWeek} tracks a week.</p>
             </form>
           ) : (
             <p class="notice" style="margin-top:28px">

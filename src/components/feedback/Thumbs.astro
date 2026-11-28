@@ -10,7 +10,7 @@ const off = mine || !can;
 ---
 <div class:list={['fbv', big && 'fbv--big', mine && 'is-mine']} data-fbv={id} role="group" aria-label={mine ? 'Thumbs on your track' : 'Rate this track'}>
   {[[1, 'Thumbs up', ups], [-1, 'Thumbs down', downs]].map(([v, label, n]) => (
-    <button type="button" class:list={['fbv__b', v === -1 && 'is-down']} data-v={v} aria-pressed={vote === v ? 'true' : 'false'} aria-label={label + ', ' + n} disabled={off} title={mine ? undefined : !can ? 'Publish your profile to rate tracks' : String(label)}>
+    <button type="button" class:list={['fbv__b', v === -1 && 'is-down']} data-v={v} aria-pressed={vote === v ? 'true' : 'false'} aria-label={label + ', ' + n} disabled={off} title={mine ? undefined : !can ? 'Members with a live profile can rate tracks' : String(label)}>
       <svg viewBox="0 0 24 24" width={big ? 22 : 18} height={big ? 22 : 18} fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={THUMB} /></svg>
       <span data-n>{n}</span>
     </button>

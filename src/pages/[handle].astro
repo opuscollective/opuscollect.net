@@ -9,6 +9,9 @@ import OpusMark from '@/components/ui/OpusMark.astro';
 import Journey from '@/components/profile/Journey.astro';
 import SideBar from '@/components/profile/SideBar.astro';
 import { feedWhen, profileFeed } from '@/server/profile-feed';
+import { tracksBy } from '@/server/feedback';
+import { ago } from '@/lib/feedback';
+import Thumbs from '@/components/feedback/Thumbs.astro';
 import SocialRow from '@/components/profile/SocialRow.astro';
 import { connectionMetros, homeMetroOf, memberStats } from '@/server/progress';
 import { levelOf, points, resolveTitle } from '@/lib/progress';
@@ -31,6 +34,7 @@ import '@/styles/app.css';
 import '@/styles/clans.css';
 import '@/styles/music.css';
 import '@/styles/profile.css';
+import '@/styles/feedback.css';
 export const prerender = false;
 
 const handle = Astro.params.handle ?? '';
@@ -112,7 +116,11 @@ const shelf = [...(leadIds.map((id) => record.find((x) => x.id === id)).filter(B
   .map((x) => ({ id: x.id, title: x.title, cover: x.coverKey ? mediaUrl(x.coverKey) : null, line: [RELEASE_KINDS[x.kind], x.releaseDate?.slice(0, 4)].filter(Boolean).join(' · '), by: byLine(x), mark: essentialIds.has(x.id) ? SHOWCASE.one : featuredWork?.id === x.id && !essentials.length ? SHOWCASE.featured : '', note: essentialIds.has(x.id) ? (page.notes[x.id] ?? '') : '', with: made.get(x.id) }));
 const FIRST = 4;
 const feed = p.status === 'published' || isOwner ? await profileFeed(db, ownerId, p.id) : [];
-const isEmpty = !record.length && !p.credits.length && !hasAbout && !feed.length;
+// Songs the member posted for feedback lead their Feed (Bogo 2026-11-28: the profile is where songs get heard and talked about).
+const songs = p.status === 'published' || isOwner ? await tracksBy(db, ownerId, viewer?.id ?? null) : [];
+// Rating needs a confirmed member with a live profile; the server checks again on every tap.
+const canRate = !!viewer && viewer.emailVerified && !isOwner && !!(await db.prepare("SELECT 1 FROM profiles WHERE owner_user_id = ? AND kind = 'musician' AND status = 'published'").bind(viewer.id).first().catch(() => null));
+const isEmpty = !record.length && !p.credits.length && !hasAbout && !feed.length && !songs.length;
 const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${where ? ` · ${where}` : ''} on Opus.`;
 ---
 <BaseLayout title={p.displayName} description={desc} noindex={p.status !== 'published'} image={p.photoKey ? mediaUrl(p.photoKey)! : undefined}>
@@ -316,9 +324,28 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
               {hire.length > 0 && !isOwner && <p class="dim mp__fine">“From” prices are a guide. You agree the details and payment directly; Opus doesn’t take payment yet.</p>}
             </section>
           )}
-          {(feed.length > 0 || isOwner) && (
+          {(feed.length > 0 || songs.length > 0 || isOwner) && (
             <section class="mp__sec" id="feed" style="order:-2">
-              <h2 class="mp__h">Feed</h2>
+              <h2 class="mp__h">Feed{isOwner && <a class="mp__h-act" href="/feedback">Post a song</a>}</h2>
+              {songs.length > 0 && (
+                <ul class="fb__rows mp__songs" role="list">{songs.map((t) => (
+                  <li>
+                    <a class="fb__art" href={'/feedback/' + t.id} style={t.artwork ? 'background-image:url(' + encodeURI(t.artwork) + ')' : undefined} tabindex="-1" aria-hidden="true">{!t.artwork && t.title.slice(0, 1).toUpperCase()}</a>
+                    <span class="fb__t">
+                      <a href={'/feedback/' + t.id}><b>{t.title}</b></a>
+                      <small>Song · {ago(t.at)}</small>
+                      {t.ask && <em>“{t.ask}”</em>}
+                    </span>
+                    <span class="fb__acts">
+                      <a class="fb__listen" href={t.url} target="_blank" rel="noopener noreferrer nofollow">Listen</a>
+                      <Thumbs id={t.id} ups={t.ups} downs={t.downs} vote={t.vote} mine={isOwner} can={canRate} />
+                      <a class="fb__cm" href={'/feedback/' + t.id + '#comments'} aria-label={t.notes + (t.notes === 1 ? ' comment' : ' comments')}>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z" /></svg>{t.notes}
+                      </a>
+                    </span>
+                  </li>
+                ))}</ul>
+              )}
               {feed.length > 0 ? (
                 <ul class="mp__tiles mp__feed" role="list">{feed.map((f, i) => (
                   <li><a href={f.href}>
@@ -329,7 +356,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
                     <small>{[f.sub, feedWhen(f.at, f.upcoming)].filter(Boolean).join(' · ')}</small>
                   </a></li>
                 ))}</ul>
-              ) : <p class="mp__quiet">Your feed fills in by itself: new works, credits others confirm, groups you join, parties and events. <a class="link" href="/works/mine?add=1">Add a work</a></p>}
+              ) : songs.length === 0 && <p class="mp__quiet">Post a song and it shows here for people to rate. The rest fills in by itself: new works, credits others confirm, groups you join, parties and events. <a class="link" href="/works/mine?add=1">Add a work</a></p>}
             </section>
           )}
           {show('works') && (record.length > 0 || isOwner) && (
@@ -634,6 +661,7 @@ const desc = `${p.displayName}${roles.length ? ` · ${roles.join(', ')}` : ''}${
 </style>
 
 <script>
+  import '@/scripts/feedback-vote.ts';
   import { bindForm } from '@/scripts/form';
   document.querySelector<HTMLButtonElement>('[data-all-works]')?.addEventListener('click', (e) => { document.querySelector('[data-works]')?.classList.add('is-all'); (e.currentTarget as HTMLElement).remove(); });
   // The bio shows three lines; a tap opens the rest.
