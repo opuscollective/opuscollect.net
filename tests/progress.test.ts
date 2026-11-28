@@ -62,3 +62,10 @@ test('travel achievements read real connections away from home, never self-marke
   for (const a of travel) assert.ok(['awayConnections', 'awayParties', 'connectionCities', 'connectionCountries'].includes(a.stat));
   assert.equal(achievements({ ...NO_STATS, awayConnections: 1 }).find((a) => a.id === 'away-1')!.earned, true);
 });
+
+test('feedback given adds points, is capped, and stays below real work', () => {
+  assert.equal(points({ ...NO_STATS, feedbackGiven: 1 }), POINTS.feedback.each);
+  assert.equal(points({ ...NO_STATS, feedbackGiven: 9999 }), POINTS.feedback.cap * POINTS.feedback.each);
+  assert.ok(POINTS.feedback.each < POINTS.work.each && POINTS.feedback.each < POINTS.creditEarned.each);
+  assert.ok(achievements({ ...NO_STATS, feedbackGiven: 1 }).find((a) => a.id === 'first-feedback')!.earned);
+});

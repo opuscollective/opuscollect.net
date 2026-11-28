@@ -1,0 +1,111 @@
+---
+/** One track up for feedback: where to hear it, thumbs up or down, what the artist asked, and optional comments. */
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Thumbs from '@/components/feedback/Thumbs.astro';
+import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
+import { FEEDBACK, ago } from '@/lib/feedback';
+import { feedbackReady, getTrack } from '@/server/feedback';
+import { getMyProfile } from '@/server/profiles';
+import '@/styles/app.css';
+import '@/styles/feedback.css';
+export const prerender = false;
+
+const user = Astro.locals.user;
+const id = Astro.params.id ?? '';
+if (!user) return Astro.redirect('/sign-in?next=' + encodeURIComponent('/feedback/' + id));
+const db = Astro.locals.runtime.env.DB;
+const data = (await feedbackReady(db)) ? await getTrack(db, id, user.id).catch(() => null) : null;
+if (!data) return new Response(null, { status: 404 });
+const { track: t, notes } = data;
+const me = await getMyProfile(db, user.id).catch(() => null);
+const can = user.emailVerified && me?.status === 'published';
+---
+<BaseLayout title={t.title + ' · Feedback'} description="A track up for feedback on Opus." noindex>
+  <section class="app fb">
+    <div class="fb__wrap">
+      <p class="fbt__back"><a class="link" href="/feedback">All tracks</a></p>
+      <header class="fbt__head">
+        <span class="fb__art fbt__art" style={t.artwork ? 'background-image:url(' + encodeURI(t.artwork) + ')' : undefined} aria-hidden="true">{!t.artwork && t.title.slice(0, 1).toUpperCase()}</span>
+        <div class="fbt__meta">
+          <h1 class="fbt__title">{t.title}</h1>
+          <p class="fbt__by">
+            {t.artist && <span>{t.artist}</span>}
+            <span>Posted by {t.by.handle ? <a class="link" href={'/' + t.by.handle}>{t.by.name}</a> : t.by.name}{t.by.verified && <VerifiedBadge />} · {ago(t.at)}</span>
+          </p>
+          <div class="row fbt__actions">
+            <a class="btn-app" href={t.url} target="_blank" rel="noopener noreferrer nofollow">Listen<small>{t.host}</small></a>
+            <Thumbs id={t.id} ups={t.ups} downs={t.downs} vote={t.vote} mine={t.mine} can={!!can} big />
+            {t.mine && <button class="btn-app btn-app--ghost" type="button" data-take-down>Take down</button>}
+          </div>
+        </div>
+      </header>
+      {t.ask && <p class="fbt__ask"><small>{t.mine ? 'You asked' : t.by.name.split(/\s+/)[0] + ' wants ears on'}</small>{t.ask}</p>}
+
+      <h2 class="fbt__h" id="comments">Comments <span>{notes.length}</span></h2>
+      {notes.length > 0 ? (
+        <ul class="fbt__notes" role="list">{notes.map((n) => (
+          <li>
+            <span class="fbt__who" style={n.by.photo ? 'background-image:url(' + n.by.photo + ')' : undefined} aria-hidden="true">{!n.by.photo && n.by.name.slice(0, 1)}</span>
+            <div>
+              <p class="fbt__name">{n.by.handle ? <a href={'/' + n.by.handle}>{n.by.name}</a> : n.by.name}{n.by.verified && <VerifiedBadge />}<small>{ago(n.at)}</small></p>
+              <p class="fbt__body">{n.body}</p>
+              {(n.mine || t.mine) && <button class="fbt__rm" type="button" data-rm={n.id}>Remove</button>}
+            </div>
+          </li>
+        ))}</ul>
+      ) : <p class="fbt__none">{t.mine ? 'No comments yet. Thumbs come first; comments are optional.' : 'No comments yet. A thumb is enough; say more if you want.'}</p>}
+
+      {can ? (
+        <form class="fbt__form" data-note novalidate>
+          <label class="field">
+            <span>{t.mine ? 'Reply' : 'Add a comment'} {!t.mine && <small>Optional</small>}</span>
+            <textarea class="textarea" name="body" maxlength={FEEDBACK.noteMax} rows="3" placeholder={t.mine ? 'Answer a comment or add context.' : 'What works? What would you change?'}></textarea>
+          </label>
+          <p class="fb__err" data-err role="alert"></p>
+          <div class="row fbt__send"><button class="btn-app btn-app--ghost" type="submit">{t.mine ? 'Post reply' : 'Post comment'}</button></div>
+        </form>
+      ) : (
+        <p class="notice" style="margin-top:24px">
+          {!user.emailVerified ? <><b>Confirm your email to rate and comment.</b> <a class="link" href="/account">Confirm it</a></>
+            : <><b>Publish your profile to rate and comment.</b> <a class="link" href="/start">Finish your profile</a></>}
+        </p>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import '@/scripts/feedback-vote.ts';
+</script>
+
+<script define:vars={{ id }} is:inline>
+  (() => {
+    const api = '/api/feedback/' + encodeURIComponent(id);
+    const call = async (url, init) => {
+      const r = await fetch(url, init); const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Something went wrong. Please try again.');
+      return d;
+    };
+    const form = document.querySelector('[data-note]');
+    if (form) {
+      const box = form.elements.namedItem('body'), err = form.querySelector('[data-err]'), btn = form.querySelector('button[type=submit]');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault(); err.textContent = '';
+        const body = box.value.trim();
+        if (!body) { box.focus(); return; }
+        btn.disabled = true;
+        try { await call(api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body }) }); location.reload(); }
+        catch (x) { err.textContent = x.message; btn.disabled = false; }
+      });
+    }
+    // Two taps to remove, so nothing goes by accident and no browser dialog is needed.
+    const twice = (el, label, run) => el.addEventListener('click', async () => {
+      if (el.dataset.sure !== '1') { el.dataset.sure = '1'; el.textContent = label; setTimeout(() => { if (el.isConnected) { el.dataset.sure = ''; el.textContent = el.dataset.label; } }, 4000); return; }
+      el.disabled = true;
+      try { await run(); } catch (x) { el.disabled = false; el.textContent = x.message; }
+    });
+    document.querySelectorAll('[data-rm]').forEach((b) => { b.dataset.label = b.textContent; twice(b, 'Tap again to remove', async () => { await call(api + '?note=' + encodeURIComponent(b.dataset.rm), { method: 'DELETE' }); location.reload(); }); });
+    const down = document.querySelector('[data-take-down]');
+    if (down) { down.dataset.label = down.textContent; twice(down, 'Tap again to take down', async () => { await call(api, { method: 'DELETE' }); location.href = '/feedback?show=mine'; }); }
+  })();
+</script>

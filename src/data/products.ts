@@ -76,6 +76,8 @@ export const PRODUCTS: Record<string, ProductDef> = {
     items: [
       { key: 'connections', label: 'My Network', href: '/network', members: true },
       { key: 'discover', label: 'Discover People', href: '/musicians' },
+      // Feedback Wednesdays from the Discord, open all week. Placement here is a working choice for Bogo.
+      { key: 'feedback', label: 'Feedback', href: '/feedback' },
     ],
     cta: { label: 'Messages', href: '/network?messages=1', signedOut: signIn('/network'), action: ['data-open-messages', 'private'] },
   },
