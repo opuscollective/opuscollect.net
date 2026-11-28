@@ -1,14 +1,16 @@
 import type { APIRoute } from 'astro';
-import { postNote, removeNote, removeTrack } from '@/server/feedback';
+import { postNote, removeNote, removeTrack, setVote } from '@/server/feedback';
 import { HttpError, fail, json, readJson } from '@/server/util';
 
 export const prerender = false;
 
-/** POST /api/feedback/:id { body }: leave a note on a track. */
+/** POST /api/feedback/:id { vote: 1 | -1 | 0 } gives or takes back a thumb; { body } adds a comment. */
 export const POST: APIRoute = async ({ locals, request, params }) => {
   try {
     if (!locals.user) throw new HttpError(401, 'Please sign in first.');
-    return json(await postNote(locals.runtime.env.DB, locals.user, params.id ?? '', await readJson(request, 8_000)));
+    const b = await readJson(request, 8_000);
+    const db = locals.runtime.env.DB;
+    return json('vote' in b ? await setVote(db, locals.user, params.id ?? '', b.vote) : await postNote(db, locals.user, params.id ?? '', b));
   } catch (e) { return fail(e); }
 };
 

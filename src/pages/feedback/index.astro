@@ -1,10 +1,11 @@
 ---
 /**
- * Feedback: post a track, get notes from other members. The Discord's Feedback Wednesdays, open all week.
- * One screen: a link box to post, and the feed. Members only. Every count is a count of rows.
+ * Feedback: post a track, members give it a thumbs up or a thumbs down. The Discord's Feedback Wednesdays, open all week.
+ * One screen: a link box to post, and the feed with the thumbs right on it. Members only. Every count is a count of rows.
+ * No second bar under the header here (Bogo 2026-11-28): Feedback is reached from the Network menu, Network and the footer.
  */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import ProductNav from '@/components/product/ProductNav.astro';
+import Thumbs from '@/components/feedback/Thumbs.astro';
 import { FEEDBACK, ago } from '@/lib/feedback';
 import { POINTS } from '@/lib/progress';
 import { feedbackReady, givenCount, listTracks, type FeedbackTrack } from '@/server/feedback';
@@ -18,30 +19,28 @@ const db = Astro.locals.runtime.env.DB;
 const ready = await feedbackReady(db);
 const me = user ? await getMyProfile(db, user.id).catch(() => null) : null;
 const can = !!user && user.emailVerified && me?.status === 'published';
-const SHOWS = [['all', 'All'], ['open', 'No notes yet'], ['mine', 'Yours']] as const;
+const SHOWS = [['all', 'All'], ['open', 'Not rated by you'], ['mine', 'Yours']] as const;
 const show = SHOWS.find(([k]) => k === Astro.url.searchParams.get('show'))?.[0] ?? 'all';
 let all: FeedbackTrack[] = [];
 let given = 0;
 if (user && ready) {
   try { [all, given] = await Promise.all([listTracks(db, user.id), givenCount(db, user.id)]); } catch (e) { console.error('feedback', e); }
 }
-const tracks = all.filter((t) => (show === 'open' ? t.notes === 0 && !t.mine : show === 'mine' ? t.mine : true));
-const pill = (t: FeedbackTrack) => (t.notes === 0 ? 'No notes yet' : t.notes === 1 ? '1 note' : t.notes + ' notes');
+const tracks = all.filter((t) => (show === 'open' ? t.vote === 0 && !t.mine : show === 'mine' ? t.mine : true));
 ---
 <BaseLayout title="Feedback" description="Post a track on Opus and get written feedback from other members. Open all week." noindex={!!user}>
-  <ProductNav product="network" current="feedback" />
   <section class="app fb">
     <div class="fb__wrap">
       <p class="t-meta app__kicker">Feedback</p>
       <h1 class="fb__title">Get ears on your track.</h1>
-      <p class="fb__sub">Post a track. Other members tell you what works and what they’d change. Open all week.</p>
+      <p class="fb__sub">Post a track. Members give it a thumbs up or a thumbs down. Open all week.</p>
 
       {!user ? (
         <>
           <ol class="fb__how" role="list">
             <li><b>Post</b><span>Paste a link to your track. Nothing is uploaded.</span></li>
-            <li><b>Listen</b><span>Members hear it where it lives and write you a note.</span></li>
-            <li><b>Give back</b><span>Feedback you give others counts toward your level.</span></li>
+            <li><b>Rate</b><span>Members listen and tap thumbs up or thumbs down. A comment is optional.</span></li>
+            <li><b>Level up</b><span>Every track you rate counts toward your level.</span></li>
           </ol>
           <div class="row" style="margin-top:28px"><a class="btn-app" href="/sign-up">Join Opus</a><a class="btn-app btn-app--ghost" href="/sign-in?next=/feedback">Sign in</a></div>
         </>
@@ -67,13 +66,13 @@ const pill = (t: FeedbackTrack) => (t.notes === 0 ? 'No notes yet' : t.notes ===
             </form>
           ) : (
             <p class="notice" style="margin-top:28px">
-              {!user.emailVerified ? <><b>Confirm your email to take part.</b> Then you can post tracks and give feedback. <a class="link" href="/account">Confirm it</a></>
+              {!user.emailVerified ? <><b>Confirm your email to take part.</b> Then you can post tracks and rate them. <a class="link" href="/account">Confirm it</a></>
                 : <><b>Publish your profile to take part.</b> People giving and getting feedback should see who you are. <a class="link" href="/start">Finish your profile</a></>}
             </p>
           )}
 
           <p class="fb__level">
-            <span><b>{given}</b> {given === 1 ? 'track' : 'tracks'} you’ve given feedback on</span>
+            <span><b data-given>{given}</b> {given === 1 ? 'track' : 'tracks'} you’ve rated</span>
             <span>Each one adds {POINTS.feedback.each} points to <a class="link" href="/me">your level</a>.</span>
           </p>
 
@@ -83,20 +82,26 @@ const pill = (t: FeedbackTrack) => (t.notes === 0 ? 'No notes yet' : t.notes ===
 
           {tracks.length > 0 ? (
             <ul class="fb__rows" role="list">{tracks.map((t) => (
-              <li><a href={'/feedback/' + t.id}>
-                <span class="fb__art" style={t.artwork ? 'background-image:url(' + encodeURI(t.artwork) + ')' : undefined} aria-hidden="true">{!t.artwork && t.title.slice(0, 1).toUpperCase()}</span>
+              <li>
+                <a class="fb__art" href={'/feedback/' + t.id} style={t.artwork ? 'background-image:url(' + encodeURI(t.artwork) + ')' : undefined} tabindex="-1" aria-hidden="true">{!t.artwork && t.title.slice(0, 1).toUpperCase()}</a>
                 <span class="fb__t">
-                  <b>{t.title}</b>
+                  <a href={'/feedback/' + t.id}><b>{t.title}</b></a>
                   <small>{t.mine ? 'You' : t.by.name} · {ago(t.at)}</small>
                   {t.ask && <em>“{t.ask}”</em>}
                 </span>
-                <span class:list={['fb__pill', t.given && !t.mine && 'is-done']}>{t.given && !t.mine ? 'You gave feedback' : pill(t)}</span>
-              </a></li>
+                <span class="fb__acts">
+                  <a class="fb__listen" href={t.url} target="_blank" rel="noopener noreferrer nofollow">Listen</a>
+                  <Thumbs id={t.id} ups={t.ups} downs={t.downs} vote={t.vote} mine={t.mine} can={can} />
+                  <a class="fb__cm" href={'/feedback/' + t.id + '#comments'} aria-label={t.notes + (t.notes === 1 ? ' comment' : ' comments')}>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z" /></svg>{t.notes}
+                  </a>
+                </span>
+              </li>
             ))}</ul>
           ) : (
             <div class="fb__quiet">
-              <b>{show === 'mine' ? 'You haven’t posted a track yet.' : show === 'open' ? 'Every track has a note.' : 'No tracks yet.'}</b>
-              <p>{show === 'mine' ? 'Paste a link above and it shows up here.' : show === 'open' ? 'Nothing is waiting on a first note right now.' : 'Be the first: paste a link above.'}</p>
+              <b>{show === 'mine' ? 'You haven’t posted a track yet.' : show === 'open' ? 'You’ve rated everything.' : 'No tracks yet.'}</b>
+              <p>{show === 'mine' ? 'Paste a link above and it shows up here.' : show === 'open' ? 'New tracks show up here as members post them.' : 'Be the first: paste a link above.'}</p>
             </div>
           )}
         </>
@@ -106,6 +111,7 @@ const pill = (t: FeedbackTrack) => (t.notes === 0 ? 'No notes yet' : t.notes ===
 </BaseLayout>
 
 <script>
+  import '@/scripts/feedback-vote.ts';
   // Post a track: paste a link, Opus fills in what it can find, the member confirms the title and posts.
   const form = document.querySelector<HTMLFormElement>('[data-post]');
   if (form) {

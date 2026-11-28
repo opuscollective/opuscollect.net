@@ -1,7 +1,7 @@
 ---
-/** One track up for feedback: where to hear it, what the artist asked, the notes, and the box to add yours. */
+/** One track up for feedback: where to hear it, thumbs up or down, what the artist asked, and optional comments. */
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import ProductNav from '@/components/product/ProductNav.astro';
+import Thumbs from '@/components/feedback/Thumbs.astro';
 import VerifiedBadge from '@/components/ui/VerifiedBadge.astro';
 import { FEEDBACK, ago } from '@/lib/feedback';
 import { feedbackReady, getTrack } from '@/server/feedback';
@@ -19,10 +19,8 @@ if (!data) return new Response(null, { status: 404 });
 const { track: t, notes } = data;
 const me = await getMyProfile(db, user.id).catch(() => null);
 const can = user.emailVerified && me?.status === 'published';
-const min = t.mine ? 1 : FEEDBACK.noteMin;
 ---
 <BaseLayout title={t.title + ' · Feedback'} description="A track up for feedback on Opus." noindex>
-  <ProductNav product="network" current="feedback" />
   <section class="app fb">
     <div class="fb__wrap">
       <p class="fbt__back"><a class="link" href="/feedback">All tracks</a></p>
@@ -36,13 +34,14 @@ const min = t.mine ? 1 : FEEDBACK.noteMin;
           </p>
           <div class="row fbt__actions">
             <a class="btn-app" href={t.url} target="_blank" rel="noopener noreferrer nofollow">Listen<small>{t.host}</small></a>
+            <Thumbs id={t.id} ups={t.ups} downs={t.downs} vote={t.vote} mine={t.mine} can={!!can} big />
             {t.mine && <button class="btn-app btn-app--ghost" type="button" data-take-down>Take down</button>}
           </div>
         </div>
       </header>
       {t.ask && <p class="fbt__ask"><small>{t.mine ? 'You asked' : t.by.name.split(/\s+/)[0] + ' wants ears on'}</small>{t.ask}</p>}
 
-      <h2 class="fbt__h">Feedback <span>{notes.length}</span></h2>
+      <h2 class="fbt__h" id="comments">Comments <span>{notes.length}</span></h2>
       {notes.length > 0 ? (
         <ul class="fbt__notes" role="list">{notes.map((n) => (
           <li>
@@ -54,29 +53,30 @@ const min = t.mine ? 1 : FEEDBACK.noteMin;
             </div>
           </li>
         ))}</ul>
-      ) : <p class="fbt__none">{t.mine ? 'No notes yet. They show up here as members listen.' : 'No notes yet. Yours would be the first.'}</p>}
+      ) : <p class="fbt__none">{t.mine ? 'No comments yet. Thumbs come first; comments are optional.' : 'No comments yet. A thumb is enough; say more if you want.'}</p>}
 
       {can ? (
-        <form class="fbt__form" data-note data-min={min} novalidate>
+        <form class="fbt__form" data-note novalidate>
           <label class="field">
-            <span>{t.mine ? 'Reply' : t.given ? 'Add another note' : 'Leave feedback'}</span>
-            <textarea class="textarea" name="body" maxlength={FEEDBACK.noteMax} rows="4" placeholder={t.mine ? 'Answer a note or add context.' : 'What works? What would you change?'} required></textarea>
+            <span>{t.mine ? 'Reply' : 'Add a comment'} {!t.mine && <small>Optional</small>}</span>
+            <textarea class="textarea" name="body" maxlength={FEEDBACK.noteMax} rows="3" placeholder={t.mine ? 'Answer a comment or add context.' : 'What works? What would you change?'}></textarea>
           </label>
           <p class="fb__err" data-err role="alert"></p>
-          <div class="row fbt__send">
-            <button class="btn-app" type="submit">{t.mine ? 'Post reply' : 'Post feedback'}</button>
-            {!t.mine && <small data-count>At least {FEEDBACK.noteMin} characters{!t.given && '. Counts toward your level.'}</small>}
-          </div>
+          <div class="row fbt__send"><button class="btn-app btn-app--ghost" type="submit">{t.mine ? 'Post reply' : 'Post comment'}</button></div>
         </form>
       ) : (
         <p class="notice" style="margin-top:24px">
-          {!user.emailVerified ? <><b>Confirm your email to give feedback.</b> <a class="link" href="/account">Confirm it</a></>
-            : <><b>Publish your profile to give feedback.</b> <a class="link" href="/start">Finish your profile</a></>}
+          {!user.emailVerified ? <><b>Confirm your email to rate and comment.</b> <a class="link" href="/account">Confirm it</a></>
+            : <><b>Publish your profile to rate and comment.</b> <a class="link" href="/start">Finish your profile</a></>}
         </p>
       )}
     </div>
   </section>
 </BaseLayout>
+
+<script>
+  import '@/scripts/feedback-vote.ts';
+</script>
 
 <script define:vars={{ id }} is:inline>
   (() => {
@@ -89,12 +89,10 @@ const min = t.mine ? 1 : FEEDBACK.noteMin;
     const form = document.querySelector('[data-note]');
     if (form) {
       const box = form.elements.namedItem('body'), err = form.querySelector('[data-err]'), btn = form.querySelector('button[type=submit]');
-      const count = form.querySelector('[data-count]'), min = Number(form.dataset.min) || 1, base = count ? count.textContent : '';
-      if (count) box.addEventListener('input', () => { const n = box.value.trim().length; count.textContent = n > 0 && n < min ? (min - n) + ' more characters' : base; });
       form.addEventListener('submit', async (e) => {
         e.preventDefault(); err.textContent = '';
         const body = box.value.trim();
-        if (body.length < min) { err.textContent = min > 1 ? 'Say a little more: what works, and what you’d change.' : 'Write something first.'; box.focus(); return; }
+        if (!body) { box.focus(); return; }
         btn.disabled = true;
         try { await call(api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body }) }); location.reload(); }
         catch (x) { err.textContent = x.message; btn.disabled = false; }

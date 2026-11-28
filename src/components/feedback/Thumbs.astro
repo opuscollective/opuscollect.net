@@ -1,0 +1,18 @@
+---
+/**
+ * Thumbs up / thumbs down on a track: the whole of giving feedback, one tap. Tap your own choice again to take it back.
+ * On your own track the counts show without buttons. Wired by src/scripts/feedback-vote.ts.
+ */
+interface Props { id: string; ups: number; downs: number; vote: number; mine: boolean; can: boolean; big?: boolean }
+const { id, ups, downs, vote, mine, can, big = false } = Astro.props;
+const THUMB = 'M7 10v11M15 5.9 14 10h5.800a2 2 0 0 1 1.900 2.600l-2.300 7.600a2 2 0 0 1-1.900 1.400H4.500a1.500 1.500 0 0 1-1.500-1.500v-8.600A1.500 1.500 0 0 1 4.500 10H7l4.300-7.400A2.900 2.900 0 0 1 15 5.900Z';
+const off = mine || !can;
+---
+<div class:list={['fbv', big && 'fbv--big', mine && 'is-mine']} data-fbv={id} role="group" aria-label={mine ? 'Thumbs on your track' : 'Rate this track'}>
+  {[[1, 'Thumbs up', ups], [-1, 'Thumbs down', downs]].map(([v, label, n]) => (
+    <button type="button" class:list={['fbv__b', v === -1 && 'is-down']} data-v={v} aria-pressed={vote === v ? 'true' : 'false'} aria-label={label + ', ' + n} disabled={off} title={mine ? undefined : !can ? 'Publish your profile to rate tracks' : String(label)}>
+      <svg viewBox="0 0 24 24" width={big ? 22 : 18} height={big ? 22 : 18} fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={THUMB} /></svg>
+      <span data-n>{n}</span>
+    </button>
+  ))}
+</div>

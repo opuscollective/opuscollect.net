@@ -117,6 +117,7 @@ export const NAV: NavItem[] = [
     groups: [{ links: [
       { label: 'Discover people', href: '/musicians' },
       { label: 'My connections', href: '/network' },
+      { label: 'Feedback', href: '/feedback' },
       { label: 'Received requests', href: '/network?tab=received', count: 'requests' },
       { label: 'Sent requests', href: '/network?tab=sent' },
       { label: 'Messages', href: '/network?messages=1', messages: true },
@@ -166,5 +167,6 @@ export const FOOTER_NAV = [
   { label: 'Studios', href: '/studios' },
   { label: 'List your studio', href: '/business' },
   { label: 'Network', href: '/network' },
+  { label: 'Feedback', href: '/feedback' },
   { label: 'About', href: '/about' },
 ];

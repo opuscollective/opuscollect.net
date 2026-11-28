@@ -3,9 +3,8 @@ export const FEEDBACK = {
   titleMax: 120,
   artistMax: 80,
   askMax: 140,
-  /** A note shorter than this isn't feedback ("fire" helps nobody), so it can't be posted. */
-  noteMin: 40,
-  noteMax: 1500,
+  /** Comments are optional and can be short. */
+  noteMax: 1000,
   /** Tracks one member can post in a week, so the feed stays a place to listen, not a place to drop links. */
   tracksPerWeek: 3,
 } as const;

@@ -21,21 +21,32 @@
 .fb__tabs a:hover { background: var(--surface-hover); }
 .fb__tabs a[aria-current] { background: var(--text); color: var(--bg); box-shadow: none; }
 .fb__rows { margin-top: 16px; border-top: 1px solid var(--line); }
-.fb__rows a { display: flex; align-items: center; gap: 16px; padding: 14px 4px; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none; }
-.fb__rows a:hover { background: var(--surface-hover); }
+.fb__rows li { display: flex; align-items: center; gap: 16px; padding: 14px 4px; border-bottom: 1px solid var(--line); }
+.fb__t a { color: inherit; text-decoration: none; } .fb__t a:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.fb__art { text-decoration: none; }
 .fb__art { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 10px; background: var(--surface-sunken) center / cover no-repeat; color: var(--text-3); font-weight: 500; }
 .fb__t { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .fb__t b { font-size: 16px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.25; overflow-wrap: anywhere; }
 .fb__t small { font-size: 13px; color: var(--text-3); }
 .fb__t em { font-style: normal; font-size: 14px; line-height: 1.4; color: var(--text-2); overflow-wrap: anywhere; }
-.fb__pill { flex: none; display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); font-size: 12px; color: var(--text-2); white-space: nowrap; }
-.fb__pill.is-done { box-shadow: none; background: var(--surface-sunken); color: var(--text-3); }
+/* Row actions: Listen, the two thumbs, comments. */
+.fb__acts { flex: none; display: flex; align-items: center; gap: 8px; }
+.fb__listen, .fb__cm, .fbv__b { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: none; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--text); font: inherit; font-size: 13.5px; font-variant-numeric: tabular-nums; text-decoration: none; cursor: pointer; transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
+.fb__listen:hover, .fb__cm:hover, .fbv__b:not(:disabled):hover { background: var(--surface-hover); }
+.fb__cm { box-shadow: none; padding: 0 8px; color: var(--text-2); }
+.fbv { display: inline-flex; gap: 6px; }
+.fbv__b.is-down svg { transform: scale(-1, -1); }
+.fbv__b[aria-pressed="true"] { background: var(--text); color: var(--bg); box-shadow: none; }
+.fbv__b:disabled { cursor: default; color: var(--text-2); }
+.fbv.is-mine .fbv__b { box-shadow: none; padding: 0 8px; }
+.fbv--big .fbv__b { min-height: 48px; padding: 0 20px; font-size: 15px; }
+.fbv--big.is-mine .fbv__b { padding: 0 10px; }
 .fb__quiet { margin-top: 16px; padding: clamp(24px, 4vw, 40px); border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); }
 .fb__quiet b { display: block; font-size: clamp(1.4rem, 1rem + 1.2vw, 2rem); font-weight: 300; letter-spacing: -0.035em; }
 .fb__quiet p { margin: 8px 0 0; color: var(--text-2); line-height: 1.5; }
 @media (max-width: 600px) {
   .fb__art { width: 52px; height: 52px; }
-  .fb__rows a { flex-wrap: wrap; gap: 10px 14px; } .fb__t { flex-basis: calc(100% - 70px); } .fb__pill { margin-left: 66px; }
+  .fb__rows li { flex-wrap: wrap; gap: 12px 14px; } .fb__t { flex-basis: calc(100% - 70px); } .fb__acts { width: 100%; } .fb__acts .fbv { margin-left: auto; }
   .fb__how li { grid-template-columns: 84px 1fr; }
 }
 .fbt__back { margin: 0 0 20px; font-size: 13.5px; }
@@ -45,7 +56,7 @@
 .fbt__title { margin: 0; font-size: clamp(1.8rem, 1.2rem + 2.4vw, 3.2rem); font-weight: 300; letter-spacing: -0.04em; line-height: 1.05; overflow-wrap: anywhere; }
 .fbt__by { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 0; font-size: 14px; color: var(--text-2); }
 .fbt__by span:last-child { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 5px; color: var(--text-3); }
-.fbt__actions { margin-top: 18px; }
+.fbt__actions { margin-top: 18px; gap: 10px; }
 .fbt__actions small { font-size: 12px; font-weight: 400; opacity: .6; }
 .fbt__ask { margin: 28px 0 0; padding: 18px 0; border-block: 1px solid var(--line); font-size: clamp(17px, 1.5vw, 20px); line-height: 1.4; letter-spacing: -0.015em; overflow-wrap: anywhere; }
 .fbt__ask small { display: block; margin-bottom: 6px; font-size: 12.5px; letter-spacing: 0; color: var(--text-3); }
